@@ -1,0 +1,23 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+        },
+        "error": {
+            "cannot_connect": "Cannot connect to Tech API.",
+            "invalid_auth": "Invalid username or password!",
+            "unknown": "Unknown error. Please try again or report bug to ..."
+        },
+        "step": {
+            "user": {
+                "title": "Tech Controllers Login",
+                "description": "Please enter your credentials to emodul.eu or emodul.pl service.",
+                "data": {
+                    "password": "Password",
+                    "username": "Username"
+                }
+            }
+        }
+    },
+    "title": "Tech Controllers"
+}
