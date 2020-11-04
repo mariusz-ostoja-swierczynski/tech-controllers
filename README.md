@@ -1,5 +1,12 @@
 # Tech Controllers integration for Home Assistant
-The integration of heating controllers from Polish company TECH Sterowniki Sp. z o.o. It uses API to their web control application eModule.eu therefore your controller needs to be accessible from internet and you need account either on https://emodule.eu or https://emodule.pl.
+The integration of heating controllers from Polish company TECH Sterowniki Sp. z o.o. It uses API to their web control application eModul.eu therefore your controller needs to be accessible from internet and you need an account either on https://emodul.eu or https://emodul.pl.
+
+The integration is based on API provided by TECH which supports following controllers:
+* L-7
+* L-8
+* WiFi 8S
+* ST-8S WiFi
+Unfortunately, I own only L-8 controller based on which it was developed and tested. Therefore, please report within ![this issue](/issues/2) if this integration works with your controller and what version.
 
 ## Disclaimer
 This is my first integration ever developed for Home Assistant, and although I don't see any way how this software can harm your devices, you are using in on your own risk and I do not provide any warranties.
