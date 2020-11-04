@@ -20,12 +20,12 @@ Before creating bug reports, please check [this issues list](https://github.com/
 ### Getting logs from your Home Assistant
 
 1. Enable debug logs for "tech" component by adding following to your configuration.yaml file within config folder:
-
-    logger:
-    default: info
-    logs:
-        homeassistant.components.tech: debug
-
+```yaml
+logger:
+  default: info
+  logs:
+    homeassistant.components.tech: debug
+```
 2. Restart your Home Assistant.
 
 3. Go to **Developer Tools** from left menu, then **LOGS** tab and press **LOAD FULL HOME ASSISTANT LOG** button.
