@@ -6,7 +6,7 @@ The integration is based on API provided by TECH which supports following contro
 * L-8
 * WiFi 8S
 * ST-8S WiFi
-Unfortunately, I own only L-8 controller based on which it was developed and tested. Therefore, please report within [this issue](/issues/2) if this integration works with your controller and what version.
+Unfortunately, I own only L-8 controller based on which it was developed and tested. Therefore, please report within [this issue](https://github.com/mariusz-ostoja-swierczynski/tech-controllers/issues/2) if this integration works with your controller and what version.
 
 ## Disclaimer
 This is my first integration ever developed for Home Assistant, and although I don't see any way how this software can harm your devices, you are using in on your own risk and I do not provide any warranties.
