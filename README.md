@@ -5,7 +5,8 @@ The integration is based on API provided by TECH which supports following contro
 * L-7
 * L-8
 * WiFi 8S
-* ST-8S WiFi  
+* ST-8S WiFi
+
 Unfortunately, I own only L-8 controller based on which it was developed and tested. Therefore, please report within [this issue](https://github.com/mariusz-ostoja-swierczynski/tech-controllers/issues/2) if this integration works with your controller and what version.
 
 ## Disclaimer
