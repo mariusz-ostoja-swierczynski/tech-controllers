@@ -45,5 +45,6 @@ This is my first integration ever developed for Home Assistant, and although I d
 ![Tech Controllers Setup 4](/images/ha-tech-2.png)
 
 ## List of reported working TECH Controllers 
+* L-7 (v.2.0.8)
 * L-8 (v.3.0.14)
 * WiFi 8S (v.2.1.8)
