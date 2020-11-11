@@ -44,7 +44,7 @@ class Tech:
                 raise TechError(response.status, await response.text())
 
             data = await response.json()
-            #_LOGGER.debug(data)
+            _LOGGER.debug(data)
             return data
     
     async def post(self, request_path, post_data):
@@ -56,7 +56,7 @@ class Tech:
                 raise TechError(response.status, await response.text())
 
             data = await response.json()
-            #_LOGGER.debug(data)
+            _LOGGER.debug(data)
             return data
     
     async def authenticate(self, username, password):
