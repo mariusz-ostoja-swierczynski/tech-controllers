@@ -109,7 +109,9 @@ class Tech:
             if self.last_update is None or now > self.last_update + self.update_interval:
                 _LOGGER.debug("Updating module zones cache..." + module_udid)    
                 result = await self.get_module_data(module_udid)
-                for zone in result["zones"]["elements"]:
+                zones = result["zones"]["elements"]
+                zones = list(filter(lambda e: e['zone']['zoneState'] != "zoneUnregistered", zones))
+                for zone in zones:
                     self.zones[zone["zone"]["id"]] = zone
                 self.last_update = now
         return self.zones
