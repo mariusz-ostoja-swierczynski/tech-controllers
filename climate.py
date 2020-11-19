@@ -51,8 +51,12 @@ class TechThermostat(ClimateEntity):
         self._api = api
         self._id = device["zone"]["id"]
         self._name = device["description"]["name"]
-        self._target_temperature = device["zone"]["setTemperature"] / 10
-        self._temperature = device["zone"]["currentTemperature"] / 10
+        setTemperature = device["zone"]["setTemperature"]
+        if setTemperature is not None:
+            self._target_temperature = setTemperature / 10
+        currentTemperature = device["zone"]["currentTemperature"]
+        if currentTemperature is not None:
+            self._temperature =  currentTemperature / 10
         state = device["zone"]["flags"]["relayState"]
         if state == "on":
             self._state = CURRENT_HVAC_HEAT
