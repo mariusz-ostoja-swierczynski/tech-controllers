@@ -48,5 +48,8 @@ This is my first integration ever developed for Home Assistant, and although I d
 * L4-WiFi (v.1.0.24)
 * L-7 (v.2.0.8)
 * L-8 (v.3.0.14)
+* L-9r (v1.0.2)
 * WiFi 8S (v.2.1.8)
 * ST-8s WIFI (v.1.0.5)
+* ST-16s WIFI (v.1.0.5)
+* M-9 (v1.0.12)
