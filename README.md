@@ -47,6 +47,7 @@ This is my first integration ever developed for Home Assistant, and although I d
 ## List of reported working TECH Controllers 
 * L4-WiFi (v.1.0.24)
 * L-7 (v.2.0.8)
+* L-7E (v.1.0.6)
 * L-8 (v.3.0.14)
 * L-9r (v1.0.2)
 * WiFi 8S (v.2.1.8)
