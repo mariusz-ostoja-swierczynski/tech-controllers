@@ -26,16 +26,9 @@ async def validate_input(hass: core.HomeAssistant, data):
     if not await api.authenticate(data["username"], data["password"]):
         raise InvalidAuth
     modules = await api.list_modules()
-    # Currently only one Tech controller supported
-    module = modules[0]
-    
-    # If you cannot connect:
-    # throw CannotConnect
-    # If the authentication is wrong:
-    # InvalidAuth
 
     # Return info that you want to store in the config entry.
-    return {"user_id": api.user_id, "token": api.token, "udid": module["udid"], "version": module["version"]}
+    return {"user_id": api.user_id, "token": api.token, "controllers": modules}
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -51,8 +44,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 info = await validate_input(self.hass, user_input)
+                controllers_names = ""
+                for controller in info["controllers"]:
+                    controllers_names += controller["version"] + " "
 
-                return self.async_create_entry(title=info["version"], data=info)
+                return self.async_create_entry(title=controllers_names, data=info)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
