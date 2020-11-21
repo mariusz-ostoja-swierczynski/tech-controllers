@@ -24,6 +24,14 @@ This is my first integration ever developed for Home Assistant, and although I d
 
 ![Tech Thermostat Cards](/images/ha-tech-1.png)
 
+## Plans for development
+* Support for multiply controllers
+* Publish the tech.py Python Package to PyPI
+* Write tests for HA component
+* Support for window opening sensor
+* Support for cold tolerance setting
+* Support for zones schedules
+
 ## Installation
 
 1. Copy entire repository content into your config/custom_components/tech folder of your Home Assistant installation.  
