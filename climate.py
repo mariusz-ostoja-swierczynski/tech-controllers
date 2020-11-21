@@ -50,6 +50,9 @@ class TechThermostat(ClimateEntity):
         self._config_entry = config_entry
         self._api = api
         self._id = device["zone"]["id"]
+        self.update_properties(device)
+
+    def update_properties(self, device):
         self._name = device["description"]["name"]
         setTemperature = device["zone"]["setTemperature"]
         if setTemperature is not None:
@@ -113,20 +116,7 @@ class TechThermostat(ClimateEntity):
         """Call by the Tech device callback to update state."""
         _LOGGER.debug("Updating Tech zone: %s, udid: %s, id: %s", self._name, self._config_entry.data["udid"], self._id)
         device = await self._api.get_zone(self._config_entry.data["udid"], self._id)
-        self._target_temperature = device["zone"]["setTemperature"] / 10
-        self._temperature = device["zone"]["currentTemperature"] / 10
-        state = device["zone"]["flags"]["relayState"]
-        if state == "on":
-            self._state = CURRENT_HVAC_HEAT
-        elif state == "off":
-            self._state = CURRENT_HVAC_IDLE
-        else:
-            self._state = CURRENT_HVAC_OFF
-        mode = device["zone"]["zoneState"]
-        if mode == "zoneOn" or mode == "noAlarm":
-            self._mode = HVAC_MODE_HEAT
-        else:
-            self._mode = HVAC_MODE_OFF
+        self.update_properties(device)
 
     @property
     def temperature_unit(self):
