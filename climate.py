@@ -54,12 +54,14 @@ class TechThermostat(ClimateEntity):
 
     def update_properties(self, device):
         self._name = device["description"]["name"]
-        setTemperature = device["zone"]["setTemperature"]
-        if setTemperature is not None:
-            self._target_temperature = setTemperature / 10
-        currentTemperature = device["zone"]["currentTemperature"]
-        if currentTemperature is not None:
-            self._temperature =  currentTemperature / 10
+        if device["zone"]["setTemperature"] is not None:
+            self._target_temperature = device["zone"]["setTemperature"] / 10
+        else:
+            self._target_temperature = None
+        if device["zone"]["currentTemperature"] is not None:
+            self._temperature =  device["zone"]["currentTemperature"] / 10
+        else:
+            self._temperature = None
         state = device["zone"]["flags"]["relayState"]
         if state == "on":
             self._state = CURRENT_HVAC_HEAT
