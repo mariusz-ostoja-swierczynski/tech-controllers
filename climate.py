@@ -30,19 +30,20 @@ async def async_setup_entry(hass, config_entity, async_add_entities):
     controllers = config_entity.data["controllers"]
     _LOGGER.debug("Number of controllers: %s", len(controllers))
     
+    entities = []
     for controller in controllers:
-        zones = await api.get_module_zones(controller["udid"])    
-        async_add_entities(
-            [
+        _LOGGER.debug("Controllers UDID: %s", controller["udid"])
+        zones = await api.get_module_zones(controller["udid"])
+        for zone in zones:
+            entities.append(
                 TechThermostat(
                     zones[zone],
                     api,
-                    controller["udid"],
+                    controller["udid"]
                 )
-                for zone in zones
-            ],
-            True,
-        )
+            )
+    _LOGGER.debug("Number of entities: %s", len(entities))
+    async_add_entities(entities)
 
 
 class TechThermostat(ClimateEntity):

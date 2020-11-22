@@ -31,9 +31,8 @@ class Tech:
             self.authenticated = True
         else:
             self.authenticated = False
-        self.last_update = None
         self.update_lock = asyncio.Lock()
-        self.zones = {}
+        self.modules = {}
 
     async def get(self, request_path):
         url = self.base_url + request_path
@@ -105,16 +104,19 @@ class Tech:
         """
         async with self.update_lock:
             now = time.time()
-            _LOGGER.debug("Geting module zones: now: %s, last_update %s, interval: %s", now, self.last_update, self.update_interval)
-            if self.last_update is None or now > self.last_update + self.update_interval:
-                _LOGGER.debug("Updating module zones cache..." + module_udid)    
+            _LOGGER.debug("Geting zones for controller: %s", module_udid)
+            self.modules.setdefault(module_udid, {'last_update' : None, 'zones' : {}})
+            _LOGGER.debug("Geting zones if now=%s, > last_update=%s + interval=%s", now, self.modules[module_udid]['last_update'], self.update_interval)
+            if self.modules[module_udid]['last_update'] is None or now > self.modules[module_udid]['last_update'] + self.update_interval:
                 result = await self.get_module_data(module_udid)
-                zones = result["zones"]["elements"]
-                zones = list(filter(lambda e: e['zone']['zoneState'] != "zoneUnregistered", zones))
-                for zone in zones:
-                    self.zones[zone["zone"]["id"]] = zone
-                self.last_update = now
-        return self.zones
+                zones = result['zones']['elements']
+                if len(zones) > 0:
+                    _LOGGER.debug("Updating zones cache for controller: " + module_udid)    
+                    zones = list(filter(lambda e: e['zone']['zoneState'] != "zoneUnregistered", zones))
+                    for zone in zones:
+                        self.modules[module_udid]['zones'][zone['zone']['id']] = zone
+                self.modules[module_udid]['last_update'] = now
+        return self.modules[module_udid]['zones']
     
     async def get_zone(self, module_udid, zone_id):
         """Returns zone from Tech API cache.
@@ -127,7 +129,7 @@ class Tech:
         Dictionary of zone.
         """
         await self.get_module_zones(module_udid)
-        return self.zones[zone_id]
+        return self.modules[module_udid]['zones'][zone_id]
 
     async def set_const_temp(self, module_udid, zone_id, target_temp):
         """Sets constant temperature of the zone.
@@ -145,7 +147,7 @@ class Tech:
             path = "users/" + self.user_id + "/modules/" + module_udid + "/zones"
             data = {
                 "mode" : {
-                    "id" : self.zones[zone_id]["mode"]["id"],
+                    "id" : self.modules[module_udid]['zones'][zone_id]["mode"]["id"],
                     "parentId" : zone_id,
                     "mode" : "constantTemp",
                     "constTempTime" : 60,
