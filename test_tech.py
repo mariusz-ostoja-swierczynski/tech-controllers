@@ -21,7 +21,7 @@ class TestTechMethods(unittest.TestCase):
         self.assertTrue(result[0])
 
     def test_module_data(self):
-        result = self._loop.run_until_complete(self._tech.module_data("module_id"))
+        result = self._loop.run_until_complete(self._tech.get_module_data("module_id"))
         zones = json.loads(json.dumps(result))
         self.assertTrue("zones" in zones)
 
