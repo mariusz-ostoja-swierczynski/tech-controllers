@@ -26,8 +26,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up entry."""
     _LOGGER.debug("Setting up entry, module udid: " + config_entry.data["udid"])
     api = hass.data[DOMAIN][config_entry.entry_id]
-    zones = await api.get_module_zones(config_entry.data["udid"])
-    
+    zones = await api.get_zones(config_entry.data["udid"])
+
     async_add_entities(
         [
             TechThermostat(
@@ -74,6 +74,18 @@ class TechThermostat(ClimateEntity):
             self._mode = HVAC_MODE_HEAT
         else:
             self._mode = HVAC_MODE_OFF
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {
+                # Serial numbers are unique identifiers within a specific domain
+                (self._config_entry.data["udid"], self.unique_id)
+            },
+            "name": self.name,
+            "manufacturer": "Tech",
+            "model": self._config_entry.data["type"],
+        }
 
     @property
     def unique_id(self) -> str:

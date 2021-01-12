@@ -35,7 +35,7 @@ async def validate_input(hass: core.HomeAssistant, data):
     # InvalidAuth
 
     # Return info that you want to store in the config entry.
-    return {"user_id": api.user_id, "token": api.token, "udid": module["udid"], "version": module["version"]}
+    return {"user_id": api.user_id, "token": api.token, "udid": module["udid"], "version": module["version"], "type": module["type"]}
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
