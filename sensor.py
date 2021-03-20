@@ -58,18 +58,19 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     for tile in tiles:
         if tiles[tile]["type"] == 1: #Temperature sensor
             entities.append(TileTemperatureSensor(tiles[tile], api, config_entry))
-            entities.append(TileBatteryLevelSensor(tiles[tile], api, config_entry))
-            entities.append(TileSignalStrengthSensor(tiles[tile], api, config_entry))
-            entities.append(TileSensor(tiles[tile], api, config_entry))
         if tiles[tile]["type"] == 11: #Relay
             entities.append(TileSensor(tiles[tile], api, config_entry))
         if tiles[tile]["type"] == 23: #Built in valve
             entities.append(TileSensorValve(tiles[tile], api, config_entry))
             entities.append(TileSensorValveTemp(tiles[tile], api, config_entry))
             entities.append(TileSensorValveReturnTemp(tiles[tile], api, config_entry))
+            entities.append(TileSensorValveSetTemp(tiles[tile], api, config_entry))
+        if tiles[tile]["type"] == 2: #Fire Sensor
+            entities.append(TileSensorFireSensor(tiles[tile], api, config_entry))
+            entities.append(TileSensor(tiles[tile], api, config_entry))
     async_add_entities(entities)
 
-    zones = await api.get_zones(config_entry.data["udid"])        
+    zones = await api.get_zones(config_entry.data["udid"])
     async_add_entities(
         [
             ZoneTemperatureSensor(
@@ -96,7 +97,7 @@ class ZoneSensor(Entity):
         self._name = device["description"]["name"]
         self._target_temperature = device["zone"]["setTemperature"] / 10
         self._temperature = device["zone"]["currentTemperature"] / 10
-        
+
 
     @property
     def device_info(self):
@@ -160,7 +161,7 @@ class TileSensor(Entity):
         self._id = device["id"]
         self._name = device["params"]["description"]
         self._workingStatus = device["params"]["workingStatus"]
-        
+
     @property
     def device_info(self):
         return {
@@ -198,14 +199,14 @@ class TileSensorValve(Entity):
         TileSensor.__init__(self, device, api, config_entry)
         self._openingPercentage = device["params"]["openingPercentage"]
 
-    @property 
+    @property
     def name(self):
         return self._name + " Built-in Valve"
 
     @property
     def state(self):
-        return self._openingPercentage 
-    
+        return self._openingPercentage
+
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
@@ -219,7 +220,7 @@ class TileSensorValve(Entity):
     @property
     def unit_of_measurement(self):
         return PERCENTAGE
-    
+
     async def async_update(self):
         device = await self._api.get_tile(self._config_entry.data["udid"], self._id)
         self._openingPercentage = device["params"]["openingPercentage"]
@@ -228,15 +229,15 @@ class TileSensorValveTemp(Entity):
 
     def __init__(self, device, api, config_entry):
         TileSensor.__init__(self, device, api, config_entry)
-        self._temperature = device["params"]["currentTemp"] / 10    
+        self._temperature = device["params"]["currentTemp"] / 10
 
-    @property 
+    @property
     def name(self):
         return self._name + " Valve temperature"
 
     @property
     def state(self):
-        return self._temperature 
+        return self._temperature
 
     @property
     def unique_id(self) -> str:
@@ -252,7 +253,7 @@ class TileSensorValveTemp(Entity):
     def unit_of_measurement(self):
         """Return the unit of measurement."""
         return TEMP_CELSIUS
-    
+
     async def async_update(self):
         device = await self._api.get_tile(self._config_entry.data["udid"], self._id)
         self._temperature = device["params"]["currentTemp"] / 10
@@ -262,15 +263,15 @@ class TileSensorValveReturnTemp(Entity):
 
     def __init__(self, device, api, config_entry):
         TileSensor.__init__(self, device, api, config_entry)
-        self._temperature = device["params"]["returnTemp"] / 10    
+        self._temperature = device["params"]["returnTemp"] / 10
 
-    @property 
+    @property
     def name(self):
         return self._name + " Valve return temperature"
 
     @property
     def state(self):
-        return self._temperature 
+        return self._temperature
 
     @property
     def unique_id(self) -> str:
@@ -286,7 +287,7 @@ class TileSensorValveReturnTemp(Entity):
     def unit_of_measurement(self):
         """Return the unit of measurement."""
         return TEMP_CELSIUS
-    
+
     async def async_update(self):
         device = await self._api.get_tile(self._config_entry.data["udid"], self._id)
         self._temperature = device["params"]["returnTemp"] / 10
@@ -295,15 +296,15 @@ class TileTemperatureSensor(TileSensor):
 
     def __init__(self, device, api, config_entry):
         TileSensor.__init__(self, device, api, config_entry)
-        self._temperature = device["params"]["value"] / 10    
+        self._temperature = device["params"]["value"] / 10
 
-    @property 
+    @property
     def name(self):
         return self._name
 
     @property
     def state(self):
-        return self._temperature 
+        return self._temperature
 
     @property
     def unique_id(self) -> str:
@@ -319,7 +320,7 @@ class TileTemperatureSensor(TileSensor):
     def unit_of_measurement(self):
         """Return the unit of measurement."""
         return TEMP_CELSIUS
-    
+
     async def async_update(self):
         device = await self._api.get_tile(self._config_entry.data["udid"], self._id)
         self._temperature = device["params"]["value"] / 10
@@ -330,14 +331,14 @@ class TileBatteryLevelSensor(TileSensor):
         TileSensor.__init__(self, device, api, config_entry)
         self._batteryLevel = device["params"]["batteryLevel"]
 
-    @property 
+    @property
     def name(self):
         return self._name + " Battery Level"
 
     @property
     def state(self):
-        return self._batteryLevel 
-    
+        return self._batteryLevel
+
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
@@ -351,7 +352,7 @@ class TileBatteryLevelSensor(TileSensor):
     @property
     def unit_of_measurement(self):
         return PERCENTAGE
-    
+
     async def async_update(self):
         device = await self._api.get_tile(self._config_entry.data["udid"], self._id)
         self._batteryLevel = device["params"]["batteryLevel"]
@@ -362,13 +363,13 @@ class TileSignalStrengthSensor(TileSensor):
         TileSensor.__init__(self, device, api, config_entry)
         self._signalStrength = device["params"]["signalStrength"]
 
-    @property 
+    @property
     def name(self):
         return self._name + " Signal strenght"
 
     @property
     def state(self):
-        return self._signalStrength 
+        return self._signalStrength
 
     @property
     def unique_id(self) -> str:
@@ -378,7 +379,7 @@ class TileSignalStrengthSensor(TileSensor):
     @property
     def device_class(self):
         """Return the device class of the sensor."""
-        return sensor.DEVICE_CLASS_SIGNAL_STRENGTH        
+        return sensor.DEVICE_CLASS_SIGNAL_STRENGTH
 
     @property
     def unit_of_measurement(self):
@@ -387,3 +388,67 @@ class TileSignalStrengthSensor(TileSensor):
     async def async_update(self):
         device = await self._api.get_tile(self._config_entry.data["udid"], self._id)
         self._signalStrength = device["params"]["signalStrength"]
+
+class TileSensorValveSetTemp(Entity):
+
+    def __init__(self, device, api, config_entry):
+        TileSensor.__init__(self, device, api, config_entry)
+        self._setTemp = device["params"]["setTemp"]
+
+    @property
+    def name(self):
+        return self._name + " Built-in Valve setTemp"
+
+    @property
+    def state(self):
+        return self._setTemp
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return self._id * 10 + 7
+
+    @property
+    def device_class(self):
+        """Return the device class of the sensor."""
+        return sensor.DEVICE_CLASS_TEMPERATURE
+
+    @property
+    def unit_of_measurement(self):
+        return TEMP_CELSIUS
+
+    async def async_update(self):
+        device = await self._api.get_tile(self._config_entry.data["udid"], self._id)
+        self._openingPercentage = device["params"]["setTemp"]
+
+class TileSensorFireSensor(Entity):
+
+    def __init__(self, device, api, config_entry):
+        TileSensor.__init__(self, device, api, config_entry)
+        self._FireSensor = device["params"]["value"] * 100
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def state(self):
+        return self._FireSensor
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return self._id * 10 + 8
+
+    @property
+    def device_class(self):
+        """Return the device class of the sensor."""
+        return sensor.DEVICE_CLASS_ILLUMINANCE
+
+    @property
+    def unit_of_measurement(self):
+        return 'impulses'
+
+    async def async_update(self):
+        device = await self._api.get_tile(self._config_entry.data["udid"], self._id)
+        self._FireSensor = device["params"]["value"] * 100
