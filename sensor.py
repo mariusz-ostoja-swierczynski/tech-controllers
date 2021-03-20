@@ -159,7 +159,7 @@ class TileSensor(Entity):
         self._api = api
         _LOGGER.debug('Sensor device["id"] = %s', device)
         self._id = device["id"]
-        self._name = device["params"]["description"]
+        self._name = "Tech " + device["params"]["description"]
         self._workingStatus = device["params"]["workingStatus"]
 
     @property
@@ -300,10 +300,16 @@ class TileTemperatureSensor(TileSensor):
     def __init__(self, device, api, config_entry):
         TileSensor.__init__(self, device, api, config_entry)
         self._temperature = device["params"]["value"] / 10
+        if device["params"]["txtId"] == 791:
+            self._sensorInfo = " Flue gas"
+        if device["params"]["txtId"] == 795:
+            self._sensorInfo = " External"
+        if device["params"]["txtId"] == 1041:
+            self._sensorInfo = " DWH"
 
     @property
     def name(self):
-        return self._name
+        return self._name + " " + self._sensorInfo
 
     @property
     def state(self):
@@ -423,7 +429,7 @@ class TileSensorValveSetTemp(Entity):
 
     async def async_update(self):
         device = await self._api.get_tile(self._config_entry.data["udid"], self._id)
-        self._openingPercentage = device["params"]["setTemp"]
+        self._setTemp = device["params"]["setTemp"]
 
 class TileSensorFireSensor(Entity):
 
