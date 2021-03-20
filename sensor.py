@@ -198,10 +198,11 @@ class TileSensorValve(Entity):
     def __init__(self, device, api, config_entry):
         TileSensor.__init__(self, device, api, config_entry)
         self._openingPercentage = device["params"]["openingPercentage"]
+        self._valveNr = device["params"]["valveNumber"]
 
     @property
     def name(self):
-        return self._name + " Built-in Valve"
+        return self._name + " "+ str(self._valveNr) + " opening"
 
     @property
     def state(self):
@@ -230,10 +231,11 @@ class TileSensorValveTemp(Entity):
     def __init__(self, device, api, config_entry):
         TileSensor.__init__(self, device, api, config_entry)
         self._temperature = device["params"]["currentTemp"] / 10
+        self._valveNr = device["params"]["valveNumber"]
 
     @property
     def name(self):
-        return self._name + " Valve temperature"
+        return self._name + " " + str(self._valveNr) + " temperature"
 
     @property
     def state(self):
@@ -264,10 +266,11 @@ class TileSensorValveReturnTemp(Entity):
     def __init__(self, device, api, config_entry):
         TileSensor.__init__(self, device, api, config_entry)
         self._temperature = device["params"]["returnTemp"] / 10
+        self._valveNr = device["params"]["valveNumber"]
 
     @property
     def name(self):
-        return self._name + " Valve return temperature"
+        return self._name + " " + str(self._valveNr) + " return temperature"
 
     @property
     def state(self):
@@ -394,10 +397,11 @@ class TileSensorValveSetTemp(Entity):
     def __init__(self, device, api, config_entry):
         TileSensor.__init__(self, device, api, config_entry)
         self._setTemp = device["params"]["setTemp"]
+        self._valveNr = device["params"]["valveNumber"]
 
     @property
     def name(self):
-        return self._name + " Built-in Valve setTemp"
+        return self._name + " " + str(self._valveNr) + " setTemp"
 
     @property
     def state(self):
@@ -429,7 +433,7 @@ class TileSensorFireSensor(Entity):
 
     @property
     def name(self):
-        return self._name
+        return self._name + " impulses"
 
     @property
     def state(self):
