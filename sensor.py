@@ -60,6 +60,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             entities.append(TileTemperatureSensor(tiles[tile], api, config_entry))
         if tiles[tile]["type"] == 11: #Relay
             entities.append(TileSensor(tiles[tile], api, config_entry))
+        if tiles[tile]["type"] == 22: #Relay
+            entities.append(TileSensorFanStatus(tiles[tile], api, config_entry))
+            entities.append(TileSensorFanGear(tiles[tile], api, config_entry))
         if tiles[tile]["type"] == 23: #Built in valve
             entities.append(TileSensorValve(tiles[tile], api, config_entry))
             entities.append(TileSensorValveTemp(tiles[tile], api, config_entry))
@@ -462,3 +465,54 @@ class TileSensorFireSensor(Entity):
     async def async_update(self):
         device = await self._api.get_tile(self._config_entry.data["udid"], self._id)
         self._FireSensor = device["params"]["value"] * 100
+
+
+class TileSensorFanStatus(Entity):
+
+    def __init__(self, device, api, config_entry):
+        TileSensor.__init__(self, device, api, config_entry)
+        self._fanStatus = device["params"]["workingStatus"]
+
+    @property
+    def name(self):
+        return self._name + " Status"
+
+    @property
+    def state(self):
+        return self._fanStatus
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return self._id * 10 + 9
+
+    async def async_update(self):
+        device = await self._api.get_tile(self._config_entry.data["udid"], self._id)
+        self._fanStatus = device["params"]["workingStatus"]
+
+class TileSensorFanGear(Entity):
+
+    def __init__(self, device, api, config_entry):
+        TileSensor.__init__(self, device, api, config_entry)
+        self._fanGear = device["params"]["gear"]
+
+    @property
+    def name(self):
+        return self._name + " gear"
+
+    @property
+    def state(self):
+        return self._fanGear
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return self._id * 10 + 10
+
+    @property
+    def unit_of_measurement(self):
+        return PERCENTAGE
+
+    async def async_update(self):
+        device = await self._api.get_tile(self._config_entry.data["udid"], self._id)
+        self._fanGear = device["params"]["gear"]
