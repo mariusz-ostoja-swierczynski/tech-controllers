@@ -22,7 +22,7 @@ This is my first integration ever developed for Home Assistant, and although I d
 * Displays current zone state (heating or idle)
 * Controls and displays zone mode (on or off)
 
-![Tech Thermostat Cards](/images/ha-tech-1.png)
+![Tech Thermostat Cards](/custom_components/tech/images/ha-tech-1.png)
 
 ## Plans for development
 * Support for multiply controllers
@@ -44,13 +44,13 @@ This is my first integration ever developed for Home Assistant, and although I d
    **Note:** The integration currently supports handling only one controller. If the API returns list of more than one controllers in your household, the only first one will be used.
 7. Now you should have Climate entities representing your home zones available in Home Assistant. Go to your UI Lovelace configuration and add Thermostat card with your Climate entities. 
 
-![Tech Controllers Setup 1](/images/ha-tech-add-integration-1.png)
+![Tech Controllers Setup 1](/custom_components/tech/images/ha-tech-add-integration-1.png)
 
-![Tech Controllers Setup 2](/images/ha-tech-add-integration-2.png)
+![Tech Controllers Setup 2](/custom_components/tech/images/ha-tech-add-integration-2.png)
 
-![Tech Controllers Setup 3](/images/ha-tech-add-integration-3.png)
+![Tech Controllers Setup 3](/custom_components/tech/images/ha-tech-add-integration-3.png)
 
-![Tech Controllers Setup 4](/images/ha-tech-2.png)
+![Tech Controllers Setup 4](/custom_components/tech/images/ha-tech-2.png)
 
 ## List of reported working TECH Controllers 
 * L4-WiFi (v.1.0.24)
