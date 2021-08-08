@@ -14,7 +14,8 @@
                 "description": "Please enter your credentials to emodul.eu or emodul.pl service.",
                 "data": {
                     "password": "Password",
-                    "username": "Username"
+                    "username": "Username",
+                    "language": "Language"
                 }
             }
         }

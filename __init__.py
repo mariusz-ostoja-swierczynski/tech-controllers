@@ -6,13 +6,14 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import aiohttp_client
 from .tech import Tech
-from .const import DOMAIN
+from .const import DOMAIN, CONF_LANGUAGE
+from . import assets
 
 _LOGGER = logging.getLogger(__name__)
 CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
 
 # List the platforms that you want to support.
-PLATFORMS = ["climate", "sensor"]
+PLATFORMS = ["climate", "sensor", "binary_sensor"]
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
@@ -23,18 +24,28 @@ async def async_setup(hass: HomeAssistant, config: dict):
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up Tech Controllers from a config entry."""
     _LOGGER.debug("Setting up component's entry.")
-    _LOGGER.debug("Entry -> title: " + entry.title + ", data: " + str(entry.data) + ", id: " + entry.entry_id + ", domain: " + entry.domain)
+    _LOGGER.debug(
+        "Entry -> title: "
+        + entry.title
+        + ", data: "
+        + str(entry.data)
+        + ", id: "
+        + entry.entry_id
+        + ", domain: "
+        + entry.domain
+    )
+    assets.loadSubtitles(entry.data[CONF_LANGUAGE])
     # Store an API object for your platforms to access
     hass.data.setdefault(DOMAIN, {})
     http_session = aiohttp_client.async_get_clientsession(hass)
     hass.data[DOMAIN][entry.entry_id] = Tech(http_session, entry.data["user_id"], entry.data["token"])
-    
+
     for component in PLATFORMS:
         _LOGGER.debug("Setting up component's entry for Platform: " + component)
         hass.async_create_task(
             hass.config_entries.async_forward_entry_setup(entry, component)
         )
-    
+
     return True
 
 
