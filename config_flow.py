@@ -3,15 +3,15 @@ import logging
 import voluptuous as vol
 from homeassistant import config_entries, core, exceptions
 from homeassistant.helpers import aiohttp_client
-from .const import DOMAIN, SUPPORTED_LANGUAGES, CONF_LANGUAGE
+from .const import DOMAIN, SUPPORTED_LANGUAGES, CONF_LANGUAGE, DEFAULT_LANGUAGE
 from .tech import Tech
 
 _LOGGER = logging.getLogger(__name__)
 
 DATA_SCHEMA = vol.Schema({
-    vol.Required("username"): str,
-    vol.Required("password"): str,
-    vol.Required(CONF_LANGUAGE, default="English"): vol.In(SUPPORTED_LANGUAGES.keys()),
+        vol.Required("username"): str,
+        vol.Required("password"): str,
+        vol.Required(CONF_LANGUAGE, default=DEFAULT_LANGUAGE): vol.In(SUPPORTED_LANGUAGES.keys()),
 })
 
 

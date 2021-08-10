@@ -13,6 +13,9 @@ from .const import (
     TYPE_VALVE,
     TYPE_FUEL_SUPPLY,
     TYPE_TEXT,
+    VALVE_SENSOR_RETURN_TEMPERATURE,
+    VALVE_SENSOR_SET_TEMPERATURE,
+    VALVE_SENSOR_CURRENT_TEMPERATURE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,7 +40,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             entities.append(TileFanSensor(tile, api, config_entry))
         if tile["type"] == TYPE_VALVE:
             entities.append(TileValveSensor(tile, api, config_entry))
-            entities.append(TileValveTemperatureSensor(tile, api, config_entry))
+            entities.append(TileValveTemperatureSensor(tile, api, config_entry, VALVE_SENSOR_RETURN_TEMPERATURE))
+            entities.append(TileValveTemperatureSensor(tile, api, config_entry, VALVE_SENSOR_SET_TEMPERATURE))
+            entities.append(TileValveTemperatureSensor(tile, api, config_entry, VALVE_SENSOR_CURRENT_TEMPERATURE))
         if tile["type"] == TYPE_FUEL_SUPPLY:
             entities.append(TileFuelSupplySensor(tile, api, config_entry))
         if tile["type"] == TYPE_TEXT:
@@ -217,11 +222,13 @@ class TileValveSensor(TileSensor):
 
 
 class TileValveTemperatureSensor(TileSensor):
-    def __init__(self, device, api, config_entry):
+    def __init__(self, device, api, config_entry, valve_sensor):
+        self._state_key = valve_sensor["state_key"]
+        sensor_name = assets.get_text(valve_sensor["txt_id"])
         TileSensor.__init__(self, device, api, config_entry)
-        self._id = f"{self._id}_currentTemp"
+        self._id = f"{self._id}_{self._state_key}"
         name = assets.get_text_by_type(device["type"])
-        self._name = f"{name} {device['params']['valveNumber']}"
+        self._name = f"{name} {device['params']['valveNumber']} {sensor_name}"
 
     @property
     def device_class(self):
@@ -232,4 +239,7 @@ class TileValveTemperatureSensor(TileSensor):
         return TEMP_CELSIUS
 
     def get_state(self, device):
-        return device["params"]["currentTemp"] / 10
+        state = device["params"][self._state_key]
+        if state > 100:
+            state = state / 10
+        return state

@@ -6,7 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import aiohttp_client
 from .tech import Tech
-from .const import DOMAIN, CONF_LANGUAGE
+from .const import DOMAIN, CONF_LANGUAGE, DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES
 from . import assets
 
 _LOGGER = logging.getLogger(__name__)
@@ -34,7 +34,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         + ", domain: "
         + entry.domain
     )
-    assets.loadSubtitles(entry.data[CONF_LANGUAGE])
+    language_code = entry.data.get(CONF_LANGUAGE, SUPPORTED_LANGUAGES[DEFAULT_LANGUAGE])
+    assets.loadSubtitles(language_code)
     # Store an API object for your platforms to access
     hass.data.setdefault(DOMAIN, {})
     http_session = aiohttp_client.async_get_clientsession(hass)
