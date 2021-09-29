@@ -1,3 +1,9 @@
+# Dislaimer
+Due to a stall on original mariusz-ostoja-swierczynski/tech-controllers repo, we have forked.
+Most of this work was done by Mariusz Ostoja-Świerczyński, for which we're very thankful as the community.
+It's time to move on, however. New formats of plugins appear, HA goes on with the feature implementation, 
+and as a community we need make sure that this plugin keeps up to the changing world.
+
 # TECH Controllers integration for Home Assistant
 The integration of heating controllers from Polish company TECH Sterowniki Sp. z o.o. It uses API to their web control application eModul.eu, therefore your controller needs to be accessible from internet and you need an account either on https://emodul.eu or https://emodul.pl.
 
