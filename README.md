@@ -1,6 +1,6 @@
 # Dislaimer
-Due to a stall on original mariusz-ostoja-swierczynski/tech-controllers repo, we have forked.
-Most of this work was done by Mariusz Ostoja-Świerczyński, for which we're very thankful as the community.
+Due to a stall on the original [mariusz-ostoja-swierczynski/tech-controllers](https://github.com/mariusz-ostoja-swierczynski/tech-controllers) repo, we have forked.
+Most of the work was done by Mariusz Ostoja-Świerczyński, for which we're very thankful as the community.
 It's time to move on, however. New formats of plugins appear, HA goes on with the feature implementation, 
 and as a community we need make sure that this plugin keeps up to the changing world.
 
