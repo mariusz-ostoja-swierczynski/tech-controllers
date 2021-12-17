@@ -10,6 +10,7 @@ The integration of heating controllers from Polish company TECH Sterowniki Sp. z
 eModul API Documentation  https://emodul.eu/docs/api-v1.txt
 
 The integration is based on API provided by TECH which supports following controllers:
+* L-4 Wifi
 * L-7
 * L-8
 * WiFi 8S
