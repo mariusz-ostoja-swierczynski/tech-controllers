@@ -7,5 +7,6 @@
   "dependencies": [],
   "codeowners": [
     "@mariusz.ostoja-swierczynski"
-  ]
+  ],
+	"version": "1.0.0"
 }
