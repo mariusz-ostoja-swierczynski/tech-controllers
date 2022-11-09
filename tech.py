@@ -15,7 +15,7 @@ class Tech:
 
     TECH_API_URL = "https://emodul.eu/api/v1/"
 
-    def __init__(self, session: aiohttp.ClientSession, user_id = None, token = None, base_url = TECH_API_URL, update_interval = 30):
+    def __init__(self, session: aiohttp.ClientSession, user_id = None, token = None, base_url = TECH_API_URL, update_interval = 130):
         _LOGGER.debug("Init Tech")
         self.headers = {
             'Accept': 'application/json',
