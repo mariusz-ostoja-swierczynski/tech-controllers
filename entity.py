@@ -15,8 +15,10 @@ class TileEntity(entity.Entity):
         _LOGGER.debug("Init TileEntity...")
         self._config_entry = config_entry
         self._api = api
-        _LOGGER.debug("TileEntity = %s", device)
+        _LOGGER.debug("TileEntity: %s", device)
+        _LOGGER.debug("TileEntity config_entry: %s", config_entry.data)
         self._id = device["id"]
+        self._name = device["params"].get("description")
         self._device_id = device["id"]
         self._state = self.get_state(device)
         txt_id = device["params"].get("txtId")
@@ -29,7 +31,7 @@ class TileEntity(entity.Entity):
     def device_info(self):
         return {
             "identifiers": {(DOMAIN, self.platform.config_entry.entry_id)},
-            "name": self._config_entry.data["name"],
+            "name": self.name,
             "manufacturer": "Tech",
             "model": self._config_entry.data["version"],
         }
