@@ -3,7 +3,7 @@
   "name": "Tech Controllers",
   "config_flow": true,
   "documentation": "https://www.home-assistant.io/integrations/tech",
-  "requirements": ["tech"],
+  "requirements": [],
   "dependencies": [],
   "codeowners": [
     "@mariusz.ostoja-swierczynski"
