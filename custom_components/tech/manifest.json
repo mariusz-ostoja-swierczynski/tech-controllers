@@ -4,10 +4,11 @@
   "name": "Tech Controllers",
   "config_flow": true,
   "documentation": "https://www.home-assistant.io/integrations/tech",
-  "requirements": ["tech"],
+  "requirements": [],
   "dependencies": [],
   "iot_class": "cloud_polling",
   "codeowners": [
     "@mariusz.ostoja-swierczynski"
-  ]
+  ],
+	"version": "1.0.0"
 }
