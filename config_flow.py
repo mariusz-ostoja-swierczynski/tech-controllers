@@ -3,14 +3,15 @@ import logging
 import voluptuous as vol
 from homeassistant import config_entries, core, exceptions
 from homeassistant.helpers import aiohttp_client
-from .const import DOMAIN  # pylint:disable=unused-import
+from .const import DOMAIN, SUPPORTED_LANGUAGES, CONF_LANGUAGE, DEFAULT_LANGUAGE
 from .tech import Tech
 
 _LOGGER = logging.getLogger(__name__)
 
 DATA_SCHEMA = vol.Schema({
-    vol.Required("username"): str,
-    vol.Required("password"): str
+        vol.Required("username"): str,
+        vol.Required("password"): str,
+        vol.Required(CONF_LANGUAGE, default=DEFAULT_LANGUAGE): vol.In(SUPPORTED_LANGUAGES.keys()),
 })
 
 
@@ -27,8 +28,14 @@ async def validate_input(hass: core.HomeAssistant, data):
         raise InvalidAuth
     modules = await api.list_modules()
 
+    language_code = SUPPORTED_LANGUAGES[data[CONF_LANGUAGE]]
     # Return info that you want to store in the config entry.
-    return {"user_id": api.user_id, "token": api.token, "controllers": modules}
+    return {
+        "user_id": api.user_id,
+        "token": api.token,
+        "controllers": modules,
+        CONF_LANGUAGE: language_code,
+    }
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):

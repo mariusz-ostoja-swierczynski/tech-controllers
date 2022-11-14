@@ -16,6 +16,7 @@ from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE,
 )
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS
+from . import assets
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -32,14 +33,16 @@ async def async_setup_entry(hass, config_entity, async_add_entities):
     
     entities = []
     for controller in controllers:
-        _LOGGER.debug("Controllers UDID: %s", controller["udid"])
-        zones = await api.get_module_zones(controller["udid"])
+        controller_udid = controller["udid"]
+        _LOGGER.debug("Controller UDID: %s", controller_udid)
+        data = await api.module_data(controller_udid)
+        zones = data['zones']
         for zone in zones:
             entities.append(
                 TechThermostat(
                     zones[zone],
                     api,
-                    controller["udid"]
+                    controller_udid
                 )
             )
     _LOGGER.debug("Number of entities: %s", len(entities))
@@ -55,16 +58,19 @@ class TechThermostat(ClimateEntity):
         self._controller_udid = controller_udid
         self._api = api
         self._id = device["zone"]["id"]
+        self._model = assets.get_text(642)
         self.update_properties(device)
 
     def update_properties(self, device):
         self._name = device["description"]["name"]
-        setTemperature = device["zone"]["setTemperature"]
-        if setTemperature is not None:
-            self._target_temperature = setTemperature / 10
-        currentTemperature = device["zone"]["currentTemperature"]
-        if currentTemperature is not None:
-            self._temperature =  currentTemperature / 10
+        if device["zone"]["setTemperature"] is not None:
+            self._target_temperature = device["zone"]["setTemperature"] / 10
+        else:
+            self._target_temperature = None
+        if device["zone"]["currentTemperature"] is not None:
+            self._temperature =  device["zone"]["currentTemperature"] / 10
+        else:
+            self._temperature = None
         state = device["zone"]["flags"]["relayState"]
         if state == "on":
             self._state = CURRENT_HVAC_HEAT
@@ -77,6 +83,15 @@ class TechThermostat(ClimateEntity):
             self._mode = HVAC_MODE_HEAT
         else:
             self._mode = HVAC_MODE_OFF
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self.unique_id)},
+            "name": self.name,
+            "manufacturer": "Tech",
+            "model": self._model,
+        }
 
     @property
     def unique_id(self) -> str:
