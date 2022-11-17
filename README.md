@@ -14,23 +14,31 @@ This is my first integration ever developed for Home Assistant, and although I d
 
 ## Features
 * Configuration through Integrations (not via configuration.yaml)
-* Provides Climate entities representing zones in household
-* Climate entities displays data through Thermostat card
-* Displays zone name
-* Displays current zone temperature
-* Controls target zone temperature
-* Displays current zone state (heating or idle)
-* Controls and displays zone mode (on or off)
-
-![Tech Thermostat Cards](/custom_components/tech/images/ha-tech-1.png)
-
-## Plans for development
-* Support for multiply controllers
-* Publish the tech.py Python Package to PyPI
-* Write tests for HA component
-* Support for window opening sensor
-* Support for cold tolerance setting
-* Support for zones schedules
+* Support for multiply controllers (thanks to @mariusz-ostoja-swierczynski)
+  * Integration during setup iterates through all controllers in the system and adds supported entities specified below. 
+* Support for following devices and entities (aka tiles thanks to @alevike and @gszumiec work 👍:clap:):
+  * Temperature Sensor
+  * CH Temperature Sensor
+  * Fan Rotations Sensor (in percentage)
+  * Valve Opening Sensor (in percentage)
+  * Fuel Supply Sensor (in percentage)
+  * State Sensor (text information ex. for pump modes or controller state)
+  * Relay Working Sensor (true of false ex. for feeders, pumps, heater)
+  ![Tech Devices](/custom_components/tech/images/ha-tech-devices.png)
+* Provides Climate entities with Thermostat card representing zones in household:
+  * Displays zone name
+  * Displays current zone temperature
+  * Controls target zone temperature
+  * Displays current zone state (heating or idle)
+  * Controls and displays zone mode (on or off)
+  ![Tech Thermostat Cards](/custom_components/tech/images/ha-tech-1.png)
+* Support for multiply languages (thanks to @gszumiec work 👍:clap:):
+  * English
+  * Polish
+  * German
+  * Hungarian
+  * Slovak
+  * Russian
 
 ## Installation
 
@@ -51,6 +59,16 @@ This is my first integration ever developed for Home Assistant, and although I d
 ![Tech Controllers Setup 3](/custom_components/tech/images/ha-tech-add-integration-3.png)
 
 ![Tech Controllers Setup 4](/custom_components/tech/images/ha-tech-2.png)
+
+## Plans for development
+* [x] Support for multiply controllers (thanks to @mariusz-ostoja-swierczynski work)
+* [x] Support for multiply languages (thanks to @alevike and @gszumiec work)
+* [x] Support for sensors from eModule API tiles (thanks to @gszumiec work)
+* [ ] Publish the tech.py Python Package to PyPI
+* [ ] Write tests for HA component
+* [ ] Support for window opening sensor
+* [ ] Support for cold tolerance setting
+* Support for zones schedules
 
 ## List of reported working TECH Controllers 
 * L4-WiFi (v.1.0.24)
