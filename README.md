@@ -17,7 +17,7 @@ This is my first integration ever developed for Home Assistant, and although I d
 * Configuration through Integrations (not via configuration.yaml)
 * Support for multiply controllers (thanks to @mariusz-ostoja-swierczynski)
   * Integration during setup iterates through all controllers in the system and adds supported entities specified below. 
-* Support for following devices and entities (aka tiles thanks to @alevike, @gszumiec and @maciej-or work 👍:clap:):
+* Support for following devices and entities aka tiles (thanks to @alevike, @gszumiec and @maciej-or work :clap:):
   * Temperature Sensor
   * CH Temperature Sensor
   * Fan Rotations Sensor (in percentage)
