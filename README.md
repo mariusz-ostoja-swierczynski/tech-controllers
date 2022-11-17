@@ -16,7 +16,7 @@ This is my first integration ever developed for Home Assistant, and although I d
 * Configuration through Integrations (not via configuration.yaml)
 * Support for multiply controllers (thanks to @mariusz-ostoja-swierczynski)
   * Integration during setup iterates through all controllers in the system and adds supported entities specified below. 
-* Support for following devices and entities (aka tiles thanks to @alevike and @gszumiec work 👍:clap:):
+* Support for following devices and entities (aka tiles thanks to @alevike, @gszumiec and @maciej-or work 👍:clap:):
   * Temperature Sensor
   * CH Temperature Sensor
   * Fan Rotations Sensor (in percentage)
@@ -32,7 +32,7 @@ This is my first integration ever developed for Home Assistant, and although I d
   * Displays current zone state (heating or idle)
   * Controls and displays zone mode (on or off)
   ![Tech Thermostat Cards](/custom_components/tech/images/ha-tech-1.png)
-* Support for multiply languages (thanks to @gszumiec work 👍:clap:):
+* Support for multiply languages (thanks to @maciej-or work 👍:clap:):
   * English
   * Polish
   * German
@@ -62,8 +62,8 @@ This is my first integration ever developed for Home Assistant, and although I d
 
 ## Plans for development
 * [x] Support for multiply controllers (thanks to @mariusz-ostoja-swierczynski work)
-* [x] Support for multiply languages (thanks to @alevike and @gszumiec work)
-* [x] Support for sensors from eModule API tiles (thanks to @gszumiec work)
+* [x] Support for sensors from eModule API tiles (thanks to @alevike, @gszumiec and @maciej-or work)
+* [x] Support for multiply languages (thanks to @maciej-or work)
 * [ ] Publish the tech.py Python Package to PyPI
 * [ ] Write tests for HA component
 * [ ] Support for window opening sensor
