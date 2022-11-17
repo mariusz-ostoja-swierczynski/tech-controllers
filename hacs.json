@@ -3,5 +3,5 @@
     "country": "PL",
     "render_readme": true,
     "iot_class": "Local Polling",
-    "domains": ["climate"]
+    "domains": ["climate", "sensor", "binary_sensor"]
   }
