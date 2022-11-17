@@ -59,7 +59,9 @@ This is my first integration ever developed for Home Assistant, and although I d
 
 ![Tech Controllers Setup 3](/custom_components/tech/images/ha-tech-add-integration-3.png)
 
-![Tech Controllers Setup 4](/custom_components/tech/images/ha-tech-2.png)
+![Tech Controllers Setup 4](/custom_components/tech/images/ha-tech-add-integration-4.png)
+
+![Tech Controllers Setup 5](/custom_components/tech/images/ha-tech-2.png)
 
 ## List of reported working TECH Controllers 
 * L4-WiFi (v.1.0.24)
