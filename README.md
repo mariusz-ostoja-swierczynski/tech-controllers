@@ -1,13 +1,14 @@
 # TECH Controllers integration for Home Assistant
 The integration of heating controllers from Polish company TECH Sterowniki Sp. z o.o. It uses API to their web control application eModul.eu, therefore your controller needs to be accessible from internet and you need an account either on https://emodul.eu or https://emodul.pl.
 
-The integration is based on API provided by TECH which supports following controllers:
+The integration is based on eModule API which lists support only following controllers, but many other were reported working. Please see the list at end of this page or visit [issue #2](https://github.com/mariusz-ostoja-swierczynski/tech-controllers/issues/2):
+
 * L-7
 * L-8
 * WiFi 8S
 * ST-8S WiFi
 
-Unfortunately, I own only L-8 controller based on which it was developed and tested. Therefore, please report within [this issue](https://github.com/mariusz-ostoja-swierczynski/tech-controllers/issues/2) if this integration works with your controller and what version.
+Please report within [this issue](https://github.com/mariusz-ostoja-swierczynski/tech-controllers/issues/2) if this integration works with your controller and what version.
 
 ## Disclaimer
 This is my first integration ever developed for Home Assistant, and although I don't see any way how this software can harm your devices, you are using it on your own risk and I do not provide any warranties.
@@ -60,18 +61,9 @@ This is my first integration ever developed for Home Assistant, and although I d
 
 ![Tech Controllers Setup 4](/custom_components/tech/images/ha-tech-2.png)
 
-## Plans for development
-* [x] Support for multiply controllers (thanks to @mariusz-ostoja-swierczynski work)
-* [x] Support for sensors from eModule API tiles (thanks to @alevike, @gszumiec and @maciej-or work)
-* [x] Support for multiply languages (thanks to @maciej-or work)
-* [ ] Publish the tech.py Python Package to PyPI
-* [ ] Write tests for HA component
-* [ ] Support for window opening sensor
-* [ ] Support for cold tolerance setting
-* Support for zones schedules
-
 ## List of reported working TECH Controllers 
 * L4-WiFi (v.1.0.24)
+* L7 (v.2.0.6)
 * L-7 (v.2.0.8)
 * L-7E (v.1.0.6)
 * L-8 (v.3.0.14)
@@ -80,3 +72,6 @@ This is my first integration ever developed for Home Assistant, and although I d
 * ST-8s WIFI (v.1.0.5)
 * ST-16s WIFI (v.1.0.5)
 * M-9 (v1.0.12)
+* M-9r (v.1.1.11)
+* I-2
+* EU-L-4 with EU-MW-1
