@@ -83,10 +83,19 @@ class ZoneSensor(Entity):
         self._controller_udid = controller_udid
         self._api = api
         self._id = device["zone"]["id"]
-        self._name = device["description"]["name"]
         self._model = assets.get_text(1686)
-        self._target_temperature = device["zone"]["setTemperature"] / 10
-        self._temperature = device["zone"]["currentTemperature"] / 10
+        self.update_properties(device)
+        
+    def update_properties(self, device):
+        self._name = device["description"]["name"]
+        if device["zone"]["setTemperature"] is not None:
+            self._target_temperature = device["zone"]["setTemperature"] / 10
+        else:
+            self._target_temperature = None
+        if device["zone"]["currentTemperature"] is not None:
+            self._temperature = device["zone"]["currentTemperature"] / 10
+        else:
+            self._temperature = None
 
     @property
     def device_info(self):
@@ -119,7 +128,7 @@ class ZoneSensor(Entity):
 
     async def async_update(self):
         device = await self._api.get_zone(self._controller_udid, self.unique_id)
-        self._temperature = device["zone"]["setTemperature"] / 10
+        self.update_properties(device)
 
 
 class ZoneTemperatureSensor(ZoneSensor):
