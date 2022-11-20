@@ -1,12 +1,14 @@
 {
   "domain": "tech",
   "name": "Tech Controllers",
+  "integration_type": "hub",
   "config_flow": true,
-  "documentation": "https://www.home-assistant.io/integrations/tech",
-  "requirements": ["tech"],
+  "documentation": "https://github.com/MichalKrasowski/tech-controllers",
+  "issue_tracker": "https://github.com/MichalKrasowski/tech-controllers/issues",
+  "requirements": [],
   "dependencies": [],
   "codeowners": [
-    "@mariusz.ostoja-swierczynski"
-  ],
-	"version": "1.0.0"
+    "@MichalKrasowski"
+  ],	
+  "version": "1.0.0"
 }
