@@ -2,6 +2,6 @@
     "name": "Tech Controllers",
     "country": "PL",
     "render_readme": true,
-    "iot_class": "Local Polling",
+    "iot_class": "Cloud Polling",
     "domains": ["climate"]
   }
