@@ -25,28 +25,28 @@ async def async_setup_entry(
         data = await api.module_data(controller_udid)
         zones = data['zones']
         _LOGGER.debug("Number of zones: %s", len(zones))
-        battery_devices = map_to_battery_sensors(zones, api, config_entry)
-        temperature_sensors = map_to_temperature_sensors(zones, api, config_entry)
-        humidity_sensors = map_to_humidity_sensors(zones, api, config_entry)
+        battery_devices = map_to_battery_sensors(zones, api, controller_udid)
+        temperature_sensors = map_to_temperature_sensors(zones, api, _controller_udid)
+        humidity_sensors = map_to_humidity_sensors(zones, api, _controller_udid)
         async_add_entities(
             itertools.chain(battery_devices, temperature_sensors,humidity_sensors),
             True,
         )
 
-def map_to_battery_sensors(zones, api, config_entry):
+def map_to_battery_sensors(zones, api, controller_udid):
     devices = filter(lambda deviceIndex: is_battery_operating_device(zones[deviceIndex]), zones)
-    return map(lambda deviceIndex: TechBatterySensor(zones[deviceIndex], api, config_entry), devices)
+    return map(lambda deviceIndex: TechBatterySensor(zones[deviceIndex], api, controller_udid), devices)
 
 def is_battery_operating_device(device) -> bool:
     return device['zone']['batteryLevel'] is not None
 
-def map_to_temperature_sensors(zones, api, config_entry):
+def map_to_temperature_sensors(zones, api, controller_udid):
     devices = filter(lambda deviceIndex: is_humidity_operating_device(zones[deviceIndex]), zones)
-    return map(lambda deviceIndex: TechTemperatureSensor(zones[deviceIndex], api, config_entry), zones)
+    return map(lambda deviceIndex: TechTemperatureSensor(zones[deviceIndex], api, controller_udid), zones)
 
-def map_to_humidity_sensors(zones, api, config_entry):
+def map_to_humidity_sensors(zones, api, controller_udid):
     devices = filter(lambda deviceIndex: is_humidity_operating_device(zones[deviceIndex]), zones)
-    return map(lambda deviceIndex: TechHumiditySensor(zones[deviceIndex], api, config_entry), devices)
+    return map(lambda deviceIndex: TechHumiditySensor(zones[deviceIndex], api, controller_udid), devices)
 
 def is_humidity_operating_device(device) -> bool:
     return device['zone']['humidity'] != 0
@@ -58,10 +58,10 @@ class TechBatterySensor(SensorEntity):
     _attr_device_class = SensorDeviceClass.BATTERY
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, device, api, config_entry):
+    def __init__(self, device, api, controller_udid):
         """Initialize the Tech battery sensor."""
         _LOGGER.debug("Init TechBatterySensor... ")
-        self._config_entry = config_entry
+        self._controller_udid = controller_udid
         self._api = api
         self._id = device["zone"]["id"]
         self.update_properties(device)
@@ -82,13 +82,14 @@ class TechBatterySensor(SensorEntity):
 
     async def async_update(self):
         """Call by the Tech device callback to update state."""
+        _LOGGER.debug("Updating Tech battery sensor UDID IS: %s YES IT IS",self._controller_udid)
         _LOGGER.debug(
             "Updating Tech battery sensor: %s, udid: %s, id: %s",
             self._name,
-            self._config_entry.data["udid"],
+            self._controller_udid,
             self._id,
         )
-        device = await self._api.get_zone(self._config_entry.data["udid"], self._id)
+        device = await self._api.get_zone(self._controller_udid, self._id)
         self.update_properties(device)
 
 class TechTemperatureSensor(SensorEntity):
@@ -98,10 +99,10 @@ class TechTemperatureSensor(SensorEntity):
     _attr_device_class = SensorDeviceClass.TEMPERATURE
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, device, api, config_entry):
+    def __init__(self, device, api, controller_udid):
         """Initialize the Tech temperature sensor."""
         _LOGGER.debug("Init TechTemperatureSensor... ")
-        self._config_entry = config_entry
+        self._controller_udid = controller_udid
         self._api = api
         self._id = device["zone"]["id"]
         self.update_properties(device)
@@ -128,10 +129,10 @@ class TechTemperatureSensor(SensorEntity):
         _LOGGER.debug(
             "Updating Tech temp. sensor: %s, udid: %s, id: %s",
             self._name,
-            self._config_entry.data["udid"],
+            self._controller_udid,
             self._id,
         )
-        device = await self._api.get_zone(self._config_entry.data["udid"], self._id)
+        device = await self._api.get_zone(self._controller_udid, self._id)
         self.update_properties(device)
 
 class TechHumiditySensor(SensorEntity):
@@ -141,10 +142,10 @@ class TechHumiditySensor(SensorEntity):
     _attr_device_class = SensorDeviceClass.HUMIDITY
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, device, api, config_entry):
+    def __init__(self, device, api, controller_udid):
         """Initialize the Tech humidity sensor."""
         _LOGGER.debug("Init TechHumiditySensor... ")
-        self._config_entry = config_entry
+        self._controller_udid = controller_udid
         self._api = api
         self._id = device["zone"]["id"]
         self.update_properties(device)
@@ -171,8 +172,8 @@ class TechHumiditySensor(SensorEntity):
         _LOGGER.debug(
             "Updating Tech hum. sensor: %s, udid: %s, id: %s",
             self._name,
-            self._config_entry.data["udid"],
+            self._controller_udid,
             self._id,
         )
-        device = await self._api.get_zone(self._config_entry.data["udid"], self._id)
+        device = await self._api.get_zone(self._controller_udid, self._id)
         self.update_properties(device)
