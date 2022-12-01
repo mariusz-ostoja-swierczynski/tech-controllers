@@ -3,14 +3,15 @@ import logging
 import voluptuous as vol
 from homeassistant import config_entries, core, exceptions
 from homeassistant.helpers import aiohttp_client
-from .const import DOMAIN  # pylint:disable=unused-import
+from .const import DOMAIN, SUPPORTED_LANGUAGES, CONF_LANGUAGE, DEFAULT_LANGUAGE
 from .tech import Tech
 
 _LOGGER = logging.getLogger(__name__)
 
 DATA_SCHEMA = vol.Schema({
-    vol.Required("username"): str,
-    vol.Required("password"): str
+        vol.Required("username"): str,
+        vol.Required("password"): str,
+        vol.Required(CONF_LANGUAGE, default=DEFAULT_LANGUAGE): vol.In(SUPPORTED_LANGUAGES.keys()),
 })
 
 
@@ -26,16 +27,15 @@ async def validate_input(hass: core.HomeAssistant, data):
     if not await api.authenticate(data["username"], data["password"]):
         raise InvalidAuth
     modules = await api.list_modules()
-    # Currently only one Tech controller supported
-    module = modules[0]
-    
-    # If you cannot connect:
-    # throw CannotConnect
-    # If the authentication is wrong:
-    # InvalidAuth
 
+    language_code = SUPPORTED_LANGUAGES[data[CONF_LANGUAGE]]
     # Return info that you want to store in the config entry.
-    return {"user_id": api.user_id, "token": api.token, "udid": module["udid"], "version": module["version"]}
+    return {
+        "user_id": api.user_id,
+        "token": api.token,
+        "controllers": modules,
+        CONF_LANGUAGE: language_code,
+    }
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -51,8 +51,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 info = await validate_input(self.hass, user_input)
+                controllers_names = ""
+                for controller in info["controllers"]:
+                    controllers_names += controller["version"] + " "
 
-                return self.async_create_entry(title=info["version"], data=info)
+                return self.async_create_entry(title=controllers_names, data=info)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
