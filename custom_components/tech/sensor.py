@@ -26,8 +26,8 @@ async def async_setup_entry(
         zones = data['zones']
         _LOGGER.debug("Number of zones: %s", len(zones))
         battery_devices = map_to_battery_sensors(zones, api, controller_udid)
-        temperature_sensors = map_to_temperature_sensors(zones, api, _controller_udid)
-        humidity_sensors = map_to_humidity_sensors(zones, api, _controller_udid)
+        temperature_sensors = map_to_temperature_sensors(zones, api, controller_udid)
+        humidity_sensors = map_to_humidity_sensors(zones, api, controller_udid)
         async_add_entities(
             itertools.chain(battery_devices, temperature_sensors,humidity_sensors),
             True,
