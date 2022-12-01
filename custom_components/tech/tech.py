@@ -35,6 +35,7 @@ class Tech:
         self.update_lock = asyncio.Lock()
         self.modules = {}
         self.tiles = {}
+        self.zones = {}
 
     async def get(self, request_path):
         url = self.base_url + request_path

@@ -17,17 +17,20 @@ async def async_setup_entry(
     """Set up entry."""
     _LOGGER.debug("Setting up entry for sensors")
     api = hass.data[DOMAIN][config_entry.entry_id]
-    zones = await api.get_module_zones(config_entry.data["udid"])
+    controllers = config_entry.data["controllers"]
 
-    battery_devices = map_to_battery_sensors(zones, api, config_entry)
-    temperature_sensors = map_to_temperature_sensors(zones, api, config_entry)
-    humidity_sensors = map_to_humidity_sensors(zones, api, config_entry)
-
-
-    async_add_entities(
-        itertools.chain(battery_devices, temperature_sensors,humidity_sensors),
-        True,
-    )
+    entities = []
+    for controller in controllers:
+        controller_udid = controller["udid"]
+        _LOGGER.debug("Controller UDID: %s", controller_udid)
+        zones = await api.get_module_zones(controller_udid)
+        battery_devices = map_to_battery_sensors(zones, api, config_entry)
+        temperature_sensors = map_to_temperature_sensors(zones, api, config_entry)
+        humidity_sensors = map_to_humidity_sensors(zones, api, config_entry)
+        async_add_entities(
+            itertools.chain(battery_devices, temperature_sensors,humidity_sensors),
+            True,
+        )
 
 def map_to_battery_sensors(zones, api, config_entry):
     devices = filter(lambda deviceIndex: is_battery_operating_device(zones[deviceIndex]), zones)
