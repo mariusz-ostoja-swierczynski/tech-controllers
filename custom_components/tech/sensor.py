@@ -19,11 +19,12 @@ async def async_setup_entry(
     api = hass.data[DOMAIN][config_entry.entry_id]
     controllers = config_entry.data["controllers"]
 
-    entities = []
     for controller in controllers:
         controller_udid = controller["udid"]
         _LOGGER.debug("Controller UDID: %s", controller_udid)
-        zones = await api.get_module_zones(controller_udid)
+        data = await api.module_data(controller_udid)
+        zones = data['zones']
+        _LOGGER.debug("Number of zones: %s", len(zones))
         battery_devices = map_to_battery_sensors(zones, api, config_entry)
         temperature_sensors = map_to_temperature_sensors(zones, api, config_entry)
         humidity_sensors = map_to_humidity_sensors(zones, api, config_entry)
