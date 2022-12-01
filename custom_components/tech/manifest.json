@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "domain": "tech",
   "name": "Tech Controllers",
   "config_flow": true,
@@ -10,5 +10,5 @@
   "codeowners": [
     "@mariusz.ostoja-swierczynski"
   ],
-	"version": "1.0.0"
+	"version": "1.0.1"
 }

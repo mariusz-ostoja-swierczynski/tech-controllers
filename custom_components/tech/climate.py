@@ -15,7 +15,7 @@ from homeassistant.components.climate.const import (
     SUPPORT_PRESET_MODE,
     SUPPORT_TARGET_TEMPERATURE,
 )
-from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS
+from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS, ATTR_BATTERY_LEVEL
 from . import assets
 from .const import DOMAIN
 
@@ -56,6 +56,7 @@ class TechThermostat(ClimateEntity):
         """Initialize the Tech device."""
         _LOGGER.debug("Init TechThermostat...")
         self._controller_udid = controller_udid
+        self._battery_level = None
         self._api = api
         self._id = device["zone"]["id"]
         self._model = assets.get_text(642)
@@ -76,6 +77,11 @@ class TechThermostat(ClimateEntity):
             _LOGGER.debug("Tech Thermostat found humidity: %d",self._humidity)
         else:
             self._humidity = None
+        if device["zone"]["batteryLevel"] is not None:
+            self._battery_level =  device["zone"]["batteryLevel"]
+            _LOGGER.debug("Tech Thermostat found battery level: %d",self._battery_level)
+        else:
+            self._battery_level = None
         state = device["zone"]["flags"]["relayState"]
         if state == "on":
             self._state = CURRENT_HVAC_HEAT
@@ -162,6 +168,13 @@ class TechThermostat(ClimateEntity):
     def current_humidity(self):
         """Return the current humidity."""
         return self._humidity
+
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes of the battery."""
+        attrs = {}
+        attrs[ATTR_BATTERY_LEVEL] = self._battery_level
+        return attrs
 
     async def async_set_temperature(self, **kwargs):
         """Set new target temperatures."""
