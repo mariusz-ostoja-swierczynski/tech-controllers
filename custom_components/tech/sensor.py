@@ -15,7 +15,7 @@ async def async_setup_entry(
     async_add_entities
 ) -> None:
     """Set up entry."""
-    _LOGGER.debug("Setting up sensor entry, module udid: %s", config_entry.data["udid"])
+    _LOGGER.debug("Setting up entry for sensors")
     api = hass.data[DOMAIN][config_entry.entry_id]
     zones = await api.get_module_zones(config_entry.data["udid"])
 

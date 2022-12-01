@@ -31,6 +31,7 @@ class Tech:
             self.authenticated = True
         else:
             self.authenticated = False
+        self.last_update = None
         self.update_lock = asyncio.Lock()
         self.modules = {}
         self.tiles = {}
