@@ -35,7 +35,7 @@ async def async_setup_entry(
 
 def map_to_battery_sensors(zones, api, controller_udid):
     devices = filter(lambda deviceIndex: is_battery_operating_device(zones[deviceIndex]), zones)
-    _LOGGER.debug("Found battery devices: %s in zones", len(devices))
+    _LOGGER.debug("Found battery devices: %s in zones", len(list(devices)))
     return map(lambda deviceIndex: TechBatterySensor(zones[deviceIndex], api, controller_udid), devices)
 
 def is_battery_operating_device(device) -> bool:
@@ -43,12 +43,12 @@ def is_battery_operating_device(device) -> bool:
 
 def map_to_temperature_sensors(zones, api, controller_udid):
     devices = filter(lambda deviceIndex: is_humidity_operating_device(zones[deviceIndex]), zones)
-    _LOGGER.debug("Found temperature devices: %s in zones", len(devices))
+    _LOGGER.debug("Found temperature devices: %s in zones", len(list(devices)))
     return map(lambda deviceIndex: TechTemperatureSensor(zones[deviceIndex], api, controller_udid), zones)
 
 def map_to_humidity_sensors(zones, api, controller_udid):
     devices = filter(lambda deviceIndex: is_humidity_operating_device(zones[deviceIndex]), zones)
-    _LOGGER.debug("Found humidity devices: %s in zones", len(devices))
+    _LOGGER.debug("Found humidity devices: %s in zones", len(list(devices)))
     return map(lambda deviceIndex: TechHumiditySensor(zones[deviceIndex], api, controller_udid), devices)
 
 def is_humidity_operating_device(device) -> bool:
