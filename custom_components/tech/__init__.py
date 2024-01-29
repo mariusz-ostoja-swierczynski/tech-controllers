@@ -24,6 +24,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up Tech Controllers from a config entry."""
     _LOGGER.debug("Setting up component's entry.")
+    _LOGGER.debug("Entry id: " + str(entry.entry_id))
     _LOGGER.debug("Entry -> title: " + entry.title + ", data: " + str(entry.data) + ", id: " + entry.entry_id + ", domain: " + entry.domain)
     # Store an API object for your platforms to access
     hass.data.setdefault(DOMAIN, {})
