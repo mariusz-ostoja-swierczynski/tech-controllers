@@ -1,8 +1,9 @@
 """Config flow for Tech Sterowniki integration."""
-import logging
+import logging, uuid
 import voluptuous as vol
 from homeassistant import config_entries, core, exceptions
 from homeassistant.helpers import aiohttp_client
+from homeassistant.config_entries import ConfigEntry
 from .const import DOMAIN  # pylint:disable=unused-import
 from .tech import Tech
 
@@ -10,7 +11,7 @@ _LOGGER = logging.getLogger(__name__)
 
 DATA_SCHEMA = vol.Schema({
     vol.Required("username"): str,
-    vol.Required("password"): str
+    vol.Required("password"): str,
 })
 
 
@@ -26,8 +27,6 @@ async def validate_input(hass: core.HomeAssistant, data):
     if not await api.authenticate(data["username"], data["password"]):
         raise InvalidAuth
     modules = await api.list_modules()
-    # Currently only one Tech controller supported
-    module = modules[0]
     
     # If you cannot connect:
     # throw CannotConnect
@@ -35,7 +34,7 @@ async def validate_input(hass: core.HomeAssistant, data):
     # InvalidAuth
 
     # Return info that you want to store in the config entry.
-    return {"user_id": api.user_id, "token": api.token, "udid": module["udid"], "version": module["version"]}
+    return { "user_id": api.user_id, "token": api.token, "modules": modules }
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -50,9 +49,19 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None:
             try:
-                info = await validate_input(self.hass, user_input)
+                _LOGGER.debug("Context: " + str(self.context))                
+                validated_input = await validate_input(self.hass, user_input)
 
-                return self.async_create_entry(title=info["version"], data=info)
+                modules = self._create_modules_array(validated_input=validated_input)
+
+                if len(modules) == 0:
+                    return self.async_abort("no_modules")
+
+                if len(modules) > 1:
+                    for module in modules[1:len(modules)]:
+                        await self.hass.config_entries.async_add(self._create_config_entry(module=module))
+                    
+                return self.async_create_entry(title=modules[0]["version"], data=modules[0])
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
@@ -64,6 +73,30 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user", data_schema=DATA_SCHEMA, errors=errors
         )
+
+    def _create_config_entry(self, module: dict) -> ConfigEntry:
+        return ConfigEntry(
+            data=module,                         
+            title=module["version"], 
+            entry_id=uuid.uuid4().hex,
+            domain=DOMAIN,
+            version=ConfigFlow.VERSION,
+            minor_version=ConfigFlow.MINOR_VERSION,
+            source=ConfigFlow.CONNECTION_CLASS)
+    
+    def _create_modules_array(self, validated_input: dict) -> [dict]:
+        return [
+            self._create_module_dict(validated_input, module_dict)
+            for module_dict in validated_input["modules"]
+        ]
+
+    def _create_module_dict(self, validated_input: dict, module_dict: dict) -> dict:
+        return {   
+            "user_id": validated_input["user_id"],
+            "token": validated_input["token"],
+            "module": module_dict,
+            "version": module_dict["version"] + ": " + module_dict["name"]
+        }
 
 
 class CannotConnect(exceptions.HomeAssistantError):
