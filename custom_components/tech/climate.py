@@ -3,31 +3,27 @@ import logging
 import json
 from typing import List, Optional
 from homeassistant.components.climate import ClimateEntity
-from homeassistant.components.climate.const import (
-    HVAC_MODE_HEAT,
-    HVAC_MODE_COOL,
-    HVAC_MODE_HEAT_COOL,
-    HVAC_MODE_OFF,
-    CURRENT_HVAC_HEAT,
-    CURRENT_HVAC_COOL,
-    CURRENT_HVAC_IDLE,
-    CURRENT_HVAC_OFF,
-    SUPPORT_PRESET_MODE,
-    SUPPORT_TARGET_TEMPERATURE,
+
+from homeassistant.components.climate import (
+    ClimateEntity,
+    ClimateEntityFeature,
+    HVACAction,
+    HVACMode,
 )
-from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS
+
+from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-SUPPORT_HVAC = [HVAC_MODE_HEAT, HVAC_MODE_OFF]
+SUPPORT_HVAC = [HVACMode.HEAT, HVACMode.OFF]
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up entry."""
     _LOGGER.debug("Setting up entry, module udid: " + config_entry.data["udid"])
     api = hass.data[DOMAIN][config_entry.entry_id]
     zones = await api.get_module_zones(config_entry.data["udid"])
-    
+
     async_add_entities(
         [
             TechThermostat(
@@ -51,6 +47,8 @@ class TechThermostat(ClimateEntity):
         self._api = api
         self._id = device["zone"]["id"]
         self.update_properties(device)
+        # Remove the line below after HA 2025.1
+        self._enable_turn_on_off_backwards_compatibility = False
 
     def update_properties(self, device):
         self._name = device["description"]["name"]
@@ -64,22 +62,22 @@ class TechThermostat(ClimateEntity):
             self._temperature = None
         state = device["zone"]["flags"]["relayState"]
         if state == "on":
-            self._state = CURRENT_HVAC_HEAT
+            self._state = HVACAction.HEATING
         elif state == "off":
-            self._state = CURRENT_HVAC_IDLE
+            self._state = HVACAction.IDLE
         else:
-            self._state = CURRENT_HVAC_OFF
+            self._state = HVACAction.OFF
         mode = device["zone"]["zoneState"]
         if mode == "zoneOn" or mode == "noAlarm":
-            self._mode = HVAC_MODE_HEAT
+            self._mode = HVACMode.HEAT
         else:
-            self._mode = HVAC_MODE_OFF
+            self._mode = HVACMode.OFF
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
         return self._id
-    
+
     @property
     def name(self):
         """Return the name of the device."""
@@ -88,13 +86,13 @@ class TechThermostat(ClimateEntity):
     @property
     def supported_features(self):
         """Return the list of supported features."""
-        return SUPPORT_TARGET_TEMPERATURE #| SUPPORT_PRESET_MODE
+        return ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.TURN_ON | ClimateEntityFeature.TURN_OFF
 
     @property
     def hvac_mode(self):
         """Return hvac operation ie. heat, cool mode.
 
-        Need to be one of HVAC_MODE_*.
+        Need to be one of HVACMode.*.
         """
         return self._mode
 
@@ -102,7 +100,7 @@ class TechThermostat(ClimateEntity):
     def hvac_modes(self):
         """Return the list of available hvac operation modes.
 
-        Need to be a subset of HVAC_MODES.
+        Need to be a subset of HVACModes.
         """
         return SUPPORT_HVAC
 
@@ -110,7 +108,7 @@ class TechThermostat(ClimateEntity):
     def hvac_action(self) -> Optional[str]:
         """Return the current running hvac operation if supported.
 
-        Need to be one of CURRENT_HVAC_*.
+        Need to be one of HVACAction.*.
         """
         return self._state
 
@@ -123,7 +121,7 @@ class TechThermostat(ClimateEntity):
     @property
     def temperature_unit(self):
         """Return the unit of measurement."""
-        return TEMP_CELSIUS
+        return UnitOfTemperature.CELSIUS
 
     @property
     def current_temperature(self):
@@ -146,8 +144,7 @@ class TechThermostat(ClimateEntity):
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
         _LOGGER.debug("%s: Setting hvac mode to %s", self._name, hvac_mode)
-        if hvac_mode == HVAC_MODE_OFF:
+        if hvac_mode == HVACMode.OFF:
             await self._api.set_zone(self._config_entry.data["udid"], self._id, False)
-        elif hvac_mode == HVAC_MODE_HEAT:
+        elif hvac_mode == HVACMode.HEAT:
             await self._api.set_zone(self._config_entry.data["udid"], self._id, True)
-
