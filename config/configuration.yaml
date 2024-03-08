@@ -1,0 +1,8 @@
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# https://www.home-assistant.io/integrations/logger/
+logger:
+  default: info
+  logs:
+    custom_components.tech: debug
