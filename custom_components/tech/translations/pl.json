@@ -1,0 +1,31 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Urządzenie jest już skonfigurowane",
+            "no_modules": "Nie wykryto żadnych sterowników"
+        },
+        "error": {
+            "cannot_connect": "Nie można się połączyć z Tech API.",
+            "invalid_auth": "Nieprawidłowa nazwa uzytkownika lub hasło!",
+            "unknown": "Nieznany błąd. Spróbuj ponownie lub zgłoś błąd do ..."
+        },
+        "step": {
+            "user": {
+                "title": "Logowanie do eModul",
+                "description": "Wprowadź swoje dane logowania do usługi emodul.eu lub emodul.pl.",
+                "data": {
+                    "password": "Hasło",
+                    "username": "Użytkownik"
+                }
+            },
+            "select_controllers": {
+                "title": "Wybór sterownika",
+                "description": "Wybierz sterowniki, które chcesz zintegrować.",
+                "data": {
+                    "controllers": "Sterowniki do zintegrowania"
+                }
+            }
+        }
+    },
+    "title": "Tech Sterowniki"
+}

@@ -9,6 +9,13 @@
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]"
         }
+      },
+      "select_controllers": {
+        "title": "Controller selection",
+        "description": "Please select the controllers you want to integrate.",
+        "data": {
+          "controllers": "Controllers to import"
+        }
       }
     },
     "error": {
@@ -17,7 +24,37 @@
       "unknown": "[%key:common::config_flow::error::unknown%]"
     },
     "abort": {
-      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
+      "no_modules": "No modules detected"
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "title": "Tech Sterowniki Login",
+        "description": "Please enter your credentials to emodul.eu or emodul.pl service.",
+        "data": {
+          "username": "[%key:common::config_flow::data::username%]",
+          "password": "[%key:common::config_flow::data::password%]"
+        }
+      },
+      "select_controllers": {
+        "title": "Controller selection",
+        "description": "Please select the controllers you want to integrate.",
+        "data": {
+          "controllers": "Controllers to import"
+        }
+
+      }
+    },
+    "error": {
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+      "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
+      "unknown": "[%key:common::config_flow::error::unknown%]"
+    },
+    "abort": {
+      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
+      "no_modules": "No modules detected"
     }
   }
 }

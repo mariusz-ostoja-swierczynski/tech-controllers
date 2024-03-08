@@ -1,12 +1,16 @@
 {
   "domain": "tech",
   "name": "Tech Controllers",
-  "config_flow": true,
-  "documentation": "https://www.home-assistant.io/integrations/tech",
-  "requirements": [],
-  "dependencies": [],
   "codeowners": [
-    "@mariusz.ostoja-swierczynski"
+    "@mariusz-ostoja-swierczynski",
+    "@anarion80"
   ],
-	"version": "1.0.0"
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/mariusz-ostoja-swierczynski/tech-controllers",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/mariusz-ostoja-swierczynski/tech-controllers/issues",
+  "requirements": [],
+  "version": "2.0.0"
 }

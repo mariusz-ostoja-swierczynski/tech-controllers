@@ -2,6 +2,7 @@
     "name": "Tech Controllers",
     "country": "PL",
     "render_readme": true,
-    "iot_class": "Local Polling",
-    "domains": ["climate"]
-  }
+    "zip_release": true,
+    "filename": "tech.zip",
+    "homeassistant": "2024.3.0"
+}
