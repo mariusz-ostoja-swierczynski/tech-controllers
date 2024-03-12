@@ -21,7 +21,7 @@ DEFAULT_ICON = "mdi:eye"
 PLATFORMS = [Platform.BINARY_SENSOR, Platform.SENSOR, Platform.CLIMATE]
 
 SCAN_INTERVAL: Final = timedelta(seconds=60)
-API_TIMEOUT: Final = 30
+API_TIMEOUT: Final = 60
 
 # tile type
 TYPE_TEMPERATURE = 1
