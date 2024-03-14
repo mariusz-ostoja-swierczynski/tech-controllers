@@ -217,5 +217,5 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         _LOGGER.debug("%s: Setting hvac mode to %s", self._name, hvac_mode)
         if hvac_mode == HVACMode.OFF:
             await self._coordinator.api.set_zone(self._udid, self._id, False)
-        elif hvac_mode == HVACMode.OFF:
+        elif hvac_mode == HVACMode.HEAT:
             await self._coordinator.api.set_zone(self._udid, self._id, True)
