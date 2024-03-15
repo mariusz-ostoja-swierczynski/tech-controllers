@@ -2,3 +2,5 @@
 # Declare files that will always have LF line endings on checkout.
 *.yml text eol=lf
 *.yaml text eol=lf
+scripts/* text eol=lf
+.yamllint text eol=lf
