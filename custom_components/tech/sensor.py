@@ -559,7 +559,7 @@ class TileSensor(TileEntity, CoordinatorEntity[TechCoordinator]):
         """Get the state of the device."""
 
 
-class TileTemperatureSensor(TileSensor, SensorEntity):
+class TileTemperatureSensor(SensorEntity, TileSensor):
     """Representation of a Tile Temperature Sensor."""
 
     def __init__(
@@ -647,7 +647,7 @@ class TileWidgetSensor(TileSensor):
         return device[CONF_PARAMS]["widget2"][VALUE] / 10
 
 
-class TileValveSensor(TileSensor, SensorEntity):
+class TileValveSensor(SensorEntity, TileSensor):
     """Representation of a Tile Valve Sensor."""
 
     def __init__(
@@ -699,7 +699,7 @@ class TileValveSensor(TileSensor, SensorEntity):
         self.attrs["setTemp"] = device[CONF_PARAMS]["setTemp"]
 
 
-class TileMixingValveSensor(TileSensor, SensorEntity):
+class TileMixingValveSensor(SensorEntity, TileSensor):
     """Representation of a Tile Mixing Valve Sensor."""
 
     _attr_native_unit_of_measurement = PERCENTAGE
