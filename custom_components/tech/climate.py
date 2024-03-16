@@ -53,7 +53,6 @@ async def async_setup_entry(
         + config_entry.data[CONTROLLER][VER]
     )
     zones: dict[str, Any] = await coordinator.api.get_module_zones(udid)
-    _LOGGER.debug("Setting up climate entry, zones: %s", zones)
     thermostats: list[TechThermostat] = [
         TechThermostat(zones[zone], coordinator, udid, model) for zone in zones
     ]
@@ -72,7 +71,6 @@ class TechThermostat(CoordinatorEntity[TechCoordinator], ClimateEntity):
         model: str,
     ) -> None:
         """Initialize the Tech device."""
-        _LOGGER.debug("Init TechThermostat")
         super().__init__(coordinator)
         self._udid: str = udid
         self._coordinator: TechCoordinator = coordinator

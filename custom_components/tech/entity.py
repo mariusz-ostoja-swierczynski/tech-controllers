@@ -34,7 +34,6 @@ class TileEntity(CoordinatorEntity[TechCoordinator]):
             controller_udid: str, the unique id of the controller
 
         """
-        _LOGGER.debug("Init TileEntity, device: %s", device)
         super().__init__(coordinator)
         self.controller_udid: str = controller_udid
         self._coordinator: TechCoordinator = coordinator

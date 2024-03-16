@@ -34,7 +34,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up entry."""
-    _LOGGER.debug("Setting up entry for sensors")
+    _LOGGER.debug("Setting up entry for binary sensors")
     controller: dict[str, Any] = config_entry.data[CONTROLLER]
     coordinator: TechCoordinator = hass.data[DOMAIN][config_entry.entry_id]
 

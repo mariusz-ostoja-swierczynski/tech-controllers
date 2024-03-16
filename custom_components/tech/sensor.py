@@ -69,7 +69,6 @@ class TechBatterySensor(CoordinatorEntity[TechCoordinator], SensorEntity):
         config_entry: ConfigEntry,
     ) -> None:
         """Initialize the Tech battery sensor."""
-        _LOGGER.debug("Init TechBatterySensor... ")
         super().__init__(coordinator)
         self._config_entry: ConfigEntry = config_entry
         self._coordinator: TechCoordinator = coordinator
@@ -135,7 +134,6 @@ class TechTemperatureSensor(CoordinatorEntity[TechCoordinator], SensorEntity):
         config_entry: ConfigEntry,
     ) -> None:
         """Initialize the Tech temperature sensor."""
-        _LOGGER.debug("Init TechTemperatureSensor... ")
         super().__init__(coordinator)
         self._config_entry: ConfigEntry = config_entry
         self._coordinator: TechCoordinator = coordinator
@@ -210,7 +208,6 @@ class TechOutsideTempTile(CoordinatorEntity[TechCoordinator], SensorEntity):
         config_entry: ConfigEntry,
     ) -> None:
         """Initialize the Tech temperature sensor."""
-        _LOGGER.debug("Init TechOutsideTemperatureTile... ")
         super().__init__(coordinator)
         self._config_entry: ConfigEntry = config_entry
         self._coordinator: TechCoordinator = coordinator
@@ -230,12 +227,6 @@ class TechOutsideTempTile(CoordinatorEntity[TechCoordinator], SensorEntity):
             name=self._device_name,  # Name of the device
             model=self._model,  # Model of the device
             manufacturer=self._manufacturer,  # Manufacturer of the device
-        )
-        _LOGGER.debug(
-            "Init TechOutsideTemperatureTile...: %s, udid: %s, id: %s",
-            self._name,
-            self._config_entry.data[CONTROLLER][UDID],
-            self._id,
         )
 
     def update_properties(self, device: dict[str, Any]) -> None:
@@ -357,7 +348,6 @@ class ZoneSensor(CoordinatorEntity[TechCoordinator], SensorEntity):
         config_entry: ConfigEntry,
     ) -> None:
         """Initialize the sensor."""
-        _LOGGER.debug("Init ZoneSensor")
         super().__init__(coordinator)
         self._config_entry: ConfigEntry = config_entry
         self._coordinator: TechCoordinator = coordinator
@@ -576,7 +566,6 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
         self, device: dict[str, Any], coordinator: TechCoordinator, controller_udid: str
     ) -> None:
         """Initialize the sensor."""
-        _LOGGER.debug("Init Tile Temp Sensor, device: %s", device)
         TileSensor.__init__(self, device, coordinator, controller_udid)
         self.native_unit_of_measurement = UnitOfTemperature.CELSIUS
         self.device_class = SensorDeviceClass.TEMPERATURE
@@ -598,7 +587,6 @@ class TileFuelSupplySensor(TileSensor):
         self, device: dict[str, Any], coordinator: TechCoordinator, controller_udid: str
     ) -> None:
         """Initialize the sensor."""
-        _LOGGER.debug("Init Tile Fuel Supply Sensor, device: %s", device)
         TileSensor.__init__(self, device, coordinator, controller_udid)
 
     def get_state(self, device: dict[str, Any]) -> int:
@@ -616,7 +604,6 @@ class TileFanSensor(TileSensor):
         self, device: dict[str, Any], coordinator: TechCoordinator, controller_udid: str
     ) -> None:
         """Initialize the sensor."""
-        _LOGGER.debug("Init Tile Fan Sensor, device: %s", device)
         TileSensor.__init__(self, device, coordinator, controller_udid)
         self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
 
@@ -632,7 +619,6 @@ class TileTextSensor(TileSensor):
         self, device: dict[str, Any], coordinator: TechCoordinator, controller_udid: str
     ) -> None:
         """Initialize the sensor."""
-        _LOGGER.debug("Init Tile Text Sensor, device: %s", device)
         TileSensor.__init__(self, device, coordinator, controller_udid)
         self._name = assets.get_text(device[CONF_PARAMS]["headerId"])
         self._attr_icon = assets.get_icon(device[CONF_PARAMS]["iconId"])
@@ -653,7 +639,6 @@ class TileWidgetSensor(TileSensor):
         self, device: dict[str, Any], coordinator: TechCoordinator, controller_udid: str
     ) -> None:
         """Initialize the sensor."""
-        _LOGGER.debug("Init Tile Widget Sensor, device: %s", device)
         TileSensor.__init__(self, device, coordinator, controller_udid)
         self._name = assets.get_text(device[CONF_PARAMS]["widget2"]["txtId"])
 
@@ -669,7 +654,6 @@ class TileValveSensor(TileSensor, SensorEntity):
         self, device: dict[str, Any], coordinator: TechCoordinator, controller_udid: str
     ) -> None:
         """Initialize the sensor."""
-        _LOGGER.debug("Init Tile Valce Sensor, device: %s", device)
         TileSensor.__init__(self, device, coordinator, controller_udid)
         self.native_unit_of_measurement = PERCENTAGE
         self.state_class = SensorStateClass.MEASUREMENT
@@ -725,7 +709,6 @@ class TileMixingValveSensor(TileSensor, SensorEntity):
         self, device: dict[str, Any], coordinator: TechCoordinator, controller_udid: str
     ) -> None:
         """Initialize the sensor."""
-        _LOGGER.debug("Init Tile Mixing Valve Sensor, device: %s", device)
         TileSensor.__init__(self, device, coordinator, controller_udid)
         self.native_unit_of_measurement = PERCENTAGE
         self.state_class = SensorStateClass.MEASUREMENT
@@ -935,15 +918,11 @@ async def async_setup_entry(
 
     zones: dict[str, Any] = await coordinator.api.get_module_zones(controller_udid)
     tiles: dict[str, Any] = await coordinator.api.get_module_tiles(controller_udid)
-    _LOGGER.debug("Setting up sensor entry, zones: %s", zones)
-    _LOGGER.debug("Setting up sensor entry, tiles: %s", tiles)
 
     entities: list[TileSensor] = []
     for t in tiles:
         tile = tiles[t]
-        _LOGGER.debug("Setting up sensor entry, tile: %s", tile)
         if tile[VISIBILITY] is False:
-            _LOGGER.debug("Setting up sensor entry, tile visibility is False!")
             continue
         if int(tile[CONF_TYPE]) == TYPE_TEMPERATURE:
             entities.append(TileTemperatureSensor(tile, coordinator, controller_udid))
