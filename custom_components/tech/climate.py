@@ -127,7 +127,10 @@ class TechThermostat(CoordinatorEntity[TechCoordinator], ClimateEntity):
             self._temperature = None
 
         # Update humidity
-        if device[CONF_ZONE]["humidity"] is not None and device[CONF_ZONE]["humidity"] >= 0:
+        if (
+            device[CONF_ZONE]["humidity"] is not None
+            and device[CONF_ZONE]["humidity"] >= 0
+        ):
             self._humidity = device[CONF_ZONE]["humidity"]
         else:
             self._humidity = None
