@@ -1,6 +1,6 @@
 """Config flow for Tech Sterowniki integration."""
 import logging
-from typing import Any
+from typing import Any, Final
 import uuid
 
 import voluptuous as vol
@@ -22,7 +22,7 @@ from .tech import Tech, TechError, TechLoginError
 
 _LOGGER = logging.getLogger(__name__)
 
-DATA_SCHEMA = vol.Schema(
+DATA_SCHEMA: Final[vol.Schema] = vol.Schema(
     {
         vol.Required(CONF_USERNAME): cv.string,
         vol.Required(CONF_PASSWORD): cv.string,
@@ -61,7 +61,7 @@ async def validate_input(
     if not await api.authenticate(data[CONF_USERNAME], data[CONF_PASSWORD]):
         raise InvalidAuth
 
-    modules = await api.list_modules()
+    modules: list[dict[str, Any]] = await api.list_modules()
 
     # Return info that you want to store in the config entry.
     return {
@@ -75,8 +75,8 @@ async def validate_input(
 class TechConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Tech Sterowniki."""
 
-    VERSION = 2
-    MINOR_VERSION = 1
+    VERSION: int = 2
+    MINOR_VERSION: int = 1
     # Pick one of the available connection classes in homeassistant/config_entries.py
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
 
@@ -176,7 +176,7 @@ class TechConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         if user_input is not None:
             try:
-                info = await validate_input(self.hass, user_input)
+                info: dict[str, Any] = await validate_input(self.hass, user_input)
 
                 # Store info to use in next step
                 self._init_info = info
