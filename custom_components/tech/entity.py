@@ -3,7 +3,16 @@ from abc import abstractmethod
 import logging
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.const import CONF_DESCRIPTION, CONF_ID, CONF_PARAMS, CONF_TYPE
+from homeassistant.const import (
+    ATTR_IDENTIFIERS,
+    ATTR_MANUFACTURER,
+    CONF_DESCRIPTION,
+    CONF_ID,
+    CONF_MODEL,
+    CONF_NAME,
+    CONF_PARAMS,
+    CONF_TYPE,
+)
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.typing import StateType
@@ -48,14 +57,18 @@ class TileEntity(CoordinatorEntity[TechCoordinator]):
             self._name = assets.get_text(txt_id)
         else:
             self._name = assets.get_text_by_type(device[CONF_TYPE])
-        self._attr_device_info = DeviceInfo(
-            identifiers={
-                (DOMAIN, self._unique_id)
+
+    @cached_property
+    def device_info(self) -> DeviceInfo:
+        """Get device info."""
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, self.unique_id)
             },  # Unique identifiers for the device
-            name=self._name,  # Name of the device
-            model=self.model,  # Model of the device
-            manufacturer=self.manufacturer,  # Manufacturer of the device
-        )
+            CONF_NAME: self.name,  # Name of the device
+            CONF_MODEL: self.model,  # Model of the device
+            ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+        }
 
     @cached_property
     def unique_id(self) -> str:

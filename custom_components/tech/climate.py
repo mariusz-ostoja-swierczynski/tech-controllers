@@ -11,9 +11,12 @@ from homeassistant.components.climate import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
+    ATTR_IDENTIFIERS,
+    ATTR_MANUFACTURER,
     ATTR_TEMPERATURE,
     CONF_DESCRIPTION,
     CONF_ID,
+    CONF_MODEL,
     CONF_NAME,
     CONF_ZONE,
     STATE_OFF,
@@ -81,17 +84,21 @@ class TechThermostat(CoordinatorEntity[TechCoordinator], ClimateEntity):
         self.model: str = model
         self._temperature: float | None = None
         self._humidity: int | None = None
-        self._attr_device_info = DeviceInfo(
-            identifiers={
-                (DOMAIN, self.device_name)
-            },  # Unique identifiers for the device
-            name=self.device_name,  # Name of the device
-            model=self.model,  # Model of the device
-            manufacturer=self.manufacturer,  # Manufacturer of the device
-        )
         self.update_properties(device)
         # Remove the line below after HA 2025.1
         self._enable_turn_on_off_backwards_compatibility = False
+
+    @cached_property
+    def device_info(self) -> DeviceInfo:
+        """Return device information in a dictionary format."""
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, self.device_name)
+            },  # Unique identifiers for the device
+            CONF_NAME: self.device_name,  # Name of the device
+            CONF_MODEL: self.model,  # Model of the device
+            ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+        }
 
     def update_properties(self, device: dict[str, Any]) -> None:
         """Update the properties of the HVAC device based on the data from the device.

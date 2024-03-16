@@ -12,8 +12,11 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
+    ATTR_IDENTIFIERS,
+    ATTR_MANUFACTURER,
     CONF_DESCRIPTION,
     CONF_ID,
+    CONF_MODEL,
     CONF_NAME,
     CONF_PARAMS,
     CONF_TYPE,
@@ -81,14 +84,6 @@ class TechBatterySensor(CoordinatorEntity[TechCoordinator], SensorEntity):
         )
         self._manufacturer: str = MANUFACTURER
         self.update_properties(device)
-        self._attr_device_info = DeviceInfo(
-            identifiers={
-                (DOMAIN, self._device_name)
-            },  # Unique identifiers for the device
-            name=self._device_name,  # Name of the device
-            model=self._model,  # Model of the device
-            manufacturer=self._manufacturer,  # Manufacturer of the device
-        )
 
     def update_properties(self, device: dict[str, Any]):
         """Update properties from the TechBatterySensor object.
@@ -118,6 +113,24 @@ class TechBatterySensor(CoordinatorEntity[TechCoordinator], SensorEntity):
     def name(self) -> str:
         """Return the name of the device."""
         return f"{self._name} battery"
+
+    @cached_property
+    def device_info(self) -> DeviceInfo:
+        """Get device information.
+
+        Returns:
+        dict: A dictionary containing device information.
+
+        """
+        # Return device information
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, self._device_name)
+            },  # Unique identifiers for the device
+            CONF_NAME: self._device_name,  # Name of the device
+            CONF_MODEL: self._model,  # Model of the device
+            ATTR_MANUFACTURER: self._manufacturer,  # Manufacturer of the device
+        }
 
 
 class TechTemperatureSensor(CoordinatorEntity[TechCoordinator], SensorEntity):
@@ -149,14 +162,6 @@ class TechTemperatureSensor(CoordinatorEntity[TechCoordinator], SensorEntity):
         )
         self._manufacturer: str = MANUFACTURER
         self.update_properties(device)
-        self._attr_device_info = DeviceInfo(
-            identifiers={
-                (DOMAIN, self._device_name)
-            },  # Unique identifiers for the device
-            name=self._device_name,  # Name of the device
-            model=self._model,  # Model of the device
-            manufacturer=self._manufacturer,  # Manufacturer of the device
-        )
 
     def update_properties(self, device: dict[str, Any]) -> None:
         """Update the properties of the TechTemperatureSensor object.
@@ -193,6 +198,24 @@ class TechTemperatureSensor(CoordinatorEntity[TechCoordinator], SensorEntity):
         """Return the name of the device."""
         return f"{self._name} temperature"
 
+    @cached_property
+    def device_info(self) -> DeviceInfo:
+        """Get device information.
+
+        Returns:
+        dict: A dictionary containing device information.
+
+        """
+        # Return device information
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, self._device_name)
+            },  # Unique identifiers for the device
+            CONF_NAME: self._device_name,  # Name of the device
+            CONF_MODEL: self._model,  # Model of the device
+            ATTR_MANUFACTURER: self._manufacturer,  # Manufacturer of the device
+        }
+
 
 class TechOutsideTempTile(CoordinatorEntity[TechCoordinator], SensorEntity):
     """Representation of a Tech outside temperature tile sensor."""
@@ -220,14 +243,6 @@ class TechOutsideTempTile(CoordinatorEntity[TechCoordinator], SensorEntity):
         )
         self._manufacturer: str = MANUFACTURER
         self.update_properties(device)
-        self._attr_device_info = DeviceInfo(
-            identifiers={
-                (DOMAIN, self._device_name)
-            },  # Unique identifiers for the device
-            name=self._device_name,  # Name of the device
-            model=self._model,  # Model of the device
-            manufacturer=self._manufacturer,  # Manufacturer of the device
-        )
 
     def update_properties(self, device: dict[str, Any]) -> None:
         """Update the properties of the TechOutsideTempTile object.
@@ -265,6 +280,24 @@ class TechOutsideTempTile(CoordinatorEntity[TechCoordinator], SensorEntity):
         """Return the name of the device."""
         return f"{self._name} temperature"
 
+    @cached_property
+    def device_info(self) -> DeviceInfo:
+        """Get device information.
+
+        Returns:
+        dict: A dictionary containing device information.
+
+        """
+        # Return device information
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, self._device_name)
+            },  # Unique identifiers for the device
+            CONF_NAME: self._device_name,  # Name of the device
+            CONF_MODEL: self._model,  # Model of the device
+            ATTR_MANUFACTURER: self._manufacturer,  # Manufacturer of the device
+        }
+
 
 class TechHumiditySensor(CoordinatorEntity[TechCoordinator], SensorEntity):
     """Representation of a Tech humidity sensor."""
@@ -293,14 +326,6 @@ class TechHumiditySensor(CoordinatorEntity[TechCoordinator], SensorEntity):
         )
         self._manufacturer: str = MANUFACTURER
         self.update_properties(device)
-        self._attr_device_info = DeviceInfo(
-            identifiers={
-                (DOMAIN, self._device_name)
-            },  # Unique identifiers for the device
-            name=self._device_name,  # Name of the device
-            model=self._model,  # Model of the device
-            manufacturer=self._manufacturer,  # Manufacturer of the device
-        )
 
     def update_properties(self, device: dict[str, Any]) -> None:
         """Update the properties of the TechHumiditySensor object.
@@ -337,6 +362,24 @@ class TechHumiditySensor(CoordinatorEntity[TechCoordinator], SensorEntity):
         """Return the name of the device."""
         return f"{self._name} humidity"
 
+    @cached_property
+    def device_info(self) -> DeviceInfo:
+        """Get device information.
+
+        Returns:
+        dict: A dictionary containing device information.
+
+        """
+        # Return device information
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, self._device_name)
+            },  # Unique identifiers for the device
+            CONF_NAME: self._device_name,  # Name of the device
+            CONF_MODEL: self._model,  # Model of the device
+            ATTR_MANUFACTURER: self._manufacturer,  # Manufacturer of the device
+        }
+
 
 class ZoneSensor(CoordinatorEntity[TechCoordinator], SensorEntity):
     """Representation of a Zone Sensor."""
@@ -363,14 +406,6 @@ class ZoneSensor(CoordinatorEntity[TechCoordinator], SensorEntity):
         )
         self._manufacturer: str = MANUFACTURER
         self.update_properties(device)
-        self._attr_device_info = DeviceInfo(
-            identifiers={
-                (DOMAIN, self._device_name)
-            },  # Unique identifiers for the device
-            name=self._device_name,  # Name of the device
-            model=self._model,  # Model of the device
-            manufacturer=self._manufacturer,  # Manufacturer of the device
-        )
 
     def update_properties(self, device: dict[str, Any]) -> None:
         """Update the properties of the device based on the provided device information.
@@ -412,6 +447,24 @@ class ZoneSensor(CoordinatorEntity[TechCoordinator], SensorEntity):
     def name(self) -> str:
         """Return the name of the sensor."""
         return self._name
+
+    @cached_property
+    def device_info(self) -> DeviceInfo:
+        """Get device information.
+
+        Returns:
+        dict: A dictionary containing device information.
+
+        """
+        # Return device information
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, self._device_name)
+            },  # Unique identifiers for the device
+            CONF_NAME: self._device_name,  # Name of the device
+            CONF_MODEL: self._model,  # Model of the device
+            ATTR_MANUFACTURER: self._manufacturer,  # Manufacturer of the device
+        }
 
 
 class ZoneTemperatureSensor(ZoneSensor):
