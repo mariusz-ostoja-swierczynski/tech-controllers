@@ -1,51 +1,59 @@
-"""Constants for the Tech Sterowniki integration."""
+"""Constants for the Tech Sterowniki integration.
+
+Contains various constant values used throughout the integration.
+"""
 
 from datetime import timedelta
-from typing import Final
+from typing import Any, Final
 
 from homeassistant.const import Platform
 
-DOMAIN = "tech"
-CONTROLLER = "controller"
-CONTROLLERS = "controllers"
-VER = "version"
-UDID = "udid"
-USER_ID = "user_id"
-TILES = "tiles"
-VISIBILITY = "visibility"
-VALUE = "value"
-MANUFACTURER = "TechControllers"
+DOMAIN: Final[str] = "tech"
+CONTROLLER: Final[str] = "controller"
+CONTROLLERS: Final[str] = "controllers"
+VER: Final[str] = "version"
+UDID: Final[str] = "udid"
+USER_ID: Final[str] = "user_id"
+TILES: Final[str] = "tiles"
+VISIBILITY: Final[str] = "visibility"
+VALUE: Final[str] = "value"
+MANUFACTURER: Final[str] = "TechControllers"
 
-DEFAULT_ICON = "mdi:eye"
 
-PLATFORMS = [Platform.BINARY_SENSOR, Platform.SENSOR, Platform.CLIMATE]
+DEFAULT_ICON: Final[str] = "mdi:eye"
 
-SCAN_INTERVAL: Final = timedelta(seconds=60)
-API_TIMEOUT: Final = 60
+PLATFORMS: Final[list[Platform]] = [
+    Platform.BINARY_SENSOR,
+    Platform.CLIMATE,
+    Platform.SENSOR,
+]
+
+SCAN_INTERVAL: Final[timedelta] = timedelta(seconds=60)
+API_TIMEOUT: Final[int] = 60
 
 # tile type
-TYPE_TEMPERATURE = 1
-TYPE_FIRE_SENSOR = 2
-TYPE_TEMPERATURE_CH = 6
-TYPE_RELAY = 11
-TYPE_ADDITIONAL_PUMP = 21
-TYPE_FAN = 22
-TYPE_VALVE = 23
-TYPE_MIXING_VALVE = 24
-TYPE_FUEL_SUPPLY = 31
-TYPE_TEXT = 40
-TYPE_SW_VERSION = 50
+TYPE_TEMPERATURE: Final[int] = 1
+TYPE_FIRE_SENSOR: Final[int] = 2
+TYPE_TEMPERATURE_CH: Final[int] = 6
+TYPE_RELAY: Final[int] = 11
+TYPE_ADDITIONAL_PUMP: Final[int] = 21
+TYPE_FAN: Final[int] = 22
+TYPE_VALVE: Final[int] = 23
+TYPE_MIXING_VALVE: Final[int] = 24
+TYPE_FUEL_SUPPLY: Final[int] = 31
+TYPE_TEXT: Final[int] = 40
+TYPE_SW_VERSION: Final[int] = 50
 
 # map iconId -> icon name
-ICON_BY_ID = {
-    3: "mdi:animation-play",  # mode
-    17: "mdi:arrow-right-drop-circle-outline",  # pump
-    50: "mdi:tune-vertical",  # state
-    101: "mdi:cogs",  # feeder
+ICON_BY_ID: Final[dict[int, str]] = {
+    3: "mdi:animation-play",
+    17: "mdi:arrow-right-drop-circle-outline",
+    50: "mdi:tune-vertical",
+    101: "mdi:cogs",
 }
 
 # map type -> icon name
-ICON_BY_TYPE = {
+ICON_BY_TYPE: Final[dict[int, str]] = {
     TYPE_FIRE_SENSOR: "mdi:fire",
     TYPE_ADDITIONAL_PUMP: "mdi:arrow-right-drop-circle-outline",
     TYPE_FAN: "mdi:fan",
@@ -54,7 +62,7 @@ ICON_BY_TYPE = {
 }
 
 # map type -> txtId
-TXT_ID_BY_TYPE = {
+TXT_ID_BY_TYPE: Final[dict[int, int]] = {
     TYPE_FIRE_SENSOR: 205,
     TYPE_FAN: 4135,
     TYPE_VALVE: 991,
@@ -62,6 +70,15 @@ TXT_ID_BY_TYPE = {
     TYPE_FUEL_SUPPLY: 961,
 }
 
-VALVE_SENSOR_RETURN_TEMPERATURE = {"txt_id": 747, "state_key": "returnTemp"}
-VALVE_SENSOR_SET_TEMPERATURE = {"txt_id": 1065, "state_key": "setTemp"}
-VALVE_SENSOR_CURRENT_TEMPERATURE = {"txt_id": 2010, "state_key": "currentTemp"}
+VALVE_SENSOR_RETURN_TEMPERATURE: Final[dict[str, Any]] = {
+    "txt_id": 747,
+    "state_key": "returnTemp",
+}
+VALVE_SENSOR_SET_TEMPERATURE: Final[dict[str, Any]] = {
+    "txt_id": 1065,
+    "state_key": "setTemp",
+}
+VALVE_SENSOR_CURRENT_TEMPERATURE: Final[dict[str, Any]] = {
+    "txt_id": 2010,
+    "state_key": "currentTemp",
+}

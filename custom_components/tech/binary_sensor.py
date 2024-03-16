@@ -1,8 +1,12 @@
 """Platform for binary sensor integration."""
 import logging
+from typing import TYPE_CHECKING, Any, Optional
 
+from homeassistant import core
 from homeassistant.components import binary_sensor
-from homeassistant.const import CONF_PARAMS, CONF_TYPE, STATE_OFF, STATE_ON
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_PARAMS, CONF_TYPE
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import TechCoordinator, assets
 from .const import (
@@ -16,19 +20,28 @@ from .const import (
 )
 from .entity import TileEntity
 
+if TYPE_CHECKING:
+    from functools import cached_property
+else:
+    from homeassistant.backports.functools import cached_property
+
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(
+    hass: core.HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
     """Set up entry."""
-    _LOGGER.debug("Setting up entry for sensors...")
-    controller = config_entry.data[CONTROLLER]
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    _LOGGER.debug("Setting up entry for sensors")
+    controller: dict[str, Any] = config_entry.data[CONTROLLER]
+    coordinator: TechCoordinator = hass.data[DOMAIN][config_entry.entry_id]
 
-    entities = []
+    entities: list[RelaySensor] = []
     # for controller in controllers:
-    controller_udid = controller[UDID]
-    tiles = await coordinator.api.get_module_tiles(controller_udid)
+    controller_udid: str = controller[UDID]
+    tiles: dict[str, Any] = await coordinator.api.get_module_tiles(controller_udid)
     # _LOGGER.debug("Setting up entry for binary sensors...tiles: %s", tiles)
     for t in tiles:
         tile = tiles[t]
@@ -51,25 +64,45 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities(entities, True)
 
 
-class TileBinarySensor(TileEntity, binary_sensor.BinarySensorEntity):
+class TileBinarySensor(binary_sensor.BinarySensorEntity, TileEntity):
     """Representation of a TileBinarySensor."""
 
-    def get_state(self, device):
-        """Get the state of the device."""
+    @cached_property
+    def is_on(self) -> bool | None:
+        """Return true if the binary sensor is on."""
+        return bool(self._state)
 
-    @property
-    def state(self):
-        """Get the state of the binary sensor."""
-        return STATE_ON if self._state else STATE_OFF
+    def get_state(self, device: dict[str, Any]) -> Any:
+        """Get the state of the device.
+
+        Args:
+            device: The device to get the state of.
+
+        Returns:
+            The state of the device (True if on, False if off).
+
+        """
 
 
 class RelaySensor(TileBinarySensor):
     """Representation of a RelaySensor."""
 
     def __init__(
-        self, device, coordinator: TechCoordinator, controller_udid, device_class=None
-    ):
-        """Initialize the tile relay sensor."""
+        self,
+        device: dict[str, Any],
+        coordinator: TechCoordinator,
+        controller_udid: str,
+        device_class: Optional[binary_sensor.BinarySensorDeviceClass] = None,
+    ) -> None:
+        """Initialize the tile relay sensor.
+
+        Args:
+            device: The device to represent.
+            coordinator: The coordinator for the controller.
+            controller_udid: The UDID of the controller the device belongs to.
+            device_class: The device class if any (e.g. "door").
+
+        """
         TileBinarySensor.__init__(self, device, coordinator, controller_udid)
         self._attr_device_class = device_class
         self._coordinator = coordinator
@@ -79,6 +112,14 @@ class RelaySensor(TileBinarySensor):
         else:
             self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
 
-    def get_state(self, device):
-        """Get device state."""
+    def get_state(self, device: dict[str, Any]) -> str:
+        """Get device state.
+
+        Args:
+            device: The device to get the state of.
+
+        Returns:
+            The state of the device.
+
+        """
         return device[CONF_PARAMS]["workingStatus"]

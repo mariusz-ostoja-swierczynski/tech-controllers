@@ -1,12 +1,12 @@
 """Config flow for Tech Sterowniki integration."""
 import logging
-from typing import List
+from typing import Any
 import uuid
 
 import voluptuous as vol
 
 from homeassistant import config_entries, core, exceptions
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import SOURCE_USER, ConfigEntry
 from homeassistant.const import (
     ATTR_ID,
     CONF_NAME,
@@ -30,7 +30,7 @@ DATA_SCHEMA = vol.Schema(
 )
 
 
-def controllers_schema(controllers) -> vol.Schema:
+def controllers_schema(controllers: list[dict[Any, Any]]) -> vol.Schema:
     """Return the data schema for controllers."""
 
     return vol.Schema(
@@ -47,7 +47,9 @@ def controllers_schema(controllers) -> vol.Schema:
     )
 
 
-async def validate_input(hass: core.HomeAssistant, data):
+async def validate_input(
+    hass: core.HomeAssistant, data: dict[str, str]
+) -> dict[str, Any]:
     """Validate the user input allows us to connect.
 
     Data has the keys from DATA_SCHEMA with values provided by the user.
@@ -70,17 +72,18 @@ async def validate_input(hass: core.HomeAssistant, data):
 
 
 @config_entries.HANDLERS.register(DOMAIN)
-class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class TechConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Tech Sterowniki."""
 
     VERSION = 2
+    MINOR_VERSION = 1
     # Pick one of the available connection classes in homeassistant/config_entries.py
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
 
     def __init__(self) -> None:
         """Initialize the config flow."""
         self._init_info: dict[str, str] | None = None
-        self._controllers: List[dict] | None = None
+        self._controllers: list[dict[Any, Any]] = []
 
     async def _async_finish_controller(self, user_input: dict[str, str]) -> FlowResult:
         """Finish setting up controllers."""
@@ -88,7 +91,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if not user_input[CONTROLLERS]:
             return self.async_abort(reason="no_modules")
 
-        if self._controllers is not None and user_input is not None:
+        if len(self._controllers) > 0:
             controllers = user_input[CONTROLLERS]
 
             if len(controllers) == 0:
@@ -129,7 +132,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )[CONTROLLER][UDID]
 
             await self.async_set_unique_id(controller_udid)
-
+            _LOGGER.debug("Adding config entry for: %s", controller_udid)
             return self.async_create_entry(
                 title=next(
                     obj
@@ -143,26 +146,34 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ),
             )
 
+        return self.async_show_form(
+            step_id="select_controllers",
+            data_schema=controllers_schema(controllers=self._controllers),
+        )
+
     async def async_step_select_controllers(
         self,
         user_input: dict[str, str] | None = None,
     ) -> FlowResult:
         """Handle the selection of controllers."""
-        if not user_input:
+        if not user_input and self._init_info is not None:
             self._controllers = self._create_controllers_array(
                 validated_input=self._init_info
             )
 
-            return self.async_show_form(
-                step_id="select_controllers",
-                data_schema=controllers_schema(controllers=self._controllers),
-            )
+        if user_input is not None:
+            return await self._async_finish_controller(user_input)
 
-        return await self._async_finish_controller(user_input)
+        return self.async_show_form(
+            step_id="select_controllers",
+            data_schema=controllers_schema(controllers=self._controllers),
+        )
 
-    async def async_step_user(self, user_input: dict[str, str] | None = None):
+    async def async_step_user(
+        self, user_input: dict[str, str] | None = None
+    ) -> FlowResult:
         """Handle the initial step."""
-        errors = {}
+        errors: dict[str, str] = {}
         if user_input is not None:
             try:
                 info = await validate_input(self.hass, user_input)
@@ -183,26 +194,30 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=DATA_SCHEMA, errors=errors
         )
 
-    def _create_config_entry(self, controller: dict) -> ConfigEntry:
+    def _create_config_entry(
+        self, controller: dict[str, dict[str, str]]
+    ) -> ConfigEntry:
         return ConfigEntry(
             data=controller,
             title=controller[CONTROLLER][CONF_NAME],
             entry_id=uuid.uuid4().hex,
             domain=DOMAIN,
-            version=ConfigFlow.VERSION,
-            minor_version=ConfigFlow.MINOR_VERSION,
-            source=ConfigFlow.CONNECTION_CLASS,
+            version=TechConfigFlow.VERSION,
+            minor_version=TechConfigFlow.MINOR_VERSION,
+            source=SOURCE_USER,
         )
 
-    def _create_controllers_array(self, validated_input: dict) -> List[dict]:
+    def _create_controllers_array(
+        self, validated_input: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         return [
             self._create_controller_dict(validated_input, controller_dict)
             for controller_dict in validated_input[CONTROLLERS]
         ]
 
     def _create_controller_dict(
-        self, validated_input: dict, controller_dict: dict
-    ) -> dict:
+        self, validated_input: dict[str, Any], controller_dict: dict[str, str]
+    ) -> dict[str, Any]:
         return {
             USER_ID: validated_input[USER_ID],
             CONF_TOKEN: validated_input[CONF_TOKEN],
