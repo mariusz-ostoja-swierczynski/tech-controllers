@@ -217,7 +217,7 @@ def is_humidity_operating_device(device) -> bool:
 
     """
     return (
-        device[CONF_ZONE]["humidity"] is not None and device[CONF_ZONE]["humidity"] != 0
+        device[CONF_ZONE]["humidity"] is not None and device[CONF_ZONE]["humidity"] >= 0
     )
 
 
