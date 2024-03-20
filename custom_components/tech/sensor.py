@@ -275,6 +275,9 @@ class TechBatterySensor(CoordinatorEntity, SensorEntity):
         self._config_entry = config_entry
         self._coordinator = coordinator
         self._id = device[CONF_ZONE][CONF_ID]
+        self._unique_id = (
+            config_entry.data[CONTROLLER][UDID] + "_" + str(device[CONF_ZONE][CONF_ID])
+        )
         self._device_name = device[CONF_DESCRIPTION][CONF_NAME]
         self._model = (
             config_entry.data[CONTROLLER][CONF_NAME]
@@ -324,7 +327,7 @@ class TechBatterySensor(CoordinatorEntity, SensorEntity):
         # Return device information
         return {
             ATTR_IDENTIFIERS: {
-                (DOMAIN, self._device_name)
+                (DOMAIN, self._unique_id)
             },  # Unique identifiers for the device
             CONF_NAME: self._device_name,  # Name of the device
             CONF_MODEL: self._model,  # Model of the device
@@ -406,7 +409,7 @@ class TechTemperatureSensor(CoordinatorEntity, SensorEntity):
         # Return device information
         return {
             ATTR_IDENTIFIERS: {
-                (DOMAIN, self._device_name)
+                (DOMAIN, self._unique_id)
             },  # Unique identifiers for the device
             CONF_NAME: self._device_name,  # Name of the device
             CONF_MODEL: self._model,  # Model of the device
@@ -430,6 +433,9 @@ class TechOutsideTempTile(CoordinatorEntity, SensorEntity):
         self._config_entry = config_entry
         self._coordinator = coordinator
         self._id = device[CONF_ID]
+        self._unique_id = (
+            config_entry.data[CONTROLLER][UDID] + "_" + str(device[CONF_ZONE][CONF_ID])
+        )
         self._device_name = device[CONF_DESCRIPTION][CONF_NAME]
         self._model = (
             config_entry.data[CONTROLLER][CONF_NAME]
@@ -492,7 +498,7 @@ class TechOutsideTempTile(CoordinatorEntity, SensorEntity):
         # Return device information
         return {
             ATTR_IDENTIFIERS: {
-                (DOMAIN, self._device_name)
+                (DOMAIN, self._unique_id)
             },  # Unique identifiers for the device
             CONF_NAME: self._device_name,  # Name of the device
             CONF_MODEL: self._model,  # Model of the device
@@ -516,6 +522,9 @@ class TechHumiditySensor(CoordinatorEntity, SensorEntity):
         self._config_entry = config_entry
         self._coordinator = coordinator
         self._id = device[CONF_ZONE][CONF_ID]
+        self._unique_id = (
+            config_entry.data[CONTROLLER][UDID] + "_" + str(device[CONF_ZONE][CONF_ID])
+        )
         self._device_name = device[CONF_DESCRIPTION][CONF_NAME]
         self._model = (
             config_entry.data[CONTROLLER][CONF_NAME]
@@ -571,7 +580,7 @@ class TechHumiditySensor(CoordinatorEntity, SensorEntity):
         # Return device information
         return {
             ATTR_IDENTIFIERS: {
-                (DOMAIN, self._device_name)
+                (DOMAIN, self._unique_id)
             },  # Unique identifiers for the device
             CONF_NAME: self._device_name,  # Name of the device
             CONF_MODEL: self._model,  # Model of the device
@@ -645,7 +654,7 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
         # Return device information
         return {
             ATTR_IDENTIFIERS: {
-                (DOMAIN, self._device_name)
+                (DOMAIN, self._unique_id)
             },  # Unique identifiers for the device
             CONF_NAME: self._device_name,  # Name of the device
             CONF_MODEL: self._model,  # Model of the device

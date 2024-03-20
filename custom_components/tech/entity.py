@@ -50,7 +50,7 @@ class TileEntity(
         """Get device info."""
         return {
             ATTR_IDENTIFIERS: {
-                (DOMAIN, self.unique_id)
+                (DOMAIN, self._unique_id)
             },  # Unique identifiers for the device
             CONF_NAME: self.name,  # Name of the device
             CONF_MODEL: self._model,  # Model of the device

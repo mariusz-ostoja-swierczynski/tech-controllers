@@ -5,7 +5,7 @@ import logging
 from aiohttp import ClientSession
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_DESCRIPTION, CONF_NAME, CONF_TOKEN
+from homeassistant.const import CONF_DESCRIPTION, CONF_ID, CONF_NAME, CONF_TOKEN
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import (
@@ -78,7 +78,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     device_registry = dr.async_get(hass)
     entity_registry = er.async_get(hass)
-    udid = config_entry.data[UDID]
+    udid = config_entry.data[CONTROLLER][UDID]
 
     if config_entry.version == 1:
         version = 2
@@ -170,6 +170,56 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             )
 
         _LOGGER.info("Migration to version %s successful", version)
+
+    if config_entry.version == 2 and config_entry.minor_version == 1:
+        version = 2
+        minor_version = 2
+
+        http_session = async_get_clientsession(hass)
+        api = Tech(
+            http_session, config_entry.data[USER_ID], config_entry.data[CONF_TOKEN]
+        )
+        controllers = await api.list_modules()
+        controller = next(obj for obj in controllers if obj.get(UDID) == udid)
+        api.modules.setdefault(udid, {"last_update": None, "zones": {}, "tiles": {}})
+        zones = await api.get_module_zones(udid)
+
+        _LOGGER.debug("🤴 config_entry: %s", config_entry)
+        _LOGGER.debug("🎅 controller: %s", controller)
+        _LOGGER.debug("👨‍🦰 zones: %s", zones)
+
+        # Update config entry to new version
+        hass.config_entries.async_update_entry(
+            config_entry, unique_id=udid, version=version, minor_version=minor_version
+        )
+
+        devices = dr.async_entries_for_config_entry(
+            device_registry, config_entry.entry_id
+        )
+        _LOGGER.debug("👮‍♀️ devices: %s", devices)
+
+        # Update devices identifiers:
+        # for device in devices:
+        #     zone_id = [
+        #         k
+        #         for k, v in zones.items()
+        #         if v["description"]["name"] == device.identifiers[1]
+        #     ][0]
+        #     _LOGGER.debug("👮‍♀️ zone_id: %s", zone_id)
+
+        #     device_registry.async_update_device(
+        #         device_id=device.id,
+        #         identifiers={
+        #             (
+        #                 DOMAIN,
+        #                 udid + "_" + zone_id,
+        #             )
+        #         },
+        #     )
+
+        _LOGGER.info(
+            "Migration to version %s successful", version + "." + minor_version
+        )
 
     return True
 
