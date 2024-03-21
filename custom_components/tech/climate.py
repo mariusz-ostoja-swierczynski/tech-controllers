@@ -145,7 +145,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return self._unique_id
+        return f"{self._unique_id}_zone_climate"
 
     @property
     def name(self):

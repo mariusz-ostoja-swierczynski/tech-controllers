@@ -6,7 +6,7 @@ import uuid
 import voluptuous as vol
 
 from homeassistant import config_entries, core, exceptions
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import SOURCE_USER, ConfigEntry
 from homeassistant.const import (
     ATTR_ID,
     CONF_NAME,
@@ -192,7 +192,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             domain=DOMAIN,
             version=ConfigFlow.VERSION,
             minor_version=ConfigFlow.MINOR_VERSION,
-            source=ConfigFlow.CONNECTION_CLASS,
+            source=SOURCE_USER,
         )
 
     def _create_controllers_array(self, validated_input: dict) -> List[dict]:

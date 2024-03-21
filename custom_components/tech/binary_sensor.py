@@ -58,6 +58,11 @@ class TileBinarySensor(TileEntity, binary_sensor.BinarySensorEntity):
         """Get the state of the device."""
 
     @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_binary_sensor"
+
+    @property
     def state(self):
         """Get the state of the binary sensor."""
         return STATE_ON if self._state else STATE_OFF

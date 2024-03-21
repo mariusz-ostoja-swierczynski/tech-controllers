@@ -32,10 +32,29 @@ def get_text(text_id) -> str:
         return f"txtId {text_id}"
 
 
+def get_id_from_text(text) -> int:
+    """Get id from text (reverse lookup needed for migration)."""
+    if text != "":
+        _LOGGER.debug("👰 text to lookup: %s", text)
+        return int(
+            [key for key, value in TRANSLATIONS["data"].items() if value == text][0]
+        )
+    else:
+        return 0
+
+
 def get_text_by_type(text_type) -> str:
     """Get text by type."""
     text_id = TXT_ID_BY_TYPE.get(text_type, f"type {text_type}")
     return get_text(text_id)
+
+
+def get_id_from_type(text_id) -> int:
+    """Get type id from text id."""
+    for key, value in TXT_ID_BY_TYPE.items():
+        if value == text_id:
+            return key
+    return None
 
 
 def get_icon(icon_id) -> str:
