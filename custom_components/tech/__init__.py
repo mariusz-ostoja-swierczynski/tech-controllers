@@ -191,9 +191,7 @@ async def migrate_version_2_1(hass: HomeAssistant, config_entry: ConfigEntry):
 
     api.modules.setdefault(udid, {"last_update": None, "zones": {}, "tiles": {}})
     zones = await api.get_module_zones(udid)
-    _LOGGER.debug("▶ zones: %s", zones)
     tiles = await api.get_module_tiles(udid)
-    _LOGGER.debug("🦶 tiles: %s", tiles)
 
     # Store existing entity entries:
     old_entity_entries = {
@@ -243,7 +241,7 @@ async def update_entities(
         entity_id = old_entity_entry.entity_id
         original_name = old_entity_entry.original_name
         _LOGGER.debug(
-            "👴 old unique id: %s, entity_id: %s, original_name: %s",
+            "update_entities, old unique id: %s, entity_id: %s, original_name: %s",
             unique_id,
             entity_id,
             original_name,
@@ -277,7 +275,7 @@ async def update_and_link_entities(
 ):
     """Update and link entities to devices."""
     _LOGGER.debug(
-        "👴 update_and_link_entities, config_entry: %s, udid: %s, entity_registry: %s",
+        "update_and_link_entities, config_entry: %s, udid: %s, entity_registry: %s",
         config_entry,
         udid,
         entity_registry,
@@ -295,7 +293,7 @@ async def update_and_link_entities(
         entity_id = old_entity_entry.entity_id
         original_name = old_entity_entry.original_name
         _LOGGER.debug(
-            "👴 old unique id: %s, entity_id: %s, original_name: %s",
+            "update_and_link_entities, old unique id: %s, entity_id: %s, original_name: %s",
             unique_id,
             entity_id,
             original_name,
@@ -320,7 +318,7 @@ async def update_and_link_entities(
                 continue
 
         if new_unique_id:
-            _LOGGER.debug("👴 new unique id: %s", new_unique_id)
+            _LOGGER.debug("update_and_link_entities, new unique id: %s", new_unique_id)
             device = await link_entity_to_device(
                 hass, old_entity_entry, remaining_entities_to_remove
             )
@@ -405,7 +403,7 @@ def get_unique_id(udid, zone_id, suffix):
 async def get_new_unique_id_for_binary_sensor(udid, tiles, original_name):
     """Get the new unique ID for a binary sensor entity."""
     txt_id = assets.get_id_from_text(original_name)
-    _LOGGER.debug("👳‍♂️ txtid: %s", txt_id)
+    _LOGGER.debug("get_new_unique_id_for_binary_sensor, txtid: %s", txt_id)
 
     try:
         key_id = next(
@@ -424,12 +422,14 @@ async def get_new_unique_id_for_binary_sensor(udid, tiles, original_name):
         if key_id is None:
             # looks like we have a sensor with name defined by type
             tile_type = assets.get_id_from_type(txt_id)
-            _LOGGER.debug("👳‍♂️ tile_type: %s", tile_type)
+            _LOGGER.debug(
+                "get_new_unique_id_for_binary_sensor, tile_type: %s", tile_type
+            )
             key_id = next(
                 (k for k, v in tiles.items() if v[CONF_TYPE] == tile_type),
                 None,
             )
-            _LOGGER.debug("👳‍♂️ key_id: %s", key_id)
+            _LOGGER.debug("get_new_unique_id_for_binary_sensor, key_id: %s", key_id)
         return udid + "_" + str(key_id) + "_tile_binary_sensor"
     except (KeyError, StopIteration):
         return None
@@ -446,9 +446,11 @@ async def get_new_unique_id_for_tile_sensor(
         else:
             return udid + "_" + str(uuid.uuid4().hex) + "_tile_sensor"
     else:
-        _LOGGER.debug("👳‍♂️ original_name: %s", original_name)
+        _LOGGER.debug(
+            "get_new_unique_id_for_tile_sensor, original_name: %s", original_name
+        )
         txt_id = assets.get_id_from_text(original_name)
-        _LOGGER.debug("👳‍♂️ txtid: %s", txt_id)
+        _LOGGER.debug("get_new_unique_id_for_tile_sensor, txtid: %s", txt_id)
 
         try:
             key_id = next(
@@ -466,12 +468,14 @@ async def get_new_unique_id_for_tile_sensor(
                 )
             if key_id is None:
                 tile_type = assets.get_id_from_type(txt_id)
-                _LOGGER.debug("👳‍♂️ tile_type: %s", tile_type)
+                _LOGGER.debug(
+                    "get_new_unique_id_for_tile_sensor, tile_type: %s", tile_type
+                )
                 key_id = next(
                     (k for k, v in tiles.items() if v[CONF_TYPE] == tile_type),
                     None,
                 )
-                _LOGGER.debug("👳‍♂️ key_id: %s", key_id)
+                _LOGGER.debug("get_new_unique_id_for_tile_sensor, key_id: %s", key_id)
 
             if tiles[key_id][CONF_TYPE] == TYPE_TEMPERATURE:
                 return udid + "_" + str(key_id) + "_tile_temperature"
