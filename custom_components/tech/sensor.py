@@ -43,6 +43,7 @@ from .const import (
     VALUE,
     VER,
     VISIBILITY,
+    WORKING_STATUS,
 )
 from .entity import TileEntity
 
@@ -66,7 +67,7 @@ async def async_setup_entry(
     entities = []
     for t in tiles:
         tile = tiles[t]
-        if tile[VISIBILITY] is False:
+        if tile[VISIBILITY] is False or tile.get(WORKING_STATUS, True) is False:
             continue
         if tile[CONF_TYPE] == TYPE_TEMPERATURE:
             entities.append(TileTemperatureSensor(tile, coordinator, controller_udid))
@@ -913,7 +914,7 @@ class TileWidgetSensor(TileSensor):
     def __init__(self, device, coordinator, controller_udid):
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, controller_udid)
-        self._name = assets.get_text(device[CONF_PARAMS]["widget2"]["txtId"])
+        self._name = assets.get_text(device[CONF_PARAMS]["widget1"]["txtId"])
 
     @property
     def unique_id(self) -> str:
@@ -922,7 +923,7 @@ class TileWidgetSensor(TileSensor):
 
     def get_state(self, device):
         """Get the state of the device."""
-        return device[CONF_PARAMS]["widget2"][VALUE] / 10
+        return device[CONF_PARAMS]["widget1"][VALUE] / 10
 
 
 class TileValveSensor(TileSensor, SensorEntity):
