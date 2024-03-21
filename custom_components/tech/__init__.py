@@ -1,6 +1,7 @@
 """The Tech Controllers integration."""
 import asyncio
 import logging
+import re
 import uuid
 
 from aiohttp import ClientSession
@@ -92,67 +93,197 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Migrate old entry."""
     _LOGGER.info("Migrating from version %s", config_entry.version)
 
+    if config_entry.version == 1:
+        await migrate_version_1(hass, config_entry)
+    elif config_entry.version == 2 and config_entry.minor_version == 1:
+        await migrate_version_2_1(hass, config_entry)
+
+    _LOGGER.info("Migration successful")
+    return True
+
+
+async def migrate_version_1(hass: HomeAssistant, config_entry: ConfigEntry):
+    """Migrate from version 1."""
     device_registry = dr.async_get(hass)
     entity_registry = er.async_get(hass)
 
-    if config_entry.version == 1:
-        udid = config_entry.data[UDID]
-        version = 2
-        minor_version = 2
+    udid = config_entry.data[UDID]
+    version = 2
+    minor_version = 2
 
-        http_session = async_get_clientsession(hass)
-        api = Tech(
-            http_session, config_entry.data[USER_ID], config_entry.data[CONF_TOKEN]
+    http_session = async_get_clientsession(hass)
+    api = Tech(http_session, config_entry.data[USER_ID], config_entry.data[CONF_TOKEN])
+    controllers = await api.list_modules()
+    controller = next(obj for obj in controllers if obj.get(UDID) == udid)
+    api.modules.setdefault(udid, {"last_update": None, "zones": {}, "tiles": {}})
+    zones = await api.get_module_zones(udid)
+    _LOGGER.debug("▶ zones: %s", zones)
+
+    data = {
+        USER_ID: api.user_id,
+        CONF_TOKEN: api.token,
+        CONTROLLER: controller,
+        VER: controller[VER] + ": " + controller[CONF_NAME],
+    }
+
+    # Store existing entity entries:
+    old_entity_entries = {
+        entry.unique_id: entry
+        for entry in er.async_entries_for_config_entry(
+            entity_registry, config_entry.entry_id
         )
-        controllers = await api.list_modules()
-        controller = next(obj for obj in controllers if obj.get(UDID) == udid)
-        api.modules.setdefault(udid, {"last_update": None, "zones": {}, "tiles": {}})
-        zones = await api.get_module_zones(udid)
-        _LOGGER.debug("▶ zones: %s", zones)
+    }
 
-        data = {
-            USER_ID: api.user_id,
-            CONF_TOKEN: api.token,
-            CONTROLLER: controller,
-            VER: controller[VER] + ": " + controller[CONF_NAME],
-        }
+    # Update config entry
+    hass.config_entries.async_update_entry(
+        config_entry,
+        data=data,
+        title=controller[CONF_NAME],
+        unique_id=udid,
+        version=version,
+        minor_version=minor_version,
+    )
 
-        # Store the existing entity entries:
-        old_entity_entries: dict[str, er.RegistryEntry] = {
-            entry.unique_id: entry
-            for entry in er.async_entries_for_config_entry(
-                entity_registry, config_entry.entry_id
-            )
-        }
+    # Create new devices as version 1 did not have any:
+    for z in zones:
+        zone = zones[z]
+        device_registry.async_get_or_create(
+            config_entry_id=config_entry.entry_id,
+            identifiers={(DOMAIN, udid + "_" + str(zone[CONF_ZONE][CONF_ID]))},
+            manufacturer=MANUFACTURER,
+            name=zone[CONF_DESCRIPTION][CONF_NAME],
+            model=controller[CONF_NAME] + ": " + controller[VER],
+        )
 
-        # Update config entry
-        hass.config_entries.async_update_entry(
+    remaining_entities_to_remove = {
+        entry.unique_id: entry
+        for entry in er.async_entries_for_config_entry(
+            entity_registry, config_entry.entry_id
+        )
+    }
+
+    await update_and_link_entities(
+        hass,
+        config_entry,
+        udid,
+        zones,
+        old_entity_entries,
+        entity_registry,
+        remaining_entities_to_remove,
+    )
+
+    await remove_remaining_entities(entity_registry, remaining_entities_to_remove)
+
+    return True
+
+
+async def migrate_version_2_1(hass: HomeAssistant, config_entry: ConfigEntry):
+    """Migrate from version 2.1."""
+    entity_registry = er.async_get(hass)
+
+    udid = config_entry.data[CONTROLLER][UDID]
+    version = 2
+    minor_version = 2
+
+    http_session = async_get_clientsession(hass)
+    api = Tech(http_session, config_entry.data[USER_ID], config_entry.data[CONF_TOKEN])
+    await assets.load_subtitles(hass.config.language, api)
+
+    api.modules.setdefault(udid, {"last_update": None, "zones": {}, "tiles": {}})
+    zones = await api.get_module_zones(udid)
+    _LOGGER.debug("▶ zones: %s", zones)
+    tiles = await api.get_module_tiles(udid)
+    _LOGGER.debug("🦶 tiles: %s", tiles)
+
+    # Store existing entity entries:
+    old_entity_entries = {
+        entry.unique_id: entry
+        for entry in er.async_entries_for_config_entry(
+            entity_registry, config_entry.entry_id
+        )
+    }
+
+    # Update config entry
+    hass.config_entries.async_update_entry(
+        config_entry,
+        unique_id=udid,
+        version=version,
+        minor_version=minor_version,
+    )
+
+    # Update device idenfiers
+    await update_device_identifiers(hass, config_entry, udid, zones)
+
+    # Update entities with new unique ids
+    await update_entities(
+        hass,
+        config_entry,
+        udid,
+        zones,
+        tiles,
+        old_entity_entries,
+        entity_registry,
+    )
+
+    return True
+
+
+async def update_entities(
+    hass,
+    config_entry,
+    udid,
+    zones,
+    tiles,
+    old_entity_entries,
+    entity_registry,
+):
+    """Update entities."""
+
+    for unique_id, old_entity_entry in old_entity_entries.items():
+        entity_id = old_entity_entry.entity_id
+        original_name = old_entity_entry.original_name
+        _LOGGER.debug(
+            "👴 old unique id: %s, entity_id: %s, original_name: %s",
+            unique_id,
+            entity_id,
+            original_name,
+        )
+
+        new_unique_id = await get_new_unique_id(
+            hass,
             config_entry,
-            data=data,
-            title=controller[CONF_NAME],
-            unique_id=udid,
-            version=version,
-            minor_version=minor_version,
+            udid,
+            zones,
+            tiles,
+            old_entity_entry,
+            entity_id,
+            original_name,
         )
 
-        # Create new devices as version 1 did not have any:
-        for z in zones:
-            zone = zones[z]
-            device_registry.async_get_or_create(
-                config_entry_id=config_entry.entry_id,
-                identifiers={
-                    (
-                        DOMAIN,
-                        udid + "_" + str(zone[CONF_ZONE][CONF_ID]),
-                    )
-                },
-                manufacturer=MANUFACTURER,
-                name=zone[CONF_DESCRIPTION][CONF_NAME],
-                model=controller[CONF_NAME] + ": " + controller[VER],
-                # sw_version= #TODO
-                # hw_version= #TODO
+        if new_unique_id:
+            entity_registry.async_update_entity(
+                old_entity_entry.entity_id, new_unique_id=new_unique_id
             )
 
+
+async def update_and_link_entities(
+    hass,
+    config_entry,
+    udid,
+    zones,
+    old_entity_entries,
+    entity_registry,
+    remaining_entities_to_remove=None,
+):
+    """Update and link entities to devices."""
+    _LOGGER.debug(
+        "👴 update_and_link_entities, config_entry: %s, udid: %s, entity_registry: %s",
+        config_entry,
+        udid,
+        entity_registry,
+    )
+
+    if remaining_entities_to_remove is None:
         remaining_entities_to_remove: dict[str, er.RegistryEntry] = {
             entry.unique_id: entry
             for entry in er.async_entries_for_config_entry(
@@ -160,343 +291,248 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             )
         }
 
-        # Update all entities and link them to appropriate devices
-        # plus update unique_id, everything else as it was
-        for unique_id, old_entity_entry in old_entity_entries.items():
-            entity_id = old_entity_entry.entity_id
-            original_name = old_entity_entry.original_name
-            _LOGGER.debug(
-                "👴 old unique id: %s, entity_id: %s, original_name: %s",
-                unique_id,
-                entity_id,
-                original_name,
-            )
-
-            if old_entity_entry.original_name != "":
-                try:
-                    zone_id = next(
-                        k
-                        for k, v in zones.items()
-                        if v["description"]["name"] == original_name
-                    )
-                except StopIteration:
-                    zone_id = None
-
-                if entity_id.startswith("climate."):
-                    new_unique_id = udid + "_" + str(zone_id) + "_climate"
-
-                elif entity_id.startswith("sensor"):
-                    if entity_id.endswith("battery"):
-                        new_unique_id = udid + "_" + str(zone_id) + "_battery"
-                    elif entity_id.endswith("out_temperature"):
-                        new_unique_id = udid + "_" + str(zone_id) + "_out_temperature"
-                    elif entity_id.endswith("humidity"):
-                        new_unique_id = udid + "_" + str(zone_id) + "_humidity"
-                    elif entity_id.endswith("temperature"):
-                        new_unique_id = udid + "_" + str(zone_id) + "_temperature"
-
-                device = device_registry.async_get_device(
-                    {(DOMAIN, old_entity_entry.original_name)},
-                    set(),
-                )
-                if device and device.name == old_entity_entry.original_name:
-                    # since thsi entity stays, remove it from collection to remove
-                    del remaining_entities_to_remove[unique_id]
-                    entity_registry.async_update_entity(
-                        old_entity_entry.entity_id,
-                        area_id=old_entity_entry.area_id,
-                        device_class=old_entity_entry.device_class,
-                        device_id=device.id,
-                        disabled_by=old_entity_entry.disabled_by,
-                        hidden_by=old_entity_entry.hidden_by,
-                        icon=old_entity_entry.icon,
-                        name=old_entity_entry.name,
-                        new_entity_id=old_entity_entry.entity_id,
-                        new_unique_id=new_unique_id,
-                        unit_of_measurement=old_entity_entry.unit_of_measurement,
-                    )
-
-        # Remove the remaining entities that are no longer provided by the integration
-        # Items that are not visible in emodul.
-
-        for entity_to_remove in remaining_entities_to_remove:
-            entity_registry.async_remove(
-                remaining_entities_to_remove[entity_to_remove].entity_id
-            )
-
-        _LOGGER.info(
-            "Migration to version %s successful",
-            str(version) + "." + str(minor_version),
+    for unique_id, old_entity_entry in old_entity_entries.items():
+        entity_id = old_entity_entry.entity_id
+        original_name = old_entity_entry.original_name
+        _LOGGER.debug(
+            "👴 old unique id: %s, entity_id: %s, original_name: %s",
+            unique_id,
+            entity_id,
+            original_name,
         )
 
-    if config_entry.version == 2 and config_entry.minor_version == 1:
-        udid = config_entry.data[CONTROLLER][UDID]
-        version = 2
-        minor_version = 2
-
-        http_session = async_get_clientsession(hass)
-        api = Tech(
-            http_session, config_entry.data[USER_ID], config_entry.data[CONF_TOKEN]
-        )
-        # load translations
-        await assets.load_subtitles(hass.config.language, api)
-
-        controllers = await api.list_modules()
-        controller = next(obj for obj in controllers if obj.get(UDID) == udid)
-        api.modules.setdefault(udid, {"last_update": None, "zones": {}, "tiles": {}})
-        zones = await api.get_module_zones(udid)
-        _LOGGER.debug("▶ zones: %s", zones)
-        tiles = await api.get_module_tiles(udid)
-        _LOGGER.debug("🦶 tiles: %s", tiles)
-
-        # Store the existing entity entries:
-        old_entity_entries: dict[str, er.RegistryEntry] = {
-            entry.unique_id: entry
-            for entry in er.async_entries_for_config_entry(
-                entity_registry, config_entry.entry_id
-            )
-        }
-
-        # Update config entry to new version
-        hass.config_entries.async_update_entry(
-            config_entry,
-            unique_id=udid,
-            version=version,
-            minor_version=minor_version,
-        )
-
-        if zones:
-            devices = dr.async_entries_for_config_entry(
-                device_registry, config_entry.entry_id
-            )
-
-            # Update devices identifiers:
-            for device in devices:
-                try:
-                    zone_id = next(
-                        k
-                        for k, v in zones.items()
-                        if v["description"]["name"] == list(device.identifiers)[0][1]
-                    )
-                except StopIteration:
-                    zone_id = None
-
-                if zone_id:
-                    device_registry.async_update_device(
-                        device_id=device.id,
-                        new_identifiers={
-                            (
-                                DOMAIN,
-                                udid + "_" + str(zone_id),
-                            )
-                        },
-                    )
-
-        # Update all entities to new unique_ids
-        for unique_id, old_entity_entry in old_entity_entries.items():
-            entity_id = old_entity_entry.entity_id
-            original_name = old_entity_entry.original_name
-            _LOGGER.debug(
-                "👴 old unique id: %s, entity_id: %s, original_name: %s",
-                unique_id,
-                entity_id,
-                original_name,
-            )
-
-            # if binary_sensor that means we look in tiles
-            if entity_id.startswith("binary_sensor"):
-                # original_name = get_substring_until_last_digit(
-                #     old_entity_entry.original_name
-                # )
-                # original_name = old_entity_entry.original_name
-
-                txt_id = assets.get_id_from_text(original_name)
-                _LOGGER.debug("👳‍♂️ txtid: %s", txt_id)
-
-                try:
-                    key_id = next(
-                        (
-                            k
-                            for k, v in tiles.items()
-                            if v[CONF_PARAMS].get("txtId") == txt_id
-                        ),
-                        None,
-                    )
-                    if key_id is None:
-                        key_id = next(
-                            (
-                                k
-                                for k, v in tiles.items()
-                                if v[CONF_PARAMS].get("headerId") == txt_id
-                            ),
-                            None,
-                        )
-                    if key_id is None:
-                        # looks like we have a sensor with name defined by type
-
-                        tile_type = assets.get_id_from_type(txt_id)
-                        _LOGGER.debug("👳‍♂️ tile_type: %s", tile_type)
-                        key_id = next(
-                            (k for k, v in tiles.items() if v[CONF_TYPE] == tile_type),
-                            None,
-                        )
-                        _LOGGER.debug("👳‍♂️ key_id: %s", key_id)
-                        # if txt_id:
-                        #     self._name = assets.get_text(txt_id)
-                        # else:
-                        #     self._name = assets.get_text_by_type(device[CONF_TYPE])
-                    new_unique_id = udid + "_" + str(key_id) + "_tile_binary_sensor"
-                except (KeyError, StopIteration):
-                    continue
-
-            # this is a tile sensor
-            elif entity_id.startswith("sensor") and not entity_id.endswith(
-                ("battery", "out_temperature", "humidity", "temperature")
-            ):
-                # no unique reverse lookup if we had missing title from API 😥
-                # original_name = get_substring_until_last_digit(
-                #     old_entity_entry.original_name
-                # )
-                # original_name = old_entity_entry.original_name
-                if "txtId" in original_name:
-                    if old_entity_entry.original_device_class == "temperature":
-                        new_unique_id = (
-                            udid + "_" + str(uuid.uuid4().hex) + "_tile_temperature"
-                        )
-                    else:
-                        new_unique_id = (
-                            udid + "_" + str(uuid.uuid4().hex) + "_tile_sensor"
-                        )
-                # otherwise we get the name to get the zone/tile ID
-                else:
-                    _LOGGER.debug("👳‍♂️ original_name: %s", original_name)
-                    txt_id = assets.get_id_from_text(original_name)
-                    _LOGGER.debug("👳‍♂️ txtid: %s", txt_id)
-                    # _LOGGER.debug("👳‍♂️ tiles.item(): %s", tiles.items())
-
-                    try:
-                        key_id = next(
-                            (
-                                k
-                                for k, v in tiles.items()
-                                if v[CONF_PARAMS].get("txtId") == txt_id
-                            ),
-                            None,
-                        )
-                        if key_id is None:
-                            key_id = next(
-                                (
-                                    k
-                                    for k, v in tiles.items()
-                                    if v[CONF_PARAMS].get("headerId") == txt_id
-                                ),
-                                None,
-                            )
-                        if key_id is None:
-                            # looks like we have a sensor with name defined by type
-
-                            tile_type = assets.get_id_from_type(txt_id)
-                            _LOGGER.debug("👳‍♂️ tile_type: %s", tile_type)
-                            key_id = next(
-                                (
-                                    k
-                                    for k, v in tiles.items()
-                                    if v[CONF_TYPE] == tile_type
-                                ),
-                                None,
-                            )
-                            _LOGGER.debug("👳‍♂️ key_id: %s", key_id)
-                            # if txt_id:
-                            #     self._name = assets.get_text(txt_id)
-                            # else:
-                            #     self._name = assets.get_text_by_type(device[CONF_TYPE])
-
-                        if tiles[key_id][CONF_TYPE] == TYPE_TEMPERATURE:
-                            new_unique_id = (
-                                udid + "_" + str(key_id) + "_tile_temperature"
-                            )
-                        if tiles[key_id][CONF_TYPE] == TYPE_TEMPERATURE_CH:
-                            new_unique_id = udid + "_" + str(key_id) + "_tile_widget"
-                        if tiles[key_id][CONF_TYPE] == TYPE_FAN:
-                            new_unique_id = udid + "_" + str(key_id) + "_tile_fan"
-                        if tiles[key_id][CONF_TYPE] == TYPE_VALVE:
-                            new_unique_id = udid + "_" + str(key_id) + "_tile_valve"
-                        if tiles[key_id][CONF_TYPE] == TYPE_MIXING_VALVE:
-                            new_unique_id = (
-                                udid + "_" + str(key_id) + "_tile_mixing_valve"
-                            )
-                        if tiles[key_id][CONF_TYPE] == TYPE_FUEL_SUPPLY:
-                            new_unique_id = (
-                                udid + "_" + str(key_id) + "_tile_fuel_supply"
-                            )
-                        if tiles[key_id][CONF_TYPE] == TYPE_TEXT:
-                            new_unique_id = udid + "_" + str(key_id) + "_tile_text"
-                    except (KeyError, StopIteration):
-                        continue
-
-            # so now we are left with regular zone sensors
-            elif entity_id.startswith("climate."):
+        if old_entity_entry.original_name != "":
+            try:
                 zone_id = next(
                     k
                     for k, v in zones.items()
                     if v["description"]["name"] == original_name
                 )
-                new_unique_id = udid + "_" + str(zone_id) + "_zone_climate"
-
-            elif entity_id.startswith("sensor"):
-                if entity_id.endswith("battery"):
-                    zone_id = next(
-                        k
-                        for k, v in zones.items()
-                        if v["description"]["name"]
-                        == original_name[: original_name.find(" battery")]
-                    )
-                    new_unique_id = udid + "_" + str(zone_id) + "_zone_battery"
-                elif entity_id.endswith("out_temperature"):
-                    zone_id = next(
-                        k
-                        for k, v in zones.items()
-                        if v["description"]["name"]
-                        == original_name[: original_name.find(" out_temperature")]
-                    )
-                    new_unique_id = udid + "_" + str(zone_id) + "_zone_out_temperature"
-                elif entity_id.endswith("humidity"):
-                    zone_id = next(
-                        k
-                        for k, v in zones.items()
-                        if v["description"]["name"]
-                        == original_name[: original_name.find(" humidity")]
-                    )
-                    new_unique_id = udid + "_" + str(zone_id) + "_zone_humidity"
-                elif entity_id.endswith("temperature"):
-                    zone_id = next(
-                        k
-                        for k, v in zones.items()
-                        if v["description"]["name"]
-                        == original_name[: original_name.find(" Temperature")]
-                    )
-                    new_unique_id = udid + "_" + str(zone_id) + "_zone_temperature"
-                # this is not a zone sensor
+                if entity_id.startswith("climate."):
+                    new_unique_id = udid + "_" + str(zone_id) + "_climate"
                 else:
-                    continue
+                    zone_id, suffix = get_zone_id_and_suffix(
+                        "sensor", entity_id, original_name, zones
+                    )
+                    new_unique_id = get_unique_id(udid, zone_id=zone_id, suffix=suffix)
+            except StopIteration:
+                new_unique_id = None
+                continue
 
-            # finally update the unique id
-            _LOGGER.debug(
-                "🕵️‍♀️ Finaly updating: %s with: %s",
-                old_entity_entry.unique_id,
-                new_unique_id,
+        if new_unique_id:
+            _LOGGER.debug("👴 new unique id: %s", new_unique_id)
+            device = await link_entity_to_device(
+                hass, config_entry, old_entity_entry, remaining_entities_to_remove
             )
-
             entity_registry.async_update_entity(
-                old_entity_entry.entity_id, new_unique_id=new_unique_id
+                old_entity_entry.entity_id,
+                area_id=old_entity_entry.area_id,
+                device_class=old_entity_entry.device_class,
+                disabled_by=old_entity_entry.disabled_by,
+                hidden_by=old_entity_entry.hidden_by,
+                icon=old_entity_entry.icon,
+                name=old_entity_entry.name,
+                new_entity_id=old_entity_entry.entity_id,
+                new_unique_id=new_unique_id,
+                unit_of_measurement=old_entity_entry.unit_of_measurement,
+                device_id=device.id if device else None,
             )
 
-        _LOGGER.info(
-            "Migration to version %s successful",
-            str(version) + "." + str(minor_version),
-        )
 
-    return True
+async def get_new_unique_id(
+    hass,
+    config_entry,
+    udid,
+    zones,
+    tiles,
+    old_entity_entry,
+    entity_id,
+    original_name,
+):
+    """Get the new unique ID for the entity."""
+    if entity_id.startswith("binary_sensor"):
+        return await get_new_unique_id_for_binary_sensor(udid, tiles, original_name)
+
+    if entity_id.startswith("sensor"):
+        if not entity_id.endswith(
+            ("battery", "out_temperature", "humidity", "temperature")
+        ):
+            return await get_new_unique_id_for_tile_sensor(
+                hass, config_entry, udid, tiles, old_entity_entry, original_name
+            )
+
+    elif entity_id.startswith("climate."):
+        zone_id = next(
+            k for k, v in zones.items() if v["description"]["name"] == original_name
+        )
+        return udid + "_" + str(zone_id) + "_zone_climate"
+
+    zone_id, suffix = get_zone_id_and_suffix("sensor", entity_id, original_name, zones)
+    return get_unique_id(udid=udid, zone_id=zone_id, suffix=suffix)
+
+
+def get_zone_id_and_suffix(start, entity_id, original_name, zones):
+    """Get zone id and suffix to create new unique iq."""
+    if entity_id.startswith(start):
+        for suffix, pattern in [
+            ("battery", r" battery$"),
+            ("out_temperature", r" out_temperature$"),
+            ("humidity", r" humidity$"),
+            ("temperature", r" Temperature$"),
+        ]:
+            match = re.search(pattern, original_name)
+            if match:
+                zone_id = next(
+                    (
+                        k
+                        for k, v in zones.items()
+                        if v["description"]["name"] == original_name[: match.start()]
+                    ),
+                    None,
+                )
+                if zone_id is not None:
+                    return zone_id, suffix
+    return None, None
+
+
+def get_unique_id(udid, zone_id, suffix):
+    """Build new uniuque ID from zone id and suffix."""
+    if zone_id is not None and suffix is not None:
+        return f"{udid}_{zone_id}_zone_{suffix}"
+    return None
+
+
+async def get_new_unique_id_for_binary_sensor(udid, tiles, original_name):
+    """Get the new unique ID for a binary sensor entity."""
+    txt_id = assets.get_id_from_text(original_name)
+    _LOGGER.debug("👳‍♂️ txtid: %s", txt_id)
+
+    try:
+        key_id = next(
+            (k for k, v in tiles.items() if v[CONF_PARAMS].get("txtId") == txt_id),
+            None,
+        )
+        if key_id is None:
+            key_id = next(
+                (
+                    k
+                    for k, v in tiles.items()
+                    if v[CONF_PARAMS].get("headerId") == txt_id
+                ),
+                None,
+            )
+        if key_id is None:
+            # looks like we have a sensor with name defined by type
+            tile_type = assets.get_id_from_type(txt_id)
+            _LOGGER.debug("👳‍♂️ tile_type: %s", tile_type)
+            key_id = next(
+                (k for k, v in tiles.items() if v[CONF_TYPE] == tile_type),
+                None,
+            )
+            _LOGGER.debug("👳‍♂️ key_id: %s", key_id)
+        return udid + "_" + str(key_id) + "_tile_binary_sensor"
+    except (KeyError, StopIteration):
+        return None
+
+
+async def get_new_unique_id_for_tile_sensor(
+    udid, tiles, old_entity_entry, original_name
+):
+    """Get the new unique ID for a tile sensor entity."""
+    # no unique reverse lookup if we had missing title from API 😥
+    if "txtId" in original_name:
+        if old_entity_entry.original_device_class == "temperature":
+            return udid + "_" + str(uuid.uuid4().hex) + "_tile_temperature"
+        else:
+            return udid + "_" + str(uuid.uuid4().hex) + "_tile_sensor"
+    else:
+        _LOGGER.debug("👳‍♂️ original_name: %s", original_name)
+        txt_id = assets.get_id_from_text(original_name)
+        _LOGGER.debug("👳‍♂️ txtid: %s", txt_id)
+
+        try:
+            key_id = next(
+                (k for k, v in tiles.items() if v[CONF_PARAMS].get("txtId") == txt_id),
+                None,
+            )
+            if key_id is None:
+                key_id = next(
+                    (
+                        k
+                        for k, v in tiles.items()
+                        if v[CONF_PARAMS].get("headerId") == txt_id
+                    ),
+                    None,
+                )
+            if key_id is None:
+                tile_type = assets.get_id_from_type(txt_id)
+                _LOGGER.debug("👳‍♂️ tile_type: %s", tile_type)
+                key_id = next(
+                    (k for k, v in tiles.items() if v[CONF_TYPE] == tile_type),
+                    None,
+                )
+                _LOGGER.debug("👳‍♂️ key_id: %s", key_id)
+
+            if tiles[key_id][CONF_TYPE] == TYPE_TEMPERATURE:
+                return udid + "_" + str(key_id) + "_tile_temperature"
+            if tiles[key_id][CONF_TYPE] == TYPE_TEMPERATURE_CH:
+                return udid + "_" + str(key_id) + "_tile_widget"
+            if tiles[key_id][CONF_TYPE] == TYPE_FAN:
+                return udid + "_" + str(key_id) + "_tile_fan"
+            if tiles[key_id][CONF_TYPE] == TYPE_VALVE:
+                return udid + "_" + str(key_id) + "_tile_valve"
+            if tiles[key_id][CONF_TYPE] == TYPE_MIXING_VALVE:
+                return udid + "_" + str(key_id) + "_tile_mixing_valve"
+            if tiles[key_id][CONF_TYPE] == TYPE_FUEL_SUPPLY:
+                return udid + "_" + str(key_id) + "_tile_fuel_supply"
+            if tiles[key_id][CONF_TYPE] == TYPE_TEXT:
+                return udid + "_" + str(key_id) + "_tile_text"
+        except (KeyError, StopIteration):
+            return None
+
+
+async def link_entity_to_device(hass, old_entity_entry, remaining_entities_to_remove):
+    """Link the entity to the corresponding device."""
+    device_registry = dr.async_get(hass)
+    if old_entity_entry.original_name:
+        device = device_registry.async_get_device(
+            {(DOMAIN, old_entity_entry.original_name)},
+            set(),
+        )
+        if device and device.name == old_entity_entry.original_name:
+            del remaining_entities_to_remove[old_entity_entry.entity_id]
+            return device
+    return None
+
+
+async def update_device_identifiers(hass, config_entry, udid, zones):
+    """Update device identifiers for the new version."""
+    device_registry = dr.async_get(hass)
+    devices = dr.async_entries_for_config_entry(device_registry, config_entry.entry_id)
+
+    for device in devices:
+        try:
+            zone_id = next(
+                k
+                for k, v in zones.items()
+                if v["description"]["name"] == list(device.identifiers)[0][1]
+            )
+        except StopIteration:
+            zone_id = None
+
+        if zone_id:
+            device_registry.async_update_device(
+                device_id=device.id,
+                new_identifiers={(DOMAIN, udid + "_" + str(zone_id))},
+            )
+
+
+async def remove_remaining_entities(entity_registry, remaining_entities_to_remove):
+    """Remove the remaining entities that are no longer provided by the integration."""
+    for entity_to_remove in remaining_entities_to_remove:
+        entity_registry.async_remove(
+            remaining_entities_to_remove[entity_to_remove].entity_id
+        )
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
