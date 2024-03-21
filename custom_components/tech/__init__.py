@@ -322,7 +322,7 @@ async def update_and_link_entities(
         if new_unique_id:
             _LOGGER.debug("👴 new unique id: %s", new_unique_id)
             device = await link_entity_to_device(
-                hass, config_entry, old_entity_entry, remaining_entities_to_remove
+                hass, old_entity_entry, remaining_entities_to_remove
             )
             entity_registry.async_update_entity(
                 old_entity_entry.entity_id,
@@ -358,7 +358,7 @@ async def get_new_unique_id(
             ("battery", "out_temperature", "humidity", "temperature")
         ):
             return await get_new_unique_id_for_tile_sensor(
-                hass, config_entry, udid, tiles, old_entity_entry, original_name
+                udid, tiles, old_entity_entry, original_name
             )
 
     elif entity_id.startswith("climate."):
@@ -586,38 +586,3 @@ class TechCoordinator(DataUpdateCoordinator):
             raise ConfigEntryAuthFailed from err
         except TechError as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
-
-
-def get_substring_until_last_digit(string: str) -> str:
-    """Extract a substring from a given string up to the last digit.
-
-    Args:
-        string (str): The string to extract the substring from.
-
-    Returns:
-        str: The extracted substring.
-
-    """
-    # Reverse the string
-    reversed_string = string[::-1]
-
-    # Find the index of the first digit from the end (last digit in the original string)
-    first_digit_from_end_index = next(
-        (i for i, char in enumerate(reversed_string) if char.isdigit()), None
-    )
-
-    if first_digit_from_end_index is None:
-        # No digit found, return the original string
-        return string
-    else:
-        # Calculate the index of the last digit in the original string
-        last_digit_index = len(string) - first_digit_from_end_index - 1
-
-        # Check if the last digit is at the end
-        if last_digit_index == len(string) - 1:
-            # Extract the substring up to the last digit and remove trailing whitespace
-            substring = string[:last_digit_index].rstrip()
-            return substring
-        else:
-            # Digit is not at the end, return the original string
-            return string
