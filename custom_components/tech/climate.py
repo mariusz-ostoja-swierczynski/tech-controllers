@@ -74,7 +74,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         """Returns device information in a dictionary format."""
         return {
             ATTR_IDENTIFIERS: {
-                (DOMAIN, self.device_name)
+                (DOMAIN, self._unique_id)
             },  # Unique identifiers for the device
             CONF_NAME: self.device_name,  # Name of the device
             CONF_MODEL: self.model,  # Model of the device
@@ -108,7 +108,10 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
             self._temperature = None
 
         # Update humidity
-        if device[CONF_ZONE]["humidity"] is not None and device[CONF_ZONE]["humidity"] >= 0:
+        if (
+            device[CONF_ZONE]["humidity"] is not None
+            and device[CONF_ZONE]["humidity"] >= 0
+        ):
             self._humidity = device[CONF_ZONE]["humidity"]
         else:
             self._humidity = None
@@ -142,7 +145,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return self._unique_id
+        return f"{self._unique_id}_zone_climate"
 
     @property
     def name(self):
