@@ -1,0 +1,30 @@
+name: Request a feature from Tech Controllers integration
+description: Request a feature from Tech Controllers integration.
+title: "[Feat]: "
+labels: ["feature", "triage"]
+assignees:
+  - anarion80
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This issue form is for requesting new features only!
+
+        If you have a bug report, please use the [bug report] issue type.
+
+        [bug report]: https://github.com/mariusz-ostoja-swierczynski/tech-controllers/issues/new/choose
+  - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: The request
+      description: >-
+        Describe the feature you are requesting here, to communicate to the
+        maintainers.
+
+        A clear and concise description of what you want to happen.
+  - type: textarea
+    attributes:
+      label: Additional information
+      description: >
+        If you have any additional information, context, screenshots for us, use the field below.
