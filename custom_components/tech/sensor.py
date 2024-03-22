@@ -43,6 +43,7 @@ from .const import (
     VALUE,
     VER,
     VISIBILITY,
+    WORKING_STATUS,
 )
 from .entity import TileEntity
 
@@ -66,7 +67,7 @@ async def async_setup_entry(
     entities = []
     for t in tiles:
         tile = tiles[t]
-        if tile[VISIBILITY] is False:
+        if tile[VISIBILITY] is False or tile.get(WORKING_STATUS, True) is False:
             continue
         if tile[CONF_TYPE] == TYPE_TEMPERATURE:
             entities.append(TileTemperatureSensor(tile, coordinator, controller_udid))
@@ -275,6 +276,9 @@ class TechBatterySensor(CoordinatorEntity, SensorEntity):
         self._config_entry = config_entry
         self._coordinator = coordinator
         self._id = device[CONF_ZONE][CONF_ID]
+        self._unique_id = (
+            config_entry.data[CONTROLLER][UDID] + "_" + str(device[CONF_ZONE][CONF_ID])
+        )
         self._device_name = device[CONF_DESCRIPTION][CONF_NAME]
         self._model = (
             config_entry.data[CONTROLLER][CONF_NAME]
@@ -306,7 +310,7 @@ class TechBatterySensor(CoordinatorEntity, SensorEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return f"climate_{self._id}_battery"
+        return f"{self._unique_id}_zone_battery"
 
     @property
     def name(self):
@@ -324,7 +328,7 @@ class TechBatterySensor(CoordinatorEntity, SensorEntity):
         # Return device information
         return {
             ATTR_IDENTIFIERS: {
-                (DOMAIN, self._device_name)
+                (DOMAIN, self._unique_id)
             },  # Unique identifiers for the device
             CONF_NAME: self._device_name,  # Name of the device
             CONF_MODEL: self._model,  # Model of the device
@@ -388,7 +392,7 @@ class TechTemperatureSensor(CoordinatorEntity, SensorEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return f"climate_{self._id}_temperature"
+        return f"{self._unique_id}_zone_temperature"
 
     @property
     def name(self):
@@ -406,7 +410,7 @@ class TechTemperatureSensor(CoordinatorEntity, SensorEntity):
         # Return device information
         return {
             ATTR_IDENTIFIERS: {
-                (DOMAIN, self._device_name)
+                (DOMAIN, self._unique_id)
             },  # Unique identifiers for the device
             CONF_NAME: self._device_name,  # Name of the device
             CONF_MODEL: self._model,  # Model of the device
@@ -430,6 +434,9 @@ class TechOutsideTempTile(CoordinatorEntity, SensorEntity):
         self._config_entry = config_entry
         self._coordinator = coordinator
         self._id = device[CONF_ID]
+        self._unique_id = (
+            config_entry.data[CONTROLLER][UDID] + "_" + str(device[CONF_ZONE][CONF_ID])
+        )
         self._device_name = device[CONF_DESCRIPTION][CONF_NAME]
         self._model = (
             config_entry.data[CONTROLLER][CONF_NAME]
@@ -474,7 +481,7 @@ class TechOutsideTempTile(CoordinatorEntity, SensorEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return f"climate_{self._id}_out_temperature"
+        return f"{self._unique_id}_zone_out_temperature"
 
     @property
     def name(self):
@@ -492,7 +499,7 @@ class TechOutsideTempTile(CoordinatorEntity, SensorEntity):
         # Return device information
         return {
             ATTR_IDENTIFIERS: {
-                (DOMAIN, self._device_name)
+                (DOMAIN, self._unique_id)
             },  # Unique identifiers for the device
             CONF_NAME: self._device_name,  # Name of the device
             CONF_MODEL: self._model,  # Model of the device
@@ -516,6 +523,9 @@ class TechHumiditySensor(CoordinatorEntity, SensorEntity):
         self._config_entry = config_entry
         self._coordinator = coordinator
         self._id = device[CONF_ZONE][CONF_ID]
+        self._unique_id = (
+            config_entry.data[CONTROLLER][UDID] + "_" + str(device[CONF_ZONE][CONF_ID])
+        )
         self._device_name = device[CONF_DESCRIPTION][CONF_NAME]
         self._model = (
             config_entry.data[CONTROLLER][CONF_NAME]
@@ -553,7 +563,7 @@ class TechHumiditySensor(CoordinatorEntity, SensorEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return f"climate_{self._id}_humidity"
+        return f"{self._unique_id}_zone_humidity"
 
     @property
     def name(self):
@@ -571,7 +581,7 @@ class TechHumiditySensor(CoordinatorEntity, SensorEntity):
         # Return device information
         return {
             ATTR_IDENTIFIERS: {
-                (DOMAIN, self._device_name)
+                (DOMAIN, self._unique_id)
             },  # Unique identifiers for the device
             CONF_NAME: self._device_name,  # Name of the device
             CONF_MODEL: self._model,  # Model of the device
@@ -645,7 +655,7 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
         # Return device information
         return {
             ATTR_IDENTIFIERS: {
-                (DOMAIN, self._device_name)
+                (DOMAIN, self._unique_id)
             },  # Unique identifiers for the device
             CONF_NAME: self._device_name,  # Name of the device
             CONF_MODEL: self._model,  # Model of the device
@@ -655,7 +665,7 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return self._id
+        return self._unique_id
 
     @property
     def name(self):
@@ -673,12 +683,12 @@ class ZoneTemperatureSensor(ZoneSensor):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return f"{self._name} Temperature"
+        return f"{self._name} temperature"
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return f"climate_{self._id}_battery"
+        return f"{self._unique_id}_zone_temperature"
 
     def update_properties(self, device):
         """Update the properties of the TechTemperatureSensor object.
@@ -712,6 +722,11 @@ class ZoneBatterySensor(ZoneSensor):
         """Return the name of the device."""
         return f"{self._name} battery"
 
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_zone_battery"
+
     def update_properties(self, device):
         """Update properties from the TechBatterySensor object.
 
@@ -736,7 +751,7 @@ class ZoneHumiditySensor(ZoneSensor):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return f"climate_{self._id}_humidity"
+        return f"{self._unique_id}_humidity"
 
     @property
     def name(self):
@@ -773,7 +788,7 @@ class ZoneOutsideTempTile(ZoneSensor):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return f"climate_{self._id}_out_temperature"
+        return f"{self._unique_id}_out_temperature"
 
     @property
     def name(self):
@@ -818,6 +833,11 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
         self.device_class = SensorDeviceClass.TEMPERATURE
         self.state_class = SensorStateClass.MEASUREMENT
 
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_temperature"
+
     def get_state(self, device):
         """Get the state of the device."""
         return device[CONF_PARAMS][VALUE] / 10
@@ -833,6 +853,11 @@ class TileFuelSupplySensor(TileSensor):
     def __init__(self, device, coordinator, controller_udid):
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, controller_udid)
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_fuel_supply"
 
     def get_state(self, device):
         """Get the state of the device."""
@@ -850,6 +875,11 @@ class TileFanSensor(TileSensor):
         TileSensor.__init__(self, device, coordinator, controller_udid)
         self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
 
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_fan"
+
     def get_state(self, device):
         """Get the state of the device."""
         return device[CONF_PARAMS]["gear"]
@@ -863,6 +893,11 @@ class TileTextSensor(TileSensor):
         TileSensor.__init__(self, device, coordinator, controller_udid)
         self._name = assets.get_text(device[CONF_PARAMS]["headerId"])
         self._attr_icon = assets.get_icon(device[CONF_PARAMS]["iconId"])
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_text"
 
     def get_state(self, device):
         """Get the state of the device."""
@@ -879,11 +914,16 @@ class TileWidgetSensor(TileSensor):
     def __init__(self, device, coordinator, controller_udid):
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, controller_udid)
-        self._name = assets.get_text(device[CONF_PARAMS]["widget2"]["txtId"])
+        self._name = assets.get_text(device[CONF_PARAMS]["widget1"]["txtId"])
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_widget"
 
     def get_state(self, device):
         """Get the state of the device."""
-        return device[CONF_PARAMS]["widget2"][VALUE] / 10
+        return device[CONF_PARAMS]["widget1"][VALUE] / 10
 
 
 class TileValveSensor(TileSensor, SensorEntity):
@@ -898,6 +938,11 @@ class TileValveSensor(TileSensor, SensorEntity):
         name = assets.get_text_by_type(device[CONF_TYPE])
         self._name = f"{name} {device[CONF_PARAMS]['valveNumber']}"
         self.attrs: Dict[str, Any] = {}
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_valve"
 
     def get_state(self, device):
         """Get the state of the device."""
@@ -950,6 +995,11 @@ class TileMixingValveSensor(TileSensor, SensorEntity):
         self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
         name = assets.get_text_by_type(device[CONF_TYPE])
         self._name = f"{name} {device[CONF_PARAMS]['valveNumber']}"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_mixing_valve"
 
     def get_state(self, device):
         """Get the state of the device."""

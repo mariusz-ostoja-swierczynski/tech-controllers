@@ -15,6 +15,7 @@ TILES = "tiles"
 VISIBILITY = "visibility"
 VALUE = "value"
 MANUFACTURER = "TechControllers"
+WORKING_STATUS = "workingStatus"
 
 DEFAULT_ICON = "mdi:eye"
 
