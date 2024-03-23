@@ -1,0 +1,31 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Zariadenie už bolo nakonfigurované",
+            "no_modules": "Neboli nájdené žiadne moduly"
+        },
+        "error": {
+            "cannot_connect": "Nie je možné pripojiť sa k Tech API.",
+            "invalid_auth": "Neplatné prihlasovacie údaje!",
+            "unknown": "Neznáma chyba. Skúste to prosím znova alebo nahláste chybu na ..."
+        },
+        "step": {
+            "user": {
+                "title": "Prihlásenie do eModul",
+                "description": "Prosím, zadajte svoje prihlasovacie údaje do služby emodul.eu alebo emodul.pl.",
+                "data": {
+                    "password": "Heslo",
+                    "username": "Používateľské meno"
+                }
+            },
+            "select_controllers": {
+                "title": "Výber modulov",
+                "description": "Prosím, vyberte moduly, ktoré chcete integrovať.",
+                "data": {
+                    "controllers": "Moduly na import"
+                }
+            }
+        }
+    },
+    "title": "Tech Controllers"
+}
