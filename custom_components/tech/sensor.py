@@ -29,9 +29,12 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import TechCoordinator, assets
 from .const import (
+    ACTUATORS,
+    BATTERY_LEVEL,
     CONTROLLER,
     DOMAIN,
     MANUFACTURER,
+    SIGNAL_STRENGTH,
     TYPE_FAN,
     TYPE_FUEL_SUPPLY,
     TYPE_MIXING_VALVE,
@@ -101,6 +104,7 @@ async def async_setup_entry(
     battery_devices = map_to_battery_sensors(zones, coordinator, config_entry)
     temperature_sensors = map_to_temperature_sensors(zones, coordinator, config_entry)
     humidity_sensors = map_to_humidity_sensors(zones, coordinator, config_entry)
+    actuator_sensors = map_to_actuator_sensors(zones, coordinator, config_entry)
     # tile_sensors = map_to_tile_sensors(tiles, api, config_entry)
 
     async_add_entities(
@@ -108,6 +112,7 @@ async def async_setup_entry(
             battery_devices,
             temperature_sensors,
             humidity_sensors,  # , tile_sensors
+            actuator_sensors,
         ),
         True,
     )
@@ -145,7 +150,7 @@ def is_battery_operating_device(device) -> bool:
     bool - True if the device is operating on battery, False otherwise.
 
     """
-    return device[CONF_ZONE]["batteryLevel"] is not None
+    return device[CONF_ZONE][BATTERY_LEVEL] is not None
 
 
 def map_to_temperature_sensors(zones, coordinator, config_entry):
@@ -220,6 +225,45 @@ def is_humidity_operating_device(device) -> bool:
     return (
         device[CONF_ZONE]["humidity"] is not None and device[CONF_ZONE]["humidity"] >= 0
     )
+
+
+def map_to_actuator_sensors(zones, coordinator, config_entry):
+    """Map zones to actuator sensors.
+
+    Args:
+    zones: list of zones
+    coordinator: API to interact with actuators
+    config_entry: configuration entry for the sensors
+
+    Returns:
+    list of ZoneActuatorSensor instances
+
+    """
+    # Filter devices that are actuator operating devices
+    devices = [
+        deviceIndex
+        for deviceIndex in zones
+        if is_actuator_operating_device(zones[deviceIndex])
+    ]
+
+    return [
+        ZoneActuatorSensor(zones[deviceIndex], coordinator, config_entry, idx)
+        for deviceIndex in devices
+        for idx in range(len(zones[deviceIndex][ACTUATORS]))
+    ]
+
+
+def is_actuator_operating_device(device) -> bool:
+    """Check if the device has any actuators.
+
+    Args:
+    device: dict - The device information containing the zone and humidity level.
+
+    Returns:
+    bool - True if the device has any actuators, False otherwise.
+
+    """
+    return len(device[ACTUATORS]) > 0
 
 
 def map_to_tile_sensors(tiles, coordinator, config_entry):
@@ -299,7 +343,7 @@ class TechBatterySensor(CoordinatorEntity, SensorEntity):
 
         """
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
-        self._attr_native_value = device[CONF_ZONE]["batteryLevel"]
+        self._attr_native_value = device[CONF_ZONE][BATTERY_LEVEL]
 
     @callback
     def _handle_coordinator_update(self, *args: Any) -> None:
@@ -738,7 +782,7 @@ class ZoneBatterySensor(ZoneSensor):
 
         """
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
-        self._attr_native_value = device[CONF_ZONE]["batteryLevel"]
+        self._attr_native_value = device[CONF_ZONE][BATTERY_LEVEL]
 
 
 class ZoneHumiditySensor(ZoneSensor):
@@ -776,6 +820,82 @@ class ZoneHumiditySensor(ZoneSensor):
             self._attr_native_value = device[CONF_ZONE]["humidity"]
         else:
             self._attr_native_value = None
+
+
+class ZoneActuatorSensor(ZoneSensor):
+    """Representation of a Zone Actuator Sensor."""
+
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, device, coordinator, config_entry, actuator_index):
+        """Initialize the sensor."""
+        _LOGGER.debug("ZoneActuatorSensor Init...")
+        _LOGGER.debug(
+            "ZoneActuatorSensor device, %s, actuator_index, %s", device, actuator_index
+        )
+        self._actuator_index = actuator_index
+        self.attrs: Dict[str, Any] = {}
+        super().__init__(device, coordinator, config_entry)
+        self._attr_icon = assets.get_icon_by_type(TYPE_VALVE)
+        self._id = device[CONF_ZONE][CONF_ID]
+        self._unique_id = (
+            config_entry.data[CONTROLLER][UDID] + "_" + str(device[CONF_ZONE][CONF_ID])
+        )
+        self._device_name = device[CONF_DESCRIPTION][CONF_NAME]
+        self._model = (
+            config_entry.data[CONTROLLER][CONF_NAME]
+            + ": "
+            + config_entry.data[CONTROLLER][VER]
+        )
+        # self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_zone_actuator_{str(self._actuator_index + 1)}"
+
+    @property
+    def name(self):
+        """Return the name of the device."""
+        return f"{self._name} actuator {str(self._actuator_index + 1)}"
+
+    # def get_state(self, device):
+    #     """Get the state of the device."""
+    #     return device[CONF_PARAMS]["openingPercentage"]
+
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any]:
+        """Return the state attributes."""
+        attributes = {}
+        attributes.update(self.attrs)
+        return attributes
+
+    def update_properties(self, device):
+        """Update the properties of the ZoneActuatorSensor object.
+
+        Args:
+        device (dict): The device information.
+
+        Returns:
+        None
+
+        """
+        # Update the name of the device
+        self._name = device[CONF_DESCRIPTION][CONF_NAME]
+
+        # Check if the humidity value is not zero and update the native value attribute accordingly
+        self._attr_native_value = device[CONF_ZONE]["actuatorsOpen"]
+
+        # Update battery and signal strength
+
+        # self._state = self.get_state(device)
+        self.attrs[BATTERY_LEVEL] = device[ACTUATORS][self._actuator_index][
+            BATTERY_LEVEL
+        ]
+        self.attrs[SIGNAL_STRENGTH] = device[ACTUATORS][self._actuator_index][
+            SIGNAL_STRENGTH
+        ]
 
 
 class ZoneOutsideTempTile(ZoneSensor):
