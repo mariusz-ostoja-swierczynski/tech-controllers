@@ -19,6 +19,7 @@ WORKING_STATUS = "workingStatus"
 ACTUATORS = "actuators"
 BATTERY_LEVEL = "batteryLevel"
 SIGNAL_STRENGTH = "signalStrength"
+ACTUATORS_OPEN = "actuatorsOpen"
 
 DEFAULT_ICON = "mdi:eye"
 
