@@ -835,11 +835,6 @@ class ZoneSignalStrengthSensor(ZoneSensor):
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_icon = "mdi:signal"
 
-    def __init__(self, device, coordinator, controller_udid):
-        """Initialize the sensor."""
-        self.attrs: Dict[str, Any] = {}
-        super().__init__(device, coordinator, controller_udid)
-
     @property
     def name(self):
         """Return the name of the device."""
