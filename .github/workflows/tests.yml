@@ -26,6 +26,7 @@ jobs:
       - name: Install requirements
         run: |
           python -m pip install --upgrade pip
+          pip install -r requirements.txt
           pip install -r requirements_test_api.txt
       - name: Install dependencies
         run: pip install pytest pytest-md pytest-emoji
