@@ -33,6 +33,7 @@ from .const import (
     CONTROLLER,
     DOMAIN,
     MANUFACTURER,
+    SIGNAL_STRENGTH,
     TYPE_FAN,
     TYPE_FUEL_SUPPLY,
     TYPE_MIXING_VALVE,
@@ -720,6 +721,11 @@ class ZoneBatterySensor(ZoneSensor):
     _attr_device_class = SensorDeviceClass.BATTERY
     _attr_state_class = SensorStateClass.MEASUREMENT
 
+    def __init__(self, device, coordinator, controller_udid):
+        """Initialize the sensor."""
+        self.attrs: Dict[str, Any] = {}
+        super().__init__(device, coordinator, controller_udid)
+
     @property
     def name(self):
         """Return the name of the device."""
@@ -729,6 +735,13 @@ class ZoneBatterySensor(ZoneSensor):
     def unique_id(self) -> str:
         """Return a unique ID."""
         return f"{self._unique_id}_zone_battery"
+
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any]:
+        """Return the state attributes."""
+        attributes = {}
+        attributes.update(self.attrs)
+        return attributes
 
     def update_properties(self, device):
         """Update properties from the TechBatterySensor object.
@@ -742,6 +755,7 @@ class ZoneBatterySensor(ZoneSensor):
         """
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
         self._attr_native_value = device[CONF_ZONE]["batteryLevel"]
+        self.attrs[SIGNAL_STRENGTH] = device[CONF_ZONE][SIGNAL_STRENGTH]
 
 
 class ZoneHumiditySensor(ZoneSensor):
