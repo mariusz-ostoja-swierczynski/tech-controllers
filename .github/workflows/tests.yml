@@ -1,7 +1,7 @@
 name: Run Python tests
 
 on:
-  # push:
+  push:
   schedule:
     - cron: '0 4 * * *'
   workflow_dispatch:
