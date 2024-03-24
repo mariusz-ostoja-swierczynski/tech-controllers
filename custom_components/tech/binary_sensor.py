@@ -2,7 +2,13 @@
 import logging
 
 from homeassistant.components import binary_sensor
-from homeassistant.const import CONF_PARAMS, CONF_TYPE, STATE_OFF, STATE_ON
+from homeassistant.const import (
+    CONF_PARAMS,
+    CONF_TYPE,
+    STATE_OFF,
+    STATE_ON,
+    EntityCategory,
+)
 
 from . import TechCoordinator, assets
 from .const import (
@@ -53,6 +59,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
 class TileBinarySensor(TileEntity, binary_sensor.BinarySensorEntity):
     """Representation of a TileBinarySensor."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def get_state(self, device):
         """Get the state of the device."""

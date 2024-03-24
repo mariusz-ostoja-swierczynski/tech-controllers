@@ -22,6 +22,7 @@ from homeassistant.const import (
     PERCENTAGE,
     STATE_OFF,
     STATE_ON,
+    EntityCategory,
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant, callback
@@ -592,6 +593,8 @@ class TechHumiditySensor(CoordinatorEntity, SensorEntity):
 class ZoneSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Zone Sensor."""
 
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
     def __init__(
         self, device: Dict, coordinator: TechCoordinator, config_entry: ConfigEntry
     ):
@@ -818,6 +821,8 @@ class ZoneOutsideTempTile(ZoneSensor):
 
 class TileSensor(TileEntity, CoordinatorEntity):
     """Representation of a TileSensor."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def get_state(self, device):
         """Get the state of the device."""
