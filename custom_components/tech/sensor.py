@@ -751,7 +751,7 @@ class ZoneHumiditySensor(ZoneSensor):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return f"{self._unique_id}_humidity"
+        return f"{self._unique_id}_zone_humidity"
 
     @property
     def name(self):
