@@ -22,6 +22,7 @@ from homeassistant.const import (
     PERCENTAGE,
     STATE_OFF,
     STATE_ON,
+    EntityCategory,
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant, callback
@@ -106,6 +107,9 @@ async def async_setup_entry(
     temperature_sensors = map_to_temperature_sensors(zones, coordinator, config_entry)
     humidity_sensors = map_to_humidity_sensors(zones, coordinator, config_entry)
     actuator_sensors = map_to_actuator_sensors(zones, coordinator, config_entry)
+    signal_strength_sensors = map_to_signal_strength_sensors(
+        zones, coordinator, config_entry
+    )
     # tile_sensors = map_to_tile_sensors(tiles, api, config_entry)
 
     async_add_entities(
@@ -114,6 +118,7 @@ async def async_setup_entry(
             temperature_sensors,
             humidity_sensors,  # , tile_sensors
             actuator_sensors,
+            signal_strength_sensors,
         ),
         True,
     )
@@ -305,6 +310,42 @@ def is_outside_temperature_tile(device) -> bool:
 
     """
     return device[CONF_PARAMS][CONF_DESCRIPTION] == "Temperature sensor"
+
+
+def map_to_signal_strength_sensors(zones, coordinator, config_entry):
+    """Map the signal strength operating devices in the zones to ZoneSignalStrengthSensor objects.
+
+    Args:
+    zones: list of devices
+    coordinator: the api object
+    config_entry: the config entry object
+    model: device model
+
+    Returns:
+    - list of TechBatterySensor objects
+
+    """
+    devices = filter(
+        lambda deviceIndex: is_signal_strength_operating_device(zones[deviceIndex]),
+        zones,
+    )
+    return (
+        ZoneSignalStrengthSensor(zones[deviceIndex], coordinator, config_entry)
+        for deviceIndex in devices
+    )
+
+
+def is_signal_strength_operating_device(device) -> bool:
+    """Check if the device is operating on battery.
+
+    Args:
+    device: dict - The device information.
+
+    Returns:
+    bool - True if the device is operating on battery, False otherwise.
+
+    """
+    return device[CONF_ZONE][SIGNAL_STRENGTH] is not None
 
 
 class TechBatterySensor(CoordinatorEntity, SensorEntity):
@@ -637,6 +678,8 @@ class TechHumiditySensor(CoordinatorEntity, SensorEntity):
 class ZoneSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Zone Sensor."""
 
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
     def __init__(
         self, device: Dict, coordinator: TechCoordinator, config_entry: ConfigEntry
     ):
@@ -785,6 +828,42 @@ class ZoneBatterySensor(ZoneSensor):
         self._attr_native_value = device[CONF_ZONE][BATTERY_LEVEL]
 
 
+class ZoneSignalStrengthSensor(ZoneSensor):
+    """Representation of a Zone Temperature Sensor."""
+
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:signal"
+
+    def __init__(self, device, coordinator, controller_udid):
+        """Initialize the sensor."""
+        self.attrs: Dict[str, Any] = {}
+        super().__init__(device, coordinator, controller_udid)
+
+    @property
+    def name(self):
+        """Return the name of the device."""
+        return f"{self._name} signal strength"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_zone_signal_strength"
+
+    def update_properties(self, device):
+        """Update properties from the ZoneSignalStrengthSensor object.
+
+        Args:
+        device: dict, the device data containing information about the device
+
+        Returns:
+        None
+
+        """
+        self._name = device[CONF_DESCRIPTION][CONF_NAME]
+        self._attr_native_value = device[CONF_ZONE][SIGNAL_STRENGTH]
+
+
 class ZoneHumiditySensor(ZoneSensor):
     """Representation of a Zone Temperature Sensor."""
 
@@ -929,6 +1008,8 @@ class ZoneOutsideTempTile(ZoneSensor):
 
 class TileSensor(TileEntity, CoordinatorEntity):
     """Representation of a TileSensor."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def get_state(self, device):
         """Get the state of the device."""
