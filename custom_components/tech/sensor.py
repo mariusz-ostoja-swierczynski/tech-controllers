@@ -30,6 +30,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import TechCoordinator, assets
 from .const import (
     ACTUATORS,
+    ACTUATORS_OPEN,
     BATTERY_LEVEL,
     CONTROLLER,
     DOMAIN,
@@ -640,7 +641,6 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
         self, device: Dict, coordinator: TechCoordinator, config_entry: ConfigEntry
     ):
         """Initialize the sensor."""
-        _LOGGER.debug("Init ZoneSensor...")
         super().__init__(coordinator)
         self._config_entry = config_entry
         self._coordinator = coordinator
@@ -827,28 +827,25 @@ class ZoneActuatorSensor(ZoneSensor):
 
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = assets.get_icon_by_type(TYPE_VALVE)
 
     def __init__(self, device, coordinator, config_entry, actuator_index):
-        """Initialize the sensor."""
-        _LOGGER.debug("ZoneActuatorSensor Init...")
-        _LOGGER.debug(
-            "ZoneActuatorSensor device, %s, actuator_index, %s", device, actuator_index
-        )
+        """Initialize the sensor.
+
+        These are needed before the call to super, as ZoneSensor class
+        calls update_properties in its init, which actually calls this class
+        update_properties, which does not know attrs and _actuator_index already.
+
+        """
         self._actuator_index = actuator_index
         self.attrs: Dict[str, Any] = {}
         super().__init__(device, coordinator, config_entry)
-        self._attr_icon = assets.get_icon_by_type(TYPE_VALVE)
-        self._id = device[CONF_ZONE][CONF_ID]
-        self._unique_id = (
-            config_entry.data[CONTROLLER][UDID] + "_" + str(device[CONF_ZONE][CONF_ID])
-        )
-        self._device_name = device[CONF_DESCRIPTION][CONF_NAME]
-        self._model = (
-            config_entry.data[CONTROLLER][CONF_NAME]
-            + ": "
-            + config_entry.data[CONTROLLER][VER]
-        )
-        # self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
+        self.attrs[BATTERY_LEVEL] = device[ACTUATORS][self._actuator_index][
+            BATTERY_LEVEL
+        ]
+        self.attrs[SIGNAL_STRENGTH] = device[ACTUATORS][self._actuator_index][
+            SIGNAL_STRENGTH
+        ]
 
     @property
     def unique_id(self) -> str:
@@ -857,12 +854,8 @@ class ZoneActuatorSensor(ZoneSensor):
 
     @property
     def name(self):
-        """Return the name of the device."""
+        """Return the name of the entity."""
         return f"{self._name} actuator {str(self._actuator_index + 1)}"
-
-    # def get_state(self, device):
-    #     """Get the state of the device."""
-    #     return device[CONF_PARAMS]["openingPercentage"]
 
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
@@ -884,12 +877,10 @@ class ZoneActuatorSensor(ZoneSensor):
         # Update the name of the device
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
-        # Check if the humidity value is not zero and update the native value attribute accordingly
-        self._attr_native_value = device[CONF_ZONE]["actuatorsOpen"]
+        # Update the native value attribute
+        self._attr_native_value = device[CONF_ZONE][ACTUATORS_OPEN]
 
         # Update battery and signal strength
-
-        # self._state = self.get_state(device)
         self.attrs[BATTERY_LEVEL] = device[ACTUATORS][self._actuator_index][
             BATTERY_LEVEL
         ]
