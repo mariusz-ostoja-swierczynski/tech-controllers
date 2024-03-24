@@ -1,10 +1,10 @@
 name: Run Python tests
 
 on:
-    # push:
-    schedule:
-    - cron:  '0 4 * * *'
-    workflow_dispatch:
+  # push:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
 
 jobs:
   build:
