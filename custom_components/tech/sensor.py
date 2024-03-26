@@ -75,23 +75,23 @@ async def async_setup_entry(
         if tile[VISIBILITY] is False or tile.get(WORKING_STATUS, True) is False:
             continue
         if tile[CONF_TYPE] == TYPE_TEMPERATURE:
-            entities.append(TileTemperatureSensor(tile, coordinator, controller_udid))
+            entities.append(TileTemperatureSensor(tile, coordinator, config_entry))
         if tile[CONF_TYPE] == TYPE_TEMPERATURE_CH:
-            entities.append(TileWidgetSensor(tile, coordinator, controller_udid))
+            entities.append(TileWidgetSensor(tile, coordinator, config_entry))
         if tile[CONF_TYPE] == TYPE_FAN:
-            entities.append(TileFanSensor(tile, coordinator, controller_udid))
+            entities.append(TileFanSensor(tile, coordinator, config_entry))
         if tile[CONF_TYPE] == TYPE_VALVE:
-            entities.append(TileValveSensor(tile, coordinator, controller_udid))
+            entities.append(TileValveSensor(tile, coordinator, config_entry))
             # TODO: this class _init_ definition needs to be fixed. See comment below.
             # entities.append(TileValveTemperatureSensor(tile, api, controller_udid, VALVE_SENSOR_RETURN_TEMPERATURE))
             # entities.append(TileValveTemperatureSensor(tile, api, controller_udid, VALVE_SENSOR_SET_TEMPERATURE))
             # entities.append(TileValveTemperatureSensor(tile, api, controller_udid, VALVE_SENSOR_CURRENT_TEMPERATURE))
         if tile[CONF_TYPE] == TYPE_MIXING_VALVE:
-            entities.append(TileMixingValveSensor(tile, coordinator, controller_udid))
+            entities.append(TileMixingValveSensor(tile, coordinator, config_entry))
         if tile[CONF_TYPE] == TYPE_FUEL_SUPPLY:
-            entities.append(TileFuelSupplySensor(tile, coordinator, controller_udid))
+            entities.append(TileFuelSupplySensor(tile, coordinator, config_entry))
         if tile[CONF_TYPE] == TYPE_TEXT:
-            entities.append(TileTextSensor(tile, coordinator, controller_udid))
+            entities.append(TileTextSensor(tile, coordinator, config_entry))
 
     async_add_entities(entities, True)
 
@@ -711,7 +711,11 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
 
         """
         # Update name property
-        self._name = device[CONF_DESCRIPTION][CONF_NAME]
+        self._name = (
+            self._config_entry.data[CONTROLLER][CONF_NAME]
+            + " "
+            + device[CONF_DESCRIPTION][CONF_NAME]
+        )
 
         # Update target_temperature property
         if device[CONF_ZONE]["setTemperature"] is not None:
@@ -1013,9 +1017,9 @@ class TileSensor(TileEntity, CoordinatorEntity):
 class TileTemperatureSensor(TileSensor, SensorEntity):
     """Representation of a Tile Temperature Sensor."""
 
-    def __init__(self, device, coordinator: TechCoordinator, controller_udid):
+    def __init__(self, device, coordinator: TechCoordinator, config_entry):
         """Initialize the sensor."""
-        TileSensor.__init__(self, device, coordinator, controller_udid)
+        TileSensor.__init__(self, device, coordinator, config_entry)
         self.native_unit_of_measurement = UnitOfTemperature.CELSIUS
         self.device_class = SensorDeviceClass.TEMPERATURE
         self.state_class = SensorStateClass.MEASUREMENT
@@ -1037,9 +1041,9 @@ class TileFuelSupplySensor(TileSensor):
     _attr_device_class = SensorDeviceClass.BATTERY
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, device, coordinator, controller_udid):
+    def __init__(self, device, coordinator, config_entry):
         """Initialize the sensor."""
-        TileSensor.__init__(self, device, coordinator, controller_udid)
+        TileSensor.__init__(self, device, coordinator, config_entry)
 
     @property
     def unique_id(self) -> str:
@@ -1057,9 +1061,9 @@ class TileFanSensor(TileSensor):
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, device, coordinator, controller_udid):
+    def __init__(self, device, coordinator, config_entry):
         """Initialize the sensor."""
-        TileSensor.__init__(self, device, coordinator, controller_udid)
+        TileSensor.__init__(self, device, coordinator, config_entry)
         self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
 
     @property
@@ -1075,9 +1079,9 @@ class TileFanSensor(TileSensor):
 class TileTextSensor(TileSensor):
     """Representation of a Tile Text Sensor."""
 
-    def __init__(self, device, coordinator, controller_udid):
+    def __init__(self, device, coordinator, config_entry):
         """Initialize the sensor."""
-        TileSensor.__init__(self, device, coordinator, controller_udid)
+        TileSensor.__init__(self, device, coordinator, config_entry)
         self._name = assets.get_text(device[CONF_PARAMS]["headerId"])
         self._attr_icon = assets.get_icon(device[CONF_PARAMS]["iconId"])
 
@@ -1098,9 +1102,9 @@ class TileWidgetSensor(TileSensor):
     _attr_device_class = SensorDeviceClass.TEMPERATURE
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, device, coordinator, controller_udid):
+    def __init__(self, device, coordinator, config_entry):
         """Initialize the sensor."""
-        TileSensor.__init__(self, device, coordinator, controller_udid)
+        TileSensor.__init__(self, device, coordinator, config_entry)
         self._name = assets.get_text(device[CONF_PARAMS]["widget1"]["txtId"])
 
     @property
@@ -1116,9 +1120,9 @@ class TileWidgetSensor(TileSensor):
 class TileValveSensor(TileSensor, SensorEntity):
     """Representation of a Tile Valve Sensor."""
 
-    def __init__(self, device, coordinator, controller_udid):
+    def __init__(self, device, coordinator, config_entry):
         """Initialize the sensor."""
-        TileSensor.__init__(self, device, coordinator, controller_udid)
+        TileSensor.__init__(self, device, coordinator, config_entry)
         self.native_unit_of_measurement = PERCENTAGE
         self.state_class = SensorStateClass.MEASUREMENT
         self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
@@ -1174,9 +1178,9 @@ class TileMixingValveSensor(TileSensor, SensorEntity):
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, device, coordinator, controller_udid):
+    def __init__(self, device, coordinator, config_entry):
         """Initialize the sensor."""
-        TileSensor.__init__(self, device, coordinator, controller_udid)
+        TileSensor.__init__(self, device, coordinator, config_entry)
         self.native_unit_of_measurement = PERCENTAGE
         self.state_class = SensorStateClass.MEASUREMENT
         self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])

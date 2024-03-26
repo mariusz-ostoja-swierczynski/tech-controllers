@@ -41,18 +41,18 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         if tile[VISIBILITY] is False:
             continue
         if tile[CONF_TYPE] == TYPE_RELAY:
-            entities.append(RelaySensor(tile, coordinator, controller_udid))
+            entities.append(RelaySensor(tile, coordinator, config_entry))
         if tile[CONF_TYPE] == TYPE_FIRE_SENSOR:
             entities.append(
                 RelaySensor(
                     tile,
                     coordinator,
-                    controller_udid,
+                    config_entry,
                     binary_sensor.BinarySensorDeviceClass.MOTION,
                 )
             )
         if tile[CONF_TYPE] == TYPE_ADDITIONAL_PUMP:
-            entities.append(RelaySensor(tile, coordinator, controller_udid))
+            entities.append(RelaySensor(tile, coordinator, config_entry))
 
     async_add_entities(entities, True)
 
@@ -80,10 +80,10 @@ class RelaySensor(TileBinarySensor):
     """Representation of a RelaySensor."""
 
     def __init__(
-        self, device, coordinator: TechCoordinator, controller_udid, device_class=None
+        self, device, coordinator: TechCoordinator, config_entry, device_class=None
     ):
         """Initialize the tile relay sensor."""
-        TileBinarySensor.__init__(self, device, coordinator, controller_udid)
+        TileBinarySensor.__init__(self, device, coordinator, config_entry)
         self._attr_device_class = device_class
         self._coordinator = coordinator
         icon_id = device[CONF_PARAMS].get("iconId")
