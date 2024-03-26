@@ -18,7 +18,7 @@ from homeassistant.helpers import entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import TechCoordinator, assets
-from .const import DOMAIN, MANUFACTURER
+from .const import CONTROLLER, DOMAIN, MANUFACTURER, UDID
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,21 +29,30 @@ class TileEntity(
 ):
     """Representation of a TileEntity."""
 
-    def __init__(self, device, coordinator: TechCoordinator, controller_uid):
+    def __init__(self, device, coordinator: TechCoordinator, config_entry):
         """Initialize the tile entity."""
         super().__init__(coordinator)
-        self._controller_uid = controller_uid
+        self._config_entry = config_entry
+        self._udid = config_entry.data[CONTROLLER][UDID]
         self._coordinator = coordinator
         self._id = device[CONF_ID]
-        self._unique_id = controller_uid + "_" + str(device[CONF_ID])
+        self._unique_id = self._udid + "_" + str(device[CONF_ID])
         self._model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
         self._state = self.get_state(device)
         self.manufacturer = MANUFACTURER
         txt_id = device[CONF_PARAMS].get("txtId")
         if txt_id:
-            self._name = assets.get_text(txt_id)
+            self._name = (
+                self._config_entry.data[CONTROLLER][CONF_NAME]
+                + " "
+                + assets.get_text(txt_id)
+            )
         else:
-            self._name = assets.get_text_by_type(device[CONF_TYPE])
+            self._name = (
+                self._config_entry.data[CONTROLLER][CONF_NAME]
+                + " "
+                + assets.get_text_by_type(device[CONF_TYPE])
+            )
 
     @property
     def device_info(self):

@@ -9,6 +9,7 @@ from homeassistant.components.climate import (
     HVACAction,
     HVACMode,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_IDENTIFIERS,
     ATTR_MANUFACTURER,
@@ -39,14 +40,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     udid = config_entry.data[CONTROLLER][UDID]
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     _LOGGER.debug("Setting up entry, controller udid: %s", udid)
-    model = (
-        config_entry.data[CONTROLLER][CONF_NAME]
-        + ": "
-        + config_entry.data[CONTROLLER][VER]
-    )
     zones = await coordinator.api.get_module_zones(udid)
     thermostats = [
-        TechThermostat(zones[zone], coordinator, udid, model) for zone in zones
+        TechThermostat(zones[zone], coordinator, config_entry) for zone in zones
     ]
 
     async_add_entities(thermostats, True)
@@ -55,17 +51,22 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class TechThermostat(ClimateEntity, CoordinatorEntity):
     """Representation of a Tech climate."""
 
-    def __init__(self, device, coordinator: TechCoordinator, udid, model):
+    def __init__(self, device, coordinator: TechCoordinator, config_entry: ConfigEntry):
         """Initialize the Tech device."""
         _LOGGER.debug("Init TechThermostat...")
         super().__init__(coordinator)
-        self._udid = udid
+        self._config_entry = config_entry
+        self._udid = config_entry.data[CONTROLLER][UDID]
         self._coordinator = coordinator
         self._id = device[CONF_ZONE][CONF_ID]
-        self._unique_id = udid + "_" + str(device[CONF_ZONE][CONF_ID])
+        self._unique_id = self._udid + "_" + str(device[CONF_ZONE][CONF_ID])
         self.device_name = device[CONF_DESCRIPTION][CONF_NAME]
         self.manufacturer = MANUFACTURER
-        self.model = model
+        self.model = (
+            config_entry.data[CONTROLLER][CONF_NAME]
+            + ": "
+            + config_entry.data[CONTROLLER][VER]
+        )
         self._temperature = None
         self.update_properties(device)
         # Remove the line below after HA 2025.1
@@ -95,7 +96,11 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
 
         """
         # Update device name
-        self._name = device[CONF_DESCRIPTION][CONF_NAME]
+        self._name = (
+            self._config_entry.data[CONTROLLER][CONF_NAME]
+            + " "
+            + device[CONF_DESCRIPTION][CONF_NAME]
+        )
 
         # Update target temperature
         if device[CONF_ZONE]["setTemperature"] is not None:
