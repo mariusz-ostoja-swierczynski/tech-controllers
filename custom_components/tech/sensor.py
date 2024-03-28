@@ -776,11 +776,6 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
         """Return a unique ID."""
         return self._unique_id
 
-    # @property
-    # def name(self):
-    #     """Return the name of the sensor."""
-    #     return self._name
-
 
 class ZoneTemperatureSensor(ZoneSensor):
     """Representation of a Zone Temperature Sensor."""
@@ -788,11 +783,6 @@ class ZoneTemperatureSensor(ZoneSensor):
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
     _attr_device_class = SensorDeviceClass.TEMPERATURE
     _attr_state_class = SensorStateClass.MEASUREMENT
-
-    # @property
-    # def name(self):
-    #     """Return the name of the sensor."""
-    #     return "temperature"
 
     @property
     def unique_id(self) -> str:
@@ -831,11 +821,6 @@ class ZoneBatterySensor(ZoneSensor):
     _attr_device_class = SensorDeviceClass.BATTERY
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    # @property
-    # def name(self):
-    #     """Return the name of the device."""
-    #     return "battery"
-
     @property
     def translation_key(self):
         """Return the translation key to translate the entity's name and states."""
@@ -866,11 +851,6 @@ class ZoneSignalStrengthSensor(ZoneSensor):
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_icon = "mdi:signal"
-
-    # @property
-    # def name(self):
-    #     """Return the name of the device."""
-    #     return f"{self._name} signal strength"
 
     @property
     def translation_key(self):
@@ -912,11 +892,6 @@ class ZoneHumiditySensor(ZoneSensor):
     def unique_id(self) -> str:
         """Return a unique ID."""
         return f"{self._unique_id}_zone_humidity"
-
-    # @property
-    # def name(self):
-    #     """Return the name of the device."""
-    #     return "humidity"
 
     @property
     def translation_key(self):
@@ -977,16 +952,6 @@ class ZoneActuatorSensor(ZoneSensor):
         """Return a unique ID."""
         return f"{self._unique_id}_zone_actuator_{str(self._actuator_index + 1)}"
 
-    # @property
-    # def name(self):
-    #     """Return the name of the entity."""
-    #     return f"actuator {str(self._actuator_index + 1)}"
-
-    # @property
-    # def translation_key(self):
-    #     """Return the translation key to translate the entity's name and states."""
-    #     return "actuator_entity"
-
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Return the state attributes."""
@@ -1030,11 +995,6 @@ class ZoneOutsideTempTile(ZoneSensor):
     def unique_id(self) -> str:
         """Return a unique ID."""
         return f"{self._unique_id}_out_temperature"
-
-    # @property
-    # def name(self):
-    #     """Return the name of the device."""
-    #     return "temperature"
 
     @property
     def translation_key(self):

@@ -157,11 +157,6 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         """Return a unique ID."""
         return f"{self._unique_id}_zone_climate"
 
-    # @property
-    # def name(self):
-    #     """Return the name of the device."""
-    #     return self._name
-
     @property
     def supported_features(self):
         """Return the list of supported features."""
