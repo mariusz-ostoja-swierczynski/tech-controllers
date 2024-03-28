@@ -30,22 +30,22 @@
     "entity": {
         "sensor": {
           "temperature_entity": {
-            "name": "[%key:component::sensor::entity_component::temperature::name%]"
+            "name": "Teplota"
           },
           "battery_entity": {
-            "name": "[%key:component::sensor::entity_component::battery::name%]"
+            "name": "Batéria"
           },
           "humidity_entity": {
-            "name": "[%key:component::sensor::entity_component::humidity::name%]"
+            "name": "Vlhkosť"
           },
           "actuator_entity": {
-            "name": "Actuator {actuator_number}"
+            "name": "Aktuátor {actuator_number}"
           },
           "ext_temperature_entity": {
-            "name": "[%key:component::sensor::entity_component::temperature::name%]"
+            "name": "Vonkajšia teplota"
           },
           "signal_strength_entity": {
-            "name": "Signal strength"
+            "name": "Intenzita signálu"
           }
         }
       },
