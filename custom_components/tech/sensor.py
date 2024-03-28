@@ -832,11 +832,6 @@ class ZoneBatterySensor(ZoneSensor):
     _attr_device_class = SensorDeviceClass.BATTERY
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    # @property
-    # def name(self):
-    #     """Return the name of the device."""
-    #     return "battery"
-
     @property
     def translation_key(self):
         """Return the translation key to translate the entity's name and states."""
@@ -867,11 +862,6 @@ class ZoneSignalStrengthSensor(ZoneSensor):
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_icon = "mdi:signal"
-
-    # @property
-    # def name(self):
-    #     """Return the name of the device."""
-    #     return f"{self._name} signal strength"
 
     @property
     def translation_key(self):
@@ -913,11 +903,6 @@ class ZoneHumiditySensor(ZoneSensor):
     def unique_id(self) -> str:
         """Return a unique ID."""
         return f"{self._unique_id}_zone_humidity"
-
-    # @property
-    # def name(self):
-    #     """Return the name of the device."""
-    #     return "humidity"
 
     @property
     def translation_key(self):
@@ -1021,11 +1006,6 @@ class ZoneOutsideTempTile(ZoneSensor):
     def unique_id(self) -> str:
         """Return a unique ID."""
         return f"{self._unique_id}_out_temperature"
-
-    # @property
-    # def name(self):
-    #     """Return the name of the device."""
-    #     return "temperature"
 
     @property
     def translation_key(self):
