@@ -51,6 +51,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class TechThermostat(ClimateEntity, CoordinatorEntity):
     """Representation of a Tech climate."""
 
+    _attr_has_entity_name = True
+    _attr_name = None
+
     def __init__(self, device, coordinator: TechCoordinator, config_entry: ConfigEntry):
         """Initialize the Tech device."""
         _LOGGER.debug("Init TechThermostat...")
@@ -154,10 +157,10 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         """Return a unique ID."""
         return f"{self._unique_id}_zone_climate"
 
-    @property
-    def name(self):
-        """Return the name of the device."""
-        return self._name
+    # @property
+    # def name(self):
+    #     """Return the name of the device."""
+    #     return self._name
 
     @property
     def supported_features(self):

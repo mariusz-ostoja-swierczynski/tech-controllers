@@ -4,11 +4,8 @@ import logging
 from typing import Any
 
 from homeassistant.const import (
-    ATTR_IDENTIFIERS,
-    ATTR_MANUFACTURER,
     CONF_DESCRIPTION,
     CONF_ID,
-    CONF_MODEL,
     CONF_NAME,
     CONF_PARAMS,
     CONF_TYPE,
@@ -18,7 +15,7 @@ from homeassistant.helpers import entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import TechCoordinator, assets
-from .const import CONTROLLER, DOMAIN, MANUFACTURER, UDID
+from .const import CONTROLLER, MANUFACTURER, UDID
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,6 +25,8 @@ class TileEntity(
     entity.Entity,
 ):
     """Representation of a TileEntity."""
+
+    _attr_has_entity_name = True
 
     def __init__(self, device, coordinator: TechCoordinator, config_entry):
         """Initialize the tile entity."""
@@ -54,17 +53,17 @@ class TileEntity(
                 + assets.get_text_by_type(device[CONF_TYPE])
             )
 
-    @property
-    def device_info(self):
-        """Get device info."""
-        return {
-            ATTR_IDENTIFIERS: {
-                (DOMAIN, self._unique_id)
-            },  # Unique identifiers for the device
-            CONF_NAME: self.name,  # Name of the device
-            CONF_MODEL: self._model,  # Model of the device
-            ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
-        }
+    # @property
+    # def device_info(self):
+    #     """Get device info."""
+    #     return {
+    #         ATTR_IDENTIFIERS: {
+    #             (DOMAIN, self._unique_id)
+    #         },  # Unique identifiers for the device
+    #         CONF_NAME: self._name,  # Name of the device
+    #         CONF_MODEL: self._model,  # Model of the device
+    #         ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+    #     }
 
     @property
     def unique_id(self) -> str:

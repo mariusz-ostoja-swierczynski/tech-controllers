@@ -1,7 +1,7 @@
 """Support for Tech HVAC system."""
 import itertools
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -400,6 +400,11 @@ class TechBatterySensor(CoordinatorEntity, SensorEntity):
         return f"{self._unique_id}_zone_battery"
 
     @property
+    def translation_key(self):
+        """Return the translation key to translate the entity's name and states."""
+        return "battery_entity"
+
+    @property
     def name(self):
         """Return the name of the device."""
         return f"{self._name} battery"
@@ -480,6 +485,11 @@ class TechTemperatureSensor(CoordinatorEntity, SensorEntity):
     def unique_id(self) -> str:
         """Return a unique ID."""
         return f"{self._unique_id}_zone_temperature"
+
+    @property
+    def translation_key(self):
+        """Return the translation key to translate the entity's name and states."""
+        return "temperature_entity"
 
     @property
     def name(self):
@@ -571,6 +581,11 @@ class TechOutsideTempTile(CoordinatorEntity, SensorEntity):
         return f"{self._unique_id}_zone_out_temperature"
 
     @property
+    def translation_key(self):
+        """Return the translation key to translate the entity's name and states."""
+        return "ext_temperature_entity"
+
+    @property
     def name(self):
         """Return the name of the device."""
         return f"{self._name} temperature"
@@ -653,6 +668,11 @@ class TechHumiditySensor(CoordinatorEntity, SensorEntity):
         return f"{self._unique_id}_zone_humidity"
 
     @property
+    def translation_key(self):
+        """Return the translation key to translate the entity's name and states."""
+        return "humidity_entity"
+
+    @property
     def name(self):
         """Return the name of the device."""
         return f"{self._name} humidity"
@@ -680,6 +700,7 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Zone Sensor."""
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_has_entity_name = True
 
     def __init__(
         self, device: Dict, coordinator: TechCoordinator, config_entry: ConfigEntry
@@ -712,11 +733,7 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
 
         """
         # Update name property
-        self._name = (
-            self._config_entry.data[CONTROLLER][CONF_NAME]
-            + " "
-            + device[CONF_DESCRIPTION][CONF_NAME]
-        )
+        # self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Update target_temperature property
         if device[CONF_ZONE]["setTemperature"] is not None:
@@ -759,10 +776,10 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
         """Return a unique ID."""
         return self._unique_id
 
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
+    # @property
+    # def name(self):
+    #     """Return the name of the sensor."""
+    #     return self._name
 
 
 class ZoneTemperatureSensor(ZoneSensor):
@@ -772,15 +789,20 @@ class ZoneTemperatureSensor(ZoneSensor):
     _attr_device_class = SensorDeviceClass.TEMPERATURE
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return f"{self._name} temperature"
+    # @property
+    # def name(self):
+    #     """Return the name of the sensor."""
+    #     return "temperature"
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
         return f"{self._unique_id}_zone_temperature"
+
+    @property
+    def translation_key(self):
+        """Return the translation key to translate the entity's name and states."""
+        return "temperature_entity"
 
     def update_properties(self, device):
         """Update the properties of the TechTemperatureSensor object.
@@ -809,10 +831,15 @@ class ZoneBatterySensor(ZoneSensor):
     _attr_device_class = SensorDeviceClass.BATTERY
     _attr_state_class = SensorStateClass.MEASUREMENT
 
+    # @property
+    # def name(self):
+    #     """Return the name of the device."""
+    #     return "battery"
+
     @property
-    def name(self):
-        """Return the name of the device."""
-        return f"{self._name} battery"
+    def translation_key(self):
+        """Return the translation key to translate the entity's name and states."""
+        return "battery_entity"
 
     @property
     def unique_id(self) -> str:
@@ -840,10 +867,15 @@ class ZoneSignalStrengthSensor(ZoneSensor):
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_icon = "mdi:signal"
 
+    # @property
+    # def name(self):
+    #     """Return the name of the device."""
+    #     return f"{self._name} signal strength"
+
     @property
-    def name(self):
-        """Return the name of the device."""
-        return f"{self._name} signal strength"
+    def translation_key(self):
+        """Return the translation key to translate the entity's name and states."""
+        return "signal_strength_entity"
 
     @property
     def unique_id(self) -> str:
@@ -881,10 +913,15 @@ class ZoneHumiditySensor(ZoneSensor):
         """Return a unique ID."""
         return f"{self._unique_id}_zone_humidity"
 
+    # @property
+    # def name(self):
+    #     """Return the name of the device."""
+    #     return "humidity"
+
     @property
-    def name(self):
-        """Return the name of the device."""
-        return f"{self._name} humidity"
+    def translation_key(self):
+        """Return the translation key to translate the entity's name and states."""
+        return "humidity_entity"
 
     def update_properties(self, device):
         """Update the properties of the TechHumiditySensor object.
@@ -924,6 +961,10 @@ class ZoneActuatorSensor(ZoneSensor):
         self._actuator_index = actuator_index
         self.attrs: Dict[str, Any] = {}
         super().__init__(device, coordinator, config_entry)
+        self._attr_translation_key = "actuator_entity"
+        self._attr_translation_placeholders = {
+            "actuator_number": f"{cast(int, self._actuator_index) + 1}"
+        }
         self.attrs[BATTERY_LEVEL] = device[ACTUATORS][self._actuator_index][
             BATTERY_LEVEL
         ]
@@ -936,10 +977,15 @@ class ZoneActuatorSensor(ZoneSensor):
         """Return a unique ID."""
         return f"{self._unique_id}_zone_actuator_{str(self._actuator_index + 1)}"
 
-    @property
-    def name(self):
-        """Return the name of the entity."""
-        return f"{self._name} actuator {str(self._actuator_index + 1)}"
+    # @property
+    # def name(self):
+    #     """Return the name of the entity."""
+    #     return f"actuator {str(self._actuator_index + 1)}"
+
+    # @property
+    # def translation_key(self):
+    #     """Return the translation key to translate the entity's name and states."""
+    #     return "actuator_entity"
 
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
@@ -985,10 +1031,15 @@ class ZoneOutsideTempTile(ZoneSensor):
         """Return a unique ID."""
         return f"{self._unique_id}_out_temperature"
 
+    # @property
+    # def name(self):
+    #     """Return the name of the device."""
+    #     return "temperature"
+
     @property
-    def name(self):
-        """Return the name of the device."""
-        return f"{self._name} temperature"
+    def translation_key(self):
+        """Return the translation key to translate the entity's name and states."""
+        return "ext_temperature_entity"
 
     def update_properties(self, device):
         """Update the properties of the TechOutsideTempTile object.
@@ -1088,7 +1139,11 @@ class TileTextSensor(TileSensor):
     def __init__(self, device, coordinator, config_entry):
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
-        self._name = assets.get_text(device[CONF_PARAMS]["headerId"])
+        self._name = (
+            self._config_entry.data[CONTROLLER][CONF_NAME]
+            + " "
+            + assets.get_text(device[CONF_PARAMS]["headerId"])
+        )
         self._attr_icon = assets.get_icon(device[CONF_PARAMS]["iconId"])
 
     @property
@@ -1111,7 +1166,11 @@ class TileWidgetSensor(TileSensor):
     def __init__(self, device, coordinator, config_entry):
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
-        self._name = assets.get_text(device[CONF_PARAMS]["widget1"]["txtId"])
+        self._name = (
+            self._config_entry.data[CONTROLLER][CONF_NAME]
+            + " "
+            + assets.get_text(device[CONF_PARAMS]["widget1"]["txtId"])
+        )
 
     @property
     def unique_id(self) -> str:
@@ -1132,7 +1191,11 @@ class TileValveSensor(TileSensor, SensorEntity):
         self.native_unit_of_measurement = PERCENTAGE
         self.state_class = SensorStateClass.MEASUREMENT
         self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
-        name = assets.get_text_by_type(device[CONF_TYPE])
+        name = (
+            self._config_entry.data[CONTROLLER][CONF_NAME]
+            + " "
+            + assets.get_text_by_type(device[CONF_TYPE])
+        )
         self._name = f"{name} {device[CONF_PARAMS]['valveNumber']}"
         self.attrs: Dict[str, Any] = {}
 
@@ -1190,7 +1253,11 @@ class TileMixingValveSensor(TileSensor, SensorEntity):
         self.native_unit_of_measurement = PERCENTAGE
         self.state_class = SensorStateClass.MEASUREMENT
         self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
-        name = assets.get_text_by_type(device[CONF_TYPE])
+        name = (
+            self._config_entry.data[CONTROLLER][CONF_NAME]
+            + " "
+            + assets.get_text_by_type(device[CONF_TYPE])
+        )
         self._name = f"{name} {device[CONF_PARAMS]['valveNumber']}"
 
     @property
