@@ -53,18 +53,6 @@ class TileEntity(
                 + assets.get_text_by_type(device[CONF_TYPE])
             )
 
-    # @property
-    # def device_info(self):
-    #     """Get device info."""
-    #     return {
-    #         ATTR_IDENTIFIERS: {
-    #             (DOMAIN, self._unique_id)
-    #         },  # Unique identifiers for the device
-    #         CONF_NAME: self._name,  # Name of the device
-    #         CONF_MODEL: self._model,  # Model of the device
-    #         ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
-    #     }
-
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
