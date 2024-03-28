@@ -30,19 +30,19 @@
     "entity": {
         "sensor": {
           "temperature_entity": {
-            "name": "[%key:component::sensor::entity_component::temperature::name%]"
+            "name": "Temperature"
           },
           "battery_entity": {
-            "name": "[%key:component::sensor::entity_component::battery::name%]"
+            "name": "Battery"
           },
           "humidity_entity": {
-            "name": "[%key:component::sensor::entity_component::humidity::name%]"
+            "name": "Humidity"
           },
           "actuator_entity": {
             "name": "Actuator {actuator_number}"
           },
           "ext_temperature_entity": {
-            "name": "[%key:component::sensor::entity_component::temperature::name%]"
+            "name": "External temperature"
           },
           "signal_strength_entity": {
             "name": "Signal strength"
