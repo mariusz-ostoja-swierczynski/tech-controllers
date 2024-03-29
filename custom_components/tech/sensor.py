@@ -26,6 +26,7 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.icon import icon_for_signal_level
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import TechCoordinator, assets
@@ -844,6 +845,11 @@ class ZoneSignalStrengthSensor(ZoneSensor):
     def unique_id(self) -> str:
         """Return a unique ID."""
         return f"{self._unique_id}_zone_signal_strength"
+
+    @property
+    def icon(self) -> str | None:
+        """Icon of the entity, based on signal strength."""
+        return icon_for_signal_level(self.state)
 
     def update_properties(self, device):
         """Update properties from the ZoneSignalStrengthSensor object.
