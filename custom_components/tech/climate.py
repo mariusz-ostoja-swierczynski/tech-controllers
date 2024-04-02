@@ -29,6 +29,8 @@ from .const import CONTROLLER, DOMAIN, MANUFACTURER, UDID, VER
 
 _LOGGER = logging.getLogger(__name__)
 
+DEFAULT_MIN_TEMP = 5
+DEFAULT_MAX_TEMP = 35
 SUPPORT_HVAC = [HVACMode.HEAT, HVACMode.OFF]
 
 
@@ -199,6 +201,18 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
     def current_humidity(self):
         """Return current humidity."""
         return self._humidity
+
+    @property
+    def min_temp(self) -> float:
+        """Return the minimal allowed temperature value.
+        """
+        return DEFAULT_MIN_TEMP
+
+    @property
+    def max_temp(self) -> float:
+        """Return the maximum allowed temperature value.
+        """
+        return DEFAULT_MAX_TEMP
 
     @property
     def target_temperature(self):
