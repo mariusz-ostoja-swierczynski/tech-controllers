@@ -1025,6 +1025,7 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
         self.native_unit_of_measurement = UnitOfTemperature.CELSIUS
         self.device_class = SensorDeviceClass.TEMPERATURE
         self.state_class = SensorStateClass.MEASUREMENT
+        self.attrs: Dict[str, Any] = {}
 
     @property
     def unique_id(self) -> str:
@@ -1034,6 +1035,28 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
     def get_state(self, device):
         """Get the state of the device."""
         return device[CONF_PARAMS][VALUE] / 10
+
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any]:
+        """Return the state attributes."""
+        attributes = {}
+        attributes.update(self.attrs)
+        return attributes
+
+    def update_properties(self, device):
+        """Update the properties of the device based on the provided device information.
+
+        Args:
+        device: dict, the device information containing description
+
+        Returns:
+        None
+
+        """
+        self._state = self.get_state(device)
+        for key in ("batteryLevel", "signalStrength"):
+            if device[CONF_PARAMS].get(key) not in (None, "null"):
+                self.attrs[key] = device[CONF_PARAMS][key]
 
 
 class TileFuelSupplySensor(TileSensor):
