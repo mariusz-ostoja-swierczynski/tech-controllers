@@ -76,6 +76,8 @@ async def async_setup_entry(
         if tile[VISIBILITY] is False or tile.get(WORKING_STATUS, True) is False:
             continue
         if tile[CONF_TYPE] == TYPE_TEMPERATURE:
+            entities.append(TileTemperatureSignalSensor(tile, coordinator, controller_udid))
+            entities.append(TileTemperatureBatterySensor(tile, coordinator, controller_udid))
             entities.append(TileTemperatureSensor(tile, coordinator, controller_udid))
         if tile[CONF_TYPE] == TYPE_TEMPERATURE_CH:
             entities.append(TileWidgetSensor(tile, coordinator, controller_udid))
@@ -1031,10 +1033,70 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
         """Return a unique ID."""
         return f"{self._unique_id}_tile_temperature"
 
+    @property
+    def name(self):
+        """Return the name of the device."""
+        return f"{self._name}"
+
     def get_state(self, device):
         """Get the state of the device."""
         return device[CONF_PARAMS][VALUE] / 10
 
+class TileTemperatureBatterySensor(TileSensor, SensorEntity):
+    """Representation of a Tile Temperature Battery Sensor."""
+
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_device_class = SensorDeviceClass.BATTERY
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, device, coordinator, controller_udid):
+        """Initialize the sensor."""
+        TileSensor.__init__(self, device, coordinator, controller_udid)
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_temperature_battery"
+
+    @property
+    def name(self):
+        """Return the name of the device."""
+        return f"{self._name} battery"
+
+    def get_state(self, device):
+        """Get the state of the device."""
+        return device[CONF_PARAMS][BATTERY_LEVEL]
+    
+
+class TileTemperatureSignalSensor(TileSensor, SensorEntity):
+    """Representation of a Tile Temperature Signal Sensor."""
+
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:signal"
+
+    def __init__(self, device, coordinator: TechCoordinator, controller_udid):
+        """Initialize the sensor."""
+        TileSensor.__init__(self, device, coordinator, controller_udid)
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_temperature_signal_strength"
+
+    @property
+    def icon(self) -> str | None:
+        """Icon of the entity, based on signal strength."""
+        return icon_for_signal_level(self.state)
+
+    @property
+    def name(self):
+        """Return the name of the device."""
+        return f"{self._name} signal strength"
+
+    def get_state(self, device):
+        """Get the state of the device."""
+        return device[CONF_PARAMS][SIGNAL_STRENGTH]
 
 class TileFuelSupplySensor(TileSensor):
     """Representation of a Tile Fuel Supply Sensor."""
