@@ -209,14 +209,12 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
 
     @property
     def min_temp(self) -> float:
-        """Return the minimal allowed temperature value.
-        """
+        """Return the minimal allowed temperature value."""
         return DEFAULT_MIN_TEMP
 
     @property
     def max_temp(self) -> float:
-        """Return the maximum allowed temperature value.
-        """
+        """Return the maximum allowed temperature value."""
         return DEFAULT_MAX_TEMP
 
     @property
