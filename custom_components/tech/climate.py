@@ -191,6 +191,11 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         return UnitOfTemperature.CELSIUS
 
     @property
+    def target_temperature_step(self):
+        """Return the supported step of target temperature."""
+        return 0.1
+
+    @property
     def current_temperature(self):
         """Return the current temperature."""
         return self._temperature
