@@ -76,9 +76,18 @@ async def async_setup_entry(
         if tile[VISIBILITY] is False or tile.get(WORKING_STATUS, True) is False:
             continue
         if tile[CONF_TYPE] == TYPE_TEMPERATURE:
-            entities.append(TileTemperatureSignalSensor(tile, coordinator, controller_udid))
-            entities.append(TileTemperatureBatterySensor(tile, coordinator, controller_udid))
+            signal_strength = tile[CONF_PARAMS][SIGNAL_STRENGTH]
+            battery_level = tile[CONF_PARAMS][BATTERY_LEVEL]
+            if signal_strength not in (None, "null"):
+                entities.append(
+                    TileTemperatureSignalSensor(tile, coordinator, controller_udid)
+                )
+            if battery_level not in (None, "null"):
+                entities.append(
+                    TileTemperatureBatterySensor(tile, coordinator, controller_udid)
+                )
             entities.append(TileTemperatureSensor(tile, coordinator, controller_udid))
+
         if tile[CONF_TYPE] == TYPE_TEMPERATURE_CH:
             entities.append(TileWidgetSensor(tile, coordinator, controller_udid))
         if tile[CONF_TYPE] == TYPE_FAN:
@@ -1042,6 +1051,7 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
         """Get the state of the device."""
         return device[CONF_PARAMS][VALUE] / 10
 
+
 class TileTemperatureBatterySensor(TileSensor, SensorEntity):
     """Representation of a Tile Temperature Battery Sensor."""
 
@@ -1066,7 +1076,7 @@ class TileTemperatureBatterySensor(TileSensor, SensorEntity):
     def get_state(self, device):
         """Get the state of the device."""
         return device[CONF_PARAMS][BATTERY_LEVEL]
-    
+
 
 class TileTemperatureSignalSensor(TileSensor, SensorEntity):
     """Representation of a Tile Temperature Signal Sensor."""
@@ -1097,6 +1107,7 @@ class TileTemperatureSignalSensor(TileSensor, SensorEntity):
     def get_state(self, device):
         """Get the state of the device."""
         return device[CONF_PARAMS][SIGNAL_STRENGTH]
+
 
 class TileFuelSupplySensor(TileSensor):
     """Representation of a Tile Fuel Supply Sensor."""
