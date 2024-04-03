@@ -35,6 +35,6 @@ jobs:
           emoji: true
           verbose: true
           job-summary: true
-          custom-arguments: '--cov-report=term-missing --cov=custom_components.tech.tech tests/'
+          custom-arguments: 'tests/tests_api --cov-report=term-missing --cov=custom_components.tech.tech tests/'
           click-to-expand: true
           report-title: 'Tech API test report'
