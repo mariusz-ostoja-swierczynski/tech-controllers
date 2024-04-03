@@ -51,7 +51,7 @@ from .const import (
     VISIBILITY,
     WORKING_STATUS,
 )
-from .entity import TileEntity
+from .entity import TileEntity, TileEntityWithName
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,7 +87,6 @@ async def async_setup_entry(
                     TileTemperatureBatterySensor(tile, coordinator, config_entry)
                 )
             entities.append(TileTemperatureSensor(tile, coordinator, config_entry))
-
         if tile[CONF_TYPE] == TYPE_TEMPERATURE_CH:
             entities.append(TileWidgetSensor(tile, coordinator, config_entry))
         if tile[CONF_TYPE] == TYPE_FAN:
@@ -1042,8 +1041,22 @@ class TileSensor(TileEntity, CoordinatorEntity):
         """Get the state of the device."""
 
 
+class TileSensorWithName(TileEntityWithName, CoordinatorEntity):
+    """Representation of a TileSensor."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def get_state(self, device):
+        """Get the state of the device."""
+
+
 class TileTemperatureSensor(TileSensor, SensorEntity):
     """Representation of a Tile Temperature Sensor."""
+
+    _attr_has_entity_name = True
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(self, device, coordinator: TechCoordinator, config_entry):
         """Initialize the sensor."""
@@ -1051,6 +1064,9 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
         self.native_unit_of_measurement = UnitOfTemperature.CELSIUS
         self.device_class = SensorDeviceClass.TEMPERATURE
         self.state_class = SensorStateClass.MEASUREMENT
+        # self.device_name = device[CONF_DESCRIPTION][CONF_NAME]
+        self.manufacturer = MANUFACTURER
+        self.model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
 
     @property
     def unique_id(self) -> str:
@@ -1058,17 +1074,31 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
         return f"{self._unique_id}_tile_temperature"
 
     @property
-    def name(self):
-        """Return the name of the device."""
-        return f"{self._name}"
+    def translation_key(self):
+        """Return the translation key to translate the entity's name and states."""
+        return "temperature_entity"
 
     def get_state(self, device):
         """Get the state of the device."""
         return device[CONF_PARAMS][VALUE] / 10
 
+    @property
+    def device_info(self):
+        """Returns device information in a dictionary format."""
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, self._unique_id)
+            },  # Unique identifiers for the device
+            CONF_NAME: self._name,  # Name of the device
+            CONF_MODEL: self.model,  # Model of the device
+            ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+        }
+
 
 class TileTemperatureBatterySensor(TileSensor, SensorEntity):
     """Representation of a Tile Temperature Battery Sensor."""
+
+    _attr_has_entity_name = True
 
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_device_class = SensorDeviceClass.BATTERY
@@ -1077,6 +1107,9 @@ class TileTemperatureBatterySensor(TileSensor, SensorEntity):
     def __init__(self, device, coordinator: TechCoordinator, config_entry):
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
+        # self.device_name = device[CONF_DESCRIPTION][CONF_NAME]
+        self.manufacturer = MANUFACTURER
+        self.model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
 
     @property
     def unique_id(self) -> str:
@@ -1084,17 +1117,31 @@ class TileTemperatureBatterySensor(TileSensor, SensorEntity):
         return f"{self._unique_id}_tile_temperature_battery"
 
     @property
-    def name(self):
-        """Return the name of the device."""
-        return f"{self._name} battery"
+    def translation_key(self):
+        """Return the translation key to translate the entity's name and states."""
+        return "battery_entity"
 
     def get_state(self, device):
         """Get the state of the device."""
         return device[CONF_PARAMS][BATTERY_LEVEL]
 
+    @property
+    def device_info(self):
+        """Returns device information in a dictionary format."""
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, self._unique_id)
+            },  # Unique identifiers for the device
+            CONF_NAME: self._name,  # Name of the device
+            CONF_MODEL: self.model,  # Model of the device
+            ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+        }
+
 
 class TileTemperatureSignalSensor(TileSensor, SensorEntity):
     """Representation of a Tile Temperature Signal Sensor."""
+
+    _attr_has_entity_name = True
 
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -1103,6 +1150,9 @@ class TileTemperatureSignalSensor(TileSensor, SensorEntity):
     def __init__(self, device, coordinator: TechCoordinator, config_entry):
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
+        # self.device_name = device[CONF_DESCRIPTION][CONF_NAME]
+        self.manufacturer = MANUFACTURER
+        self.model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
 
     @property
     def unique_id(self) -> str:
@@ -1115,16 +1165,28 @@ class TileTemperatureSignalSensor(TileSensor, SensorEntity):
         return icon_for_signal_level(self.state)
 
     @property
-    def name(self):
-        """Return the name of the device."""
-        return f"{self._name} signal strength"
+    def translation_key(self):
+        """Return the translation key to translate the entity's name and states."""
+        return "signal_strength_entity"
 
     def get_state(self, device):
         """Get the state of the device."""
         return device[CONF_PARAMS][SIGNAL_STRENGTH]
 
+    @property
+    def device_info(self):
+        """Returns device information in a dictionary format."""
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, self._unique_id)
+            },  # Unique identifiers for the device
+            CONF_NAME: self._name,  # Name of the device
+            CONF_MODEL: self.model,  # Model of the device
+            ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+        }
 
-class TileFuelSupplySensor(TileSensor):
+
+class TileFuelSupplySensor(TileSensorWithName):
     """Representation of a Tile Fuel Supply Sensor."""
 
     _attr_native_unit_of_measurement = PERCENTAGE
@@ -1145,7 +1207,7 @@ class TileFuelSupplySensor(TileSensor):
         return device[CONF_PARAMS]["percentage"]
 
 
-class TileFanSensor(TileSensor):
+class TileFanSensor(TileSensorWithName):
     """Representation of a Tile Fan Sensor."""
 
     _attr_native_unit_of_measurement = PERCENTAGE
@@ -1166,7 +1228,7 @@ class TileFanSensor(TileSensor):
         return device[CONF_PARAMS]["gear"]
 
 
-class TileTextSensor(TileSensor):
+class TileTextSensor(TileSensorWithName):
     """Representation of a Tile Text Sensor."""
 
     def __init__(self, device, coordinator, config_entry):
@@ -1189,7 +1251,7 @@ class TileTextSensor(TileSensor):
         return assets.get_text(device[CONF_PARAMS]["statusId"])
 
 
-class TileWidgetSensor(TileSensor):
+class TileWidgetSensor(TileSensorWithName):
     """Representation of a Tile Widget Sensor."""
 
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
@@ -1215,7 +1277,7 @@ class TileWidgetSensor(TileSensor):
         return device[CONF_PARAMS]["widget1"][VALUE] / 10
 
 
-class TileValveSensor(TileSensor, SensorEntity):
+class TileValveSensor(TileSensorWithName, SensorEntity):
     """Representation of a Tile Valve Sensor."""
 
     def __init__(self, device, coordinator, config_entry):
@@ -1274,7 +1336,7 @@ class TileValveSensor(TileSensor, SensorEntity):
         self.attrs["setTemp"] = device[CONF_PARAMS]["setTemp"]
 
 
-class TileMixingValveSensor(TileSensor, SensorEntity):
+class TileMixingValveSensor(TileSensorWithName, SensorEntity):
     """Representation of a Tile Mixing Valve Sensor."""
 
     _attr_native_unit_of_measurement = PERCENTAGE

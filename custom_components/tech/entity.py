@@ -59,11 +59,6 @@ class TileEntity(
         return self._unique_id
 
     @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
     def state(self):
         """Return the state of the sensor."""
         return self._state
@@ -91,3 +86,39 @@ class TileEntity(
         """Handle updated data from the coordinator."""
         self.update_properties(self._coordinator.data["tiles"][self._id])
         self.async_write_ha_state()
+
+
+class TileEntityWithName(
+    TileEntity,
+):
+    """Representation of a TileEntity but returning an explicit name."""
+
+    _attr_has_entity_name = True
+
+    def __init__(self, device, coordinator: TechCoordinator, config_entry):
+        """Initialize the tile entity."""
+        super().__init__(device, coordinator, config_entry)
+        self._config_entry = config_entry
+        txt_id = device[CONF_PARAMS].get("txtId")
+        if txt_id:
+            self._name = (
+                self._config_entry.data[CONTROLLER][CONF_NAME]
+                + " "
+                + assets.get_text(txt_id)
+            )
+        else:
+            self._name = (
+                self._config_entry.data[CONTROLLER][CONF_NAME]
+                + " "
+                + assets.get_text_by_type(device[CONF_TYPE])
+            )
+
+    @abstractmethod
+    def get_state(self, device):
+        """Get device state."""
+        raise NotImplementedError("Must override get_state")
+
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        return self._name
