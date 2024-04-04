@@ -1,4 +1,5 @@
 """Config flow for Tech Sterowniki integration."""
+
 import logging
 from typing import List
 import uuid

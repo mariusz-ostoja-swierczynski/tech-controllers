@@ -1,4 +1,5 @@
 """Assets for translations."""
+
 import logging
 
 from .const import DEFAULT_ICON, ICON_BY_ID, ICON_BY_TYPE, TXT_ID_BY_TYPE

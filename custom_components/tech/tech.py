@@ -1,4 +1,5 @@
 """Python wrapper for getting interaction with Tech devices."""
+
 import asyncio
 import json
 import logging
