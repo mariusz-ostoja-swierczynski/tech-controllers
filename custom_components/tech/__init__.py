@@ -1,4 +1,5 @@
 """The Tech Controllers integration."""
+
 import asyncio
 import logging
 import re

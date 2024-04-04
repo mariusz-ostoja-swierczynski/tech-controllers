@@ -1,4 +1,5 @@
 """Platform for binary sensor integration."""
+
 import logging
 
 from homeassistant.components import binary_sensor

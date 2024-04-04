@@ -1,4 +1,5 @@
 """Python wrapper for getting interaction with Tech devices."""
+
 import asyncio
 import json
 import logging
@@ -112,10 +113,7 @@ class Tech:
 
         """
         path = "authentication"
-        post_data = json.dumps({
-            "username": username,
-            "password": password
-        })
+        post_data = json.dumps({"username": username, "password": password})
         try:
             result = await self.post(path, post_data)
             self.authenticated = result["authenticated"]

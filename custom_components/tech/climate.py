@@ -1,4 +1,5 @@
 """Support for Tech HVAC system."""
+
 import logging
 from typing import Any, Optional
 

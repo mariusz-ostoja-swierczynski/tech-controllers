@@ -46,7 +46,7 @@ Platform | Description
 `sensor` | Show info and status from Tech API.
 `climate` | Thermostats.
 
-![Tech Thermostat Cards](/custom_components/tech/images/ha-tech-1.png)
+![Tech Thermostat Cards](./images/ha-tech-1.png)
 
 ## :pencil2: Plans for development
 
@@ -71,15 +71,15 @@ Platform | Description
 1. You should see "Success!" dialog with the name of the imported controller(s).
 1. Now you should have Climate entities representing your home zones available in Home Assistant. Go to your UI Lovelace configuration and add Thermostat card with your Climate entities.
 
-![Tech Controllers Setup 1](/custom_components/tech/images/ha-tech-add-integration-1.png)
+![Tech Controllers Setup 1](./images/ha-tech-add-integration-1.png)
 
-![Tech Controllers Setup 2](/custom_components/tech/images/ha-tech-add-integration-2.png)
+![Tech Controllers Setup 2](./images/ha-tech-add-integration-2.png)
 
-![Tech Controllers Setup 3](/custom_components/tech/images/ha-tech-add-integration-3.png)
+![Tech Controllers Setup 3](./images/ha-tech-add-integration-3.png)
 
-![Tech Controllers Setup 3](/custom_components/tech/images/ha-tech-add-integration-4.png)
+![Tech Controllers Setup 3](./images/ha-tech-add-integration-4.png)
 
-![Tech Controllers Setup 4](/custom_components/tech/images/ha-tech-2.png)
+![Tech Controllers Setup 4](./images/ha-tech-2.png)
 
 ## :arrow_up: Migration to version 2
 
