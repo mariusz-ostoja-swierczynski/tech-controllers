@@ -36,6 +36,7 @@ from .const import (
     BATTERY_LEVEL,
     CONTROLLER,
     DOMAIN,
+    INCLUDE_HUB_IN_NAME,
     MANUFACTURER,
     SIGNAL_STRENGTH,
     TYPE_FAN,
@@ -725,7 +726,7 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
         )
         self._device_name = (
             device[CONF_DESCRIPTION][CONF_NAME]
-            if not self._config_entry.data["include_hub_in_name"]
+            if not self._config_entry.data[INCLUDE_HUB_IN_NAME]
             else f"{self._config_entry.title} {device[CONF_DESCRIPTION][CONF_NAME]}"
         )
         self._model = (
@@ -1241,7 +1242,7 @@ class TileTextSensor(TileSensor):
         TileSensor.__init__(self, device, coordinator, config_entry)
         self._name = (
             self._config_entry.title
-            if self._config_entry.data["include_hub_in_name"]
+            if self._config_entry.data[INCLUDE_HUB_IN_NAME]
             else ""
         ) + assets.get_text(device[CONF_PARAMS]["headerId"])
 
@@ -1274,7 +1275,7 @@ class TileWidgetSensor(TileSensor):
         TileSensor.__init__(self, device, coordinator, config_entry)
         self._name = (
             self._config_entry.title
-            if self._config_entry.data["include_hub_in_name"]
+            if self._config_entry.data[INCLUDE_HUB_IN_NAME]
             else ""
         ) + assets.get_text(device[CONF_PARAMS]["widget1"]["txtId"])
 
@@ -1305,7 +1306,7 @@ class TileValveSensor(TileSensor, SensorEntity):
         self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
         self._name = (
             self._config_entry.title
-            if self._config_entry.data["include_hub_in_name"]
+            if self._config_entry.data[INCLUDE_HUB_IN_NAME]
             else ""
         ) + assets.get_text_by_type(device[CONF_TYPE])
 
@@ -1373,7 +1374,7 @@ class TileMixingValveSensor(TileSensor, SensorEntity):
         self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
         self._name = (
             self._config_entry.title
-            if self._config_entry.data["include_hub_in_name"]
+            if self._config_entry.data[INCLUDE_HUB_IN_NAME]
             else ""
         ) + assets.get_text_by_type(device[CONF_TYPE])
 

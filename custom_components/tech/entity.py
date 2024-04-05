@@ -9,7 +9,7 @@ from homeassistant.helpers import entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import TechCoordinator, assets
-from .const import CONTROLLER, MANUFACTURER, UDID
+from .const import CONTROLLER, INCLUDE_HUB_IN_NAME, MANUFACTURER, UDID
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class TileEntity(
         self._state = self.get_state(device)
         self.manufacturer = MANUFACTURER
         txt_id = device[CONF_PARAMS].get("txtId")
-        if self._config_entry.data["include_hub_in_name"]:
+        if self._config_entry.data[INCLUDE_HUB_IN_NAME]:
             self._name = self._config_entry.title + " "
         else:
             self._name = ""

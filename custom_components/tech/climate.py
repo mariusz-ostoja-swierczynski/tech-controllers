@@ -26,7 +26,7 @@ from homeassistant.const import (
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONTROLLER, DOMAIN, MANUFACTURER, UDID, VER
+from .const import CONTROLLER, DOMAIN, INCLUDE_HUB_IN_NAME, MANUFACTURER, UDID, VER
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         self._unique_id = self._udid + "_" + str(device[CONF_ZONE][CONF_ID])
         self.device_name = (
             device[CONF_DESCRIPTION][CONF_NAME]
-            if not self._config_entry.data["include_hub_in_name"]
+            if not self._config_entry.data[INCLUDE_HUB_IN_NAME]
             else f"{self._config_entry.title} {device[CONF_DESCRIPTION][CONF_NAME]}"
         )
 

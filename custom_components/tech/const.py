@@ -21,6 +21,7 @@ ACTUATORS = "actuators"
 BATTERY_LEVEL = "batteryLevel"
 SIGNAL_STRENGTH = "signalStrength"
 ACTUATORS_OPEN = "actuatorsOpen"
+INCLUDE_HUB_IN_NAME = "include_hub_in_name"
 
 DEFAULT_ICON = "mdi:eye"
 
