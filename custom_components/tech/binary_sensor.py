@@ -20,7 +20,7 @@ from .const import (
     UDID,
     VISIBILITY,
 )
-from .entity import TileEntityWithName
+from .entity import TileEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities(entities, True)
 
 
-class TileBinarySensor(TileEntityWithName, binary_sensor.BinarySensorEntity):
+class TileBinarySensor(TileEntity, binary_sensor.BinarySensorEntity):
     """Representation of a TileBinarySensor."""
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -69,6 +69,11 @@ class TileBinarySensor(TileEntityWithName, binary_sensor.BinarySensorEntity):
     def unique_id(self) -> str:
         """Return a unique ID."""
         return f"{self._unique_id}_tile_binary_sensor"
+
+    @property
+    def name(self):
+        """Return the name of the device."""
+        return self._name
 
     @property
     def state(self):

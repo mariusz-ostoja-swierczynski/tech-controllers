@@ -22,7 +22,8 @@
                 "title": "Výber modulov",
                 "description": "Prosím, vyberte moduly, ktoré chcete integrovať.",
                 "data": {
-                    "controllers": "Moduly na import"
+                    "controllers": "Moduly na import",
+                    "include_hub_in_name": "Include hub (controller) name in entitiy names"
                 }
             }
         }

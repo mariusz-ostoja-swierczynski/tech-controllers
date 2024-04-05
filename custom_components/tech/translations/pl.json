@@ -22,7 +22,8 @@
                 "title": "Wybór sterownika",
                 "description": "Wybierz sterowniki, które chcesz zintegrować.",
                 "data": {
-                    "controllers": "Sterowniki do zintegrowania"
+                    "controllers": "Sterowniki do zintegrowania",
+                    "include_hub_in_name": "Umieść nazwę hub'a (kontrolera) w nazwach encji"
                 }
             }
         }

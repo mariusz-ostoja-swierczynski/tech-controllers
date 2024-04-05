@@ -42,7 +42,11 @@ def controllers_schema(controllers) -> vol.Schema:
                     ]
                     for controller in controllers
                 }
-            )
+            ),
+            vol.Required(
+                "include_hub_in_name",
+                default=False,
+            ): bool,
         }
     )
 
@@ -74,7 +78,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Tech Sterowniki."""
 
     VERSION = 2
-    MINOR_VERSION = 2
+    MINOR_VERSION = 3
     # Pick one of the available connection classes in homeassistant/config_entries.py
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
 
@@ -85,6 +89,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def _async_finish_controller(self, user_input: dict[str, str]) -> FlowResult:
         """Finish setting up controllers."""
+
+        include_name: bool = user_input["include_hub_in_name"]
 
         if not user_input[CONTROLLERS]:
             return self.async_abort(reason="no_modules")
@@ -116,6 +122,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     )
                     await self.async_set_unique_id(controller[CONTROLLER][UDID])
 
+                    controller["include_hub_in_name"] = include_name
                     _LOGGER.debug("Adding config entry for: %s", controller)
 
                     await self.hass.config_entries.async_add(
@@ -131,17 +138,20 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             await self.async_set_unique_id(controller_udid)
 
+            controller = next(
+                obj
+                for obj in self._controllers
+                if obj[CONTROLLER].get(ATTR_ID) == int(controllers[0])
+            )
+            controller["include_hub_in_name"] = include_name
+
             return self.async_create_entry(
                 title=next(
                     obj
                     for obj in self._controllers
                     if obj[CONTROLLER].get(ATTR_ID) == int(controllers[0])
                 )[CONTROLLER][CONF_NAME],
-                data=next(
-                    obj
-                    for obj in self._controllers
-                    if obj[CONTROLLER].get(ATTR_ID) == int(controllers[0])
-                ),
+                data=controller,
             )
 
     async def async_step_select_controllers(

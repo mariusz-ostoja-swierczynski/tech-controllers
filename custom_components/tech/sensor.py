@@ -51,7 +51,7 @@ from .const import (
     VISIBILITY,
     WORKING_STATUS,
 )
-from .entity import TileEntity, TileEntityWithName
+from .entity import TileEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -723,7 +723,11 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
         self._unique_id = (
             config_entry.data[CONTROLLER][UDID] + "_" + str(device[CONF_ZONE][CONF_ID])
         )
-        self._device_name = device[CONF_DESCRIPTION][CONF_NAME]
+        self._device_name = (
+            device[CONF_DESCRIPTION][CONF_NAME]
+            if not self._config_entry.data["include_hub_in_name"]
+            else f"{self._config_entry.title} {device[CONF_DESCRIPTION][CONF_NAME]}"
+        )
         self._model = (
             config_entry.data[CONTROLLER][CONF_NAME]
             + ": "
@@ -743,7 +747,7 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
 
         """
         # Update name property
-        # self._name = device[CONF_DESCRIPTION][CONF_NAME]
+        self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Update target_temperature property
         if device[CONF_ZONE]["setTemperature"] is not None:
@@ -1041,15 +1045,6 @@ class TileSensor(TileEntity, CoordinatorEntity):
         """Get the state of the device."""
 
 
-class TileSensorWithName(TileEntityWithName, CoordinatorEntity):
-    """Representation of a TileSensor."""
-
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-
-    def get_state(self, device):
-        """Get the state of the device."""
-
-
 class TileTemperatureSensor(TileSensor, SensorEntity):
     """Representation of a Tile Temperature Sensor."""
 
@@ -1186,7 +1181,7 @@ class TileTemperatureSignalSensor(TileSensor, SensorEntity):
         }
 
 
-class TileFuelSupplySensor(TileSensorWithName):
+class TileFuelSupplySensor(TileSensor):
     """Representation of a Tile Fuel Supply Sensor."""
 
     _attr_native_unit_of_measurement = PERCENTAGE
@@ -1202,12 +1197,17 @@ class TileFuelSupplySensor(TileSensorWithName):
         """Return a unique ID."""
         return f"{self._unique_id}_tile_fuel_supply"
 
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        return self._name
+
     def get_state(self, device):
         """Get the state of the device."""
         return device[CONF_PARAMS]["percentage"]
 
 
-class TileFanSensor(TileSensorWithName):
+class TileFanSensor(TileSensor):
     """Representation of a Tile Fan Sensor."""
 
     _attr_native_unit_of_measurement = PERCENTAGE
@@ -1223,22 +1223,28 @@ class TileFanSensor(TileSensorWithName):
         """Return a unique ID."""
         return f"{self._unique_id}_tile_fan"
 
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        return self._name
+
     def get_state(self, device):
         """Get the state of the device."""
         return device[CONF_PARAMS]["gear"]
 
 
-class TileTextSensor(TileSensorWithName):
+class TileTextSensor(TileSensor):
     """Representation of a Tile Text Sensor."""
 
     def __init__(self, device, coordinator, config_entry):
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
         self._name = (
-            self._config_entry.data[CONTROLLER][CONF_NAME]
-            + " "
-            + assets.get_text(device[CONF_PARAMS]["headerId"])
-        )
+            self._config_entry.title
+            if self._config_entry.data["include_hub_in_name"]
+            else ""
+        ) + assets.get_text(device[CONF_PARAMS]["headerId"])
+
         self._attr_icon = assets.get_icon(device[CONF_PARAMS]["iconId"])
 
     @property
@@ -1246,12 +1252,17 @@ class TileTextSensor(TileSensorWithName):
         """Return a unique ID."""
         return f"{self._unique_id}_tile_text"
 
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        return self._name
+
     def get_state(self, device):
         """Get the state of the device."""
         return assets.get_text(device[CONF_PARAMS]["statusId"])
 
 
-class TileWidgetSensor(TileSensorWithName):
+class TileWidgetSensor(TileSensor):
     """Representation of a Tile Widget Sensor."""
 
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
@@ -1262,22 +1273,27 @@ class TileWidgetSensor(TileSensorWithName):
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
         self._name = (
-            self._config_entry.data[CONTROLLER][CONF_NAME]
-            + " "
-            + assets.get_text(device[CONF_PARAMS]["widget1"]["txtId"])
-        )
+            self._config_entry.title
+            if self._config_entry.data["include_hub_in_name"]
+            else ""
+        ) + assets.get_text(device[CONF_PARAMS]["widget1"]["txtId"])
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
         return f"{self._unique_id}_tile_widget"
 
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        return self._name
+
     def get_state(self, device):
         """Get the state of the device."""
         return device[CONF_PARAMS]["widget1"][VALUE] / 10
 
 
-class TileValveSensor(TileSensorWithName, SensorEntity):
+class TileValveSensor(TileSensor, SensorEntity):
     """Representation of a Tile Valve Sensor."""
 
     def __init__(self, device, coordinator, config_entry):
@@ -1285,19 +1301,25 @@ class TileValveSensor(TileSensorWithName, SensorEntity):
         TileSensor.__init__(self, device, coordinator, config_entry)
         self.native_unit_of_measurement = PERCENTAGE
         self.state_class = SensorStateClass.MEASUREMENT
+        self._valve_number = device[CONF_PARAMS]["valveNumber"]
         self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
-        name = (
-            self._config_entry.data[CONTROLLER][CONF_NAME]
-            + " "
-            + assets.get_text_by_type(device[CONF_TYPE])
-        )
-        self._name = f"{name} {device[CONF_PARAMS]['valveNumber']}"
+        self._name = (
+            self._config_entry.title
+            if self._config_entry.data["include_hub_in_name"]
+            else ""
+        ) + assets.get_text_by_type(device[CONF_TYPE])
+
         self.attrs: Dict[str, Any] = {}
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
         return f"{self._unique_id}_tile_valve"
+
+    @property
+    def name(self):
+        """Return the name of the device."""
+        return f"{self._name} {self._valve_number}"
 
     def get_state(self, device):
         """Get the state of the device."""
@@ -1336,7 +1358,7 @@ class TileValveSensor(TileSensorWithName, SensorEntity):
         self.attrs["setTemp"] = device[CONF_PARAMS]["setTemp"]
 
 
-class TileMixingValveSensor(TileSensorWithName, SensorEntity):
+class TileMixingValveSensor(TileSensor, SensorEntity):
     """Representation of a Tile Mixing Valve Sensor."""
 
     _attr_native_unit_of_measurement = PERCENTAGE
@@ -1347,18 +1369,23 @@ class TileMixingValveSensor(TileSensorWithName, SensorEntity):
         TileSensor.__init__(self, device, coordinator, config_entry)
         self.native_unit_of_measurement = PERCENTAGE
         self.state_class = SensorStateClass.MEASUREMENT
+        self._valve_number = device[CONF_PARAMS]["valveNumber"]
         self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
-        name = (
-            self._config_entry.data[CONTROLLER][CONF_NAME]
-            + " "
-            + assets.get_text_by_type(device[CONF_TYPE])
-        )
-        self._name = f"{name} {device[CONF_PARAMS]['valveNumber']}"
+        self._name = (
+            self._config_entry.title
+            if self._config_entry.data["include_hub_in_name"]
+            else ""
+        ) + assets.get_text_by_type(device[CONF_TYPE])
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
         return f"{self._unique_id}_tile_mixing_valve"
+
+    @property
+    def name(self):
+        """Return the name of the device."""
+        return f"{self._name} {self._valve_number}"
 
     def get_state(self, device):
         """Get the state of the device."""

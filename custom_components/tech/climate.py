@@ -63,7 +63,12 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         self._coordinator = coordinator
         self._id = device[CONF_ZONE][CONF_ID]
         self._unique_id = self._udid + "_" + str(device[CONF_ZONE][CONF_ID])
-        self.device_name = device[CONF_DESCRIPTION][CONF_NAME]
+        self.device_name = (
+            device[CONF_DESCRIPTION][CONF_NAME]
+            if not self._config_entry.data["include_hub_in_name"]
+            else f"{self._config_entry.title} {device[CONF_DESCRIPTION][CONF_NAME]}"
+        )
+
         self.manufacturer = MANUFACTURER
         self.model = (
             config_entry.data[CONTROLLER][CONF_NAME]
@@ -98,13 +103,6 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         None
 
         """
-        # Update device name
-        self._name = (
-            self._config_entry.data[CONTROLLER][CONF_NAME]
-            + " "
-            + device[CONF_DESCRIPTION][CONF_NAME]
-        )
-
         # Update target temperature
         if device[CONF_ZONE]["setTemperature"] is not None:
             self._target_temperature = device[CONF_ZONE]["setTemperature"] / 10

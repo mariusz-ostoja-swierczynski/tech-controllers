@@ -3,13 +3,7 @@ from abc import abstractmethod
 import logging
 from typing import Any
 
-from homeassistant.const import (
-    CONF_DESCRIPTION,
-    CONF_ID,
-    CONF_NAME,
-    CONF_PARAMS,
-    CONF_TYPE,
-)
+from homeassistant.const import CONF_DESCRIPTION, CONF_ID, CONF_PARAMS, CONF_TYPE
 from homeassistant.core import callback
 from homeassistant.helpers import entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -40,18 +34,14 @@ class TileEntity(
         self._state = self.get_state(device)
         self.manufacturer = MANUFACTURER
         txt_id = device[CONF_PARAMS].get("txtId")
-        if txt_id:
-            self._name = (
-                self._config_entry.data[CONTROLLER][CONF_NAME]
-                + " "
-                + assets.get_text(txt_id)
-            )
+        if self._config_entry.data["include_hub_in_name"]:
+            self._name = self._config_entry.title + " "
         else:
-            self._name = (
-                self._config_entry.data[CONTROLLER][CONF_NAME]
-                + " "
-                + assets.get_text_by_type(device[CONF_TYPE])
-            )
+            self._name = ""
+        if txt_id:
+            self._name += assets.get_text(txt_id)
+        else:
+            self._name += assets.get_text_by_type(device[CONF_TYPE])
 
     @property
     def unique_id(self) -> str:
@@ -86,39 +76,3 @@ class TileEntity(
         """Handle updated data from the coordinator."""
         self.update_properties(self._coordinator.data["tiles"][self._id])
         self.async_write_ha_state()
-
-
-class TileEntityWithName(
-    TileEntity,
-):
-    """Representation of a TileEntity but returning an explicit name."""
-
-    _attr_has_entity_name = True
-
-    def __init__(self, device, coordinator: TechCoordinator, config_entry):
-        """Initialize the tile entity."""
-        super().__init__(device, coordinator, config_entry)
-        self._config_entry = config_entry
-        txt_id = device[CONF_PARAMS].get("txtId")
-        if txt_id:
-            self._name = (
-                self._config_entry.data[CONTROLLER][CONF_NAME]
-                + " "
-                + assets.get_text(txt_id)
-            )
-        else:
-            self._name = (
-                self._config_entry.data[CONTROLLER][CONF_NAME]
-                + " "
-                + assets.get_text_by_type(device[CONF_TYPE])
-            )
-
-    @abstractmethod
-    def get_state(self, device):
-        """Get device state."""
-        raise NotImplementedError("Must override get_state")
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
