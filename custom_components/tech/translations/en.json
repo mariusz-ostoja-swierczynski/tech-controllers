@@ -23,7 +23,7 @@
                 "description": "Please select the controllers you want to integrate.",
                 "data": {
                     "controllers": "Controllers to import",
-                    "include_hub_in_name": "Include hub (controller) name in entitiy names"
+                    "include_hub_in_name": "Include hub (controller) name in entity names"
                 }
             }
         }
