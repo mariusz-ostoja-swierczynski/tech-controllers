@@ -2,7 +2,7 @@
 
 import itertools
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -443,7 +443,7 @@ class TechTemperatureSensor(CoordinatorEntity, SensorEntity):
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
-        self, device: Dict, coordinator: TechCoordinator, config_entry: ConfigEntry
+        self, device: dict, coordinator: TechCoordinator, config_entry: ConfigEntry
     ):
         """Initialize the Tech temperature sensor."""
         _LOGGER.debug("Init TechTemperatureSensor... ")
@@ -525,7 +525,7 @@ class TechOutsideTempTile(CoordinatorEntity, SensorEntity):
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
-        self, device: Dict, coordinator: TechCoordinator, config_entry: ConfigEntry
+        self, device: dict, coordinator: TechCoordinator, config_entry: ConfigEntry
     ):
         """Initialize the Tech temperature sensor."""
         _LOGGER.debug("Init TechOutsideTemperatureTile... ")
@@ -614,7 +614,7 @@ class TechHumiditySensor(CoordinatorEntity, SensorEntity):
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
-        self, device: Dict, coordinator: TechCoordinator, config_entry: ConfigEntry
+        self, device: dict, coordinator: TechCoordinator, config_entry: ConfigEntry
     ):
         """Initialize the Tech humidity sensor."""
         _LOGGER.debug("Init TechHumiditySensor... ")
@@ -694,7 +694,7 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(
-        self, device: Dict, coordinator: TechCoordinator, config_entry: ConfigEntry
+        self, device: dict, coordinator: TechCoordinator, config_entry: ConfigEntry
     ):
         """Initialize the sensor."""
         super().__init__(coordinator)
@@ -930,7 +930,7 @@ class ZoneActuatorSensor(ZoneSensor):
 
         """
         self._actuator_index = actuator_index
-        self.attrs: Dict[str, Any] = {}
+        self.attrs: dict[str, Any] = {}
         super().__init__(device, coordinator, config_entry)
         self.attrs[BATTERY_LEVEL] = device[ACTUATORS][self._actuator_index][
             BATTERY_LEVEL
@@ -950,7 +950,7 @@ class ZoneActuatorSensor(ZoneSensor):
         return f"{self._name} actuator {str(self._actuator_index + 1)}"
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return the state attributes."""
         attributes = {}
         attributes.update(self.attrs)
@@ -1204,7 +1204,7 @@ class TileValveSensor(TileSensor, SensorEntity):
         self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
         name = assets.get_text_by_type(device[CONF_TYPE])
         self._name = f"{name} {device[CONF_PARAMS]['valveNumber']}"
-        self.attrs: Dict[str, Any] = {}
+        self.attrs: dict[str, Any] = {}
 
     @property
     def unique_id(self) -> str:
@@ -1216,7 +1216,7 @@ class TileValveSensor(TileSensor, SensorEntity):
         return device[CONF_PARAMS]["openingPercentage"]
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return the state attributes."""
         attributes = {}
         attributes.update(self.attrs)
