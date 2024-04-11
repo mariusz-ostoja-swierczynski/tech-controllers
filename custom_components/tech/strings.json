@@ -61,10 +61,10 @@
   "entity": {
     "sensor": {
       "temperature_entity": {
-        "name": "{entity_name} [%key:component::sensor::entity_component::temperature::name%]"
+        "name": "{entity_name} temperature"
       },
       "battery_entity": {
-        "name": "{entity_name} [%key:component::sensor::entity_component::battery::name%]"
+        "name": "{entity_name} battery"
       },
       "humidity_entity": {
         "name": "[%key:component::sensor::entity_component::humidity::name%]"
