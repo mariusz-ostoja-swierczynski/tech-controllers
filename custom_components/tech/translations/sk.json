@@ -31,10 +31,10 @@
     "entity": {
         "sensor": {
           "temperature_entity": {
-            "name": "Teplota"
+            "name": "{entity_name} Teplota"
           },
           "battery_entity": {
-            "name": "Batéria"
+            "name": "{entity_name} Batéria"
           },
           "humidity_entity": {
             "name": "Vlhkosť"
@@ -46,7 +46,7 @@
             "name": "Vonkajšia teplota"
           },
           "signal_strength_entity": {
-            "name": "Intenzita signálu"
+            "name": "{entity_name} Intenzita signálu"
           }
         }
       },

@@ -61,10 +61,10 @@
   "entity": {
     "sensor": {
       "temperature_entity": {
-        "name": "[%key:component::sensor::entity_component::temperature::name%]"
+        "name": "{entity_name} [%key:component::sensor::entity_component::temperature::name%]"
       },
       "battery_entity": {
-        "name": "[%key:component::sensor::entity_component::battery::name%]"
+        "name": "{entity_name} [%key:component::sensor::entity_component::battery::name%]"
       },
       "humidity_entity": {
         "name": "[%key:component::sensor::entity_component::humidity::name%]"
@@ -76,7 +76,7 @@
         "name": "[%key:component::sensor::entity_component::temperature::name%]"
       },
       "signal_strength_entity": {
-        "name": "signal strength"
+        "name": "{entity_name} signal strength"
       }
     }
   }

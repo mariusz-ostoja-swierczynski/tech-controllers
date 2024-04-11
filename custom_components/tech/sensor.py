@@ -79,15 +79,20 @@ async def async_setup_entry(
         if tile[CONF_TYPE] == TYPE_TEMPERATURE:
             signal_strength = tile[CONF_PARAMS][SIGNAL_STRENGTH]
             battery_level = tile[CONF_PARAMS][BATTERY_LEVEL]
+            create_devices = False
             if signal_strength not in (None, "null"):
+                create_devices = True
                 entities.append(
-                    TileTemperatureSignalSensor(tile, coordinator, config_entry)
+                    TileTemperatureSignalSensor(tile, coordinator, config_entry, create_devices)
                 )
             if battery_level not in (None, "null"):
+                create_devices = True
                 entities.append(
-                    TileTemperatureBatterySensor(tile, coordinator, config_entry)
+                    TileTemperatureBatterySensor(tile, coordinator, config_entry, create_devices)
                 )
-            entities.append(TileTemperatureSensor(tile, coordinator, config_entry))
+            entities.append(
+                TileTemperatureSensor(tile, coordinator, config_entry, create_devices)
+            )
         if tile[CONF_TYPE] == TYPE_TEMPERATURE_CH:
             entities.append(TileWidgetSensor(tile, coordinator, config_entry))
         if tile[CONF_TYPE] == TYPE_FAN:
@@ -735,6 +740,7 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
             + config_entry.data[CONTROLLER][VER]
         )
         self._manufacturer = MANUFACTURER
+        self._attr_translation_placeholders = {"entity_name": ""}
         self.update_properties(device)
 
     def update_properties(self, device):
@@ -1054,7 +1060,13 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
     _attr_device_class = SensorDeviceClass.TEMPERATURE
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, device, coordinator: TechCoordinator, config_entry):
+    def __init__(
+        self,
+        device,
+        coordinator: TechCoordinator,
+        config_entry,
+        create_device: bool = False,
+    ):
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
         self.native_unit_of_measurement = UnitOfTemperature.CELSIUS
@@ -1063,16 +1075,16 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
         # self.device_name = device[CONF_DESCRIPTION][CONF_NAME]
         self.manufacturer = MANUFACTURER
         self.model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
+        self._attr_translation_key = "temperature_entity"
+        self._attr_translation_placeholders = (
+            {"entity_name": ""} if create_device else {"entity_name": f"{self._name}"}
+        )
+        self._create_device = create_device
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
         return f"{self._unique_id}_tile_temperature"
-
-    @property
-    def translation_key(self):
-        """Return the translation key to translate the entity's name and states."""
-        return "temperature_entity"
 
     def get_state(self, device):
         """Get the state of the device."""
@@ -1081,14 +1093,17 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
     @property
     def device_info(self):
         """Returns device information in a dictionary format."""
-        return {
-            ATTR_IDENTIFIERS: {
-                (DOMAIN, self._unique_id)
-            },  # Unique identifiers for the device
-            CONF_NAME: self._name,  # Name of the device
-            CONF_MODEL: self.model,  # Model of the device
-            ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
-        }
+
+        if self._create_device:
+            return {
+                ATTR_IDENTIFIERS: {
+                    (DOMAIN, self._unique_id)
+                },  # Unique identifiers for the device
+                CONF_NAME: self._name,  # Name of the device
+                CONF_MODEL: self.model,  # Model of the device
+                ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+            }
+        return None
 
 
 class TileTemperatureBatterySensor(TileSensor, SensorEntity):
@@ -1100,22 +1115,27 @@ class TileTemperatureBatterySensor(TileSensor, SensorEntity):
     _attr_device_class = SensorDeviceClass.BATTERY
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, device, coordinator: TechCoordinator, config_entry):
+    def __init__(
+        self,
+        device,
+        coordinator: TechCoordinator,
+        config_entry,
+        create_device: bool = False,
+    ):
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
-        # self.device_name = device[CONF_DESCRIPTION][CONF_NAME]
         self.manufacturer = MANUFACTURER
         self.model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
+        self._attr_translation_key = "battery_entity"
+        self._attr_translation_placeholders = (
+            {"entity_name": ""} if create_device else {"entity_name": f"{self._name}"}
+        )
+        self._create_device = create_device
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
         return f"{self._unique_id}_tile_temperature_battery"
-
-    @property
-    def translation_key(self):
-        """Return the translation key to translate the entity's name and states."""
-        return "battery_entity"
 
     def get_state(self, device):
         """Get the state of the device."""
@@ -1124,14 +1144,17 @@ class TileTemperatureBatterySensor(TileSensor, SensorEntity):
     @property
     def device_info(self):
         """Returns device information in a dictionary format."""
-        return {
-            ATTR_IDENTIFIERS: {
-                (DOMAIN, self._unique_id)
-            },  # Unique identifiers for the device
-            CONF_NAME: self._name,  # Name of the device
-            CONF_MODEL: self.model,  # Model of the device
-            ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
-        }
+
+        if self._create_device:
+            return {
+                ATTR_IDENTIFIERS: {
+                    (DOMAIN, self._unique_id)
+                },  # Unique identifiers for the device
+                CONF_NAME: self._name,  # Name of the device
+                CONF_MODEL: self.model,  # Model of the device
+                ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+            }
+        return None
 
 
 class TileTemperatureSignalSensor(TileSensor, SensorEntity):
@@ -1143,12 +1166,22 @@ class TileTemperatureSignalSensor(TileSensor, SensorEntity):
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_icon = "mdi:signal"
 
-    def __init__(self, device, coordinator: TechCoordinator, config_entry):
+    def __init__(
+        self,
+        device,
+        coordinator: TechCoordinator,
+        config_entry,
+        create_device: bool = False,
+    ):
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
-        # self.device_name = device[CONF_DESCRIPTION][CONF_NAME]
         self.manufacturer = MANUFACTURER
         self.model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
+        self._attr_translation_key = "signal_strength_entity"
+        self._attr_translation_placeholders = (
+            {"entity_name": ""} if create_device else {"entity_name": f"{self._name}"}
+        )
+        self._create_device = create_device
 
     @property
     def unique_id(self) -> str:
@@ -1160,11 +1193,6 @@ class TileTemperatureSignalSensor(TileSensor, SensorEntity):
         """Icon of the entity, based on signal strength."""
         return icon_for_signal_level(self.state)
 
-    @property
-    def translation_key(self):
-        """Return the translation key to translate the entity's name and states."""
-        return "signal_strength_entity"
-
     def get_state(self, device):
         """Get the state of the device."""
         return device[CONF_PARAMS][SIGNAL_STRENGTH]
@@ -1172,14 +1200,16 @@ class TileTemperatureSignalSensor(TileSensor, SensorEntity):
     @property
     def device_info(self):
         """Returns device information in a dictionary format."""
-        return {
-            ATTR_IDENTIFIERS: {
-                (DOMAIN, self._unique_id)
-            },  # Unique identifiers for the device
-            CONF_NAME: self._name,  # Name of the device
-            CONF_MODEL: self.model,  # Model of the device
-            ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
-        }
+        if self._create_device:
+            return {
+                ATTR_IDENTIFIERS: {
+                    (DOMAIN, self._unique_id)
+                },  # Unique identifiers for the device
+                CONF_NAME: self._name,  # Name of the device
+                CONF_MODEL: self.model,  # Model of the device
+                ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+            }
+        return None
 
 
 class TileFuelSupplySensor(TileSensor):
@@ -1241,7 +1271,7 @@ class TileTextSensor(TileSensor):
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
         self._name = (
-            self._config_entry.title
+            self._config_entry.title + " "
             if self._config_entry.data[INCLUDE_HUB_IN_NAME]
             else ""
         ) + assets.get_text(device[CONF_PARAMS]["headerId"])
@@ -1274,7 +1304,7 @@ class TileWidgetSensor(TileSensor):
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
         self._name = (
-            self._config_entry.title
+            self._config_entry.title + " "
             if self._config_entry.data[INCLUDE_HUB_IN_NAME]
             else ""
         ) + assets.get_text(device[CONF_PARAMS]["widget1"]["txtId"])
@@ -1305,7 +1335,7 @@ class TileValveSensor(TileSensor, SensorEntity):
         self._valve_number = device[CONF_PARAMS]["valveNumber"]
         self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
         self._name = (
-            self._config_entry.title
+            self._config_entry.title + " "
             if self._config_entry.data[INCLUDE_HUB_IN_NAME]
             else ""
         ) + assets.get_text_by_type(device[CONF_TYPE])
@@ -1373,7 +1403,7 @@ class TileMixingValveSensor(TileSensor, SensorEntity):
         self._valve_number = device[CONF_PARAMS]["valveNumber"]
         self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
         self._name = (
-            self._config_entry.title
+            self._config_entry.title + " "
             if self._config_entry.data[INCLUDE_HUB_IN_NAME]
             else ""
         ) + assets.get_text_by_type(device[CONF_TYPE])

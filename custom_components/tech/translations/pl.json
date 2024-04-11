@@ -31,10 +31,10 @@
     "entity": {
         "sensor": {
           "temperature_entity": {
-            "name": "Temperatura"
+            "name": "{entity_name} Temperatura"
           },
           "battery_entity": {
-            "name": "Bateria"
+            "name": "{entity_name} Bateria"
           },
           "humidity_entity": {
             "name": "Wilgotność"
@@ -46,7 +46,7 @@
             "name": "Temperatura zewnętrzna"
           },
           "signal_strength_entity": {
-            "name": "Siła sygnału"
+            "name": "{entity_name} Siła sygnału"
           }
         }
       },
