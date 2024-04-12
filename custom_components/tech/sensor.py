@@ -1,7 +1,7 @@
 """Support for Tech HVAC system."""
 import itertools
 import logging
-from typing import Any, Dict, cast
+from typing import Any, cast
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -83,12 +83,16 @@ async def async_setup_entry(
             if signal_strength not in (None, "null"):
                 create_devices = True
                 entities.append(
-                    TileTemperatureSignalSensor(tile, coordinator, config_entry, create_devices)
+                    TileTemperatureSignalSensor(
+                        tile, coordinator, config_entry, create_devices
+                    )
                 )
             if battery_level not in (None, "null"):
                 create_devices = True
                 entities.append(
-                    TileTemperatureBatterySensor(tile, coordinator, config_entry, create_devices)
+                    TileTemperatureBatterySensor(
+                        tile, coordinator, config_entry, create_devices
+                    )
                 )
             entities.append(
                 TileTemperatureSensor(tile, coordinator, config_entry, create_devices)
@@ -452,7 +456,7 @@ class TechTemperatureSensor(CoordinatorEntity, SensorEntity):
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
-        self, device: Dict, coordinator: TechCoordinator, config_entry: ConfigEntry
+        self, device: dict, coordinator: TechCoordinator, config_entry: ConfigEntry
     ):
         """Initialize the Tech temperature sensor."""
         _LOGGER.debug("Init TechTemperatureSensor... ")
@@ -539,7 +543,7 @@ class TechOutsideTempTile(CoordinatorEntity, SensorEntity):
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
-        self, device: Dict, coordinator: TechCoordinator, config_entry: ConfigEntry
+        self, device: dict, coordinator: TechCoordinator, config_entry: ConfigEntry
     ):
         """Initialize the Tech temperature sensor."""
         _LOGGER.debug("Init TechOutsideTemperatureTile... ")
@@ -633,7 +637,7 @@ class TechHumiditySensor(CoordinatorEntity, SensorEntity):
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
-        self, device: Dict, coordinator: TechCoordinator, config_entry: ConfigEntry
+        self, device: dict, coordinator: TechCoordinator, config_entry: ConfigEntry
     ):
         """Initialize the Tech humidity sensor."""
         _LOGGER.debug("Init TechHumiditySensor... ")
@@ -719,7 +723,7 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
     _attr_has_entity_name = True
 
     def __init__(
-        self, device: Dict, coordinator: TechCoordinator, config_entry: ConfigEntry
+        self, device: dict, coordinator: TechCoordinator, config_entry: ConfigEntry
     ):
         """Initialize the sensor."""
         super().__init__(coordinator)
@@ -955,7 +959,7 @@ class ZoneActuatorSensor(ZoneSensor):
 
         """
         self._actuator_index = actuator_index
-        self.attrs: Dict[str, Any] = {}
+        self.attrs: dict[str, Any] = {}
         super().__init__(device, coordinator, config_entry)
         self._attr_translation_key = "actuator_entity"
         self._attr_translation_placeholders = {
@@ -974,7 +978,7 @@ class ZoneActuatorSensor(ZoneSensor):
         return f"{self._unique_id}_zone_actuator_{str(self._actuator_index + 1)}"
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return the state attributes."""
         attributes = {}
         attributes.update(self.attrs)
@@ -1340,7 +1344,7 @@ class TileValveSensor(TileSensor, SensorEntity):
             else ""
         ) + assets.get_text_by_type(device[CONF_TYPE])
 
-        self.attrs: Dict[str, Any] = {}
+        self.attrs: dict[str, Any] = {}
 
     @property
     def unique_id(self) -> str:
@@ -1357,7 +1361,7 @@ class TileValveSensor(TileSensor, SensorEntity):
         return device[CONF_PARAMS]["openingPercentage"]
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return the state attributes."""
         attributes = {}
         attributes.update(self.attrs)
