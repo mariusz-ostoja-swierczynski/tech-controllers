@@ -1,6 +1,6 @@
 """Config flow for Tech Sterowniki integration."""
+
 import logging
-from typing import List
 import uuid
 
 import voluptuous as vol
@@ -93,7 +93,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         """Initialize the config flow."""
         self._init_info: dict[str, str] | None = None
-        self._controllers: List[dict] | None = None
+        self._controllers: list[dict] | None = None
 
     async def _async_finish_controller(self, user_input: dict[str, str]) -> FlowResult:
         """Finish setting up controllers."""
@@ -213,7 +213,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             source=SOURCE_USER,
         )
 
-    def _create_controllers_array(self, validated_input: dict) -> List[dict]:
+    def _create_controllers_array(self, validated_input: dict) -> list[dict]:
         return [
             self._create_controller_dict(validated_input, controller_dict)
             for controller_dict in validated_input[CONTROLLERS]

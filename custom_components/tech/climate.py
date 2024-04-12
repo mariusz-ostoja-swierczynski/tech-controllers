@@ -1,6 +1,7 @@
 """Support for Tech HVAC system."""
+
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from custom_components.tech import TechCoordinator
 from homeassistant.components.climate import (
@@ -181,7 +182,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         return SUPPORT_HVAC
 
     @property
-    def hvac_action(self) -> Optional[str]:
+    def hvac_action(self) -> str | None:
         """Return the current running hvac operation if supported.
 
         Need to be one of CURRENT_HVAC_*.
