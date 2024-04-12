@@ -3,7 +3,7 @@ name: Run Tech API tests
 on:
   push:
   schedule:
-    - cron: '0 4 * * *'
+    - cron: "0 4 * * *"
   workflow_dispatch:
 
 jobs:
@@ -12,14 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11"]
+        python-version: ["3.12"]
 
     steps:
       - uses: MathRobin/timezone-action@v1.1
         with:
           timezoneLinux: "Europe/Berlin"
-      - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
@@ -30,11 +31,12 @@ jobs:
           pip install -r requirements_test_api.txt
       - name: Install dependencies
         run: pip install pytest pytest-md pytest-emoji
-      - uses: pavelzw/pytest-action@v2
+      - name: Run tests
+        uses: pavelzw/pytest-action@v2
         with:
           emoji: true
           verbose: true
           job-summary: true
-          custom-arguments: 'tests/tests_api --cov-report=term-missing --cov=custom_components.tech.tech tests/'
+          custom-arguments: "tests/tests_api --cov-report=term-missing --cov=custom_components.tech.tech tests/"
           click-to-expand: true
-          report-title: 'Tech API test report'
+          report-title: "Tech API test report"

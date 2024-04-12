@@ -7,17 +7,25 @@ on:
     - cron: "0 0 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   validate-hassfest:
+    name: Validate Hassfest
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v4"
-      - uses: home-assistant/actions/hassfest@master
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Hassfest validation
+        uses: home-assistant/actions/hassfest@master
   validate-hacs:
+    name: Validate HACS
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v4"
+      - name: Checkout repository
+        uses: actions/checkout@v4
       - name: HACS validation
-        uses: "hacs/action@main"
+        uses: hacs/action@main
         with:
           category: "integration"
