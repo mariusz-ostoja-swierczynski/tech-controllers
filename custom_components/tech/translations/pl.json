@@ -2,7 +2,7 @@
     "config": {
         "abort": {
             "already_configured": "Urządzenie jest już skonfigurowane",
-            "no_modules": "Nie wykryto żadnych sterowników"
+            "no_modules": "Nie wykryto lub nie dodano żadnych sterowników"
         },
         "error": {
             "cannot_connect": "Nie można się połączyć z Tech API.",

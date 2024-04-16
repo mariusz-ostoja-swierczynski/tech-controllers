@@ -2,7 +2,7 @@
     "config": {
         "abort": {
             "already_configured": "Zariadenie už bolo nakonfigurované",
-            "no_modules": "Neboli nájdené žiadne moduly"
+            "no_modules": "Neboli nájdené alebo vybrané žiadne moduly"
         },
         "error": {
             "cannot_connect": "Nie je možné pripojiť sa k Tech API.",
