@@ -22,10 +22,33 @@
                 "title": "Wybór sterownika",
                 "description": "Wybierz sterowniki, które chcesz zintegrować.",
                 "data": {
-                    "controllers": "Sterowniki do zintegrowania"
+                    "controllers": "Sterowniki do zintegrowania",
+                    "include_hub_in_name": "Umieść nazwę hub'a (kontrolera) w nazwach encji"
                 }
             }
         }
     },
+    "entity": {
+        "sensor": {
+          "temperature_entity": {
+            "name": "{entity_name} Temperatura"
+          },
+          "battery_entity": {
+            "name": "{entity_name} Bateria"
+          },
+          "humidity_entity": {
+            "name": "Wilgotność"
+          },
+          "actuator_entity": {
+            "name": "Siłownik {actuator_number}"
+          },
+          "ext_temperature_entity": {
+            "name": "Temperatura zewnętrzna"
+          },
+          "signal_strength_entity": {
+            "name": "{entity_name} Siła sygnału"
+          }
+        }
+      },
     "title": "Tech Sterowniki"
 }

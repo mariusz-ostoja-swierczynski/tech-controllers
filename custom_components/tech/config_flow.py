@@ -17,7 +17,15 @@ from homeassistant.const import (
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import aiohttp_client, config_validation as cv
 
-from .const import CONTROLLER, CONTROLLERS, DOMAIN, UDID, USER_ID, VER
+from .const import (
+    CONTROLLER,
+    CONTROLLERS,
+    DOMAIN,
+    INCLUDE_HUB_IN_NAME,
+    UDID,
+    USER_ID,
+    VER,
+)
 from .tech import Tech, TechError, TechLoginError
 
 _LOGGER = logging.getLogger(__name__)
@@ -42,7 +50,11 @@ def controllers_schema(controllers) -> vol.Schema:
                     ]
                     for controller in controllers
                 }
-            )
+            ),
+            vol.Required(
+                INCLUDE_HUB_IN_NAME,
+                default=False,
+            ): bool,
         }
     )
 
@@ -74,7 +86,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Tech Sterowniki."""
 
     VERSION = 2
-    MINOR_VERSION = 2
+    MINOR_VERSION = 3
     # Pick one of the available connection classes in homeassistant/config_entries.py
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
 
@@ -85,6 +97,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def _async_finish_controller(self, user_input: dict[str, str]) -> FlowResult:
         """Finish setting up controllers."""
+
+        include_name: bool = user_input[INCLUDE_HUB_IN_NAME]
 
         if not user_input[CONTROLLERS]:
             return self.async_abort(reason="no_modules")
@@ -116,6 +130,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     )
                     await self.async_set_unique_id(controller[CONTROLLER][UDID])
 
+                    controller[INCLUDE_HUB_IN_NAME] = include_name
                     _LOGGER.debug("Adding config entry for: %s", controller)
 
                     await self.hass.config_entries.async_add(
@@ -131,17 +146,20 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             await self.async_set_unique_id(controller_udid)
 
+            controller = next(
+                obj
+                for obj in self._controllers
+                if obj[CONTROLLER].get(ATTR_ID) == int(controllers[0])
+            )
+            controller[INCLUDE_HUB_IN_NAME] = include_name
+
             return self.async_create_entry(
                 title=next(
                     obj
                     for obj in self._controllers
                     if obj[CONTROLLER].get(ATTR_ID) == int(controllers[0])
                 )[CONTROLLER][CONF_NAME],
-                data=next(
-                    obj
-                    for obj in self._controllers
-                    if obj[CONTROLLER].get(ATTR_ID) == int(controllers[0])
-                ),
+                data=controller,
             )
 
     async def async_step_select_controllers(

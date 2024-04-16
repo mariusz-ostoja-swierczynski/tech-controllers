@@ -22,10 +22,33 @@
                 "title": "Controller selection",
                 "description": "Please select the controllers you want to integrate.",
                 "data": {
-                    "controllers": "Controllers to import"
+                    "controllers": "Controllers to import",
+                    "include_hub_in_name": "Include hub (controller) name in entity names"
                 }
             }
         }
     },
+    "entity": {
+        "sensor": {
+          "temperature_entity": {
+            "name": "{entity_name} Temperature"
+          },
+          "battery_entity": {
+            "name": "{entity_name} Battery"
+          },
+          "humidity_entity": {
+            "name": "Humidity"
+          },
+          "actuator_entity": {
+            "name": "Actuator {actuator_number}"
+          },
+          "ext_temperature_entity": {
+            "name": "External temperature"
+          },
+          "signal_strength_entity": {
+            "name": "{entity_name} Signal strength"
+          }
+        }
+      },
     "title": "Tech Controllers"
 }

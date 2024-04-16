@@ -22,10 +22,33 @@
                 "title": "Výber modulov",
                 "description": "Prosím, vyberte moduly, ktoré chcete integrovať.",
                 "data": {
-                    "controllers": "Moduly na import"
+                    "controllers": "Moduly na import",
+                    "include_hub_in_name": "Zahrňte názov hubu (modulu) do názvov entít"
                 }
             }
         }
     },
+    "entity": {
+        "sensor": {
+          "temperature_entity": {
+            "name": "{entity_name} Teplota"
+          },
+          "battery_entity": {
+            "name": "{entity_name} Batéria"
+          },
+          "humidity_entity": {
+            "name": "Vlhkosť"
+          },
+          "actuator_entity": {
+            "name": "Aktuátor {actuator_number}"
+          },
+          "ext_temperature_entity": {
+            "name": "Vonkajšia teplota"
+          },
+          "signal_strength_entity": {
+            "name": "{entity_name} Intenzita signálu"
+          }
+        }
+      },
     "title": "Tech Controllers"
 }
