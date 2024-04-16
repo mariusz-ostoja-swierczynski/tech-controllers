@@ -2,7 +2,6 @@
 
 import itertools
 import logging
-
 from typing import Any, cast
 
 from homeassistant.components.sensor import (
