@@ -43,7 +43,16 @@ autolabeler:
   - label: 'bug'
     branch:
       - '/fix\/.+/'
-  - label: 'enhancement'
+    title:
+      - '/fix:/i'
+      - '/:bug:/i'
+  - label: 'feature'
     branch:
       - '/feature\/.+/'
       - '/feat\/.+/'
+    title:
+      - '/feat:/i'
+      - '/:sparkles:/i'
+  - label: 'chore'
+    title:
+      - '/chore:/i'
