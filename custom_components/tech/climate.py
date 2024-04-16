@@ -228,7 +228,9 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         """Set new target temperatures."""
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature:
-            _LOGGER.debug("%s: Setting temperature to %s", self._name, temperature)
+            _LOGGER.debug(
+                "%s: Setting temperature to %s", self.device_name, temperature
+            )
             self._temperature = temperature
             await self._coordinator.api.set_const_temp(
                 self._udid, self._id, temperature
@@ -236,7 +238,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
-        _LOGGER.debug("%s: Setting hvac mode to %s", self._name, hvac_mode)
+        _LOGGER.debug("%s: Setting hvac mode to %s", self.device_name, hvac_mode)
         if hvac_mode == HVACMode.OFF:
             await self._coordinator.api.set_zone(self._udid, self._id, False)
         elif hvac_mode == HVACMode.HEAT:
