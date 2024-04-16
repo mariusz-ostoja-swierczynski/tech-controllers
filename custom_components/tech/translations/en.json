@@ -2,7 +2,7 @@
     "config": {
         "abort": {
             "already_configured": "Device already configured",
-            "no_modules": "No modules detected"
+            "no_modules": "No modules detected or selected"
         },
         "error": {
             "cannot_connect": "Cannot connect to Tech API.",

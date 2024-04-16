@@ -100,14 +100,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         include_name: bool = user_input[INCLUDE_HUB_IN_NAME]
 
-        if not user_input[CONTROLLERS]:
-            return self.async_abort(reason="no_modules")
-
         if self._controllers is not None and user_input is not None:
-            controllers = user_input[CONTROLLERS]
-
-            if len(controllers) == 0:
+            if (
+                CONTROLLERS not in user_input
+                or not user_input[CONTROLLERS]
+                or len(user_input[CONTROLLERS]) == 0
+            ):
                 return self.async_abort(reason="no_modules")
+
+            controllers = user_input[CONTROLLERS]
 
             # check if we have any of the selected controllers already configured
             # and abort if so
