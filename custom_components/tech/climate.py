@@ -106,7 +106,13 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         """
         # Update target temperature
         if device[CONF_ZONE]["setTemperature"] is not None:
-            self._target_temperature = device[CONF_ZONE]["setTemperature"] / 10
+            if device[CONF_ZONE]["duringChange"] is False:
+                self._target_temperature = device[CONF_ZONE]["setTemperature"] / 10
+            else:
+                _LOGGER.debug(
+                    "Zone ID %s is duringChange so ignore to update target temperature",
+                    device[CONF_ZONE]["id"],
+                )
         else:
             self._target_temperature = None
 
@@ -235,6 +241,8 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
             await self._coordinator.api.set_const_temp(
                 self._udid, self._id, temperature
             )
+            self._target_temperature = temperature
+            await self.coordinator.async_request_refresh()
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
