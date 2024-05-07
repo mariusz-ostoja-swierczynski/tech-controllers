@@ -1,5 +1,13 @@
 {
     "files.associations": {
         "config/*.yaml": "home-assistant"
-    }
+    },
+    "python.testing.pytestArgs": [
+        "tests/tests_api",
+        "--cov-report=term-missing",
+        "--cov=custom_components.tech.tech",
+        "tests/"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
 }

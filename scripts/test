@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+set -e
+
+pytest tests/tests_api --cov-report=term-missing --cov=custom_components.tech.tech tests/
