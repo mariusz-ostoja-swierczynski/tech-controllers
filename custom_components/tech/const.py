@@ -22,6 +22,8 @@ BATTERY_LEVEL = "batteryLevel"
 SIGNAL_STRENGTH = "signalStrength"
 ACTUATORS_OPEN = "actuatorsOpen"
 INCLUDE_HUB_IN_NAME = "include_hub_in_name"
+WINDOW_SENSORS = "windowsSensors"
+WINDOW_STATE = "windowState"
 
 DEFAULT_ICON = "mdi:eye"
 

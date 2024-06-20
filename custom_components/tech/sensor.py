@@ -4,6 +4,7 @@ import itertools
 import logging
 from typing import Any, cast
 
+from homeassistant.components import binary_sensor
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -51,6 +52,8 @@ from .const import (
     VALUE,
     VER,
     VISIBILITY,
+    WINDOW_SENSORS,
+    WINDOW_STATE,
     WORKING_STATUS,
 )
 from .entity import TileEntity
@@ -129,6 +132,7 @@ async def async_setup_entry(
     temperature_sensors = map_to_temperature_sensors(zones, coordinator, config_entry)
     humidity_sensors = map_to_humidity_sensors(zones, coordinator, config_entry)
     actuator_sensors = map_to_actuator_sensors(zones, coordinator, config_entry)
+    window_sensors = map_to_window_sensors(zones, coordinator, config_entry)
     signal_strength_sensors = map_to_signal_strength_sensors(
         zones, coordinator, config_entry
     )
@@ -140,6 +144,7 @@ async def async_setup_entry(
             temperature_sensors,
             humidity_sensors,  # , tile_sensors
             actuator_sensors,
+            window_sensors,
             signal_strength_sensors,
         ),
         True,
@@ -292,6 +297,45 @@ def is_actuator_operating_device(device) -> bool:
 
     """
     return len(device[ACTUATORS]) > 0
+
+
+def map_to_window_sensors(zones, coordinator, config_entry):
+    """Map zones to window sensors.
+
+    Args:
+    zones: list of zones
+    coordinator: API to interact with actuators
+    config_entry: configuration entry for the sensors
+
+    Returns:
+    list of ZoneWindowSensor instances
+
+    """
+    # Filter devices that are window sensors
+    devices = [
+        deviceIndex
+        for deviceIndex in zones
+        if is_window_operating_device(zones[deviceIndex])
+    ]
+
+    return [
+        ZoneWindowSensor(zones[deviceIndex], coordinator, config_entry, idx)
+        for deviceIndex in devices
+        for idx in range(len(zones[deviceIndex][WINDOW_SENSORS]))
+    ]
+
+
+def is_window_operating_device(device) -> bool:
+    """Check if the device has any window sensors.
+
+    Args:
+    device: dict - The device information containing the zone.
+
+    Returns:
+    bool - True if the device has any windows sensors, False otherwise.
+
+    """
+    return len(device[WINDOW_SENSORS]) > 0
 
 
 def map_to_tile_sensors(tiles, coordinator, config_entry):
@@ -1008,6 +1052,74 @@ class ZoneActuatorSensor(ZoneSensor):
         self.attrs[SIGNAL_STRENGTH] = device[ACTUATORS][self._actuator_index][
             SIGNAL_STRENGTH
         ]
+
+
+class ZoneWindowSensor(ZoneSensor, binary_sensor.BinarySensorEntity):
+    """Representation of a Zone Window Sensor."""
+
+    _attr_device_class = binary_sensor.BinarySensorDeviceClass.WINDOW
+
+    def __init__(self, device, coordinator, config_entry, window_index):
+        """Initialize the sensor.
+
+        These are needed before the call to super, as ZoneSensor class
+        calls update_properties in its init, which actually calls this class
+        update_properties, which does not know attrs and _window_index already.
+
+        """
+        self._window_index = window_index
+        self.attrs: dict[str, Any] = {}
+        super().__init__(device, coordinator, config_entry)
+        self._attr_translation_key = "window_sensor_entity"
+        self._attr_translation_placeholders = {
+            "window_number": f"{cast(int, self._window_index) + 1}"
+        }
+        self.attrs[BATTERY_LEVEL] = device[WINDOW_SENSORS][self._window_index][
+            BATTERY_LEVEL
+        ]
+        self.attrs[SIGNAL_STRENGTH] = device[WINDOW_SENSORS][self._window_index][
+            SIGNAL_STRENGTH
+        ]
+        self._is_on = device[WINDOW_SENSORS][self._window_index][WINDOW_STATE] == "open"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_zone_window_{str(self._window_index + 1)}"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the state attributes."""
+        attributes = {}
+        attributes.update(self.attrs)
+        return attributes
+
+    @property
+    def is_on(self) -> bool:
+        """Return True if the binary sensor is on."""
+        return cast(bool, self._is_on)
+
+    def update_properties(self, device):
+        """Update the properties of the ZoneWindowSensor object.
+
+        Args:
+        device (dict): The device information.
+
+        Returns:
+        None
+
+        """
+        # Update the name of the device
+        self._name = device[CONF_DESCRIPTION][CONF_NAME]
+
+        # Update battery and signal strength
+        self.attrs[BATTERY_LEVEL] = device[WINDOW_SENSORS][self._window_index][
+            BATTERY_LEVEL
+        ]
+        self.attrs[SIGNAL_STRENGTH] = device[WINDOW_SENSORS][self._window_index][
+            SIGNAL_STRENGTH
+        ]
+        self._is_on = device[WINDOW_SENSORS][self._window_index][WINDOW_STATE] == "open"
 
 
 class ZoneOutsideTempTile(ZoneSensor):
