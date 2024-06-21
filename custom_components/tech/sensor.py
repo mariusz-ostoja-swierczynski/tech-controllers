@@ -4,7 +4,10 @@ import itertools
 import logging
 from typing import Any, cast
 
-from homeassistant.components import binary_sensor
+from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+)
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -75,6 +78,11 @@ async def async_setup_entry(
     zones = await coordinator.api.get_module_zones(controller_udid)
     tiles = await coordinator.api.get_module_tiles(controller_udid)
 
+    _LOGGER.debug(
+        "async_setup_entry, zones: %s",
+        zones,
+    )
+
     entities = []
     for t in tiles:
         tile = tiles[t]
@@ -137,7 +145,10 @@ async def async_setup_entry(
         zones, coordinator, config_entry
     )
     # tile_sensors = map_to_tile_sensors(tiles, api, config_entry)
-
+    _LOGGER.debug(
+        "window_sensors: %s",
+        window_sensors,
+    )
     async_add_entities(
         itertools.chain(
             battery_devices,
@@ -1054,10 +1065,10 @@ class ZoneActuatorSensor(ZoneSensor):
         ]
 
 
-class ZoneWindowSensor(ZoneSensor, binary_sensor.BinarySensorEntity):
+class ZoneWindowSensor(ZoneSensor, BinarySensorEntity):
     """Representation of a Zone Window Sensor."""
 
-    _attr_device_class = binary_sensor.BinarySensorDeviceClass.WINDOW
+    _attr_device_class = BinarySensorDeviceClass.WINDOW
 
     def __init__(self, device, coordinator, config_entry, window_index):
         """Initialize the sensor.
@@ -1068,6 +1079,7 @@ class ZoneWindowSensor(ZoneSensor, binary_sensor.BinarySensorEntity):
 
         """
         self._window_index = window_index
+        self._is_on = device[WINDOW_SENSORS][self._window_index][WINDOW_STATE] == "open"
         self.attrs: dict[str, Any] = {}
         super().__init__(device, coordinator, config_entry)
         self._attr_translation_key = "window_sensor_entity"
@@ -1080,7 +1092,6 @@ class ZoneWindowSensor(ZoneSensor, binary_sensor.BinarySensorEntity):
         self.attrs[SIGNAL_STRENGTH] = device[WINDOW_SENSORS][self._window_index][
             SIGNAL_STRENGTH
         ]
-        self._is_on = device[WINDOW_SENSORS][self._window_index][WINDOW_STATE] == "open"
 
     @property
     def unique_id(self) -> str:
