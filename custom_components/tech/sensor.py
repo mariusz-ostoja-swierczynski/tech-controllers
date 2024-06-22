@@ -8,11 +8,8 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorEntity,
-    SensorStateClass,
-)
+from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_IDENTIFIERS,
@@ -145,10 +142,14 @@ async def async_setup_entry(
         zones, coordinator, config_entry
     )
     # tile_sensors = map_to_tile_sensors(tiles, api, config_entry)
-    _LOGGER.debug(
-        "window_sensors: %s",
-        window_sensors,
-    )
+    for sensor in window_sensors:
+        _LOGGER.debug(
+            "sensors: %s, state: %s, device_class: %s, is_on: %s",
+            sensor.entity_id,
+            sensor.state,
+            sensor.device_class,
+            sensor.is_on,
+        )
     async_add_entities(
         itertools.chain(
             battery_devices,
@@ -1065,7 +1066,7 @@ class ZoneActuatorSensor(ZoneSensor):
         ]
 
 
-class ZoneWindowSensor(ZoneSensor, BinarySensorEntity):
+class ZoneWindowSensor(BinarySensorEntity, ZoneSensor):
     """Representation of a Zone Window Sensor."""
 
     _attr_device_class = BinarySensorDeviceClass.WINDOW
@@ -1079,8 +1080,16 @@ class ZoneWindowSensor(ZoneSensor, BinarySensorEntity):
 
         """
         self._window_index = window_index
-        self._is_on = device[WINDOW_SENSORS][self._window_index][WINDOW_STATE] == "open"
+        self._attr_is_on = (
+            device[WINDOW_SENSORS][self._window_index][WINDOW_STATE] == "open"
+        )
         self.attrs: dict[str, Any] = {}
+        _LOGGER.debug(
+            "index: %s, windowsState: %s",
+            self._window_index,
+            device[WINDOW_SENSORS][self._window_index][WINDOW_STATE],
+        )
+        _LOGGER.debug("self._attr_is_on before super inint: %s", self._attr_is_on)
         super().__init__(device, coordinator, config_entry)
         self._attr_translation_key = "window_sensor_entity"
         self._attr_translation_placeholders = {
@@ -1092,6 +1101,10 @@ class ZoneWindowSensor(ZoneSensor, BinarySensorEntity):
         self.attrs[SIGNAL_STRENGTH] = device[WINDOW_SENSORS][self._window_index][
             SIGNAL_STRENGTH
         ]
+        self._attr_is_on = (
+            device[WINDOW_SENSORS][self._window_index][WINDOW_STATE] == "open"
+        )
+        _LOGGER.debug("self._attr_is_on after super init: %s", self._attr_is_on)
 
     @property
     def unique_id(self) -> str:
@@ -1105,10 +1118,10 @@ class ZoneWindowSensor(ZoneSensor, BinarySensorEntity):
         attributes.update(self.attrs)
         return attributes
 
-    @property
-    def is_on(self) -> bool:
-        """Return True if the binary sensor is on."""
-        return cast(bool, self._is_on)
+    # @property
+    # def is_on(self) -> bool:
+    #     """Return True if the binary sensor is on."""
+    #     return cast(bool, self._is_on)
 
     def update_properties(self, device):
         """Update the properties of the ZoneWindowSensor object.
