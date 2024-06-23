@@ -1143,7 +1143,9 @@ class ZoneWindowSensor(BinarySensorEntity, ZoneSensor):
         self.attrs[SIGNAL_STRENGTH] = device[WINDOW_SENSORS][self._window_index][
             SIGNAL_STRENGTH
         ]
-        self._is_on = device[WINDOW_SENSORS][self._window_index][WINDOW_STATE] == "open"
+        self._attr_is_on = (
+            device[WINDOW_SENSORS][self._window_index][WINDOW_STATE] == "open"
+        )
 
 
 class ZoneOutsideTempTile(ZoneSensor):
