@@ -75,11 +75,6 @@ async def async_setup_entry(
     zones = await coordinator.api.get_module_zones(controller_udid)
     tiles = await coordinator.api.get_module_tiles(controller_udid)
 
-    _LOGGER.debug(
-        "async_setup_entry, zones: %s",
-        zones,
-    )
-
     entities = []
     for t in tiles:
         tile = tiles[t]
@@ -142,14 +137,7 @@ async def async_setup_entry(
         zones, coordinator, config_entry
     )
     # tile_sensors = map_to_tile_sensors(tiles, api, config_entry)
-    for sensor in window_sensors:
-        _LOGGER.debug(
-            "sensors: %s, state: %s, device_class: %s, is_on: %s",
-            sensor.entity_id,
-            sensor.state,
-            sensor.device_class,
-            sensor.is_on,
-        )
+
     async_add_entities(
         itertools.chain(
             battery_devices,
@@ -1084,12 +1072,6 @@ class ZoneWindowSensor(BinarySensorEntity, ZoneSensor):
             device[WINDOW_SENSORS][self._window_index][WINDOW_STATE] == "open"
         )
         self.attrs: dict[str, Any] = {}
-        _LOGGER.debug(
-            "index: %s, windowsState: %s",
-            self._window_index,
-            device[WINDOW_SENSORS][self._window_index][WINDOW_STATE],
-        )
-        _LOGGER.debug("self._attr_is_on before super inint: %s", self._attr_is_on)
         super().__init__(device, coordinator, config_entry)
         self._attr_translation_key = "window_sensor_entity"
         self._attr_translation_placeholders = {
@@ -1104,7 +1086,6 @@ class ZoneWindowSensor(BinarySensorEntity, ZoneSensor):
         self._attr_is_on = (
             device[WINDOW_SENSORS][self._window_index][WINDOW_STATE] == "open"
         )
-        _LOGGER.debug("self._attr_is_on after super init: %s", self._attr_is_on)
 
     @property
     def unique_id(self) -> str:
@@ -1117,11 +1098,6 @@ class ZoneWindowSensor(BinarySensorEntity, ZoneSensor):
         attributes = {}
         attributes.update(self.attrs)
         return attributes
-
-    # @property
-    # def is_on(self) -> bool:
-    #     """Return True if the binary sensor is on."""
-    #     return cast(bool, self._is_on)
 
     def update_properties(self, device):
         """Update the properties of the ZoneWindowSensor object.
