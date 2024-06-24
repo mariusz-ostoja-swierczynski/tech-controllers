@@ -42,6 +42,9 @@
           "actuator_entity": {
             "name": "Siłownik {actuator_number}"
           },
+          "window_sensor_entity": {
+            "name": "Okno {window_number}"
+          },
           "ext_temperature_entity": {
             "name": "Temperatura zewnętrzna"
           },

@@ -42,6 +42,9 @@
           "actuator_entity": {
             "name": "Actuator {actuator_number}"
           },
+          "window_sensor_entity": {
+            "name": "Window {window_number}"
+          },
           "ext_temperature_entity": {
             "name": "External temperature"
           },
