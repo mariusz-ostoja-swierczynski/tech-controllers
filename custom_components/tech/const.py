@@ -74,3 +74,22 @@ TXT_ID_BY_TYPE = {
 VALVE_SENSOR_RETURN_TEMPERATURE = {"txt_id": 747, "state_key": "returnTemp"}
 VALVE_SENSOR_SET_TEMPERATURE = {"txt_id": 1065, "state_key": "setTemp"}
 VALVE_SENSOR_CURRENT_TEMPERATURE = {"txt_id": 2010, "state_key": "currentTemp"}
+
+TECH_SUPPORTED_LANGUAGES = [
+    "en",
+    "fr",
+    "it",
+    "es",
+    "nl",
+    "pl",
+    "de",
+    "cs",
+    "sk",
+    "hu",
+    "ro",
+    "lt",
+    "et",
+    "ru",
+    "si",
+    "hr",
+]

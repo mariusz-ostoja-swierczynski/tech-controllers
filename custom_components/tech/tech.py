@@ -6,6 +6,7 @@ import logging
 import time
 
 import aiohttp
+from .const import TECH_SUPPORTED_LANGUAGES
 
 logging.basicConfig(level=logging.DEBUG)
 _LOGGER = logging.getLogger(__name__)
@@ -184,11 +185,19 @@ class Tech:
         TechError: If not authenticated, raise 401 Unauthorized error.
 
         """
+
+        # in the past in case of wrong and non-existent languages API was returing "en",
+        # this has changed and now it return 400 error so we need to check if language is supported
+        # https://api-documentation.emodul.eu/
+        if language not in TECH_SUPPORTED_LANGUAGES:
+            _LOGGER.debug("Language %s not supported. Switching to default.", language)
+            language = "en"
+
         _LOGGER.debug("Getting %s language.", language)
+
         if self.authenticated:
             path = "i18n/" + language
             result = await self.get(path)
-            # API already takes care of wrong and non-existent languages by returning "en"
         else:
             raise TechError(401, "Unauthorized")
         return result
