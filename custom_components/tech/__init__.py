@@ -60,9 +60,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     await assets.load_subtitles(language_code, Tech(websession, user_id, token))
 
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    )
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
 
