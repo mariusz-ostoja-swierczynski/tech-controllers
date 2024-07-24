@@ -212,6 +212,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             version=ConfigFlow.VERSION,
             minor_version=ConfigFlow.MINOR_VERSION,
             source=SOURCE_USER,
+            options={},
+            unique_id=None,
         )
 
     def _create_controllers_array(self, validated_input: dict) -> list[dict]:
