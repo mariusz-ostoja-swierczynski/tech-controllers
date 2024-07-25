@@ -1,0 +1,57 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Az eszköz már konfigurálva van",
+            "no_modules": "Nem találhatóak modulok vagy nincsenek kiválasztva"
+        },
+        "error": {
+            "cannot_connect": "Nem sikerült kapcsolódni a Tech API-hoz.",
+            "invalid_auth": "Érvénytelen felhasználónév vagy jelszó!",
+            "unknown": "Ismeretlen hiba. Kérjük, próbálja újra, vagy jelentse a hibát a következő címre: ..."
+        },
+        "step": {
+            "user": {
+                "title": "Tech Controllers Bejelentkezés",
+                "description": "Kérjük, adja meg a hitelesítő adatait az emodul.eu vagy emodul.pl szolgáltatáshoz.",
+                "data": {
+                    "password": "Jelszó",
+                    "username": "Felhasználónév"
+                }
+            },
+            "select_controllers": {
+                "title": "Válassza ki a vezérlőket",
+                "description": "Kérjük, válassza ki az integrálni kívánt vezérlőket.",
+                "data": {
+                    "controllers": "Importálni kívánt vezérlők",
+                    "include_hub_in_name": "A hub (vezérlő) nevének belefoglalása az entitásnevekbe"
+                }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "temperature_entity": {
+                "name": "{entity_name} Hőmérséklet"
+            },
+            "battery_entity": {
+                "name": "{entity_name} Akkumulátor"
+            },
+            "humidity_entity": {
+                "name": "Páratartalom"
+            },
+            "actuator_entity": {
+                "name": "Aktuátor {actuator_number}"
+            },
+            "window_sensor_entity": {
+                "name": "Ablak {window_number}"
+            },
+            "ext_temperature_entity": {
+                "name": "Külső hőmérséklet"
+            },
+            "signal_strength_entity": {
+                "name": "{entity_name} Jel erősség"
+            }
+        }
+    },
+    "title": "Tech Controllers"
+}

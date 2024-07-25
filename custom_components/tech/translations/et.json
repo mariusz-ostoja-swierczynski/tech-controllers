@@ -1,0 +1,57 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Seade on juba konfigureeritud",
+            "no_modules": "Ühtegi moodulit ei tuvastatud ega valitud"
+        },
+        "error": {
+            "cannot_connect": "Ei saa ühendust Tech API-ga.",
+            "invalid_auth": "Vigane kasutajanimi või parool!",
+            "unknown": "Tundmatu viga. Palun proovige uuesti või teavitage veast ..."
+        },
+        "step": {
+            "user": {
+                "title": "Tech Controllersi sisselogimine",
+                "description": "Palun sisestage oma volitused emodul.eu või emodul.pl teenusesse.",
+                "data": {
+                    "password": "Parool",
+                    "username": "Kasutajanimi"
+                }
+            },
+            "select_controllers": {
+                "title": "Kontrollerite valik",
+                "description": "Palun valige kontrollerid, mida soovite integreerida.",
+                "data": {
+                    "controllers": "Imporditavad kontrollerid",
+                    "include_hub_in_name": "Kaasa hubi (kontrolleri) nimi üksuste nimedes"
+                }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "temperature_entity": {
+                "name": "{entity_name} Temperatuur"
+            },
+            "battery_entity": {
+                "name": "{entity_name} Aku"
+            },
+            "humidity_entity": {
+                "name": "Niiskus"
+            },
+            "actuator_entity": {
+                "name": "Aktuaator {actuator_number}"
+            },
+            "window_sensor_entity": {
+                "name": "Aken {window_number}"
+            },
+            "ext_temperature_entity": {
+                "name": "Väline temperatuur"
+            },
+            "signal_strength_entity": {
+                "name": "{entity_name} Signaali tugevus"
+            }
+        }
+    },
+    "title": "Tech Controllers"
+}

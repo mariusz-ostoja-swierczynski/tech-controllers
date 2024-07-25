@@ -1,0 +1,57 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Apparaat is al geconfigureerd",
+            "no_modules": "Geen modules gedetecteerd of geselecteerd"
+        },
+        "error": {
+            "cannot_connect": "Kan geen verbinding maken met Tech API.",
+            "invalid_auth": "Ongeldige gebruikersnaam of wachtwoord!",
+            "unknown": "Onbekende fout. Probeer het opnieuw of meld de bug aan ..."
+        },
+        "step": {
+            "user": {
+                "title": "Tech Controllers Login",
+                "description": "Voer uw inloggegevens in voor de emodul.eu of emodul.pl service.",
+                "data": {
+                    "password": "Wachtwoord",
+                    "username": "Gebruikersnaam"
+                }
+            },
+            "select_controllers": {
+                "title": "Controller selectie",
+                "description": "Selecteer de controllers die u wilt integreren.",
+                "data": {
+                    "controllers": "Te importeren controllers",
+                    "include_hub_in_name": "Inclusief hub (controller) naam in entiteitnamen"
+                }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "temperature_entity": {
+                "name": "{entity_name} Temperatuur"
+            },
+            "battery_entity": {
+                "name": "{entity_name} Batterij"
+            },
+            "humidity_entity": {
+                "name": "Luchtvochtigheid"
+            },
+            "actuator_entity": {
+                "name": "Actuator {actuator_number}"
+            },
+            "window_sensor_entity": {
+                "name": "Raam {window_number}"
+            },
+            "ext_temperature_entity": {
+                "name": "Externe temperatuur"
+            },
+            "signal_strength_entity": {
+                "name": "{entity_name} Signaalsterkte"
+            }
+        }
+    },
+    "title": "Tech Controllers"
+}

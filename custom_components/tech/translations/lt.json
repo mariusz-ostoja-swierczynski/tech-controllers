@@ -1,0 +1,57 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Įrenginys jau sukonfigūruotas",
+            "no_modules": "Nerasta modulių arba nepasirinkta"
+        },
+        "error": {
+            "cannot_connect": "Nepavyksta prisijungti prie Tech API.",
+            "invalid_auth": "Neteisingas prisijungimo vardas arba slaptažodis!",
+            "unknown": "Nežinoma klaida. Bandykite dar kartą arba praneškite apie klaidą ..."
+        },
+        "step": {
+            "user": {
+                "title": "Tech Valdiklių Prisijungimas",
+                "description": "Įveskite savo prisijungimo duomenis į emodul.eu arba emodul.pl paslaugą.",
+                "data": {
+                    "password": "Slaptažodis",
+                    "username": "Prisijungimo vardas"
+                }
+            },
+            "select_controllers": {
+                "title": "Valdiklių pasirinkimas",
+                "description": "Pasirinkite valdiklius, kuriuos norite integruoti.",
+                "data": {
+                    "controllers": "Valdikliai importavimui",
+                    "include_hub_in_name": "Įtraukti centrinį mazgą (valdiklį) į sąvybių pavadinimus"
+                }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "temperature_entity": {
+                "name": "{entity_name} Temperatūra"
+            },
+            "battery_entity": {
+                "name": "{entity_name} Baterija"
+            },
+            "humidity_entity": {
+                "name": "Drėgmė"
+            },
+            "actuator_entity": {
+                "name": "Veikiklis {actuator_number}"
+            },
+            "window_sensor_entity": {
+                "name": "Langas {window_number}"
+            },
+            "ext_temperature_entity": {
+                "name": "Išorinė temperatūra"
+            },
+            "signal_strength_entity": {
+                "name": "{entity_name} Signalas"
+            }
+        }
+    },
+    "title": "Tech Valdikliai"
+}

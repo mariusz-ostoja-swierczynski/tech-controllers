@@ -1,0 +1,57 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Dispositivo ya configurado",
+            "no_modules": "No se detectaron módulos o no se seleccionaron"
+        },
+        "error": {
+            "cannot_connect": "No se puede conectar a la API de Tech.",
+            "invalid_auth": "¡Nombre de usuario o contraseña no válidos!",
+            "unknown": "Error desconocido. Por favor, inténtelo de nuevo o informe del error a ..."
+        },
+        "step": {
+            "user": {
+                "title": "Inicio de sesión en Tech Controllers",
+                "description": "Por favor, ingrese sus credenciales para el servicio emodul.eu o emodul.pl.",
+                "data": {
+                    "password": "Contraseña",
+                    "username": "Nombre de usuario"
+                }
+            },
+            "select_controllers": {
+                "title": "Selección de controladores",
+                "description": "Por favor, seleccione los controladores que desea integrar.",
+                "data": {
+                    "controllers": "Controladores a importar",
+                    "include_hub_in_name": "Incluir nombre del concentrador (controlador) en los nombres de las entidades"
+                }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "temperature_entity": {
+                "name": "Temperatura de {entity_name}"
+            },
+            "battery_entity": {
+                "name": "Batería de {entity_name}"
+            },
+            "humidity_entity": {
+                "name": "Humedad"
+            },
+            "actuator_entity": {
+                "name": "Actuador {actuator_number}"
+            },
+            "window_sensor_entity": {
+                "name": "Ventana {window_number}"
+            },
+            "ext_temperature_entity": {
+                "name": "Temperatura externa"
+            },
+            "signal_strength_entity": {
+                "name": "Intensidad de señal de {entity_name}"
+            }
+        }
+    },
+    "title": "Controladores Tech"
+}

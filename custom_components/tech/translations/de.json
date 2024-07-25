@@ -1,0 +1,57 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Gerät bereits konfiguriert",
+            "no_modules": "Keine Module erkannt oder ausgewählt"
+        },
+        "error": {
+            "cannot_connect": "Keine Verbindung zur Tech API möglich.",
+            "invalid_auth": "Ungültiger Benutzername oder Passwort!",
+            "unknown": "Unbekannter Fehler. Bitte versuchen Sie es erneut oder melden Sie den Fehler an ..."
+        },
+        "step": {
+            "user": {
+                "title": "Tech Controllers Anmeldung",
+                "description": "Bitte geben Sie Ihre Anmeldedaten für den emodul.eu oder emodul.pl Service ein.",
+                "data": {
+                    "password": "Passwort",
+                    "username": "Benutzername"
+                }
+            },
+            "select_controllers": {
+                "title": "Controller-Auswahl",
+                "description": "Bitte wählen Sie die Controller aus, die Sie integrieren möchten.",
+                "data": {
+                    "controllers": "Zu importierende Controller",
+                    "include_hub_in_name": "Hub (Controller) Namen in Entitätsnamen einbeziehen"
+                }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "temperature_entity": {
+                "name": "{entity_name} Temperatur"
+            },
+            "battery_entity": {
+                "name": "{entity_name} Batterie"
+            },
+            "humidity_entity": {
+                "name": "Luftfeuchtigkeit"
+            },
+            "actuator_entity": {
+                "name": "Aktuator {actuator_number}"
+            },
+            "window_sensor_entity": {
+                "name": "Fenster {window_number}"
+            },
+            "ext_temperature_entity": {
+                "name": "Externe Temperatur"
+            },
+            "signal_strength_entity": {
+                "name": "{entity_name} Signalstärke"
+            }
+        }
+    },
+    "title": "Tech Controllers"
+}

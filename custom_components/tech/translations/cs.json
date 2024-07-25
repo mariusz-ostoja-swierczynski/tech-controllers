@@ -1,0 +1,57 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Zařízení již nakonfigurováno",
+            "no_modules": "Nebyly detekovány žádné moduly nebo nebyly vybrány"
+        },
+        "error": {
+            "cannot_connect": "Nelze se připojit k Tech API.",
+            "invalid_auth": "Neplatné uživatelské jméno nebo heslo!",
+            "unknown": "Neznámá chyba. Prosím, zkuste to znovu nebo nahlaste chybu na ..."
+        },
+        "step": {
+            "user": {
+                "title": "Přihlášení k Tech Controllers",
+                "description": "Prosím, zadejte své přihlašovací údaje pro službu emodul.eu nebo emodul.pl.",
+                "data": {
+                    "password": "Heslo",
+                    "username": "Uživatelské jméno"
+                }
+            },
+            "select_controllers": {
+                "title": "Výběr ovladačů",
+                "description": "Prosím, vyberte ovladače, které chcete integrovat.",
+                "data": {
+                    "controllers": "Ovladače k importu",
+                    "include_hub_in_name": "Zahrnout název hubu (ovladače) do názvů entit"
+                }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "temperature_entity": {
+                "name": "{entity_name} Teplota"
+            },
+            "battery_entity": {
+                "name": "{entity_name} Baterie"
+            },
+            "humidity_entity": {
+                "name": "Vlhkost"
+            },
+            "actuator_entity": {
+                "name": "Aktuátor {actuator_number}"
+            },
+            "window_sensor_entity": {
+                "name": "Okno {window_number}"
+            },
+            "ext_temperature_entity": {
+                "name": "Externí teplota"
+            },
+            "signal_strength_entity": {
+                "name": "{entity_name} Síla signálu"
+            }
+        }
+    },
+    "title": "Tech Controllers"
+}

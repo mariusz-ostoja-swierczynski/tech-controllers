@@ -1,0 +1,57 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Устройство уже настроено",
+            "no_modules": "Не обнаружено модулей или выбрано"
+        },
+        "error": {
+            "cannot_connect": "Не удалось подключиться к Tech API.",
+            "invalid_auth": "Неверное имя пользователя или пароль!",
+            "unknown": "Неизвестная ошибка. Пожалуйста, попробуйте еще раз или сообщите об ошибке ..."
+        },
+        "step": {
+            "user": {
+                "title": "Вход в Tech Controllers",
+                "description": "Пожалуйста, введите ваши учетные данные для сервиса emodul.eu или emodul.pl.",
+                "data": {
+                    "password": "Пароль",
+                    "username": "Имя пользователя"
+                }
+            },
+            "select_controllers": {
+                "title": "Выбор контроллера",
+                "description": "Пожалуйста, выберите контроллеры, которые вы хотите интегрировать.",
+                "data": {
+                    "controllers": "Контроллеры для импорта",
+                    "include_hub_in_name": "Включить имя хаба (контроллера) в имена сущностей"
+                }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "temperature_entity": {
+                "name": "{entity_name} Температура"
+            },
+            "battery_entity": {
+                "name": "{entity_name} Заряд батареи"
+            },
+            "humidity_entity": {
+                "name": "Влажность"
+            },
+            "actuator_entity": {
+                "name": "Актуатор {actuator_number}"
+            },
+            "window_sensor_entity": {
+                "name": "Окно {window_number}"
+            },
+            "ext_temperature_entity": {
+                "name": "Внешняя температура"
+            },
+            "signal_strength_entity": {
+                "name": "{entity_name} Уровень сигнала"
+            }
+        }
+    },
+    "title": "Tech Controllers"
+}
