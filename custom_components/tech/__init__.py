@@ -35,7 +35,7 @@ async def async_setup(hass: HomeAssistant, config: dict):  # pylint: disable=unu
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Tech Controllers from a config entry."""
     _LOGGER.debug("Setting up component's entry.")
     _LOGGER.debug("Entry id: %s", str(entry.entry_id))
@@ -60,23 +60,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     await assets.load_subtitles(language_code, Tech(websession, user_id, token))
 
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    )
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    unload_ok = all(
-        await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_unload(entry, component)
-                for component in PLATFORMS
-            ]
-        )
-    )
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
 
