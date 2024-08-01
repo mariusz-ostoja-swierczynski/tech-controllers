@@ -1,0 +1,57 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Dispositivo già configurato",
+            "no_modules": "Nessun modulo rilevato o selezionato"
+        },
+        "error": {
+            "cannot_connect": "Impossibile connettersi all'API di Tech.",
+            "invalid_auth": "Nome utente o password non validi!",
+            "unknown": "Errore sconosciuto. Riprova o segnala il bug a ..."
+        },
+        "step": {
+            "user": {
+                "title": "Accesso ai controller Tech",
+                "description": "Inserisci le tue credenziali per il servizio emodul.eu o emodul.pl.",
+                "data": {
+                    "password": "Password",
+                    "username": "Nome utente"
+                }
+            },
+            "select_controllers": {
+                "title": "Selezione del controller",
+                "description": "Seleziona i controller che desideri integrare.",
+                "data": {
+                    "controllers": "Controller da importare",
+                    "include_hub_in_name": "Includi il nome dell'hub (controller) nei nomi delle entità"
+                }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "temperature_entity": {
+                "name": "{entity_name} Temperatura"
+            },
+            "battery_entity": {
+                "name": "{entity_name} Batteria"
+            },
+            "humidity_entity": {
+                "name": "Umidità"
+            },
+            "actuator_entity": {
+                "name": "Attuatore {actuator_number}"
+            },
+            "window_sensor_entity": {
+                "name": "Finestra {window_number}"
+            },
+            "ext_temperature_entity": {
+                "name": "Temperatura esterna"
+            },
+            "signal_strength_entity": {
+                "name": "{entity_name} Intensità del segnale"
+            }
+        }
+    },
+    "title": "Controller Tech"
+}

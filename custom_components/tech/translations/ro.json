@@ -1,0 +1,57 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Dispozitiv deja configurat",
+            "no_modules": "Nu au fost detectate sau selectate module"
+        },
+        "error": {
+            "cannot_connect": "Nu se poate conecta la API-ul Tech.",
+            "invalid_auth": "Nume de utilizator sau parolă nevalidă!",
+            "unknown": "Eroare necunoscută. Vă rugăm să încercați din nou sau raportați eroarea la ..."
+        },
+        "step": {
+            "user": {
+                "title": "Autentificare Tech Controllers",
+                "description": "Vă rugăm să introduceți datele de autentificare pentru serviciul emodul.eu sau emodul.pl.",
+                "data": {
+                    "password": "Parolă",
+                    "username": "Nume de utilizator"
+                }
+            },
+            "select_controllers": {
+                "title": "Selectare controlere",
+                "description": "Vă rugăm să selectați controlerele pe care doriți să le integrați.",
+                "data": {
+                    "controllers": "Controlere de importat",
+                    "include_hub_in_name": "Includere nume hub (controller) în numele entităților"
+                }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "temperature_entity": {
+                "name": "{entity_name} Temperatură"
+            },
+            "battery_entity": {
+                "name": "{entity_name} Baterie"
+            },
+            "humidity_entity": {
+                "name": "Umiditate"
+            },
+            "actuator_entity": {
+                "name": "Actuator {actuator_number}"
+            },
+            "window_sensor_entity": {
+                "name": "Fereastră {window_number}"
+            },
+            "ext_temperature_entity": {
+                "name": "Temperatură externă"
+            },
+            "signal_strength_entity": {
+                "name": "{entity_name} Putere semnal"
+            }
+        }
+    },
+    "title": "Controlere Tech"
+}

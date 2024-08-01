@@ -1,0 +1,57 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Naprava je že konfigurirana",
+            "no_modules": "Ni zaznanih ali izbranih modulov"
+        },
+        "error": {
+            "cannot_connect": "Ne morem se povezati s Tech API.",
+            "invalid_auth": "Neveljavno uporabniško ime ali geslo!",
+            "unknown": "Neznana napaka. Prosimo, poskusite znova ali sporočite napako na ..."
+        },
+        "step": {
+            "user": {
+                "title": "Prijava v Tech Controllers",
+                "description": "Vnesite svoje poverilnice za storitev emodul.eu ali emodul.pl.",
+                "data": {
+                    "password": "Geslo",
+                    "username": "Uporabniško ime"
+                }
+            },
+            "select_controllers": {
+                "title": "Izbira krmilnikov",
+                "description": "Izberite krmilnike, ki jih želite integrirati.",
+                "data": {
+                    "controllers": "Krmilniki za uvoz",
+                    "include_hub_in_name": "Vključi ime glavnega krmilnika v imena entitet"
+                }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "temperature_entity": {
+                "name": "{entity_name} Temperatura"
+            },
+            "battery_entity": {
+                "name": "{entity_name} Baterija"
+            },
+            "humidity_entity": {
+                "name": "Vlažnost"
+            },
+            "actuator_entity": {
+                "name": "Aktuator {actuator_number}"
+            },
+            "window_sensor_entity": {
+                "name": "Okno {window_number}"
+            },
+            "ext_temperature_entity": {
+                "name": "Zunanja temperatura"
+            },
+            "signal_strength_entity": {
+                "name": "{entity_name} Moč signala"
+            }
+        }
+    },
+    "title": "Tech Controllers"
+}

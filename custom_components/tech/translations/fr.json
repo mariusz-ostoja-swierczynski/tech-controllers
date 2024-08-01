@@ -1,0 +1,57 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Appareil déjà configuré",
+            "no_modules": "Aucun module détecté ou sélectionné"
+        },
+        "error": {
+            "cannot_connect": "Impossible de se connecter à l'API Tech.",
+            "invalid_auth": "Nom d'utilisateur ou mot de passe invalide !",
+            "unknown": "Erreur inconnue. Veuillez réessayer ou signaler le bogue à ..."
+        },
+        "step": {
+            "user": {
+                "title": "Connexion aux contrôleurs Tech",
+                "description": "Veuillez entrer vos identifiants pour le service emodul.eu ou emodul.pl.",
+                "data": {
+                    "password": "Mot de passe",
+                    "username": "Nom d'utilisateur"
+                }
+            },
+            "select_controllers": {
+                "title": "Sélection du contrôleur",
+                "description": "Veuillez sélectionner les contrôleurs que vous souhaitez intégrer.",
+                "data": {
+                    "controllers": "Contrôleurs à importer",
+                    "include_hub_in_name": "Inclure le nom du hub (contrôleur) dans les noms des entités"
+                }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "temperature_entity": {
+                "name": "Température {entity_name}"
+            },
+            "battery_entity": {
+                "name": "Batterie {entity_name}"
+            },
+            "humidity_entity": {
+                "name": "Humidité"
+            },
+            "actuator_entity": {
+                "name": "Actionneur {actuator_number}"
+            },
+            "window_sensor_entity": {
+                "name": "Fenêtre {window_number}"
+            },
+            "ext_temperature_entity": {
+                "name": "Température externe"
+            },
+            "signal_strength_entity": {
+                "name": "Force du signal {entity_name}"
+            }
+        }
+    },
+    "title": "Contrôleurs Tech"
+}
