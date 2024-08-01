@@ -118,3 +118,19 @@ class TechCoordinator(DataUpdateCoordinator):
             raise ConfigEntryAuthFailed from err
         except TechError as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
+
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
+    """Migrate old entry."""
+    _LOGGER.info("Migrating from version %s", config_entry.version)
+
+    if config_entry.version == 1:
+        _LOGGER.info("Migration not supported, please remove integration and add again to Home Assistant")
+        return False
+    elif config_entry.version == 2:
+        _LOGGER.info("Migration not supported, please remove integration and add again to Home Assistant")
+        return False
+    
+    # FIX ME: It require some handling in future
+    elif config_entry.version == 3:
+        _LOGGER.info("Migration non required")
+    return True
