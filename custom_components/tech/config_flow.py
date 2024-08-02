@@ -17,6 +17,7 @@ from homeassistant.const import (
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import aiohttp_client, config_validation as cv
 
+from . import assets
 from .const import (
     CONTROLLER,
     CONTROLLERS,
@@ -132,7 +133,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     await self.async_set_unique_id(controller[CONTROLLER][UDID])
 
                     controller[INCLUDE_HUB_IN_NAME] = include_name
-                    _LOGGER.debug("Adding config entry for: %s", controller)
+                    _LOGGER.debug(
+                        "Adding config entry for: %s",
+                        assets.redact(controller, ["token"]),
+                    )
 
                     await self.hass.config_entries.async_add(
                         self._create_config_entry(controller=controller)

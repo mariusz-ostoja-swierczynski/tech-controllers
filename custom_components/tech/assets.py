@@ -47,8 +47,7 @@ def get_text(text_id) -> str:
     """Get text by id."""
     if TRANSLATIONS is not None and text_id != 0:
         return TRANSLATIONS["data"].get(str(text_id), f"txtId {text_id}")
-    else:
-        return f"txtId {text_id}"
+    return f"txtId {text_id}"
 
 
 def get_id_from_text(text) -> int:
@@ -59,10 +58,7 @@ def get_id_from_text(text) -> int:
             return int(
                 [key for key, value in TRANSLATIONS["data"].items() if value == text][0]
             )
-        else:
-            return 0
-    else:
-        return 0
+    return 0
 
 
 def get_text_by_type(text_type) -> str:
