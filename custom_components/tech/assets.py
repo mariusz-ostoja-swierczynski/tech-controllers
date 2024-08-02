@@ -10,7 +10,25 @@ _LOGGER = logging.getLogger(__name__)
 TRANSLATIONS = None
 
 
-async def load_subtitles(language, api):
+def redact(entry_data: dict, keys: list) -> str:
+    """Return a copy of entry_data with the specified fields redacted.
+
+    Args:
+        entry_data (dict): The data to redact.
+        keys (list): The list of keys to redact.
+
+    Returns:
+        str: The redacted data.
+
+    """
+    sanitized_data = entry_data.copy()
+    for key in keys:
+        if key in sanitized_data:
+            sanitized_data[key] = "***HIDDEN***"
+    return str(sanitized_data)
+
+
+async def load_subtitles(language: str, api):
     """Load subtitles for the specified language.
 
     Args:
@@ -27,7 +45,7 @@ async def load_subtitles(language, api):
 
 def get_text(text_id) -> str:
     """Get text by id."""
-    if text_id != 0:
+    if TRANSLATIONS is not None and text_id != 0:
         return TRANSLATIONS["data"].get(str(text_id), f"txtId {text_id}")
     else:
         return f"txtId {text_id}"
@@ -37,9 +55,12 @@ def get_id_from_text(text) -> int:
     """Get id from text (reverse lookup needed for migration)."""
     if text != "":
         _LOGGER.debug("👰 text to lookup: %s", text)
-        return int(
-            [key for key, value in TRANSLATIONS["data"].items() if value == text][0]
-        )
+        if TRANSLATIONS is not None:
+            return int(
+                [key for key, value in TRANSLATIONS["data"].items() if value == text][0]
+            )
+        else:
+            return 0
     else:
         return 0
 
@@ -48,14 +69,6 @@ def get_text_by_type(text_type) -> str:
     """Get text by type."""
     text_id = TXT_ID_BY_TYPE.get(text_type, f"type {text_type}")
     return get_text(text_id)
-
-
-def get_id_from_type(text_id) -> int:
-    """Get type id from text id."""
-    for key, value in TXT_ID_BY_TYPE.items():
-        if value == text_id:
-            return key
-    return None
 
 
 def get_icon(icon_id) -> str:

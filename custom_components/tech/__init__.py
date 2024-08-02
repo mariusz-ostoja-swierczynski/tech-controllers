@@ -35,14 +35,6 @@ async def async_setup(hass: HomeAssistant, config: dict):  # pylint: disable=unu
     return True
 
 
-def sanitize_entry_data(entry_data, key):
-    """Return a copy of entry_data with the specified key field hidden."""
-    sanitized_data = entry_data.copy()
-    if key in sanitized_data:
-        sanitized_data[key] = "***HIDDEN***"
-    return str(sanitized_data)
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Tech Controllers from a config entry."""
     _LOGGER.debug("Setting up component's entry.")
@@ -50,7 +42,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug(
         "Entry -> title: %s, data: %s, id: %s, domain: %s",
         entry.title,
-        sanitize_entry_data(entry.data, "token"),
+        assets.redact(entry.data, ["token"]),
         entry.entry_id,
         entry.domain,
     )
