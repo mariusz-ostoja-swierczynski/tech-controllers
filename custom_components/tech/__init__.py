@@ -42,7 +42,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug(
         "Entry -> title: %s, data: %s, id: %s, domain: %s",
         entry.title,
-        assets.redact(entry.data, ["token"]),
+        assets.redact(dict(entry.data), ["token"]),
         entry.entry_id,
         entry.domain,
     )
