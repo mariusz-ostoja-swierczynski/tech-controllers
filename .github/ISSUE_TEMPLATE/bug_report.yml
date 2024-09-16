@@ -61,7 +61,7 @@ body:
       placeholder: "drag-and-drop the diagnostics data file here (do not copy-and-paste the content)"
       description: >-
         Follow HA guide to [download diagnostic data](https://www.home-assistant.io/docs/configuration/troubleshooting/#debug-logs-and-diagnostics).
-        Follow our integration [contributing guide](https://github.com/mariusz-ostoja-swierczynski/tech-controllers/blob/main/custom_components/tech/CONTRIBUTING.md) to gather additional data.
+        Follow our integration [contributing guide](https://github.com/mariusz-ostoja-swierczynski/tech-controllers/blob/main/CONTRIBUTING.md) to gather additional data.
 
         **It would really help if you could download the diagnostics data for the device you are having issues with,
         and <ins>drag-and-drop that file into the textbox below.</ins>**
@@ -71,7 +71,7 @@ body:
     attributes:
       label: Anything in the logs that might be useful for us?
       description: For example, error message, or stack traces.
-      render: txt
+      render: text
   - type: textarea
     attributes:
       label: Additional information
