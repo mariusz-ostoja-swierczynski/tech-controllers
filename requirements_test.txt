@@ -21,4 +21,4 @@ requests-mock==1.12.1
 responses==0.25.3
 stdlib-list==0.10.0
 tqdm==4.66.4
-pytest-homeassistant-custom-component==0.13.147
+pytest-homeassistant-custom-component==0.13.154

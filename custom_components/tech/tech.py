@@ -6,6 +6,7 @@ import logging
 import time
 
 import aiohttp
+
 from .const import TECH_SUPPORTED_LANGUAGES
 
 logging.basicConfig(level=logging.DEBUG)
@@ -23,7 +24,6 @@ class Tech:
         user_id=None,
         token=None,
         base_url=TECH_API_URL,
-        # update_interval=130,
     ):
         """Initialize the Tech object.
 
@@ -32,13 +32,11 @@ class Tech:
         user_id (str): The user ID.
         token (str): The authentication token.
         base_url (str): The base URL for the API.
-        update_interval (int): The interval for updates in seconds.
 
         """
         _LOGGER.debug("Init Tech")
         self.headers = {"Accept": "application/json", "Accept-Encoding": "gzip"}
         self.base_url = base_url
-        # self.update_interval = update_interval
         self.session = session
         if user_id and token:
             self.user_id = user_id
@@ -50,8 +48,6 @@ class Tech:
         self.last_update = None
         self.update_lock = asyncio.Lock()
         self.modules = {}
-        # self.zones = {}
-        # self.tiles = {}
 
     async def get(self, request_path):
         """Perform a GET request to the specified request path.
@@ -164,7 +160,7 @@ class Tech:
         TechError: If not authenticated, raise 401 Unauthorized error.
 
         """
-        _LOGGER.debug("Getting module data...  %s,  %s", module_udid, self.user_id)
+        _LOGGER.debug("Getting module data...  %s", module_udid)
         if self.authenticated:
             path = "users/" + self.user_id + "/modules/" + module_udid
             result = await self.get(path)
@@ -174,6 +170,10 @@ class Tech:
 
     async def get_translations(self, language):
         """Retrieve language pack for a given language.
+
+        If language doesnt exists it will return default "en".
+        This is required assumption as Tech API is returning
+        400 error for non-existent languages.
 
         Args:
         language (str): Language code.
@@ -186,9 +186,6 @@ class Tech:
 
         """
 
-        # in the past in case of wrong and non-existent languages API was returing "en",
-        # this has changed and now it return 400 error so we need to check if language is supported
-        # https://api-documentation.emodul.eu/
         if language not in TECH_SUPPORTED_LANGUAGES:
             _LOGGER.debug("Language %s not supported. Switching to default.", language)
             language = "en"
@@ -205,7 +202,7 @@ class Tech:
     async def get_module_zones(self, module_udid):
         """Return Tech module zones.
 
-        Return Tech module zones.
+        Return Tech module zones for given module udid.
 
         Args:
         self (Tech): The instance of the Tech API.
@@ -215,13 +212,8 @@ class Tech:
         Dictionary of zones indexed by zone ID.
 
         """
-        now = time.time()
-        _LOGGER.debug(
-            "Getting module zones: now: %s",
-            now,
-        )
 
-        _LOGGER.debug("Updating module zones cache... %s", module_udid)
+        _LOGGER.debug("Updating module zones ... %s", module_udid)
         result = await self.get_module_data(module_udid)
         zones = result["zones"]["elements"]
         zones = list(filter(lambda e: e["zone"]["visibility"], zones))
@@ -232,9 +224,9 @@ class Tech:
         return self.modules[module_udid]["zones"]
 
     async def get_module_tiles(self, module_udid):
-        """Return Tech module zones.
+        """Return Tech module tiles.
 
-        Return Tech module zones.
+        Return Tech module tiles for given module udid.
 
         Args:
         self (Tech): The instance of the Tech API.
@@ -244,13 +236,8 @@ class Tech:
         Dictionary of zones indexed by zone ID.
 
         """
-        now = time.time()
-        _LOGGER.debug(
-            "Getting module tiles: now: %s",
-            now,
-        )
 
-        _LOGGER.debug("Updating module tiles cache... %s", module_udid)
+        _LOGGER.debug("Updating module tiles ... %s", module_udid)
         result = await self.get_module_data(module_udid)
         tiles = result["tiles"]
         tiles = list(filter(lambda e: e["visibility"], tiles))
@@ -263,9 +250,8 @@ class Tech:
     async def module_data(self, module_udid):
         """Update Tech module zones and tiles.
 
-        either from cache or it will
-        update all the cached values for Tech module assuming
-        no update has occurred for at least the [update_interval].
+        Update all the values for Tech module. It includes
+        zones and tiles data.
 
         Args:
         self (Tech): The instance of the Tech API.
@@ -281,13 +267,13 @@ class Tech:
             module_udid, {"last_update": None, "zones": {}, "tiles": {}}
         )
 
-        _LOGGER.debug("Updating module zones & tiles cache... %s", module_udid)
+        _LOGGER.debug("Updating module zones & tiles ... %s", module_udid)
         result = await self.get_module_data(module_udid)
         zones = result["zones"]["elements"]
         zones = list(filter(lambda e: e["zone"]["visibility"], zones))
 
         if len(zones) > 0:
-            _LOGGER.debug("Updating zones cache for controller: %s", module_udid)
+            _LOGGER.debug("Updating zones for controller: %s", module_udid)
             zones = list(
                 filter(
                     lambda e: e["zone"]["zoneState"] != "zoneUnregistered",
@@ -300,14 +286,14 @@ class Tech:
         tiles = list(filter(lambda e: e["visibility"], tiles))
 
         if len(tiles) > 0:
-            _LOGGER.debug("Updating tiles cache for controller: %s", module_udid)
+            _LOGGER.debug("Updating tiles for controller: %s", module_udid)
             for tile in tiles:
                 self.modules[module_udid]["tiles"][tile["id"]] = tile
         self.modules[module_udid]["last_update"] = now
         return self.modules[module_udid]
 
     async def get_zone(self, module_udid, zone_id):
-        """Return zone from Tech API cache.
+        """Return zone from Tech API.
 
         Args:
         module_udid (string): The Tech module udid.
@@ -321,7 +307,7 @@ class Tech:
         return self.modules[module_udid]["zones"][zone_id]
 
     async def get_tile(self, module_udid, tile_id):
-        """Return tile from Tech API cache.
+        """Return tile from Tech API.
 
         Args:
         module_udid (string): The Tech module udid.
@@ -391,7 +377,7 @@ class Tech:
 
 
 class TechError(Exception):
-    """Raised when Tech APi request ended in error.
+    """Raised when Tech API request ended in error.
 
     Attributes:
         status_code - error code returned by Tech API

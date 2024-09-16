@@ -1,10 +1,10 @@
 asynctest==0.13.0
 aioresponses==0.7.6
 codecov==2.1.13
-coverage==7.6.0
+coverage==7.6.1
 jsonpickle==3.2.2
 mock-open==1.4.0
-mypy==1.11.0
+mypy==1.11.1
 pylint==3.2.6
 astroid==3.2.4
 pipdeptree==2.23.1
@@ -22,5 +22,5 @@ pytest-emoji==0.2.0
 requests-mock==1.12.1
 responses==0.25.3
 stdlib-list==0.10.0
-tqdm==4.66.4
+tqdm==4.66.5
 SQLAlchemy==2.0.31

@@ -502,7 +502,7 @@ class TestTechAPI:
         )
         assert authenticated, "Authentication should be successful"
 
-        dict = await tech.module_data(module_data["module_id"])
+        data = await tech.module_data(module_data["module_id"])
 
         with pytest.raises(TechError) as exception_info:
             response = await tech.set_const_temp(
@@ -511,7 +511,7 @@ class TestTechAPI:
                 module_data["target_temp"],
             )
             assert isinstance(
-                response, dict
+                response, data
             ), "The data returned should be a dictionary"
             assert "error" in response, "We should get an error key on demo account"
             assert (
@@ -588,14 +588,14 @@ class TestTechAPI:
         )
         assert authenticated, "Authentication should be successful"
 
-        dict = await tech.module_data(module_data["module_id"])
+        data = await tech.module_data(module_data["module_id"])
 
         with pytest.raises(TechError) as exception_info:
             response = await tech.set_zone(
                 module_data["module_id"], module_data["zone_id"], True
             )
             assert isinstance(
-                response, dict
+                response, data
             ), "The data returned should be a dictionary"
             assert "error" in response, "We should get an error key on demo account"
             assert (
@@ -668,7 +668,7 @@ class TestTechAPI:
 
             # Verify that the mock was called with the expected arguments
             assert mock_post.called
-            assert mock_post.await_args[0][0] == "users/user123/modules/123456789/zones"
+            assert mock_post.call_args[0][0] == "users/user123/modules/123456789/zones"
 
             # Verify that the mock was called with the expected data
             expected_data = {
@@ -681,7 +681,13 @@ class TestTechAPI:
                     "scheduleIndex": 0,
                 }
             }
-            assert json.loads(mock_post.await_args[0][1]) == expected_data
+            assert mock_post.called
+            assert mock_post.call_args[0][0] == "users/user123/modules/123456789/zones"
+            assert (
+                mock_post.await_args is not None
+                and mock_post.await_args[0][1] is not None
+            ), "The argument should not be None"
+            assert json.loads(mock_post.call_args[0][1]) == expected_data
 
             # Verify that the method returns the response
             assert result == mock_set_const_temp_response
@@ -709,13 +715,13 @@ class TestTechAPI:
 
             # Verify that the mock was called with the expected arguments
             assert mock_post.called
-            assert mock_post.await_args[0][0] == "users/user123/modules/123456789/zones"
+            assert mock_post.call_args[0][0] == "users/user123/modules/123456789/zones"
 
             # Verify that the mock was called with the expected data
             expected_data = {
                 "zone": {"id": zone_id, "zoneState": "zoneOn" if True else "zoneOff"}
             }
-            assert json.loads(mock_post.await_args[0][1]) == expected_data
+            assert json.loads(mock_post.call_args[0][1]) == expected_data
 
             # Verify that the method returns the response
             assert result == mock_set_const_temp_response

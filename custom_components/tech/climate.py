@@ -4,8 +4,8 @@ import logging
 from typing import Any
 
 from custom_components.tech import TechCoordinator
-from homeassistant.components.climate import (
-    ClimateEntity,
+from homeassistant.components.climate import ClimateEntity
+from homeassistant.components.climate.const import (
     ClimateEntityFeature,
     HVACAction,
     HVACMode,
