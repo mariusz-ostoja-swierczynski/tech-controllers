@@ -1331,7 +1331,7 @@ class TileTemperatureSignalSensor(TileSensor, SensorEntity):
         return None
 
 
-class TileFuelSupplySensor(TileSensor):
+class TileFuelSupplySensor(TileSensor, SensorEntity):
     """Representation of a Tile Fuel Supply Sensor."""
 
     _attr_native_unit_of_measurement = PERCENTAGE
@@ -1357,7 +1357,7 @@ class TileFuelSupplySensor(TileSensor):
         return device[CONF_PARAMS]["percentage"]
 
 
-class TileFanSensor(TileSensor):
+class TileFanSensor(TileSensor, SensorEntity):
     """Representation of a Tile Fan Sensor."""
 
     _attr_native_unit_of_measurement = PERCENTAGE
@@ -1383,7 +1383,7 @@ class TileFanSensor(TileSensor):
         return device[CONF_PARAMS]["gear"]
 
 
-class TileTextSensor(TileSensor):
+class TileTextSensor(TileSensor, SensorEntity):
     """Representation of a Tile Text Sensor."""
 
     def __init__(self, device, coordinator, config_entry):
@@ -1412,7 +1412,7 @@ class TileTextSensor(TileSensor):
         return assets.get_text(device[CONF_PARAMS]["statusId"])
 
 
-class TileWidgetSensor(TileSensor):
+class TileWidgetSensor(TileSensor, SensorEntity):
     """Representation of a Tile Widget Sensor."""
 
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
