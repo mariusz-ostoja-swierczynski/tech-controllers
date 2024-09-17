@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, patch
 import aiohttp
 import pytest
 
-from custom_components.tech import Tech, TechError, TechLoginError
+from custom_components.tech.tech import Tech, TechError, TechLoginError
 
 logging.basicConfig(level=logging.INFO)
 _LOGGER = logging.getLogger(__name__)

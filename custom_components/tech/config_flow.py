@@ -6,7 +6,7 @@ import uuid
 import voluptuous as vol
 
 from homeassistant import config_entries, core, exceptions
-from homeassistant.config_entries import SOURCE_USER, ConfigEntry
+from homeassistant.config_entries import SOURCE_USER, ConfigEntry, ConfigFlowResult
 from homeassistant.const import (
     ATTR_ID,
     CONF_NAME,
@@ -166,11 +166,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )[CONTROLLER][CONF_NAME],
                 data=controller,
             )
+        return None
 
     async def async_step_select_controllers(
         self,
         user_input: dict[str, str] | None = None,
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle the selection of controllers."""
         if not user_input:
             self._controllers = self._create_controllers_array(
@@ -184,7 +185,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return await self._async_finish_controller(user_input)
 
-    async def async_step_user(self, user_input: dict[str, str] | None = None):
+    async def async_step_user(
+        self, user_input: dict[str, str] | None = None
+    ) -> ConfigFlowResult:
         """Handle the initial step."""
         errors = {}
         if user_input is not None:

@@ -9,8 +9,9 @@ from homeassistant.core import callback
 from homeassistant.helpers import entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import TechCoordinator, assets
+from . import assets
 from .const import CONTROLLER, INCLUDE_HUB_IN_NAME, MANUFACTURER, UDID
+from .coordinator import TechCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class TileEntity(
 
     _attr_has_entity_name = True
 
-    def __init__(self, device, coordinator: TechCoordinator, config_entry):
+    def __init__(self, device, coordinator: TechCoordinator, config_entry) -> None:
         """Initialize the tile entity."""
         super().__init__(coordinator)
         self._config_entry = config_entry

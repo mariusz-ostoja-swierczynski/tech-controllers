@@ -3,6 +3,7 @@
 import logging
 
 from homeassistant.components import binary_sensor
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_PARAMS,
     CONF_TYPE,
@@ -10,6 +11,9 @@ from homeassistant.const import (
     STATE_ON,
     EntityCategory,
 )
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.typing import StateType, UndefinedType
 
 from . import TechCoordinator, assets
 from .const import (
@@ -26,9 +30,13 @@ from .entity import TileEntity
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
     """Set up entry."""
-    _LOGGER.debug("Setting up entry for sensors...")
+    _LOGGER.debug("Setting up entry for sensors…")
     controller = config_entry.data[CONTROLLER]
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
@@ -72,12 +80,12 @@ class TileBinarySensor(TileEntity, binary_sensor.BinarySensorEntity):
         return f"{self._unique_id}_tile_binary_sensor"
 
     @property
-    def name(self):
+    def name(self) -> str | UndefinedType | None:
         """Return the name of the device."""
         return self._name
 
     @property
-    def state(self):
+    def state(self) -> str | int | float | StateType | None:
         """Get the state of the binary sensor."""
         return STATE_ON if self._state else STATE_OFF
 
@@ -87,7 +95,7 @@ class RelaySensor(TileBinarySensor):
 
     def __init__(
         self, device, coordinator: TechCoordinator, config_entry, device_class=None
-    ):
+    ) -> None:
         """Initialize the tile relay sensor."""
         TileBinarySensor.__init__(self, device, coordinator, config_entry)
         self._attr_device_class = device_class

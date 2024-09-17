@@ -1,9 +1,8 @@
-"""Support for Tech HVAC system."""
+"""The Tech Controllers Coordinator."""
 
 import logging
 from typing import Any
 
-from custom_components.tech import TechCoordinator
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
     ClimateEntityFeature,
@@ -24,10 +23,13 @@ from homeassistant.const import (
     STATE_ON,
     UnitOfTemperature,
 )
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONTROLLER, DOMAIN, INCLUDE_HUB_IN_NAME, MANUFACTURER, UDID, VER
+from .coordinator import TechCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,7 +38,11 @@ DEFAULT_MAX_TEMP = 35
 SUPPORT_HVAC = [HVACMode.HEAT, HVACMode.OFF]
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
     """Set up entry."""
     udid = config_entry.data[CONTROLLER][UDID]
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
@@ -55,9 +61,11 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
     _attr_has_entity_name = True
     _attr_name = None
 
-    def __init__(self, device, coordinator: TechCoordinator, config_entry: ConfigEntry):
+    def __init__(
+        self, device, coordinator: TechCoordinator, config_entry: ConfigEntry
+    ) -> None:
         """Initialize the Tech device."""
-        _LOGGER.debug("Init TechThermostat...")
+        _LOGGER.debug("Init TechThermostat…")
         super().__init__(coordinator)
         self._config_entry = config_entry
         self._udid = config_entry.data[CONTROLLER][UDID]
@@ -77,12 +85,13 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
             + config_entry.data[CONTROLLER][VER]
         )
         self._temperature = None
+        self._target_temperature = None
         self.update_properties(device)
         # Remove the line below after HA 2025.1
         self._enable_turn_on_off_backwards_compatibility = False
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo | None:
         """Returns device information in a dictionary format."""
         return {
             ATTR_IDENTIFIERS: {
@@ -163,7 +172,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         return f"{self._unique_id}_zone_climate"
 
     @property
-    def supported_features(self):
+    def supported_features(self) -> ClimateEntityFeature:
         """Return the list of supported features."""
         return (
             ClimateEntityFeature.TARGET_TEMPERATURE
@@ -172,7 +181,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         )
 
     @property
-    def hvac_mode(self):
+    def hvac_mode(self) -> HVACMode:
         """Return hvac operation ie. heat, cool mode.
 
         Need to be one of HVAC_MODE_*.
@@ -180,7 +189,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         return self._mode
 
     @property
-    def hvac_modes(self):
+    def hvac_modes(self) -> list[HVACMode]:
         """Return the list of available hvac operation modes.
 
         Need to be a subset of HVAC_MODES.
@@ -188,7 +197,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         return SUPPORT_HVAC
 
     @property
-    def hvac_action(self) -> str | None:
+    def hvac_action(self) -> HVACAction | None:
         """Return the current running hvac operation if supported.
 
         Need to be one of CURRENT_HVAC_*.
@@ -196,22 +205,22 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         return self._state
 
     @property
-    def temperature_unit(self):
+    def temperature_unit(self) -> str:
         """Return the unit of measurement."""
         return UnitOfTemperature.CELSIUS
 
     @property
-    def target_temperature_step(self):
+    def target_temperature_step(self) -> float | None:
         """Return the supported step of target temperature."""
         return 0.1
 
     @property
-    def current_temperature(self):
+    def current_temperature(self) -> float | None:
         """Return the current temperature."""
         return self._temperature
 
     @property
-    def current_humidity(self):
+    def current_humidity(self) -> float | None:
         """Return current humidity."""
         return self._humidity
 
@@ -226,11 +235,11 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         return DEFAULT_MAX_TEMP
 
     @property
-    def target_temperature(self):
+    def target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
         return self._target_temperature
 
-    async def async_set_temperature(self, **kwargs):
+    async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set new target temperatures."""
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature:
@@ -244,7 +253,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
             self._target_temperature = temperature
             await self.coordinator.async_request_refresh()
 
-    async def async_set_hvac_mode(self, hvac_mode):
+    async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new target hvac mode."""
         _LOGGER.debug("%s: Setting hvac mode to %s", self.device_name, hvac_mode)
         if hvac_mode == HVACMode.OFF:
