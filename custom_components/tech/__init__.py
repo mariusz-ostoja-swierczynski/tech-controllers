@@ -1,30 +1,18 @@
 """The Tech Controllers integration."""
 
-import asyncio
 import logging
 
-from aiohttp import ClientSession
-
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_NAME, CONF_TOKEN
+from homeassistant.const import CONF_TOKEN
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from . import assets
-from .const import (
-    API_TIMEOUT,
-    CONTROLLER,
-    DOMAIN,
-    PLATFORMS,
-    SCAN_INTERVAL,
-    UDID,
-    USER_ID,
-)
-from .tech import Tech, TechError, TechLoginError
+from .const import DOMAIN, PLATFORMS, USER_ID
+from .coordinator import TechCoordinator
+from .tech import Tech
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -74,40 +62,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
-
-
-class TechCoordinator(DataUpdateCoordinator):
-    """TECH API data update coordinator."""
-
-    config_entry: ConfigEntry
-
-    def __init__(
-        self, hass: HomeAssistant, session: ClientSession, user_id: str, token: str
-    ) -> None:
-        """Initialize my coordinator."""
-        super().__init__(
-            hass,
-            _LOGGER,
-            # Name of the data. For logging purposes.
-            name=DOMAIN,
-            # Polling interval. Will only be polled if there are subscribers.
-            update_interval=SCAN_INTERVAL,
-        )
-        self.api = Tech(session, user_id, token)
-
-    async def _async_update_data(self):
-        """Fetch data from TECH API endpoint(s)."""
-
-        _LOGGER.debug(
-            "Updating data for: %s", str(self.config_entry.data[CONTROLLER][CONF_NAME])
-        )
-
-        try:
-            async with asyncio.timeout(API_TIMEOUT):
-                return await self.api.module_data(
-                    self.config_entry.data[CONTROLLER][UDID]
-                )
-        except TechLoginError as err:
-            raise ConfigEntryAuthFailed from err
-        except TechError as err:
-            raise UpdateFailed(f"Error communicating with API: {err}") from err
