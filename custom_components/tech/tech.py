@@ -24,7 +24,7 @@ class Tech:
         user_id=None,
         token=None,
         base_url=TECH_API_URL,
-    ):
+    ) -> None:
         """Initialize the Tech object.
 
         Args:
@@ -69,8 +69,7 @@ class Tech:
                 _LOGGER.warning("Invalid response from Tech API: %s", response.status)
                 raise TechError(response.status, await response.text())
 
-            data = await response.json()
-            return data
+            return await response.json()
 
     async def post(self, request_path, post_data):
         """Send a POST request to the specified URL with the given data.
@@ -95,8 +94,7 @@ class Tech:
                 _LOGGER.warning("Invalid response from Tech API: %s", response.status)
                 raise TechError(response.status, await response.text())
 
-            data = await response.json()
-            return data
+            return await response.json()
 
     async def authenticate(self, username, password):
         """Authenticate the user with the given username and password.
@@ -187,10 +185,10 @@ class Tech:
         """
 
         if language not in TECH_SUPPORTED_LANGUAGES:
-            _LOGGER.debug("Language %s not supported. Switching to default.", language)
+            _LOGGER.debug("Language %s not supported. Switching to default", language)
             language = "en"
 
-        _LOGGER.debug("Getting %s language.", language)
+        _LOGGER.debug("Getting %s language", language)
 
         if self.authenticated:
             path = f"i18n/{language}"
@@ -332,7 +330,7 @@ class Tech:
         JSON object with the result.
 
         """
-        _LOGGER.debug("Setting zone constant temperature...")
+        _LOGGER.debug("Setting zone constant temperature…")
         if self.authenticated:
             path = f"users/{self.user_id}/modules/{module_udid}/zones"
             data = {
@@ -385,7 +383,7 @@ class TechError(Exception):
 
     """
 
-    def __init__(self, status_code, status):
+    def __init__(self, status_code, status) -> None:
         """Initialize the status code and status of the object.
 
         Args:
@@ -406,7 +404,7 @@ class TechLoginError(Exception):
 
     """
 
-    def __init__(self, status_code, status):
+    def __init__(self, status_code, status) -> None:
         """Initialize the status code and status of the object.
 
         Args:

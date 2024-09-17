@@ -23,7 +23,7 @@ class TileEntity(
 
     _attr_has_entity_name = True
 
-    def __init__(self, device, coordinator: TechCoordinator, config_entry):
+    def __init__(self, device, coordinator: TechCoordinator, config_entry) -> None:
         """Initialize the tile entity."""
         super().__init__(coordinator)
         self._config_entry = config_entry

@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from . import assets
@@ -30,14 +31,14 @@ _LOGGER = logging.getLogger(__name__)
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
-async def async_setup(hass: HomeAssistant, config: dict):  # pylint: disable=unused-argument
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # pylint: disable=unused-argument
     """Set up the Tech Controllers component."""
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Tech Controllers from a config entry."""
-    _LOGGER.debug("Setting up component's entry.")
+    _LOGGER.debug("Setting up component's entry")
     _LOGGER.debug("Entry id: %s", str(entry.entry_id))
     _LOGGER.debug(
         "Entry -> title: %s, data: %s, id: %s, domain: %s",

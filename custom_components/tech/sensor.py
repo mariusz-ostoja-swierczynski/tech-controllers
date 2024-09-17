@@ -28,7 +28,10 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.icon import icon_for_signal_level
+from homeassistant.helpers.typing import UndefinedType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import TechCoordinator, assets
@@ -62,7 +65,9 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up entry."""
     _LOGGER.debug(
@@ -357,12 +362,10 @@ def map_to_tile_sensors(tiles, coordinator, config_entry):
     )
 
     # Create sensor objects for devices with outside temperature
-    devices_objects = (
+    return (
         ZoneOutsideTempTile(tiles[deviceIndex], coordinator, config_entry)
         for deviceIndex in devices_outside_temperature
     )
-
-    return devices_objects
 
 
 def is_outside_temperature_tile(device) -> bool:
@@ -421,7 +424,7 @@ class TechBatterySensor(CoordinatorEntity, SensorEntity):
     _attr_device_class = SensorDeviceClass.BATTERY
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, device, coordinator: TechCoordinator, config_entry):
+    def __init__(self, device, coordinator: TechCoordinator, config_entry) -> None:
         """Initialize the Tech battery sensor."""
         _LOGGER.debug("Init TechBatterySensor... ")
         super().__init__(coordinator)
@@ -470,12 +473,12 @@ class TechBatterySensor(CoordinatorEntity, SensorEntity):
         return "battery_entity"
 
     @property
-    def name(self):
+    def name(self) -> str | UndefinedType | None:
         """Return the name of the device."""
         return f"{self._name} battery"
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo | None:
         """Get device information.
 
         Returns:
@@ -502,7 +505,7 @@ class TechTemperatureSensor(CoordinatorEntity, SensorEntity):
 
     def __init__(
         self, device: dict, coordinator: TechCoordinator, config_entry: ConfigEntry
-    ):
+    ) -> None:
         """Initialize the Tech temperature sensor."""
         _LOGGER.debug("Init TechTemperatureSensor... ")
         super().__init__(coordinator)
@@ -557,12 +560,12 @@ class TechTemperatureSensor(CoordinatorEntity, SensorEntity):
         return "temperature_entity"
 
     @property
-    def name(self):
+    def name(self) -> str | UndefinedType | None:
         """Return the name of the device."""
         return f"{self._name} temperature"
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo | None:
         """Get device information.
 
         Returns:
@@ -589,7 +592,7 @@ class TechOutsideTempTile(CoordinatorEntity, SensorEntity):
 
     def __init__(
         self, device: dict, coordinator: TechCoordinator, config_entry: ConfigEntry
-    ):
+    ) -> None:
         """Initialize the Tech temperature sensor."""
         _LOGGER.debug("Init TechOutsideTemperatureTile... ")
         super().__init__(coordinator)
@@ -651,12 +654,12 @@ class TechOutsideTempTile(CoordinatorEntity, SensorEntity):
         return "ext_temperature_entity"
 
     @property
-    def name(self):
+    def name(self) -> str | UndefinedType | None:
         """Return the name of the device."""
         return f"{self._name} temperature"
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo | None:
         """Get device information.
 
         Returns:
@@ -683,7 +686,7 @@ class TechHumiditySensor(CoordinatorEntity, SensorEntity):
 
     def __init__(
         self, device: dict, coordinator: TechCoordinator, config_entry: ConfigEntry
-    ):
+    ) -> None:
         """Initialize the Tech humidity sensor."""
         _LOGGER.debug("Init TechHumiditySensor... ")
         super().__init__(coordinator)
@@ -738,12 +741,12 @@ class TechHumiditySensor(CoordinatorEntity, SensorEntity):
         return "humidity_entity"
 
     @property
-    def name(self):
+    def name(self) -> str | UndefinedType | None:
         """Return the name of the device."""
         return f"{self._name} humidity"
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo | None:
         """Get device information.
 
         Returns:
@@ -769,7 +772,7 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
 
     def __init__(
         self, device: dict, coordinator: TechCoordinator, config_entry: ConfigEntry
-    ):
+    ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._config_entry = config_entry
@@ -824,7 +827,7 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
         self.async_write_ha_state()
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo | None:
         """Get device information.
 
         Returns:
@@ -995,7 +998,7 @@ class ZoneActuatorSensor(ZoneSensor):
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_icon = assets.get_icon_by_type(TYPE_VALVE)
 
-    def __init__(self, device, coordinator, config_entry, actuator_index):
+    def __init__(self, device, coordinator, config_entry, actuator_index) -> None:
         """Initialize the sensor.
 
         These are needed before the call to super, as ZoneSensor class
@@ -1020,7 +1023,7 @@ class ZoneActuatorSensor(ZoneSensor):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return f"{self._unique_id}_zone_actuator_{str(self._actuator_index + 1)}"
+        return f"{self._unique_id}_zone_actuator_{self._actuator_index + 1!s}"
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -1059,7 +1062,7 @@ class ZoneWindowSensor(BinarySensorEntity, ZoneSensor):
 
     _attr_device_class = BinarySensorDeviceClass.WINDOW
 
-    def __init__(self, device, coordinator, config_entry, window_index):
+    def __init__(self, device, coordinator, config_entry, window_index) -> None:
         """Initialize the sensor.
 
         These are needed before the call to super, as ZoneSensor class
@@ -1090,7 +1093,7 @@ class ZoneWindowSensor(BinarySensorEntity, ZoneSensor):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return f"{self._unique_id}_zone_window_{str(self._window_index + 1)}"
+        return f"{self._unique_id}_zone_window_{self._window_index + 1!s}"
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -1167,7 +1170,7 @@ class TileSensor(TileEntity, CoordinatorEntity):
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
-    def get_state(self, device):
+    def get_state(self, device) -> Any:
         """Get the state of the device."""
 
 
@@ -1185,7 +1188,7 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
         coordinator: TechCoordinator,
         config_entry,
         create_device: bool = False,
-    ):
+    ) -> None:
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
         self.native_unit_of_measurement = UnitOfTemperature.CELSIUS
@@ -1205,12 +1208,12 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
         """Return a unique ID."""
         return f"{self._unique_id}_tile_temperature"
 
-    def get_state(self, device):
+    def get_state(self, device) -> Any:
         """Get the state of the device."""
         return device[CONF_PARAMS][VALUE] / 10
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo | None:
         """Returns device information in a dictionary format."""
 
         if self._create_device:
@@ -1240,7 +1243,7 @@ class TileTemperatureBatterySensor(TileSensor, SensorEntity):
         coordinator: TechCoordinator,
         config_entry,
         create_device: bool = False,
-    ):
+    ) -> None:
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
         self.manufacturer = MANUFACTURER
@@ -1256,12 +1259,12 @@ class TileTemperatureBatterySensor(TileSensor, SensorEntity):
         """Return a unique ID."""
         return f"{self._unique_id}_tile_temperature_battery"
 
-    def get_state(self, device):
+    def get_state(self, device) -> Any:
         """Get the state of the device."""
         return device[CONF_PARAMS][BATTERY_LEVEL]
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo | None:
         """Returns device information in a dictionary format."""
 
         if self._create_device:
@@ -1291,7 +1294,7 @@ class TileTemperatureSignalSensor(TileSensor, SensorEntity):
         coordinator: TechCoordinator,
         config_entry,
         create_device: bool = False,
-    ):
+    ) -> None:
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
         self.manufacturer = MANUFACTURER
@@ -1312,12 +1315,12 @@ class TileTemperatureSignalSensor(TileSensor, SensorEntity):
         """Icon of the entity, based on signal strength."""
         return icon_for_signal_level(self.state)
 
-    def get_state(self, device):
+    def get_state(self, device) -> Any:
         """Get the state of the device."""
         return device[CONF_PARAMS][SIGNAL_STRENGTH]
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo | None:
         """Returns device information in a dictionary format."""
         if self._create_device:
             return {
@@ -1338,7 +1341,7 @@ class TileFuelSupplySensor(TileSensor, SensorEntity):
     _attr_device_class = SensorDeviceClass.BATTERY
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, device, coordinator, config_entry):
+    def __init__(self, device, coordinator, config_entry) -> None:
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
 
@@ -1348,11 +1351,11 @@ class TileFuelSupplySensor(TileSensor, SensorEntity):
         return f"{self._unique_id}_tile_fuel_supply"
 
     @property
-    def name(self):
+    def name(self) -> str | UndefinedType | None:
         """Return the name of the sensor."""
         return self._name
 
-    def get_state(self, device):
+    def get_state(self, device) -> Any:
         """Get the state of the device."""
         return device[CONF_PARAMS]["percentage"]
 
@@ -1363,7 +1366,7 @@ class TileFanSensor(TileSensor, SensorEntity):
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, device, coordinator, config_entry):
+    def __init__(self, device, coordinator, config_entry) -> None:
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
         self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
@@ -1374,11 +1377,11 @@ class TileFanSensor(TileSensor, SensorEntity):
         return f"{self._unique_id}_tile_fan"
 
     @property
-    def name(self):
+    def name(self) -> str | UndefinedType | None:
         """Return the name of the sensor."""
         return self._name
 
-    def get_state(self, device):
+    def get_state(self, device) -> Any:
         """Get the state of the device."""
         return device[CONF_PARAMS]["gear"]
 
@@ -1386,7 +1389,7 @@ class TileFanSensor(TileSensor, SensorEntity):
 class TileTextSensor(TileSensor, SensorEntity):
     """Representation of a Tile Text Sensor."""
 
-    def __init__(self, device, coordinator, config_entry):
+    def __init__(self, device, coordinator, config_entry) -> None:
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
         self._name = (
@@ -1403,11 +1406,11 @@ class TileTextSensor(TileSensor, SensorEntity):
         return f"{self._unique_id}_tile_text"
 
     @property
-    def name(self):
+    def name(self) -> str | UndefinedType | None:
         """Return the name of the sensor."""
         return self._name
 
-    def get_state(self, device):
+    def get_state(self, device) -> Any:
         """Get the state of the device."""
         return assets.get_text(device[CONF_PARAMS]["statusId"])
 
@@ -1419,7 +1422,7 @@ class TileWidgetSensor(TileSensor, SensorEntity):
     _attr_device_class = SensorDeviceClass.TEMPERATURE
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, device, coordinator, config_entry):
+    def __init__(self, device, coordinator, config_entry) -> None:
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
         self._name = (
@@ -1434,11 +1437,11 @@ class TileWidgetSensor(TileSensor, SensorEntity):
         return f"{self._unique_id}_tile_widget"
 
     @property
-    def name(self):
+    def name(self) -> str | UndefinedType | None:
         """Return the name of the sensor."""
         return self._name
 
-    def get_state(self, device):
+    def get_state(self, device) -> Any:
         """Get the state of the device."""
         return device[CONF_PARAMS]["widget1"][VALUE] / 10
 
@@ -1446,7 +1449,7 @@ class TileWidgetSensor(TileSensor, SensorEntity):
 class TileValveSensor(TileSensor, SensorEntity):
     """Representation of a Tile Valve Sensor."""
 
-    def __init__(self, device, coordinator, config_entry):
+    def __init__(self, device, coordinator, config_entry) -> None:
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
         self.native_unit_of_measurement = PERCENTAGE
@@ -1467,11 +1470,11 @@ class TileValveSensor(TileSensor, SensorEntity):
         return f"{self._unique_id}_tile_valve"
 
     @property
-    def name(self):
+    def name(self) -> str | UndefinedType | None:
         """Return the name of the device."""
         return f"{self._name} {self._valve_number}"
 
-    def get_state(self, device):
+    def get_state(self, device) -> Any:
         """Get the state of the device."""
         return device[CONF_PARAMS]["openingPercentage"]
 
@@ -1514,7 +1517,7 @@ class TileMixingValveSensor(TileSensor, SensorEntity):
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, device, coordinator, config_entry):
+    def __init__(self, device, coordinator, config_entry) -> None:
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
         self.native_unit_of_measurement = PERCENTAGE
@@ -1533,11 +1536,11 @@ class TileMixingValveSensor(TileSensor, SensorEntity):
         return f"{self._unique_id}_tile_mixing_valve"
 
     @property
-    def name(self):
+    def name(self) -> str | UndefinedType | None:
         """Return the name of the device."""
         return f"{self._name} {self._valve_number}"
 
-    def get_state(self, device):
+    def get_state(self, device) -> Any:
         """Get the state of the device."""
         return device[CONF_PARAMS]["openingPercentage"]
 

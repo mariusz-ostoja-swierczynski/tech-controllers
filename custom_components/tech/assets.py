@@ -39,7 +39,7 @@ async def load_subtitles(language: str, api):
         None
 
     """
-    global TRANSLATIONS  # noqa: PLW0603
+    global TRANSLATIONS  # noqa: PLW0603 # pylint: disable=global-statement
     TRANSLATIONS = await api.get_translations(language)
 
 
