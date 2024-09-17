@@ -1,9 +1,8 @@
-"""Support for Tech HVAC system."""
+"""The Tech Controllers Coordinator."""
 
 import logging
 from typing import Any
 
-from custom_components.tech import TechCoordinator
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
     ClimateEntityFeature,
@@ -30,6 +29,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONTROLLER, DOMAIN, INCLUDE_HUB_IN_NAME, MANUFACTURER, UDID, VER
+from .coordinator import TechCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 

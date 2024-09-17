@@ -9,8 +9,9 @@ from homeassistant.core import callback
 from homeassistant.helpers import entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import TechCoordinator, assets
+from . import assets
 from .const import CONTROLLER, INCLUDE_HUB_IN_NAME, MANUFACTURER, UDID
+from .coordinator import TechCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 

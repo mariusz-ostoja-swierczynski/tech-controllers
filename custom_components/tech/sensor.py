@@ -34,7 +34,7 @@ from homeassistant.helpers.icon import icon_for_signal_level
 from homeassistant.helpers.typing import UndefinedType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import TechCoordinator, assets
+from . import assets
 from .const import (
     ACTUATORS,
     ACTUATORS_OPEN,
@@ -59,6 +59,7 @@ from .const import (
     WINDOW_STATE,
     WORKING_STATUS,
 )
+from .coordinator import TechCoordinator
 from .entity import TileEntity
 
 _LOGGER = logging.getLogger(__name__)
