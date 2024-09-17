@@ -41,7 +41,7 @@ class Tech:
         if user_id and token:
             self.user_id = user_id
             self.token = token
-            self.headers.setdefault("Authorization", "Bearer " + token)
+            self.headers.setdefault("Authorization", f"Bearer {token}")
             self.authenticated = True
         else:
             self.authenticated = False
@@ -120,7 +120,7 @@ class Tech:
                 self.headers = {
                     "Accept": "application/json",
                     "Accept-Encoding": "gzip",
-                    "Authorization": "Bearer " + self.token,
+                    "Authorization": f"Bearer {self.token}",
                 }
         except TechError as err:
             raise TechLoginError(401, "Unauthorized") from err
@@ -138,7 +138,7 @@ class Tech:
         """
         if self.authenticated:
             # Construct the path for the user's modules
-            path = "users/" + self.user_id + "/modules"
+            path = f"users/{self.user_id}/modules"
             # Make a GET request to retrieve the modules
             result = await self.get(path)
         else:
@@ -162,7 +162,7 @@ class Tech:
         """
         _LOGGER.debug("Getting module data...  %s", module_udid)
         if self.authenticated:
-            path = "users/" + self.user_id + "/modules/" + module_udid
+            path = f"users/{self.user_id}/modules/{module_udid}"
             result = await self.get(path)
         else:
             raise TechError(401, "Unauthorized")
@@ -193,7 +193,7 @@ class Tech:
         _LOGGER.debug("Getting %s language.", language)
 
         if self.authenticated:
-            path = "i18n/" + language
+            path = f"i18n/{language}"
             result = await self.get(path)
         else:
             raise TechError(401, "Unauthorized")
@@ -334,7 +334,7 @@ class Tech:
         """
         _LOGGER.debug("Setting zone constant temperature...")
         if self.authenticated:
-            path = "users/" + self.user_id + "/modules/" + module_udid + "/zones"
+            path = f"users/{self.user_id}/modules/{module_udid}/zones"
             data = {
                 "mode": {
                     "id": self.modules[module_udid]["zones"][zone_id]["mode"]["id"],
@@ -366,7 +366,7 @@ class Tech:
         """
         _LOGGER.debug("Turing zone on/off: %s", on)
         if self.authenticated:
-            path = "users/" + self.user_id + "/modules/" + module_udid + "/zones"
+            path = f"users/{self.user_id}/modules/{module_udid}/zones"
             data = {"zone": {"id": zone_id, "zoneState": "zoneOn" if on else "zoneOff"}}
             _LOGGER.debug(data)
             result = await self.post(path, json.dumps(data))
