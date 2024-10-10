@@ -23,6 +23,7 @@ class TileEntity(
     """Representation of a TileEntity."""
 
     _attr_has_entity_name = True
+    _attr_available = False
 
     def __init__(self, device, coordinator: TechCoordinator, config_entry) -> None:
         """Initialize the tile entity."""
@@ -71,10 +72,33 @@ class TileEntity(
 
         """
         # Update _state property
-        self._state = self.get_state(device)
+        try:
+            self._state = self.get_state(device)
+        except Exception as ex:
+            if self._attr_available:  # Print only once when available
+                _LOGGER.error("Tech entity error for '%s': %s", self.entity_id, ex)
+            self._state = None
+            self._attr_available = False
+            return
+        self._attr_available = True
 
     @callback
     def _handle_coordinator_update(self, *args: Any) -> None:
         """Handle updated data from the coordinator."""
-        self.update_properties(self._coordinator.data["tiles"][self._id])
+        _LOGGER.debug(
+            "_handle_coordinator_update: %s",
+            self._coordinator.data["tiles"][self._id],
+        )
+        if (
+            "tiles" in self._coordinator.data
+            and self._id in self._coordinator.data["tiles"]
+        ):
+            self.update_properties(self._coordinator.data["tiles"][self._id])
+            self._attr_available = True
+        else:
+            _LOGGER.warning(
+                "Data for tile ID %s not found in coordinator data", self._id
+            )
+            self._attr_available = False
+        # self.update_properties(self._coordinator.data["tiles"][self._id])
         self.async_write_ha_state()
