@@ -1260,6 +1260,13 @@ class ZoneUnderfloorSensor(ZoneSensor):
         """Return the translation key to translate the entity's name and states."""
         return "underfloor_entity"
 
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the state attributes."""
+        attributes = {}
+        attributes.update(self.attrs)
+        return attributes
+
     def update_properties(self, device):
         """Update the properties of the ZoneUnderfloorSensor object.
 
