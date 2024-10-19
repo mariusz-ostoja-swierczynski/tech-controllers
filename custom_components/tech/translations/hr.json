@@ -42,6 +42,9 @@
             "actuator_entity": {
                 "name": "Aktuator {actuator_number}"
             },
+            "underfloor_entity": {
+                "name": "Podno grijanje"
+            },
             "window_sensor_entity": {
                 "name": "Prozor {window_number}"
             },

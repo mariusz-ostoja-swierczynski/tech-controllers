@@ -42,6 +42,9 @@
             "actuator_entity": {
                 "name": "Actuator {actuator_number}"
             },
+            "underfloor_entity": {
+                "name": "Vloerverwarming"
+            },
             "window_sensor_entity": {
                 "name": "Raam {window_number}"
             },

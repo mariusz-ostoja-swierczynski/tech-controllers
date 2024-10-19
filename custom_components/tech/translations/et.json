@@ -42,6 +42,9 @@
             "actuator_entity": {
                 "name": "Aktuaator {actuator_number}"
             },
+            "underfloor_entity": {
+                "name": "Põrandaküte"
+            },
             "window_sensor_entity": {
                 "name": "Aken {window_number}"
             },

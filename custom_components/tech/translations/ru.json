@@ -42,6 +42,9 @@
             "actuator_entity": {
                 "name": "Актуатор {actuator_number}"
             },
+            "underfloor_entity": {
+                "name": "Подогрев пола"
+            },
             "window_sensor_entity": {
                 "name": "Окно {window_number}"
             },

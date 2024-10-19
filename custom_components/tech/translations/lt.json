@@ -42,6 +42,9 @@
             "actuator_entity": {
                 "name": "Veikiklis {actuator_number}"
             },
+            "underfloor_entity": {
+                "name": "Grindinis šildymas"
+            },
             "window_sensor_entity": {
                 "name": "Langas {window_number}"
             },
