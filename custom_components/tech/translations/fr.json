@@ -42,6 +42,9 @@
             "actuator_entity": {
                 "name": "Actionneur {actuator_number}"
             },
+            "underfloor_entity": {
+                "name": "Chauffage"
+            },
             "window_sensor_entity": {
                 "name": "Fenêtre {window_number}"
             },

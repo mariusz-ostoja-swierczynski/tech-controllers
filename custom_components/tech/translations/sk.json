@@ -42,6 +42,9 @@
           "actuator_entity": {
             "name": "Aktuátor {actuator_number}"
           },
+          "underfloor_entity": {
+              "name": "Podlahové kúrenie"
+          },
           "window_sensor_entity": {
             "name": "Okno {window_number}"
           },
