@@ -58,6 +58,7 @@ from .const import (
     WINDOW_SENSORS,
     WINDOW_STATE,
     WORKING_STATUS,
+    ZONE_STATE,
 )
 from .coordinator import TechCoordinator
 from .entity import TileEntity
@@ -136,6 +137,7 @@ async def async_setup_entry(
 
     battery_devices = map_to_battery_sensors(zones, coordinator, config_entry)
     temperature_sensors = map_to_temperature_sensors(zones, coordinator, config_entry)
+    zone_state_sensors = map_to_zone_state_sensors(zones, coordinator, config_entry)
     humidity_sensors = map_to_humidity_sensors(zones, coordinator, config_entry)
     actuator_sensors = map_to_actuator_sensors(zones, coordinator, config_entry)
     window_sensors = map_to_window_sensors(zones, coordinator, config_entry)
@@ -148,6 +150,7 @@ async def async_setup_entry(
         itertools.chain(
             battery_devices,
             temperature_sensors,
+            zone_state_sensors,
             humidity_sensors,  # , tile_sensors
             actuator_sensors,
             window_sensors,
@@ -225,6 +228,41 @@ def is_temperature_operating_device(device) -> bool:
 
     """
     return device[CONF_ZONE]["currentTemperature"] is not None
+
+
+def map_to_zone_state_sensors(zones, coordinator, config_entry):
+    """Map the zones to zone state sensors using the provided API and config entry.
+
+    Args:
+    zones (list): List of zones
+    coordinator (object): The API object
+    config_entry (object): The config entry object
+    model: device model
+
+    Returns:
+    list: List of ZoneStateSensor objects
+
+    """
+    devices = filter(
+        lambda deviceIndex: is_zone_state_operating_device(zones[deviceIndex]), zones
+    )
+    return (
+        ZoneStateSensor(zones[deviceIndex], coordinator, config_entry)
+        for deviceIndex in devices
+    )
+
+
+def is_zone_state_operating_device(device) -> bool:
+    """Check if the device's current zone state is available.
+
+    Args:
+        device (dict): The device information.
+
+    Returns:
+        bool: True if the current zone state is available, False otherwise.
+
+    """
+    return device[CONF_ZONE][ZONE_STATE] is not None
 
 
 def map_to_humidity_sensors(zones, coordinator, config_entry):
@@ -1164,6 +1202,55 @@ class ZoneOutsideTempTile(ZoneSensor):
         else:
             # Set native value to None if device params value is None
             self._attr_native_value = None
+
+
+class ZoneStateSensor(BinarySensorEntity, ZoneSensor):
+    """Representation of a Zone State (alarm) Sensor."""
+
+    _attr_device_class = BinarySensorDeviceClass.PROBLEM
+
+    def __init__(self, device, coordinator, config_entry) -> None:
+        """Initialize the sensor.
+
+        These are needed before the call to super, as ZoneSensor class
+        calls update_properties in its init, which actually calls this class
+        update_properties, which does not know attrs and _window_index already.
+
+        """
+        self._attr_is_on = device[CONF_ZONE][ZONE_STATE] != "noAlarm"
+        self.attrs: dict[str, Any] = {}
+        super().__init__(device, coordinator, config_entry)
+        self._attr_translation_key = "zone_state_entity"
+        self._attr_is_on = device[CONF_ZONE][ZONE_STATE] != "noAlarm"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_zone_state"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the state attributes."""
+        attributes = {}
+        attributes.update(self.attrs)
+        return attributes
+
+    def update_properties(self, device):
+        """Update the properties of the ZoneStateSensor object.
+
+        Args:
+        device (dict): The device information.
+
+        Returns:
+        None
+
+        """
+        # Update the name of the device
+        self._name = device[CONF_DESCRIPTION][CONF_NAME]
+
+        self.attrs[ZONE_STATE] = device[CONF_ZONE][ZONE_STATE]
+
+        self._attr_is_on = device[CONF_ZONE][ZONE_STATE] != "noAlarm"
 
 
 class TileSensor(TileEntity, CoordinatorEntity):
