@@ -50,6 +50,9 @@
             },
             "signal_strength_entity": {
                 "name": "{entity_name} Moč signala"
+            },
+            "zone_state_entity": {
+                "name": "{entity_name} Stanje alarma"
             }
         }
     },
