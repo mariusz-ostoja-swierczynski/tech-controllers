@@ -50,6 +50,9 @@
             },
             "signal_strength_entity": {
                 "name": "Force du signal {entity_name}"
+            },
+            "zone_state_entity": {
+                "name": "{entity_name} État d'alarme"
             }
         }
     },

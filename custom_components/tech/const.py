@@ -24,6 +24,7 @@ ACTUATORS_OPEN = "actuatorsOpen"
 INCLUDE_HUB_IN_NAME = "include_hub_in_name"
 WINDOW_SENSORS = "windowsSensors"
 WINDOW_STATE = "windowState"
+ZONE_STATE = "zoneState"
 
 DEFAULT_ICON = "mdi:eye"
 

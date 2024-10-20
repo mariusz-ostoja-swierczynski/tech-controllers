@@ -50,6 +50,9 @@
             },
             "signal_strength_entity": {
                 "name": "{entity_name} Putere semnal"
+            },
+            "zone_state_entity": {
+                "name": "{entity_name} Stare de alarmă"
             }
         }
     },

@@ -50,6 +50,9 @@
             },
             "signal_strength_entity": {
                 "name": "{entity_name} Jel erősség"
+            },
+            "zone_state_entity": {
+                "name": "{entity_name} Riasztási állapot"
             }
         }
     },
