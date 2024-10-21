@@ -4,5 +4,5 @@
     "render_readme": true,
     "zip_release": true,
     "filename": "tech.zip",
-    "homeassistant": "2024.3.0"
+    "homeassistant": "2024.10.3"
 }
