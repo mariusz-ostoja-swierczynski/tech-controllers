@@ -215,6 +215,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data=controller,
             title=controller[CONTROLLER][CONF_NAME],
             entry_id=uuid.uuid4().hex,
+            discovery_keys={},
             domain=DOMAIN,
             version=ConfigFlow.VERSION,
             minor_version=ConfigFlow.MINOR_VERSION,
