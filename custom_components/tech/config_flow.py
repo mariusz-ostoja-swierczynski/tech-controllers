@@ -1,6 +1,8 @@
 """Config flow for Tech Sterowniki integration."""
 
 import logging
+from types import MappingProxyType
+from typing import Any
 import uuid
 
 import voluptuous as vol
@@ -14,7 +16,6 @@ from homeassistant.const import (
     CONF_TOKEN,
     CONF_USERNAME,
 )
-from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import aiohttp_client, config_validation as cv
 
 from . import assets
@@ -93,13 +94,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         """Initialize the config flow."""
-        self._init_info: dict[str, str] | None = None
+        self._init_info: dict[str, Any] | None = None
         self._controllers: list[dict] | None = None
 
-    async def _async_finish_controller(self, user_input: dict[str, str]) -> FlowResult:
+    async def _async_finish_controller(
+        self, user_input: dict[str, str]
+    ) -> ConfigFlowResult:
         """Finish setting up controllers."""
 
-        include_name: bool = user_input[INCLUDE_HUB_IN_NAME]
+        include_name: bool = INCLUDE_HUB_IN_NAME in user_input
 
         if self._controllers is not None and user_input is not None:
             if (
@@ -166,7 +169,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )[CONTROLLER][CONF_NAME],
                 data=controller,
             )
-        return None
+        return self.async_abort(reason="no_modules")
 
     async def async_step_select_controllers(
         self,
@@ -174,9 +177,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Handle the selection of controllers."""
         if not user_input:
-            self._controllers = self._create_controllers_array(
-                validated_input=self._init_info
-            )
+            if self._init_info is not None:
+                self._controllers = self._create_controllers_array(
+                    validated_input=self._init_info
+                )
 
             return self.async_show_form(
                 step_id="select_controllers",
@@ -215,7 +219,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data=controller,
             title=controller[CONTROLLER][CONF_NAME],
             entry_id=uuid.uuid4().hex,
-            discovery_keys={},
+            discovery_keys=MappingProxyType({}),
             domain=DOMAIN,
             version=ConfigFlow.VERSION,
             minor_version=ConfigFlow.MINOR_VERSION,
@@ -224,15 +228,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             unique_id=None,
         )
 
-    def _create_controllers_array(self, validated_input: dict) -> list[dict]:
+    def _create_controllers_array(self, validated_input: dict[str, Any]) -> list[dict]:
         return [
             self._create_controller_dict(validated_input, controller_dict)
             for controller_dict in validated_input[CONTROLLERS]
         ]
 
     def _create_controller_dict(
-        self, validated_input: dict, controller_dict: dict
-    ) -> dict:
+        self, validated_input: dict[str, str], controller_dict: dict[str, str]
+    ) -> dict[str, Any]:
         return {
             USER_ID: validated_input[USER_ID],
             CONF_TOKEN: validated_input[CONF_TOKEN],
