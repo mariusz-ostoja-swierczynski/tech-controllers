@@ -21,7 +21,9 @@ categories:
       - 'bugfix'
       - 'bug'
   - title: '🧰 Maintenance'
-    label: 'chore'
+    labels:
+      - 'chore'
+      - 'dependencies'
 version-resolver:
   major:
     labels:
@@ -47,3 +49,6 @@ autolabeler:
     branch:
       - '/feature\/.+/'
       - '/feat\/.+/'
+  - label: 'dependencies'
+    branch:
+      - '/dependabot\/.+/'
