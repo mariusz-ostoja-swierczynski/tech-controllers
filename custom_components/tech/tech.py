@@ -214,7 +214,7 @@ class Tech:
         _LOGGER.debug("Updating module zones ... %s", module_udid)
         result = await self.get_module_data(module_udid)
         zones = result["zones"]["elements"]
-        zones = list(filter(lambda e: e["zone"]["visibility"], zones))
+        zones = list(filter(lambda e: e is not None and "zone" in e and e["zone"] is not None and "visibility" in e["zone"], zones))
 
         for zone in zones:
             self.modules[module_udid]["zones"][zone["zone"]["id"]] = zone
@@ -268,14 +268,14 @@ class Tech:
         _LOGGER.debug("Updating module zones & tiles ... %s", module_udid)
         result = await self.get_module_data(module_udid)
         zones = result["zones"]["elements"]
-        zones = list(filter(lambda e: e["zone"]["visibility"], zones))
+        zones = list(filter(lambda e: e is not None and "zone" in e and e["zone"] is not None and "visibility" in e["zone"], zones))
 
         if len(zones) > 0:
             _LOGGER.debug("Updating zones for controller: %s", module_udid)
             zones = list(
                 filter(
-                    lambda e: e["zone"]["zoneState"] != "zoneUnregistered",
-                    zones,
+                    lambda e: e is not None and "zone" in e and e["zone"] is not None and "zoneState" in e["zone"] and e["zone"]["zoneState"] != "zoneUnregistered",
+                    zones
                 )
             )
             for zone in zones:
