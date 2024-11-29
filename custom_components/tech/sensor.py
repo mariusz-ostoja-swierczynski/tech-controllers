@@ -1584,10 +1584,6 @@ class TileValveSensor(TileSensor, SensorEntity):
 
         """
         self._state = self.get_state(device)
-        _LOGGER.debug(
-            "update_properties: %s",
-            device[CONF_PARAMS],
-        )
         self.attrs["currentTemp"] = device[CONF_PARAMS]["currentTemp"] / 10
         self.attrs["returnTemp"] = device[CONF_PARAMS]["returnTemp"] / 10
         self.attrs["setTempCorrection"] = device[CONF_PARAMS]["setTempCorrection"]
