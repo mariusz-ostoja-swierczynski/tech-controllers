@@ -1648,7 +1648,7 @@ class TileMixingValveSensor(TileSensor, SensorEntity):
 
 
 class TileOpenThermSensor(TileSensor, SensorEntity):
-    """Representation of a Tile Temperature Sensor."""
+    """Representation of config_OpenTherm Sensor."""
 
     _attr_has_entity_name = True
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
