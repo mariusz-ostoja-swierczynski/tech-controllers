@@ -51,6 +51,7 @@ from .const import (
     TYPE_TEMPERATURE_CH,
     TYPE_TEXT,
     TYPE_VALVE,
+    TYPE_OPEN_THERM,
     UDID,
     VALUE,
     VER,
@@ -59,6 +60,10 @@ from .const import (
     WINDOW_STATE,
     WORKING_STATUS,
     ZONE_STATE,
+    OPENTHERM_CURRENT_TEMP,
+    OPENTHERM_SET_TEMP,
+    OPENTHERM_SET_TEMP_DHW,
+    OPENTHERM_CURRENT_TEMP_DHW,
 )
 from .coordinator import TechCoordinator
 from .entity import TileEntity
@@ -124,6 +129,15 @@ async def async_setup_entry(
             entities.append(TileFuelSupplySensor(tile, coordinator, config_entry))
         if tile[CONF_TYPE] == TYPE_TEXT:
             entities.append(TileTextSensor(tile, coordinator, config_entry))
+        if tile[CONF_TYPE] == TYPE_OPEN_THERM:
+            for openThermEntity in [
+                OPENTHERM_CURRENT_TEMP,
+                OPENTHERM_SET_TEMP,
+                OPENTHERM_CURRENT_TEMP_DHW,
+                OPENTHERM_SET_TEMP_DHW,
+            ]:
+                if tile[CONF_PARAMS].get(openThermEntity["state_key"]) is not None:
+                    entities.append(TileOpenThermSensor(tile, coordinator, config_entry, openThermEntity))
 
     async_add_entities(entities, True)
 
@@ -1631,6 +1645,71 @@ class TileMixingValveSensor(TileSensor, SensorEntity):
     def get_state(self, device) -> Any:
         """Get the state of the device."""
         return device[CONF_PARAMS]["openingPercentage"]
+
+
+class TileOpenThermSensor(TileSensor, SensorEntity):
+    """Representation of config_OpenTherm Sensor."""
+
+    _attr_has_entity_name = True
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(
+        self,
+        device,
+        coordinator: TechCoordinator,
+        config_entry,
+        open_therm_sensor,
+    ) -> None:
+        """Initialize the sensor."""
+
+        # It is needed to store following variables before TileSensor.__init__
+        self._txt_id = open_therm_sensor['txt_id']
+        self._state_key = open_therm_sensor['state_key']
+
+        TileSensor.__init__(self, device, coordinator, config_entry)
+        self.native_unit_of_measurement = UnitOfTemperature.CELSIUS
+        self.device_class = SensorDeviceClass.TEMPERATURE
+        self.state_class = SensorStateClass.MEASUREMENT
+        self.manufacturer = MANUFACTURER
+        self.device_name = f"{self._config_entry.title} {assets.get_text_by_type(device[CONF_TYPE])}"
+        self.model = (
+            config_entry.data[CONTROLLER][CONF_NAME]
+            + ": "
+            + config_entry.data[CONTROLLER][VER]
+        )
+        self._name = (
+            self._config_entry.title + " "
+            if self._config_entry.data[INCLUDE_HUB_IN_NAME]
+            else ""
+        ) + assets.get_text(self._txt_id)
+
+    @property
+    def name(self) -> str | UndefinedType | None:
+        """Return the name of the device."""
+        return self._name
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_opentherm_{self._state_key}"
+
+    def get_state(self, device) -> Any:
+        """Get the state of the device."""
+        return device[CONF_PARAMS][self._state_key] / 10
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Returns device information in a dictionary format."""
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, self._unique_id)
+            },  # Unique identifiers for the device
+            CONF_NAME: self.device_name,  # Name of the device
+            CONF_MODEL: self.model,  # Model of the device
+            ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+        }
 
 
 # TODO: this sensor's ID assignment needs to be fixed as base on such ID
