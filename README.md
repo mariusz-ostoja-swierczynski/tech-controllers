@@ -17,6 +17,7 @@ The integration is based on API provided by TECH which supports the following co
 - ST-8S WiFi
 - M-9r
 - L-X WiFi
+- L-12
 
 The integration was developed and tested against eModul demo account (username: `test`/password: `test`) which features 4 controllers:
 
@@ -106,6 +107,7 @@ Integration supports migration from [version 1](https://github.com/mariusz-ostoj
 - M-9 (v1.0.12)
 - M-9r (v1.3.8)
 - L-X WiFi (v1.0.6)
+- L-12 (v.1.0.16)
 
 ## :pray: Thanks
 
