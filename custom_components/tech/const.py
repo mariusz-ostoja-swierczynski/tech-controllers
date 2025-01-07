@@ -80,10 +80,10 @@ VALVE_SENSOR_SET_TEMPERATURE = {"txt_id": 1065, "state_key": "setTemp"}
 VALVE_SENSOR_CURRENT_TEMPERATURE = {"txt_id": 2010, "state_key": "currentTemp"}
 
 # OpenTherm measured values
-OPENTHERM_CURRENT_TEMP = {"txt_id": 127, "state_key": 'currentTemp'}
-OPENTHERM_CURRENT_TEMP_DHW = {"txt_id": 128, "state_key": 'currentTempDHW'}
-OPENTHERM_SET_TEMP = {"txt_id": 1058, "state_key": 'setCurrentTemp'}
-OPENTHERM_SET_TEMP_DHW = {"txt_id": 1059, "state_key": 'setTempDHW'}
+OPENTHERM_CURRENT_TEMP = {"txt_id": 127, "state_key": "currentTemp"}
+OPENTHERM_CURRENT_TEMP_DHW = {"txt_id": 128, "state_key": "currentTempDHW"}
+OPENTHERM_SET_TEMP = {"txt_id": 1058, "state_key": "setCurrentTemp"}
+OPENTHERM_SET_TEMP_DHW = {"txt_id": 1059, "state_key": "setTempDHW"}
 
 TECH_SUPPORTED_LANGUAGES = [
     "en",

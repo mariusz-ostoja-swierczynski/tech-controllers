@@ -43,15 +43,19 @@ from .const import (
     DOMAIN,
     INCLUDE_HUB_IN_NAME,
     MANUFACTURER,
+    OPENTHERM_CURRENT_TEMP,
+    OPENTHERM_CURRENT_TEMP_DHW,
+    OPENTHERM_SET_TEMP,
+    OPENTHERM_SET_TEMP_DHW,
     SIGNAL_STRENGTH,
     TYPE_FAN,
     TYPE_FUEL_SUPPLY,
     TYPE_MIXING_VALVE,
+    TYPE_OPEN_THERM,
     TYPE_TEMPERATURE,
     TYPE_TEMPERATURE_CH,
     TYPE_TEXT,
     TYPE_VALVE,
-    TYPE_OPEN_THERM,
     UDID,
     VALUE,
     VER,
@@ -60,10 +64,6 @@ from .const import (
     WINDOW_STATE,
     WORKING_STATUS,
     ZONE_STATE,
-    OPENTHERM_CURRENT_TEMP,
-    OPENTHERM_SET_TEMP,
-    OPENTHERM_SET_TEMP_DHW,
-    OPENTHERM_CURRENT_TEMP_DHW,
 )
 from .coordinator import TechCoordinator
 from .entity import TileEntity
@@ -137,7 +137,11 @@ async def async_setup_entry(
                 OPENTHERM_SET_TEMP_DHW,
             ]:
                 if tile[CONF_PARAMS].get(openThermEntity["state_key"]) is not None:
-                    entities.append(TileOpenThermSensor(tile, coordinator, config_entry, openThermEntity))
+                    entities.append(
+                        TileOpenThermSensor(
+                            tile, coordinator, config_entry, openThermEntity
+                        )
+                    )
 
     async_add_entities(entities, True)
 
@@ -1665,15 +1669,17 @@ class TileOpenThermSensor(TileSensor, SensorEntity):
         """Initialize the sensor."""
 
         # It is needed to store following variables before TileSensor.__init__
-        self._txt_id = open_therm_sensor['txt_id']
-        self._state_key = open_therm_sensor['state_key']
+        self._txt_id = open_therm_sensor["txt_id"]
+        self._state_key = open_therm_sensor["state_key"]
 
         TileSensor.__init__(self, device, coordinator, config_entry)
         self.native_unit_of_measurement = UnitOfTemperature.CELSIUS
         self.device_class = SensorDeviceClass.TEMPERATURE
         self.state_class = SensorStateClass.MEASUREMENT
         self.manufacturer = MANUFACTURER
-        self.device_name = f"{self._config_entry.title} {assets.get_text_by_type(device[CONF_TYPE])}"
+        self.device_name = (
+            f"{self._config_entry.title} {assets.get_text_by_type(device[CONF_TYPE])}"
+        )
         self.model = (
             config_entry.data[CONTROLLER][CONF_NAME]
             + ": "
