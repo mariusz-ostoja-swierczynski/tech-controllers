@@ -42,17 +42,28 @@ Getting actual raw JSON data directly from emodul can be very helpful in debuggi
 
 ### Getting HA data
 
-Sometimes it can also be helpful to get Home Assistant config entires, device registry and entity registry to check what was ultimately created for the integration.
+Sometimes it can also be helpful to get Home Assistant config entries, device registry and entity registry to check what was ultimately created for the integration.
 
 1. Go to `<HA installation folder>/config/.storage`.
 
-2. Downlaod all three files: `core.device_registry`, `core.entity_registry`, `core.config_entry`
+2. Download all three files: `core.device_registry`, `core.entity_registry`, `core.config_entry`
 
 3. Edit the files to contain only `tech` domain items.
 
 4. :exclamation: Edit the files to remove all sensitive information like passwords :exclamation:
 
-5. Pack the files into a .zip file and attach to the isse.
+5. Pack the files into a .zip file and attach to the issue.
 
 > [!CAUTION]
 > :warning: Always remember to remove any sensitive and personal information from the logs! Especially remove/redact your `email`, `username`, `password`, `user_id` and `token`!.
+
+## Developing
+
+By default this integration follows [Home Assistant Development Workflow](https://developers.home-assistant.io/docs/development_environment) using VSCode + devcontainer.
+
+Additionally, if you are using [nix](https://nixos.org/) you can use [devenv](https://devenv.sh/) and [direnv](https://direnv.net/) via the provided `devenv.nix` file. Just clone the repo and enter the directory - everything should be set up automatically and the following commands will be available:
+
+* `setup` - to install required python packages
+* `test` - to run the test suite
+* `lint` - to run `ruff` lint check
+* `develop` - to run Home Assistant with the integration (will be available on <http://localhost:8123>)
