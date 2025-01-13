@@ -108,5 +108,4 @@ class RelaySensor(TileBinarySensor):
 
     def get_state(self, device):
         """Get device state."""
-        state = device[CONF_PARAMS]["workingStatus"]
-        return state
+        return device[CONF_PARAMS]["workingStatus"]
