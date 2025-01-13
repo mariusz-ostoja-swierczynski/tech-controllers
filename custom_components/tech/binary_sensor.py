@@ -108,9 +108,5 @@ class RelaySensor(TileBinarySensor):
 
     def get_state(self, device):
         """Get device state."""
-        return device[CONF_PARAMS]["workingStatus"]
-
-    @property
-    def state(self) -> str | int | float | StateType | None:
-        """Get the state of the binary sensor."""
-        return STATE_ON if self.get_state() else STATE_OFF
+        state = device[CONF_PARAMS]["workingStatus"]
+        return state
