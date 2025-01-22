@@ -61,8 +61,9 @@ from .const import (
     VALUE,
     VER,
     VISIBILITY,
-    WIDGET_PUMP,
-    WIDGET_TEMPERATURE,
+    WIDGET_COLLECTOR_PUMP,
+    WIDGET_DHW_PUMP,
+    WIDGET_TEMPERATURE_CH,
     WINDOW_SENSORS,
     WINDOW_STATE,
     WORKING_STATUS,
@@ -192,14 +193,14 @@ def setup_tile_widget_sensors(tile, coordinator, config_entry):
 
             if widget["unit"] != -1 and widget["type"] != 0:
                 # Check and add widget sensor
-                if widget["type"] == WIDGET_TEMPERATURE:
+                if widget["type"] == WIDGET_DHW_PUMP or widget["type"] == WIDGET_TEMPERATURE_CH:
                     entities.append(
                         TileWidgetTemperatureSensor(
                             tile, coordinator, config_entry, widget_key=widget_key
                         )
                     )
 
-                if widget["type"] == WIDGET_PUMP:
+                if widget["type"] == WIDGET_COLLECTOR_PUMP:
                     entities.append(
                         TileWidgetPumpSensor(
                             tile, coordinator, config_entry, widget_key=widget_key
@@ -1564,8 +1565,8 @@ class TileWidgetTemperatureSensor(TileSensor, SensorEntity):
         self.widget_key = widget_key
         TileSensor.__init__(self, device, coordinator, config_entry)
 
-        # Determine which txtId to use
         txt_id = device[CONF_PARAMS][widget_key]["txtId"]
+        widget_type = device[CONF_PARAMS][widget_key][CONF_TYPE]
         if widget_key == "widget2" and txt_id == 0:
             txt_id = device[CONF_PARAMS]["widget1"]["txtId"]
 
@@ -1575,9 +1576,13 @@ class TileWidgetTemperatureSensor(TileSensor, SensorEntity):
             if self._config_entry.data[INCLUDE_HUB_IN_NAME]
             else ""
         )
-        temperature_type = (
-            " Set Temperature" if widget_key == "widget1" else " Current Temperature"
-        )
+        if widget_type == WIDGET_DHW_PUMP:
+            temperature_type = (
+                " Set Temperature" if widget_key == "widget1" else " Current Temperature"
+            )
+        else:
+            temperature_type = ""
+
         self._name = f"{hub_name}{assets.get_text(txt_id)}{temperature_type}"
 
     @property
