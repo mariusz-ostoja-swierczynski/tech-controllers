@@ -7,20 +7,25 @@
   name = "tech-controllers";
 
   # https://devenv.sh/basics/
-  env.GREET = "tech-controllers devenv";
+  env = {
+    GREET = "tech-controllers devenv";
+  };
 
   # https://devenv.sh/packages/
   packages = [
     pkgs.git
     pkgs.ruff
+    pkgs.ffmpeg
   ];
 
   # https://devenv.sh/languages/
-  languages.python.enable = true;
-  languages.python.version = "3.12";
-  languages.python.uv.enable = true;
-  languages.python.venv.enable = true;
-  languages.python.venv.requirements = builtins.readFile ./requirements.txt + "\n" + builtins.readFile ./requirements_test_api.txt;
+  languages.python = {
+    enable = true;
+    version = "3.12";
+    uv.enable = true;
+    venv.enable = true;
+    venv.requirements = builtins.readFile ./requirements.txt + "\n" + builtins.readFile ./requirements_test_api.txt;
+  };
 
   # https://devenv.sh/scripts/
   scripts.setup = {
@@ -36,7 +41,12 @@
       # Create config dir if not present
       if [[ ! -d "$PWD/config" ]]; then
           mkdir -p "$PWD/config"
+          ln -s "$PWD/custom_components/" "$PWD/config/custom_components"
           hass --config "$PWD/config" --script ensure_config
+      fi
+
+      if [ ! -L "$PWD/config/custom_components" ]; then
+          ln -s "$PWD/custom_components/" "$PWD/config/custom_components"
       fi
 
       # Set the path to custom_components
@@ -69,6 +79,8 @@
 
   enterShell = ''
     echo Entering development environment for tech-controllers...
+    export PYTHONPATH="$PYTHONPATH:$PWD/custom_components"
+    echo $PYTHONPATH
     echo
     echo 🦾 Available scripts:
     echo 🦾
