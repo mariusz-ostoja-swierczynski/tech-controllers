@@ -57,6 +57,7 @@ ICON_BY_ID = {
     17: "mdi:arrow-right-drop-circle-outline",  # pump
     50: "mdi:tune-vertical",  # state
     101: "mdi:cogs",  # feeder
+    167: "mdi:electric-switch",  # contact
 }
 
 # map type -> icon name
