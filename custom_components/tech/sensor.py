@@ -1567,8 +1567,9 @@ class TileWidgetTemperatureSensor(TileSensor, SensorEntity):
 
         txt_id = device[CONF_PARAMS][widget_key]["txtId"]
         widget_type = device[CONF_PARAMS][widget_key][CONF_TYPE]
-        if widget_key == "widget2" and txt_id == 0:
-            txt_id = device[CONF_PARAMS]["widget1"]["txtId"]
+
+        # Determine the other widget key
+        other_widget_key = "widget2" if widget_key == "widget1" else "widget1"
 
         # Build the name
         hub_name = (
@@ -1576,12 +1577,17 @@ class TileWidgetTemperatureSensor(TileSensor, SensorEntity):
             if self._config_entry.data[INCLUDE_HUB_IN_NAME]
             else ""
         )
-        if widget_type == WIDGET_DHW_PUMP:
+
+        if txt_id == 0 and widget_type == WIDGET_DHW_PUMP:
             temperature_type = (
                 " Set Temperature" if widget_key == "widget1" else " Current Temperature"
             )
         else:
             temperature_type = ""
+
+        # # If txt_id is 0, set it to the txt_id of the other widget
+        if txt_id == 0:
+            txt_id = device[CONF_PARAMS][other_widget_key]["txtId"]
 
         self._name = f"{hub_name}{assets.get_text(txt_id)}{temperature_type}"
 
