@@ -51,6 +51,7 @@ ICON_BY_ID = {
     3: "mdi:animation-play",  # mode
     17: "mdi:arrow-right-drop-circle-outline",  # pump
     50: "mdi:tune-vertical",  # state
+    98: "mdi:electric-switch",  # relay
     101: "mdi:cogs",  # feeder
 }
 
@@ -59,6 +60,7 @@ ICON_BY_TYPE = {
     TYPE_FIRE_SENSOR: "mdi:fire",
     TYPE_ADDITIONAL_PUMP: "mdi:arrow-right-drop-circle-outline",
     TYPE_FAN: "mdi:fan",
+    TYPE_RELAY: "mdi:electric-switch",
     TYPE_VALVE: "mdi:valve",
     TYPE_MIXING_VALVE: "mdi:valve",  # TODO: find a better icon
     TYPE_OPEN_THERM: "mdi:home-thermometer",
