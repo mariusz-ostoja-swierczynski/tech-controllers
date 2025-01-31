@@ -64,6 +64,9 @@ from .const import (
     WINDOW_STATE,
     WORKING_STATUS,
     ZONE_STATE,
+    VALVE_SENSOR_RETURN_TEMPERATURE,
+    VALVE_SENSOR_SET_TEMPERATURE,
+    VALVE_SENSOR_CURRENT_TEMPERATURE
 )
 from .coordinator import TechCoordinator
 from .entity import TileEntity
@@ -119,10 +122,13 @@ async def async_setup_entry(
             entities.append(TileFanSensor(tile, coordinator, config_entry))
         if tile[CONF_TYPE] == TYPE_VALVE:
             entities.append(TileValveSensor(tile, coordinator, config_entry))
-            # TODO: this class _init_ definition needs to be fixed. See comment below.
-            # entities.append(TileValveTemperatureSensor(tile, api, controller_udid, VALVE_SENSOR_RETURN_TEMPERATURE))
-            # entities.append(TileValveTemperatureSensor(tile, api, controller_udid, VALVE_SENSOR_SET_TEMPERATURE))
-            # entities.append(TileValveTemperatureSensor(tile, api, controller_udid, VALVE_SENSOR_CURRENT_TEMPERATURE))
+            for valve_sensor in [
+                VALVE_SENSOR_RETURN_TEMPERATURE, 
+                VALVE_SENSOR_SET_TEMPERATURE, 
+                VALVE_SENSOR_CURRENT_TEMPERATURE
+            ]:
+                if tile[CONF_PARAMS].get(valve_sensor["state_key"]) is not None:
+                    entities.append(TileValveTemperatureSensor(tile, coordinator, config_entry, valve_sensor))
         if tile[CONF_TYPE] == TYPE_MIXING_VALVE:
             entities.append(TileMixingValveSensor(tile, coordinator, config_entry))
         if tile[CONF_TYPE] == TYPE_FUEL_SUPPLY:
@@ -1602,8 +1608,6 @@ class TileValveSensor(TileSensor, SensorEntity):
 
         """
         self._state = self.get_state(device)
-        self.attrs["currentTemp"] = device[CONF_PARAMS]["currentTemp"] / 10
-        self.attrs["returnTemp"] = device[CONF_PARAMS]["returnTemp"] / 10
         self.attrs["setTempCorrection"] = device[CONF_PARAMS]["setTempCorrection"]
         self.attrs["valvePump"] = (
             STATE_ON if device[CONF_PARAMS]["valvePump"] == 1 else STATE_OFF
@@ -1614,7 +1618,40 @@ class TileValveSensor(TileSensor, SensorEntity):
         self.attrs["returnProtection"] = (
             STATE_ON if device[CONF_PARAMS]["returnProtection"] == 1 else STATE_OFF
         )
-        self.attrs["setTemp"] = device[CONF_PARAMS]["setTemp"]
+
+class TileValveTemperatureSensor(TileSensor, SensorEntity):
+    """Representation of a Tile Valve Temperature Sensor."""
+
+    def __init__(self, device, coordinator, config_entry, valve_sensor):
+        """Initialize the sensor."""
+        self._state_key = valve_sensor["state_key"]
+        TileSensor.__init__(self, device, coordinator, config_entry)
+        self.native_unit_of_measurement = UnitOfTemperature.CELSIUS
+        self.state_class = SensorStateClass.MEASUREMENT
+        self._valve_number = device[CONF_PARAMS]["valveNumber"]
+        sensor_name = assets.get_text(valve_sensor["txt_id"])        
+        name = (
+            self._config_entry.title + " "
+            if self._config_entry.data[INCLUDE_HUB_IN_NAME]
+            else ""
+        ) + assets.get_text_by_type(device[CONF_TYPE])
+        self._name = f"{name} {device[CONF_PARAMS]['valveNumber']} {sensor_name}"
+
+    @property
+    def name(self) -> str | UndefinedType | None:
+        """Return the name of the device."""
+        return self._name
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_valve_{self._state_key}"
+
+    def get_state(self, device):
+        state = device[CONF_PARAMS][self._state_key]
+        if self._state_key in ("returnTemp", "currentTemp"):
+            state /= 10
+        return state
 
 
 class TileMixingValveSensor(TileSensor, SensorEntity):
@@ -1716,30 +1753,3 @@ class TileOpenThermSensor(TileSensor, SensorEntity):
             CONF_MODEL: self.model,  # Model of the device
             ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
         }
-
-
-# TODO: this sensor's ID assignment needs to be fixed as base on such ID
-#  tech api doesn't return value and we get KeyError
-#
-# class TileValveTemperatureSensor(TileSensor):
-#     def __init__(self, device, api, controller_udid, valve_sensor):
-#         self._state_key = valve_sensor["state_key"]
-#         sensor_name = assets.get_text(valve_sensor["txt_id"])
-#         TileSensor.__init__(self, device, api, controller_udid)
-#         self._id = f"{self._id}_{self._state_key}"
-#         name = assets.get_text_by_type(device[CONF_TYPE])
-#         self._name = f"{name} {device[CONF_PARAMS]['valveNumber']} {sensor_name}"
-
-#     @property
-#     def device_class(self):
-#         return sensor.DEVICE_CLASS_TEMPERATURE
-
-#     @property
-#     def unit_of_measurement(self):
-#         return TEMP_CELSIUS
-
-#     def get_state(self, device):
-#         state = device[CONF_PARAMS][self._state_key]
-#         if state > 100:
-#             state = state / 10
-#         return state
