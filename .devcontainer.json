@@ -1,6 +1,6 @@
 {
     "name": "mariusz-ostoja-swierczynski/tech-controllers",
-    "image": "mcr.microsoft.com/devcontainers/python:3.12-bookworm",
+    "image": "mcr.microsoft.com/devcontainers/python:3.13-bookworm",
     "postCreateCommand": "scripts/setup",
     "forwardPorts": [
         8123
@@ -37,6 +37,5 @@
         }
     },
     "remoteUser": "vscode",
-    "features": {
-    }
+    "features": {}
 }
