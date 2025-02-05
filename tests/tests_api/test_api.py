@@ -208,9 +208,9 @@ class TestTechAPI:
             _LOGGER.info(response)
         exception: TechError = exception_info.value
         assert exception.status_code == 403, "Unexpected status code"
-        assert (
-            exception.status == '{"error":"User has no permission to module"}'
-        ), "Unexpected error message"
+        assert exception.status == '{"error":"User has no permission to module"}', (
+            "Unexpected error message"
+        )
 
     @pytest.mark.asyncio
     async def test_get_module_data_auth_failure(
@@ -291,9 +291,9 @@ class TestTechAPI:
         assert isinstance(lang, dict), "The module returned should be a dictionary"
         assert lang["status"] == "success", "We should receive status == success"
         assert "data" in lang, "The module should have key 'data'"
-        assert isinstance(
-            lang["data"], dict
-        ), "The data returned should be a dictionary"
+        assert isinstance(lang["data"], dict), (
+            "The data returned should be a dictionary"
+        )
 
     @pytest.mark.asyncio
     async def test_get_module_zones(
@@ -326,9 +326,9 @@ class TestTechAPI:
         zones: dict = await tech.get_module_zones(module_data["module_id"])
         assert isinstance(zones, dict), "The zones returned should be a dictionary"
         assert 101 in zones, "The module should have key 101"
-        assert isinstance(
-            zones[101], dict
-        ), "The zone data returned should be a dictionary"
+        assert isinstance(zones[101], dict), (
+            "The zone data returned should be a dictionary"
+        )
         assert "zone" in zones[101], "The zone dict should have key zone"
 
     @pytest.mark.asyncio
@@ -362,9 +362,9 @@ class TestTechAPI:
         tiles: dict = await tech.get_module_tiles(module_data["module_id"])
         assert isinstance(tiles, dict), "The tiles returned should be a dictionary"
         assert 4063 in tiles, "The module should have key 101"
-        assert isinstance(
-            tiles[4063], dict
-        ), "The tiles data returned should be a dictionary"
+        assert isinstance(tiles[4063], dict), (
+            "The tiles data returned should be a dictionary"
+        )
         assert "id" in tiles[4063], "The tiles dict should have key tiles"
 
     @pytest.mark.asyncio
@@ -395,13 +395,13 @@ class TestTechAPI:
         assert isinstance(data, dict), "The tiles returned should be a dictionary"
         assert "last_update" in data, "The module should have key last_update"
         assert "zones" in data, "The module should have key zones"
-        assert isinstance(
-            data["zones"], dict
-        ), "The zones data returned should be a dictionary"
+        assert isinstance(data["zones"], dict), (
+            "The zones data returned should be a dictionary"
+        )
         assert "tiles" in data, "The module should have key tiles"
-        assert isinstance(
-            data["tiles"], dict
-        ), "The tiles data returned should be a dictionary"
+        assert isinstance(data["tiles"], dict), (
+            "The tiles data returned should be a dictionary"
+        )
 
     @pytest.mark.asyncio
     async def test_get_zone(
@@ -436,9 +436,9 @@ class TestTechAPI:
         )
         assert isinstance(zone, dict), "The data returned should be a dictionary"
         assert "zone" in zone, "The data should have key zones"
-        assert isinstance(
-            zone["zone"], dict
-        ), "The zone data returned should be a dictionary"
+        assert isinstance(zone["zone"], dict), (
+            "The zone data returned should be a dictionary"
+        )
         assert "id" in zone["zone"], "The zone dict should have key id"
 
     @pytest.mark.asyncio
@@ -510,18 +510,18 @@ class TestTechAPI:
                 module_data["zone_id"],
                 module_data["target_temp"],
             )
-            assert isinstance(
-                response, data
-            ), "The data returned should be a dictionary"
+            assert isinstance(response, data), (
+                "The data returned should be a dictionary"
+            )
             assert "error" in response, "We should get an error key on demo account"
-            assert (
-                response["error"] == "Demo account."
-            ), "We should get an error key on demo account"
+            assert response["error"] == "Demo account.", (
+                "We should get an error key on demo account"
+            )
         exception: TechError = exception_info.value
         assert exception.status_code == 401, "Unexpected status code"
-        assert (
-            exception.status == '{"error":"Demo account."}'
-        ), "Unexpected error message"
+        assert exception.status == '{"error":"Demo account."}', (
+            "Unexpected error message"
+        )
 
     @pytest.mark.asyncio
     async def test_set_const_temp_auth_failure(
@@ -594,18 +594,18 @@ class TestTechAPI:
             response = await tech.set_zone(
                 module_data["module_id"], module_data["zone_id"], True
             )
-            assert isinstance(
-                response, data
-            ), "The data returned should be a dictionary"
+            assert isinstance(response, data), (
+                "The data returned should be a dictionary"
+            )
             assert "error" in response, "We should get an error key on demo account"
-            assert (
-                response["error"] == "Demo account."
-            ), "We should get an error key on demo account"
+            assert response["error"] == "Demo account.", (
+                "We should get an error key on demo account"
+            )
         exception: TechError = exception_info.value
         assert exception.status_code == 401, "Unexpected status code"
-        assert (
-            exception.status == '{"error":"Demo account."}'
-        ), "Unexpected error message"
+        assert exception.status == '{"error":"Demo account."}', (
+            "Unexpected error message"
+        )
 
     @pytest.mark.asyncio
     async def test_set_zone_auth_failure(
