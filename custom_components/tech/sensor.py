@@ -58,15 +58,15 @@ from .const import (
     TYPE_VALVE,
     UDID,
     VALUE,
+    VALVE_SENSOR_CURRENT_TEMPERATURE,
+    VALVE_SENSOR_RETURN_TEMPERATURE,
+    VALVE_SENSOR_SET_TEMPERATURE,
     VER,
     VISIBILITY,
     WINDOW_SENSORS,
     WINDOW_STATE,
     WORKING_STATUS,
     ZONE_STATE,
-    VALVE_SENSOR_RETURN_TEMPERATURE,
-    VALVE_SENSOR_SET_TEMPERATURE,
-    VALVE_SENSOR_CURRENT_TEMPERATURE
 )
 from .coordinator import TechCoordinator
 from .entity import TileEntity
@@ -123,12 +123,16 @@ async def async_setup_entry(
         if tile[CONF_TYPE] == TYPE_VALVE:
             entities.append(TileValveSensor(tile, coordinator, config_entry))
             for valve_sensor in [
-                VALVE_SENSOR_RETURN_TEMPERATURE, 
-                VALVE_SENSOR_SET_TEMPERATURE, 
-                VALVE_SENSOR_CURRENT_TEMPERATURE
+                VALVE_SENSOR_RETURN_TEMPERATURE,
+                VALVE_SENSOR_SET_TEMPERATURE,
+                VALVE_SENSOR_CURRENT_TEMPERATURE,
             ]:
                 if tile[CONF_PARAMS].get(valve_sensor["state_key"]) is not None:
-                    entities.append(TileValveTemperatureSensor(tile, coordinator, config_entry, valve_sensor))
+                    entities.append(
+                        TileValveTemperatureSensor(
+                            tile, coordinator, config_entry, valve_sensor
+                        )
+                    )
         if tile[CONF_TYPE] == TYPE_MIXING_VALVE:
             entities.append(TileMixingValveSensor(tile, coordinator, config_entry))
         if tile[CONF_TYPE] == TYPE_FUEL_SUPPLY:
@@ -1619,6 +1623,7 @@ class TileValveSensor(TileSensor, SensorEntity):
             STATE_ON if device[CONF_PARAMS]["returnProtection"] == 1 else STATE_OFF
         )
 
+
 class TileValveTemperatureSensor(TileSensor, SensorEntity):
     """Representation of a Tile Valve Temperature Sensor."""
 
@@ -1629,7 +1634,7 @@ class TileValveTemperatureSensor(TileSensor, SensorEntity):
         self.native_unit_of_measurement = UnitOfTemperature.CELSIUS
         self.state_class = SensorStateClass.MEASUREMENT
         self._valve_number = device[CONF_PARAMS]["valveNumber"]
-        sensor_name = assets.get_text(valve_sensor["txt_id"])        
+        sensor_name = assets.get_text(valve_sensor["txt_id"])
         name = (
             self._config_entry.title + " "
             if self._config_entry.data[INCLUDE_HUB_IN_NAME]
@@ -1648,6 +1653,7 @@ class TileValveTemperatureSensor(TileSensor, SensorEntity):
         return f"{self._unique_id}_tile_valve_{self._state_key}"
 
     def get_state(self, device):
+        """Get the state of the device."""
         state = device[CONF_PARAMS][self._state_key]
         if self._state_key in ("returnTemp", "currentTemp"):
             state /= 10
