@@ -21,7 +21,7 @@
   # https://devenv.sh/languages/
   languages.python = {
     enable = true;
-    version = "3.12";
+    version = "3.13";
     uv.enable = true;
     venv.enable = true;
     venv.requirements = builtins.readFile ./requirements.txt + "\n" + builtins.readFile ./requirements_test_api.txt;
