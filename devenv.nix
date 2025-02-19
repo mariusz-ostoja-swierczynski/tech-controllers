@@ -31,7 +31,7 @@
   scripts.setup = {
     exec = ''
       echo '🛠️ Running setup'
-      python3 -m pip install --requirement requirements.txt --requirement requirements_test_api.txt
+      uv pip sync requirements.txt requirements_test_api.txt
     '';
     description = "Install dependencies";
   };
@@ -93,7 +93,7 @@
   tasks."app:setup" = {
     exec = ''
       echo '🛠️ Running setup'
-      python3 -m pip install --requirement requirements.txt --requirement requirements_test_api.txt
+      uv pip sync requirements.txt requirements_test_api.txt
     '';
     after = ["devenv:enterShell"];
   };
