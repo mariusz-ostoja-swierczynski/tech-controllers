@@ -48,14 +48,15 @@ from .const import (
     OPENTHERM_SET_TEMP,
     OPENTHERM_SET_TEMP_DHW,
     SIGNAL_STRENGTH,
+    TYPE_ADDITIONAL_PUMP,
     TYPE_FAN,
     TYPE_FUEL_SUPPLY,
     TYPE_MIXING_VALVE,
     TYPE_OPEN_THERM,
     TYPE_TEMPERATURE,
-    TYPE_TEMPERATURE_CH,
     TYPE_TEXT,
     TYPE_VALVE,
+    TYPE_WIDGET,
     UDID,
     VALUE,
     VALVE_SENSOR_CURRENT_TEMPERATURE,
@@ -63,6 +64,9 @@ from .const import (
     VALVE_SENSOR_SET_TEMPERATURE,
     VER,
     VISIBILITY,
+    WIDGET_COLLECTOR_PUMP,
+    WIDGET_DHW_PUMP,
+    WIDGET_TEMPERATURE_CH,
     WINDOW_SENSORS,
     WINDOW_STATE,
     WORKING_STATUS,
@@ -116,8 +120,8 @@ async def async_setup_entry(
             entities.append(
                 TileTemperatureSensor(tile, coordinator, config_entry, create_devices)
             )
-        if tile[CONF_TYPE] == TYPE_TEMPERATURE_CH:
-            entities.append(TileWidgetSensor(tile, coordinator, config_entry))
+        if tile[CONF_TYPE] == TYPE_WIDGET:
+            entities.extend(setup_tile_widget_sensors(tile, coordinator, config_entry))
         if tile[CONF_TYPE] == TYPE_FAN:
             entities.append(TileFanSensor(tile, coordinator, config_entry))
         if tile[CONF_TYPE] == TYPE_VALVE:
@@ -186,6 +190,40 @@ async def async_setup_entry(
         ),
         True,
     )
+
+
+def setup_tile_widget_sensors(tile, coordinator, config_entry):
+    """Set up sensors for tile widgets."""
+    entities = []
+
+    if tile[CONF_TYPE] == TYPE_WIDGET:
+        # Check bot widgets
+        for widget_key in ["widget1", "widget2"]:
+            widget = tile[CONF_PARAMS][widget_key]
+
+            if widget["unit"] == -1 and widget[CONF_TYPE] == 0 and widget["txtId"] != 0:
+                # this is supposedly a binary sensor/contact
+                entities.append(TileWidgetContactSensor(
+                            tile, coordinator, config_entry, widget_key=widget_key
+                        )
+                    )
+
+            else:
+                if widget["type"] == WIDGET_DHW_PUMP or widget["type"] == WIDGET_TEMPERATURE_CH:
+                    entities.append(
+                        TileWidgetTemperatureSensor(
+                            tile, coordinator, config_entry, widget_key=widget_key
+                        )
+                    )
+
+                if widget["type"] == WIDGET_COLLECTOR_PUMP:
+                    entities.append(
+                        TileWidgetPumpSensor(
+                            tile, coordinator, config_entry, widget_key=widget_key
+                        )
+                    )
+
+    return entities
 
 
 def map_to_battery_sensors(zones, coordinator, config_entry):
@@ -1531,26 +1569,48 @@ class TileTextSensor(TileSensor, SensorEntity):
         return assets.get_text(device[CONF_PARAMS]["statusId"])
 
 
-class TileWidgetSensor(TileSensor, SensorEntity):
+class TileWidgetTemperatureSensor(TileSensor, SensorEntity):
     """Representation of a Tile Widget Sensor."""
 
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
     _attr_device_class = SensorDeviceClass.TEMPERATURE
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, device, coordinator, config_entry) -> None:
+    def __init__(self, device, coordinator, config_entry, widget_key) -> None:
         """Initialize the sensor."""
+        self.widget_key = widget_key
         TileSensor.__init__(self, device, coordinator, config_entry)
-        self._name = (
+
+        txt_id = device[CONF_PARAMS][widget_key]["txtId"]
+        widget_type = device[CONF_PARAMS][widget_key][CONF_TYPE]
+
+        # Determine the other widget key
+        other_widget_key = "widget2" if widget_key == "widget1" else "widget1"
+
+        # Build the name
+        hub_name = (
             self._config_entry.title + " "
             if self._config_entry.data[INCLUDE_HUB_IN_NAME]
             else ""
-        ) + assets.get_text(device[CONF_PARAMS]["widget1"]["txtId"])
+        )
+
+        if widget_type == WIDGET_DHW_PUMP:
+            temperature_type = (
+                " Set Temperature" if widget_key == "widget1" else " Current Temperature"
+            )
+        else:
+            temperature_type = ""
+
+        # # If txt_id is 0, set it to the txt_id of the other widget
+        if txt_id == 0:
+            txt_id = device[CONF_PARAMS][other_widget_key]["txtId"]
+
+        self._name = f"{hub_name}{assets.get_text(txt_id)}{temperature_type}"
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return f"{self._unique_id}_tile_widget"
+        return f"{self._unique_id}_tile_temperature_{self.widget_key}"
 
     @property
     def name(self) -> str | UndefinedType | None:
@@ -1559,8 +1619,102 @@ class TileWidgetSensor(TileSensor, SensorEntity):
 
     def get_state(self, device) -> Any:
         """Get the state of the device."""
-        return device[CONF_PARAMS]["widget1"][VALUE] / 10
+        if (
+            device[CONF_PARAMS][self.widget_key]["unit"] == 7
+            or device[CONF_PARAMS][self.widget_key]["unit"] == 4
+        ):
+            return device[CONF_PARAMS][self.widget_key][VALUE] / 10
+        if device[CONF_PARAMS][self.widget_key]["unit"] == 5:
+            return device[CONF_PARAMS][self.widget_key][VALUE] / 100
+        return device[CONF_PARAMS][self.widget_key][VALUE]
 
+
+
+class TileWidgetPumpSensor(TileSensor, SensorEntity):
+    """Representation of a Tile Widget Pump Sensor."""
+
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = assets.get_icon_by_type(TYPE_ADDITIONAL_PUMP)
+
+    def __init__(self, device, coordinator, config_entry, widget_key) -> None:
+        """Initialize the sensor."""
+        self.widget_key = widget_key
+        TileSensor.__init__(self, device, coordinator, config_entry)
+
+        # Determine which txtId to use
+        txt_id = device[CONF_PARAMS][widget_key]["txtId"]
+
+        # Build the name
+        hub_name = (
+            self._config_entry.title + " "
+            if self._config_entry.data[INCLUDE_HUB_IN_NAME]
+            else ""
+        )
+        self._name = f"{hub_name}{assets.get_text(txt_id)}"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_pump_{self.widget_key}"
+
+    @property
+    def name(self) -> str | UndefinedType | None:
+        """Return the name of the sensor."""
+        return self._name
+
+    def get_state(self, device) -> Any:
+        """Get the state of the device."""
+        return device[CONF_PARAMS][self.widget_key][VALUE]
+
+class TileWidgetContactSensor(BinarySensorEntity, TileEntity):
+    """Representation of a Tile Widget Contact Sensor."""
+
+    _attr_device_class = BinarySensorDeviceClass.OPENING
+
+    def __init__(self, device, coordinator, config_entry, widget_key) -> None:
+        """Initialize the sensor.
+
+        These are needed before the call to super, as ZoneSensor class
+        calls update_properties in its init, which actually calls this class
+        update_properties, which does not know attrs and _window_index already.
+
+        """
+        self.widget_key = widget_key
+        self._attr_is_on = (
+            device[CONF_PARAMS][self.widget_key][VALUE] == 1
+        )
+        super().__init__(device, coordinator, config_entry)
+        self._attr_is_on = (
+            device[CONF_PARAMS][self.widget_key][VALUE] == 1
+        )
+
+        self._attr_icon = assets.get_icon(device[CONF_PARAMS]["iconId"])
+
+        # Determine which txtId to use
+        txt_id = device[CONF_PARAMS][widget_key]["txtId"]
+
+        # Build the name
+        hub_name = (
+            self._config_entry.title + " "
+            if self._config_entry.data[INCLUDE_HUB_IN_NAME]
+            else ""
+        )
+        self._name = f"{hub_name}{assets.get_text(txt_id)}"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_contact_{self.widget_key}"
+
+    @property
+    def name(self) -> str | UndefinedType | None:
+        """Return the name of the sensor."""
+        return self._name
+
+    def get_state(self, device) -> Any:
+        """Get the state of the device."""
+        return device[CONF_PARAMS][self.widget_key][VALUE]
 
 class TileValveSensor(TileSensor, SensorEntity):
     """Representation of a Tile Valve Sensor."""
