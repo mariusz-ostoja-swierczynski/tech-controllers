@@ -1616,8 +1616,8 @@ class TileWidgetTemperatureSensor(TileSensor, SensorEntity):
             return device[CONF_PARAMS][self.widget_key][VALUE] / 10
         if device[CONF_PARAMS][self.widget_key]["unit"] == 5:
             return device[CONF_PARAMS][self.widget_key][VALUE] / 100
-        if device[CONF_PARAMS][self.widget_key]["unit"] == 6:
-            return device[CONF_PARAMS][self.widget_key][VALUE]
+        return device[CONF_PARAMS][self.widget_key][VALUE]
+
 
 
 class TileWidgetPumpSensor(TileSensor, SensorEntity):
