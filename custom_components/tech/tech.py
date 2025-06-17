@@ -1,6 +1,8 @@
 """Python wrapper for getting interaction with Tech devices."""
 
 import asyncio
+from collections.abc import Callable
+from functools import wraps
 import json
 import logging
 import time
