@@ -37,7 +37,11 @@ class Tech:
 
         """
         _LOGGER.debug("Init Tech")
-        self.headers = {"Accept": "application/json", "Accept-Encoding": "gzip"}
+        self.headers = {
+            "Accept": "application/json",
+            "Accept-Encoding": "gzip",
+            "User-Agent": "TechController/1.0 (Home Assistant Integration)"
+        }
         self.base_url = base_url
         self.session = session
         if user_id and token:
@@ -120,6 +124,7 @@ class Tech:
                 self.headers = {
                     "Accept": "application/json",
                     "Accept-Encoding": "gzip",
+                    "User-Agent": "TechController/1.0 (Home Assistant Integration)",
                     "Authorization": f"Bearer {self.token}",
                 }
         except TechError as err:
