@@ -2283,23 +2283,32 @@ class RecuperationEfficiencySensor(CoordinatorEntity, SensorEntity):
     def native_value(self) -> float | None:
         """Calculate heat recovery efficiency based on temperature sensors."""
         if self._coordinator.data and "tiles" in self._coordinator.data:
+            tiles_data = self._coordinator.data["tiles"]
+            if not tiles_data:
+                _LOGGER.debug("No tiles data available for efficiency calculation")
+                return None
+
+            _LOGGER.debug("Starting efficiency calculation, searching for temperature sensors...")
+            _LOGGER.debug("Found %d tiles to examine", len(tiles_data))
+
             # Try to find temperature sensors for efficiency calculation
             # Standard efficiency formula: (Supply - Outdoor) / (Exhaust - Outdoor) * 100
             supply_temp = None
             exhaust_temp = None
             outdoor_temp = None
 
-            _LOGGER.debug("Starting efficiency calculation, searching for temperature sensors...")
-
             # First, log all available tiles for debugging
             _LOGGER.debug("Available tiles for efficiency calculation:")
-            for tile_id, tile_data in self._coordinator.data["tiles"].items():
+            for tile_id, tile_data in tiles_data.items():
                 tile_type = tile_data.get("type", "unknown")
                 tile_params = tile_data.get("params", {})
-                _LOGGER.debug("Tile %s: type=%s, params=%s", tile_id, tile_type, tile_params)
+                # Safe logging - only log key parameters to avoid issues
+                txtId = tile_params.get("txtId", "none")
+                value = tile_params.get("value", "none")
+                _LOGGER.debug("Tile %s: type=%s, txtId=%s, value=%s", tile_id, tile_type, txtId, value)
 
             # Look for temperature sensors in tiles
-            for tile_id, tile_data in self._coordinator.data["tiles"].items():
+            for tile_id, tile_data in tiles_data.items():
                 # Check TYPE_TEMPERATURE tiles for recuperation sensors
                 if tile_data.get("type") == TYPE_TEMPERATURE:
                     tile_txt_id = tile_data.get("params", {}).get("txtId", 0)
@@ -2308,13 +2317,17 @@ class RecuperationEfficiencySensor(CoordinatorEntity, SensorEntity):
                     _LOGGER.debug("Found TYPE_TEMPERATURE tile: txtId=%s, value=%s", tile_txt_id, temp_value)
 
                     if temp_value is not None:
-                        # Temperature processing - handle both formats (tenths vs direct)
-                        if isinstance(temp_value, (int, float)) and temp_value > 100:
-                            temp_celsius = temp_value / 10  # Likely in tenths (e.g., 215 = 21.5°C)
-                        else:
-                            temp_celsius = float(temp_value)  # Already in correct format
+                        try:
+                            # Temperature processing - handle both formats (tenths vs direct)
+                            if isinstance(temp_value, (int, float)) and temp_value > 100:
+                                temp_celsius = temp_value / 10  # Likely in tenths (e.g., 215 = 21.5°C)
+                            else:
+                                temp_celsius = float(temp_value)  # Already in correct format
 
-                        _LOGGER.debug("Temperature processed: txtId=%s, raw_value=%s, temp_celsius=%.1f", tile_txt_id, temp_value, temp_celsius)
+                            _LOGGER.debug("Temperature processed: txtId=%s, raw_value=%s, temp_celsius=%.1f", tile_txt_id, temp_value, temp_celsius)
+                        except (ValueError, TypeError) as e:
+                            _LOGGER.debug("Could not process temperature value: txtId=%s, value=%s, error=%s", tile_txt_id, temp_value, e)
+                            continue
 
                         # Comprehensive txtId mapping - trying all possible recuperation temperature sensors
                         # Supply Air Temperature (expanded list from various implementations)
@@ -2335,6 +2348,15 @@ class RecuperationEfficiencySensor(CoordinatorEntity, SensorEntity):
                         else:
                             _LOGGER.debug("Found non-temperature sensor: txtId=%s, value=%s", tile_txt_id, temp_value)
 
+                # Check all other tile types too in case temperature is elsewhere
+                elif tile_data.get("type") not in [TYPE_TEMPERATURE_CH]:  # Skip TYPE_TEMPERATURE_CH as we handle it separately
+                    tile_params = tile_data.get("params", {})
+                    if "value" in tile_params and isinstance(tile_params.get("value"), (int, float)):
+                        potential_temp = tile_params["value"]
+                        txtId = tile_params.get("txtId", 0)
+                        if txtId > 0:  # Valid txtId
+                            _LOGGER.debug("Found other tile type %s with numeric value: txtId=%s, value=%s", tile_data.get("type"), txtId, potential_temp)
+
                 # Also check TYPE_TEMPERATURE_CH widgets
                 elif tile_data.get("type") == TYPE_TEMPERATURE_CH:
                     for widget_key in ["widget1", "widget2"]:
@@ -2346,13 +2368,17 @@ class RecuperationEfficiencySensor(CoordinatorEntity, SensorEntity):
                             _LOGGER.debug("Found TYPE_TEMPERATURE_CH widget: %s, txtId=%s, value=%s", widget_key, widget_txt_id, temp_value)
 
                         if temp_value is not None:
-                            # Same temperature processing for widgets
-                            if isinstance(temp_value, (int, float)) and temp_value > 100:
-                                temp_celsius = temp_value / 10
-                            else:
-                                temp_celsius = float(temp_value)
+                            try:
+                                # Same temperature processing for widgets
+                                if isinstance(temp_value, (int, float)) and temp_value > 100:
+                                    temp_celsius = temp_value / 10
+                                else:
+                                    temp_celsius = float(temp_value)
 
-                            _LOGGER.debug("Widget temperature processed: txtId=%s, raw_value=%s, temp_celsius=%.1f", widget_txt_id, temp_value, temp_celsius)
+                                _LOGGER.debug("Widget temperature processed: txtId=%s, raw_value=%s, temp_celsius=%.1f", widget_txt_id, temp_value, temp_celsius)
+                            except (ValueError, TypeError) as e:
+                                _LOGGER.debug("Could not process widget temperature value: txtId=%s, value=%s, error=%s", widget_txt_id, temp_value, e)
+                                continue
 
                             # Same comprehensive txtId mapping for widgets
                             if widget_txt_id in [119, 126, 127, 5997, 2010, 6001, 6002, 6003]:  # Supply Air
