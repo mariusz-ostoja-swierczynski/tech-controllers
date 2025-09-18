@@ -35,6 +35,24 @@ class TechCoordinator(DataUpdateCoordinator):
             update_interval=SCAN_INTERVAL,
         )
         self.api = Tech(session, user_id, token)
+        self._filter_reset_date = None
+        self.hass = hass
+
+    async def async_load_filter_reset_date(self) -> None:
+        """Load filter reset date from storage."""
+        if self.config_entry:
+            from homeassistant.helpers import storage
+
+            udid = self.config_entry.data[CONTROLLER][UDID]
+            store = storage.Store(
+                self.hass,
+                version=1,
+                key=f"{DOMAIN}_{udid}_filter_data"
+            )
+            data = await store.async_load()
+            if data and "filter_reset_date" in data:
+                self._filter_reset_date = data["filter_reset_date"]
+                _LOGGER.debug("Loaded filter reset date: %s", self._filter_reset_date)
 
     async def _async_update_data(self) -> dict:
         """Fetch data from TECH API endpoint(s)."""
