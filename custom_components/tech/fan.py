@@ -83,7 +83,11 @@ async def async_setup_entry(
         if tile[CONF_TYPE] == TYPE_TEMPERATURE_CH:
             widget1_txt_id = tile[CONF_PARAMS].get("widget1", {}).get("txtId", 0)
             widget2_txt_id = tile[CONF_PARAMS].get("widget2", {}).get("txtId", 0)
-            from .const import RECUPERATION_EXHAUST_FLOW, RECUPERATION_SUPPLY_FLOW, RECUPERATION_SUPPLY_FLOW_ALT
+            from .const import (
+                RECUPERATION_EXHAUST_FLOW,
+                RECUPERATION_SUPPLY_FLOW,
+                RECUPERATION_SUPPLY_FLOW_ALT,
+            )
             for flow_sensor in [RECUPERATION_EXHAUST_FLOW, RECUPERATION_SUPPLY_FLOW, RECUPERATION_SUPPLY_FLOW_ALT]:
                 if flow_sensor["txt_id"] in [widget1_txt_id, widget2_txt_id]:
                     has_recuperation_flow = True
@@ -267,7 +271,6 @@ class TileFanEntity(TileEntity, CoordinatorEntity, FanEntity):
 
     def _get_party_mode_duration(self) -> int:
         """Get configured party mode duration from number entity or use default."""
-        from .const import PARTY_MODE_MIN_MINUTES
 
         default_duration = 60  # Default 1 hour
 
@@ -285,6 +288,11 @@ class TileFanEntity(TileEntity, CoordinatorEntity, FanEntity):
                     _LOGGER.debug("Could not parse party mode duration: %s", state.state)
 
         return default_duration
+
+    def get_state(self, device):
+        """Get device state."""
+        gear = device[CONF_PARAMS].get("gear", 0)
+        return gear > 0
 
     def update_properties(self, device):
         """Update the properties of the device."""
@@ -367,7 +375,11 @@ class VirtualRecuperationFanEntity(TileFanEntity):
         """Return true if the recuperation is on."""
         # Check flow values to determine if recuperation is running
         if self._coordinator.data and "tiles" in self._coordinator.data:
-            from .const import RECUPERATION_EXHAUST_FLOW, RECUPERATION_SUPPLY_FLOW, RECUPERATION_SUPPLY_FLOW_ALT
+            from .const import (
+                RECUPERATION_EXHAUST_FLOW,
+                RECUPERATION_SUPPLY_FLOW,
+                RECUPERATION_SUPPLY_FLOW_ALT,
+            )
 
             for tile_id, tile_data in self._coordinator.data["tiles"].items():
                 if tile_data.get("type") == TYPE_TEMPERATURE_CH:
@@ -391,7 +403,11 @@ class VirtualRecuperationFanEntity(TileFanEntity):
 
         # Try to determine speed based on flow values
         if self._coordinator.data and "tiles" in self._coordinator.data:
-            from .const import RECUPERATION_EXHAUST_FLOW, RECUPERATION_SUPPLY_FLOW, RECUPERATION_SUPPLY_FLOW_ALT, RECUPERATION_SPEED_ENDPOINTS
+            from .const import (
+                RECUPERATION_EXHAUST_FLOW,
+                RECUPERATION_SUPPLY_FLOW,
+                RECUPERATION_SUPPLY_FLOW_ALT,
+            )
 
             for tile_id, tile_data in self._coordinator.data["tiles"].items():
                 if tile_data.get("type") == TYPE_TEMPERATURE_CH:
