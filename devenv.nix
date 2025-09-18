@@ -16,6 +16,8 @@
     pkgs.git
     pkgs.ruff
     pkgs.ffmpeg
+    pkgs.libpcap
+    pkgs.libjpeg
   ];
 
   # https://devenv.sh/languages/
@@ -23,15 +25,15 @@
     enable = true;
     version = "3.13";
     uv.enable = true;
-    venv.enable = true;
-    venv.requirements = builtins.readFile ./requirements.txt + "\n" + builtins.readFile ./requirements_test_api.txt;
+    uv.sync.enable = true;
   };
 
   # https://devenv.sh/scripts/
   scripts.setup = {
     exec = ''
       echo '🛠️ Running setup'
-      uv pip sync requirements.txt requirements_test_api.txt
+      # Sync with pyproject.toml via pip
+      uv sync --group test_api
     '';
     description = "Install dependencies";
   };
@@ -84,6 +86,7 @@
     echo
     echo 🦾 Available scripts:
     echo 🦾
+    . .devenv/state/venv/bin/activate
     ${pkgs.gnused}/bin/sed -e 's| |••|g' -e 's|=| |' <<EOF | ${pkgs.util-linuxMinimal}/bin/column -t | ${pkgs.gnused}/bin/sed -e 's|^|🦾 |' -e 's|••| |g'
     ${lib.generators.toKeyValue {} (lib.mapAttrs (name: value: value.description) config.scripts)}
     EOF
@@ -93,7 +96,8 @@
   tasks."app:setup" = {
     exec = ''
       echo '🛠️ Running setup'
-      uv pip sync requirements.txt requirements_test_api.txt
+      # Sync with pyproject.toml via pip
+      uv sync --group test_api
     '';
     after = ["devenv:enterShell"];
   };
