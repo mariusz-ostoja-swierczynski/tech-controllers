@@ -35,7 +35,7 @@ API_TIMEOUT: Final = 60
 # tile type
 TYPE_TEMPERATURE = 1
 TYPE_FIRE_SENSOR = 2
-TYPE_TEMPERATURE_CH = 6
+TYPE_WIDGET = 6
 TYPE_RELAY = 11
 TYPE_ADDITIONAL_PUMP = 21
 TYPE_FAN = 22
@@ -46,12 +46,18 @@ TYPE_TEXT = 40
 TYPE_SW_VERSION = 50
 TYPE_OPEN_THERM = 252
 
+# widget type
+WIDGET_DHW_PUMP = 1
+WIDGET_COLLECTOR_PUMP = 2
+WIDGET_TEMPERATURE_CH = 9
+
 # map iconId -> icon name
 ICON_BY_ID = {
     3: "mdi:animation-play",  # mode
     17: "mdi:arrow-right-drop-circle-outline",  # pump
     50: "mdi:tune-vertical",  # state
     101: "mdi:cogs",  # feeder
+    167: "mdi:electric-switch",  # contact
 }
 
 # map type -> icon name
