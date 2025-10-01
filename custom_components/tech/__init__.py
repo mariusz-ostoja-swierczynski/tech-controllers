@@ -12,7 +12,6 @@ from homeassistant.helpers.typing import ConfigType
 from . import assets
 from .const import DOMAIN, PLATFORMS, USER_ID
 from .coordinator import TechCoordinator
-from .tech import Tech
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,7 +46,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await coordinator.async_config_entry_first_refresh()
 
-    await assets.load_subtitles(language_code, Tech(websession, user_id, token))
+    await assets.load_subtitles(language_code, coordinator.api)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

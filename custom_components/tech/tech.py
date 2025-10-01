@@ -1,17 +1,20 @@
-"""Python wrapper for getting interaction with Tech devices."""
+"""Python wrapper for interacting with Tech devices via the eModul API."""
+
+from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
-from functools import wraps
 import json
 import logging
 import time
+from typing import TYPE_CHECKING, Any
 
-import aiohttp
+if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
+    from aiohttp import ClientSession
+else:  # pragma: no cover
+    ClientSession = Any
 
 from .const import TECH_SUPPORTED_LANGUAGES
 
-logging.basicConfig(level=logging.DEBUG)
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -22,7 +25,7 @@ class Tech:
 
     def __init__(
         self,
-        session: aiohttp.ClientSession,
+        session: "ClientSession",
         user_id=None,
         token=None,
         base_url=TECH_API_URL,
@@ -51,7 +54,7 @@ class Tech:
         self.update_lock = asyncio.Lock()
         self.modules = {}
 
-    async def get(self, request_path):
+    async def get(self, request_path: str) -> dict[str, Any]:
         """Perform a GET request to the specified request path.
 
         Args:
@@ -73,7 +76,7 @@ class Tech:
 
             return await response.json()
 
-    async def post(self, request_path, post_data):
+    async def post(self, request_path: str, post_data: str) -> dict[str, Any]:
         """Send a POST request to the specified URL with the given data.
 
         Args:
@@ -98,7 +101,7 @@ class Tech:
 
             return await response.json()
 
-    async def authenticate(self, username, password):
+    async def authenticate(self, username: str, password: str) -> bool:
         """Authenticate the user with the given username and password.
 
         Args:
@@ -126,7 +129,7 @@ class Tech:
             raise TechLoginError(401, "Unauthorized") from err
         return result["authenticated"]
 
-    async def list_modules(self):
+    async def list_modules(self) -> dict[str, Any]:
         """Retrieve the list of modules for the authenticated user.
 
         Returns:
@@ -147,7 +150,7 @@ class Tech:
         return result
 
     # Asynchronous function to retrieve module data
-    async def get_module_data(self, module_udid):
+    async def get_module_data(self, module_udid: str) -> dict[str, Any]:
         """Retrieve module data for a given module ID.
 
         Args:
@@ -168,7 +171,7 @@ class Tech:
             raise TechError(401, "Unauthorized")
         return result
 
-    async def get_translations(self, language):
+    async def get_translations(self, language: str) -> dict[str, Any]:
         """Retrieve language pack for a given language.
 
         If language doesnt exists it will return default "en".
@@ -199,7 +202,7 @@ class Tech:
             raise TechError(401, "Unauthorized")
         return result
 
-    async def get_module_zones(self, module_udid):
+    async def get_module_zones(self, module_udid: str) -> dict[int, dict[str, Any]]:
         """Return Tech module zones.
 
         Return Tech module zones for given module udid.
@@ -213,25 +216,10 @@ class Tech:
 
         """
 
-        _LOGGER.debug("Updating module zones ... %s", module_udid)
-        result = await self.get_module_data(module_udid)
-        zones = result["zones"]["elements"]
-        zones = list(
-            filter(
-                lambda e: e is not None
-                and "zone" in e
-                and e["zone"] is not None
-                and "visibility" in e["zone"],
-                zones,
-            )
-        )
+        module = await self.module_data(module_udid)
+        return module["zones"]
 
-        for zone in zones:
-            self.modules[module_udid]["zones"][zone["zone"]["id"]] = zone
-
-        return self.modules[module_udid]["zones"]
-
-    async def get_module_tiles(self, module_udid):
+    async def get_module_tiles(self, module_udid: str) -> dict[int, dict[str, Any]]:
         """Return Tech module tiles.
 
         Return Tech module tiles for given module udid.
@@ -245,17 +233,10 @@ class Tech:
 
         """
 
-        _LOGGER.debug("Updating module tiles ... %s", module_udid)
-        result = await self.get_module_data(module_udid)
-        tiles = result["tiles"]
-        tiles = list(filter(lambda e: e["visibility"], tiles))
+        module = await self.module_data(module_udid)
+        return module["tiles"]
 
-        for tile in tiles:
-            self.modules[module_udid]["tiles"][tile["id"]] = tile
-
-        return self.modules[module_udid]["tiles"]
-
-    async def module_data(self, module_udid):
+    async def module_data(self, module_udid: str) -> dict[str, Any]:
         """Update Tech module zones and tiles.
 
         Update all the values for Tech module. It includes
@@ -271,46 +252,38 @@ class Tech:
         """
         now = time.time()
 
-        self.modules.setdefault(
+        cache = self.modules.setdefault(
             module_udid, {"last_update": None, "zones": {}, "tiles": {}}
         )
 
         _LOGGER.debug("Updating module zones & tiles ... %s", module_udid)
         result = await self.get_module_data(module_udid)
-        zones = result["zones"]["elements"]
-        zones = list(
-            filter(
-                lambda e: e is not None
-                and "zone" in e
-                and e["zone"] is not None
-                and "visibility" in e["zone"],
-                zones,
-            )
-        )
 
-        if len(zones) > 0:
-            _LOGGER.debug("Updating zones for controller: %s", module_udid)
-            zones = list(
-                filter(
-                    lambda e: e is not None
-                    and "zone" in e
-                    and e["zone"] is not None
-                    and "zoneState" in e["zone"]
-                    and e["zone"]["zoneState"] != "zoneUnregistered",
-                    zones,
-                )
-            )
-            for zone in zones:
-                self.modules[module_udid]["zones"][zone["zone"]["id"]] = zone
-        tiles = result["tiles"]
-        tiles = list(filter(lambda e: e["visibility"], tiles))
+        raw_zones = result.get("zones", {}).get("elements", [])
+        visible_zones = [
+            zone
+            for zone in raw_zones
+            if zone
+            and zone.get("zone")
+            and zone["zone"].get("visibility")
+            and zone["zone"].get("zoneState") != "zoneUnregistered"
+        ]
 
-        if len(tiles) > 0:
-            _LOGGER.debug("Updating tiles for controller: %s", module_udid)
-            for tile in tiles:
-                self.modules[module_udid]["tiles"][tile["id"]] = tile
-        self.modules[module_udid]["last_update"] = now
-        return self.modules[module_udid]
+        if visible_zones:
+            _LOGGER.debug("Updating %s zones for controller: %s", len(visible_zones), module_udid)
+            cache["zones"].update(
+                {zone["zone"]["id"]: zone for zone in visible_zones}
+            )
+
+        raw_tiles = result.get("tiles", [])
+        visible_tiles = [tile for tile in raw_tiles if tile and tile.get("visibility")]
+
+        if visible_tiles:
+            _LOGGER.debug("Updating %s tiles for controller: %s", len(visible_tiles), module_udid)
+            cache["tiles"].update({tile["id"]: tile for tile in visible_tiles})
+
+        cache["last_update"] = now
+        return cache
 
     async def get_zone(self, module_udid, zone_id):
         """Return zone from Tech API.

@@ -29,7 +29,6 @@ class TileEntity(
         super().__init__(coordinator)
         self._config_entry = config_entry
         self._udid = config_entry.data[CONTROLLER][UDID]
-        self._coordinator = coordinator
         self._id = device[CONF_ID]
         self._unique_id = self._udid + "_" + str(device[CONF_ID])
         self._model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
@@ -76,5 +75,5 @@ class TileEntity(
     @callback
     def _handle_coordinator_update(self, *args: Any) -> None:
         """Handle updated data from the coordinator."""
-        self.update_properties(self._coordinator.data["tiles"][self._id])
+        self.update_properties(self.coordinator.data["tiles"][self._id])
         self.async_write_ha_state()
