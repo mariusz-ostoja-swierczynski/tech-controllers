@@ -31,6 +31,7 @@ class TileEntity(
             device: Tile payload returned by the Tech API.
             coordinator: Shared Tech data coordinator instance.
             config_entry: Config entry that owns the coordinator.
+
         """
         super().__init__(coordinator)
         self._config_entry = config_entry
@@ -70,6 +71,7 @@ class TileEntity(
 
         Args:
             device: Tile dictionary with the most recent values.
+
         """
         # Update _state property
         self._state = self.get_state(device)

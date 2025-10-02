@@ -25,7 +25,7 @@ class Tech:
 
     def __init__(
         self,
-        session: "ClientSession",
+        session: ClientSession,
         user_id=None,
         token=None,
         base_url=TECH_API_URL,
@@ -37,6 +37,7 @@ class Tech:
             user_id: Optional user identifier returned by authentication.
             token: Optional bearer token returned by authentication.
             base_url: Base URL for the Tech API endpoints.
+
         """
         _LOGGER.debug("Init Tech")
         self.headers = {"Accept": "application/json", "Accept-Encoding": "gzip"}
@@ -64,6 +65,7 @@ class Tech:
 
         Raises:
             TechError: Raised when the API responds with a non-200 status code.
+
         """
         url = self.base_url + request_path
         _LOGGER.debug("Sending GET request: %s", url)
@@ -86,6 +88,7 @@ class Tech:
 
         Raises:
             TechError: Raised when the API responds with a non-200 status code.
+
         """
         url = self.base_url + request_path
         _LOGGER.debug("Sending POST request: %s", url)
@@ -110,6 +113,7 @@ class Tech:
 
         Raises:
             TechLoginError: When the API returns an authentication error.
+
         """
         path = "authentication"
         post_data = json.dumps({"username": username, "password": password})
@@ -136,6 +140,7 @@ class Tech:
 
         Raises:
             TechError: If the client is not currently authenticated.
+
         """
         if self.authenticated:
             # Construct the path for the user's modules
@@ -159,6 +164,7 @@ class Tech:
 
         Raises:
             TechError: If the client is not currently authenticated.
+
         """
         _LOGGER.debug("Getting module data...  %s", module_udid)
         if self.authenticated:
@@ -181,6 +187,7 @@ class Tech:
 
         Raises:
             TechError: If the client is not currently authenticated.
+
         """
 
         if language not in TECH_SUPPORTED_LANGUAGES:
@@ -204,6 +211,7 @@ class Tech:
 
         Returns:
             Mapping of zone identifier to zone payload.
+
         """
 
         module = await self.module_data(module_udid)
@@ -217,6 +225,7 @@ class Tech:
 
         Returns:
             Mapping of tile identifier to tile payload.
+
         """
 
         module = await self.module_data(module_udid)
@@ -230,6 +239,7 @@ class Tech:
 
         Returns:
             Dictionary containing ``zones`` and ``tiles`` entries.
+
         """
         now = time.time()
 
@@ -251,16 +261,18 @@ class Tech:
         ]
 
         if visible_zones:
-            _LOGGER.debug("Updating %s zones for controller: %s", len(visible_zones), module_udid)
-            cache["zones"].update(
-                {zone["zone"]["id"]: zone for zone in visible_zones}
+            _LOGGER.debug(
+                "Updating %s zones for controller: %s", len(visible_zones), module_udid
             )
+            cache["zones"].update({zone["zone"]["id"]: zone for zone in visible_zones})
 
         raw_tiles = result.get("tiles", [])
         visible_tiles = [tile for tile in raw_tiles if tile and tile.get("visibility")]
 
         if visible_tiles:
-            _LOGGER.debug("Updating %s tiles for controller: %s", len(visible_tiles), module_udid)
+            _LOGGER.debug(
+                "Updating %s tiles for controller: %s", len(visible_tiles), module_udid
+            )
             cache["tiles"].update({tile["id"]: tile for tile in visible_tiles})
 
         cache["last_update"] = now
@@ -275,6 +287,7 @@ class Tech:
 
         Returns:
             Cached zone dictionary.
+
         """
         await self.get_module_zones(module_udid)
         return self.modules[module_udid]["zones"][zone_id]
@@ -288,6 +301,7 @@ class Tech:
 
         Returns:
             Cached tile dictionary.
+
         """
         await self.get_module_tiles(module_udid)
         return self.modules[module_udid]["tiles"][tile_id]
@@ -302,6 +316,7 @@ class Tech:
 
         Returns:
             Parsed JSON response from the API.
+
         """
         _LOGGER.debug("Setting zone constant temperature…")
         if self.authenticated:
@@ -333,6 +348,7 @@ class Tech:
 
         Returns:
             Parsed JSON response from the API.
+
         """
         _LOGGER.debug("Turing zone on/off: %s", on)
         if self.authenticated:
@@ -355,6 +371,7 @@ class TechError(Exception):
         Args:
             status_code: HTTP status or API-specific code.
             status: Human-readable reason message from the API.
+
         """
         self.status_code = status_code
         self.status = status

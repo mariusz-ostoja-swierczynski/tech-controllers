@@ -32,6 +32,7 @@ class TechCoordinator(DataUpdateCoordinator):
             session: Shared aiohttp client session.
             user_id: Tech platform user identifier.
             token: Bearer token returned by the authentication flow.
+
         """
         super().__init__(
             hass,
@@ -52,6 +53,7 @@ class TechCoordinator(DataUpdateCoordinator):
         Raises:
             ConfigEntryAuthFailed: If the API indicates that the token expired.
             UpdateFailed: If any other API error occurs during refresh.
+
         """
 
         _LOGGER.debug(

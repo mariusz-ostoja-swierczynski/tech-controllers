@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 import logging
-from collections.abc import Iterable
-from typing import Any, Callable, cast
+from typing import Any, cast
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -87,6 +87,7 @@ async def async_setup_entry(
         hass: Home Assistant instance.
         config_entry: Integration entry containing controller metadata.
         async_add_entities: Callback used to register entities with Home Assistant.
+
     """
     controller_udid = config_entry.data[CONTROLLER][UDID]
     _LOGGER.debug("Setting up sensor entry, controller udid: %s", controller_udid)
@@ -154,7 +155,9 @@ def _build_zone_entities(
     return entities
 
 
-TileBuilder = Callable[[dict[str, Any], TechCoordinator, ConfigEntry], list[CoordinatorEntity]]
+TileBuilder = Callable[
+    [dict[str, Any], TechCoordinator, ConfigEntry], list[CoordinatorEntity]
+]
 
 
 def _build_tile_entities(
@@ -221,7 +224,9 @@ def _build_valve_tile(
     ):
         if tile[CONF_PARAMS].get(valve_sensor["state_key"]) is not None:
             entities.append(
-                TileValveTemperatureSensor(tile, coordinator, config_entry, valve_sensor)
+                TileValveTemperatureSensor(
+                    tile, coordinator, config_entry, valve_sensor
+                )
             )
 
     return entities
@@ -300,6 +305,7 @@ class TechBatterySensor(CoordinatorEntity, SensorEntity):
 
         Args:
             device: Zone dictionary containing the latest telemetry values.
+
         """
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
         self._attr_native_value = device[CONF_ZONE][BATTERY_LEVEL]
@@ -371,6 +377,7 @@ class TechTemperatureSensor(CoordinatorEntity, SensorEntity):
 
         Args:
             device: Zone dictionary containing the latest telemetry values.
+
         """
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
@@ -453,6 +460,7 @@ class TechOutsideTempTile(CoordinatorEntity, SensorEntity):
 
         Args:
             device: Tile dictionary containing temperature information.
+
         """
         self._name = "outside_" + str(device[CONF_ID])
 
@@ -530,6 +538,7 @@ class TechHumiditySensor(CoordinatorEntity, SensorEntity):
 
         Args:
             device: Zone dictionary containing the latest telemetry values.
+
         """
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
@@ -609,6 +618,7 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
 
         Args:
             device: Zone dictionary containing description and telemetry data.
+
         """
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
@@ -670,6 +680,7 @@ class ZoneTemperatureSensor(ZoneSensor):
 
         Args:
             device: Zone dictionary containing the latest telemetry values.
+
         """
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
@@ -702,6 +713,7 @@ class ZoneBatterySensor(ZoneSensor):
 
         Args:
             device: Zone dictionary containing the latest telemetry values.
+
         """
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
         self._attr_native_value = device[CONF_ZONE][BATTERY_LEVEL]
@@ -734,6 +746,7 @@ class ZoneSignalStrengthSensor(ZoneSensor):
 
         Args:
             device: Zone dictionary containing the latest telemetry values.
+
         """
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
         self._attr_native_value = device[CONF_ZONE][SIGNAL_STRENGTH]
@@ -822,6 +835,7 @@ class ZoneActuatorSensor(ZoneSensor):
 
         Args:
             device: Zone dictionary containing the latest telemetry values.
+
         """
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
@@ -887,6 +901,7 @@ class ZoneWindowSensor(BinarySensorEntity, ZoneSensor):
 
         Args:
             device: Zone dictionary containing the latest telemetry values.
+
         """
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
@@ -924,6 +939,7 @@ class ZoneOutsideTempTile(ZoneSensor):
 
         Args:
             device: Tile dictionary containing temperature information.
+
         """
         self._name = "outside_" + str(device[CONF_ID])
 
@@ -971,6 +987,7 @@ class ZoneStateSensor(BinarySensorEntity, ZoneSensor):
 
         Args:
             device: Zone dictionary containing the latest telemetry values.
+
         """
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 

@@ -1,22 +1,33 @@
 """Config flow for Tech Sterowniki integration."""
 
 import logging
-import uuid
 from types import MappingProxyType
 from typing import Any
+import uuid
 
 import voluptuous as vol
+
 from homeassistant import config_entries, core, exceptions
-from homeassistant.config_entries import (SOURCE_USER, ConfigEntry,
-                                          ConfigFlowResult)
-from homeassistant.const import (ATTR_ID, CONF_NAME, CONF_PASSWORD, CONF_TOKEN,
-                                 CONF_USERNAME)
-from homeassistant.helpers import aiohttp_client
-from homeassistant.helpers import config_validation as cv
+from homeassistant.config_entries import SOURCE_USER, ConfigEntry, ConfigFlowResult
+from homeassistant.const import (
+    ATTR_ID,
+    CONF_NAME,
+    CONF_PASSWORD,
+    CONF_TOKEN,
+    CONF_USERNAME,
+)
+from homeassistant.helpers import aiohttp_client, config_validation as cv
 
 from . import assets
-from .const import (CONTROLLER, CONTROLLERS, DOMAIN, INCLUDE_HUB_IN_NAME, UDID,
-                    USER_ID, VER)
+from .const import (
+    CONTROLLER,
+    CONTROLLERS,
+    DOMAIN,
+    INCLUDE_HUB_IN_NAME,
+    UDID,
+    USER_ID,
+    VER,
+)
 from .tech import Tech, TechError, TechLoginError
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,6 +48,7 @@ def controllers_schema(controllers) -> vol.Schema:
 
     Returns:
         Voluptuous schema that lets the user pick controllers to configure.
+
     """
 
     return vol.Schema(
@@ -70,6 +82,7 @@ async def validate_input(hass: core.HomeAssistant, data):
 
     Raises:
         InvalidAuth: If the credentials are rejected by the API.
+
     """
 
     http_session = aiohttp_client.async_get_clientsession(hass)
@@ -112,6 +125,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         Returns:
             Config flow result signalling completion, continuation, or abort.
+
         """
 
         include_name: bool = INCLUDE_HUB_IN_NAME in user_input
@@ -194,6 +208,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         Returns:
             Next config flow step or the final entry creation result.
+
         """
         if not user_input:
             if self._init_info is not None:
@@ -218,6 +233,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         Returns:
             Either the next flow step or the rendered login form.
+
         """
         errors = {}
         if user_input is not None:
@@ -248,6 +264,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         Returns:
             Unsaved :class:`ConfigEntry` instance mirroring ``controller``.
+
         """
         return ConfigEntry(
             data=controller,

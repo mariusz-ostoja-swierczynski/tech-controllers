@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 import logging
-from typing import Any, Iterable
+from typing import Any
 
 from .const import DEFAULT_ICON, ICON_BY_ID, ICON_BY_TYPE, TXT_ID_BY_TYPE
 
@@ -27,6 +28,7 @@ def redact(entry_data: dict[str, Any], keys: Iterable[str]) -> str:
     Returns:
         Stringified version of ``entry_data`` with sensitive values replaced by
         ``***HIDDEN***``.
+
     """
     sanitized_data = entry_data.copy()
     for key in keys:
@@ -41,6 +43,7 @@ async def load_subtitles(language: str, api) -> None:
     Args:
         language: Home Assistant language code to retrieve from the API.
         api: Authenticated Tech API client exposing ``get_translations``.
+
     """
     global TRANSLATIONS  # noqa: PLW0603 # pylint: disable=global-statement
     TRANSLATIONS = await api.get_translations(language)

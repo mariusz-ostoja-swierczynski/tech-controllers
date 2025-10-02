@@ -49,6 +49,7 @@ async def async_setup_entry(
         hass: Home Assistant instance.
         config_entry: Integration entry containing controller data.
         async_add_entities: Callback to register entities with Home Assistant.
+
     """
     udid = config_entry.data[CONTROLLER][UDID]
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
@@ -76,6 +77,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
             device: Zone description returned by the Tech API.
             coordinator: Shared Tech data coordinator instance.
             config_entry: Config entry that owns the coordinator.
+
         """
         _LOGGER.debug("Init TechThermostat…")
         super().__init__(coordinator)
@@ -119,6 +121,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
 
         Args:
             device: Zone dictionary retrieved from the Tech API.
+
         """
         # Update target temperature
         if device[CONF_ZONE]["setTemperature"] is not None:
@@ -252,6 +255,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         Args:
             **kwargs: Home Assistant service parameters containing
                 ``ATTR_TEMPERATURE``.
+
         """
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature:
@@ -270,6 +274,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
 
         Args:
             hvac_mode: Desired HVAC mode to apply to the zone.
+
         """
         _LOGGER.debug("%s: Setting hvac mode to %s", self.device_name, hvac_mode)
         if hvac_mode == HVACMode.OFF:

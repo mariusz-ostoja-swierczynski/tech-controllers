@@ -31,6 +31,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # pylin
 
     Returns:
         ``True`` to indicate setup should continue.
+
     """
     return True
 
@@ -48,6 +49,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     Returns:
         ``True`` if the entry was set up successfully.
+
     """
     _LOGGER.debug("Setting up component's entry")
     _LOGGER.debug("Entry id: %s", str(entry.entry_id))
@@ -86,6 +88,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     Returns:
         ``True`` if all platforms were unloaded successfully.
+
     """
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 

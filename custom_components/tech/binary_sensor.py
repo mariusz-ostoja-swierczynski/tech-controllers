@@ -41,6 +41,7 @@ async def async_setup_entry(
         hass: Home Assistant instance.
         config_entry: Integration entry containing controller metadata.
         async_add_entities: Callback used to register entities with Home Assistant.
+
     """
     _LOGGER.debug("Setting up entry for sensors…")
     controller = config_entry.data[CONTROLLER]
@@ -109,6 +110,7 @@ class RelaySensor(TileBinarySensor):
             coordinator: Shared Tech data coordinator instance.
             config_entry: Config entry providing controller metadata.
             device_class: Optional Home Assistant device class for the sensor.
+
         """
         TileBinarySensor.__init__(self, device, coordinator, config_entry)
         self._attr_device_class = device_class
