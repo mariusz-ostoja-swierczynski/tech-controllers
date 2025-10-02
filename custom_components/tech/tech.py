@@ -30,14 +30,13 @@ class Tech:
         token=None,
         base_url=TECH_API_URL,
     ) -> None:
-        """Initialize the Tech object.
+        """Initialise the Tech API client.
 
         Args:
-        session (aiohttp.ClientSession): The aiohttp client session.
-        user_id (str): The user ID.
-        token (str): The authentication token.
-        base_url (str): The base URL for the API.
-
+            session: aiohttp client session used for HTTP requests.
+            user_id: Optional user identifier returned by authentication.
+            token: Optional bearer token returned by authentication.
+            base_url: Base URL for the Tech API endpoints.
         """
         _LOGGER.debug("Init Tech")
         self.headers = {"Accept": "application/json", "Accept-Encoding": "gzip"}
@@ -55,17 +54,16 @@ class Tech:
         self.modules = {}
 
     async def get(self, request_path: str) -> dict[str, Any]:
-        """Perform a GET request to the specified request path.
+        """Perform a GET request against the Tech API.
 
         Args:
-        request_path (str): The path to send the GET request to.
+            request_path: Relative path appended to the base URL.
 
         Returns:
-        dict: The JSON response data.
+            Parsed JSON response.
 
         Raises:
-        TechError: If the response status is not 200.
-
+            TechError: Raised when the API responds with a non-200 status code.
         """
         url = self.base_url + request_path
         _LOGGER.debug("Sending GET request: %s", url)
@@ -77,18 +75,17 @@ class Tech:
             return await response.json()
 
     async def post(self, request_path: str, post_data: str) -> dict[str, Any]:
-        """Send a POST request to the specified URL with the given data.
+        """Send a POST request against the Tech API with JSON payload string.
 
         Args:
-        request_path: The path for the request.
-        post_data: The data to be sent with the request.
+            request_path: Relative path appended to the base URL.
+            post_data: Raw JSON payload encoded as a string.
 
         Returns:
-        The JSON response from the request.
+            Parsed JSON response.
 
         Raises:
-        TechError: If the response status is not 200.
-
+            TechError: Raised when the API responds with a non-200 status code.
         """
         url = self.base_url + request_path
         _LOGGER.debug("Sending POST request: %s", url)
@@ -102,15 +99,17 @@ class Tech:
             return await response.json()
 
     async def authenticate(self, username: str, password: str) -> bool:
-        """Authenticate the user with the given username and password.
+        """Authenticate the user with the provided credentials.
 
         Args:
-        username: str, the username of the user
-        password: str, the password of the user
+            username: Account username.
+            password: Account password.
 
         Returns:
-        bool, indicating whether the user was authenticated successfully
+            ``True`` when authentication succeeded.
 
+        Raises:
+            TechLoginError: When the API returns an authentication error.
         """
         path = "authentication"
         post_data = json.dumps({"username": username, "password": password})
@@ -130,14 +129,13 @@ class Tech:
         return result["authenticated"]
 
     async def list_modules(self) -> dict[str, Any]:
-        """Retrieve the list of modules for the authenticated user.
+        """Return the list of modules available for the authenticated user.
 
         Returns:
-            result: The list of modules for the authenticated user.
+            Parsed JSON response describing all modules.
 
         Raises:
-            TechError: If the user is not authenticated.
-
+            TechError: If the client is not currently authenticated.
         """
         if self.authenticated:
             # Construct the path for the user's modules
@@ -151,17 +149,16 @@ class Tech:
 
     # Asynchronous function to retrieve module data
     async def get_module_data(self, module_udid: str) -> dict[str, Any]:
-        """Retrieve module data for a given module ID.
+        """Return a full module payload for ``module_udid``.
 
         Args:
-        module_udid (str): The unique ID of the module to retrieve.
+            module_udid: Tech module identifier.
 
         Returns:
-        dict: The data of the retrieved module.
+            Parsed JSON response representing the module.
 
         Raises:
-        TechError: If not authenticated, raise 401 Unauthorized error.
-
+            TechError: If the client is not currently authenticated.
         """
         _LOGGER.debug("Getting module data...  %s", module_udid)
         if self.authenticated:
@@ -172,21 +169,18 @@ class Tech:
         return result
 
     async def get_translations(self, language: str) -> dict[str, Any]:
-        """Retrieve language pack for a given language.
+        """Retrieve the translation pack for ``language``.
 
-        If language doesnt exists it will return default "en".
-        This is required assumption as Tech API is returning
-        400 error for non-existent languages.
+        If the requested language is unsupported, ``en`` will be used.
 
         Args:
-        language (str): Language code.
+            language: Two-letter language code.
 
         Returns:
-        dict: The data of the retrieved language pack with translations.
+            Parsed JSON response containing translation data.
 
         Raises:
-        TechError: If not authenticated, raise 401 Unauthorized error.
-
+            TechError: If the client is not currently authenticated.
         """
 
         if language not in TECH_SUPPORTED_LANGUAGES:
@@ -203,52 +197,39 @@ class Tech:
         return result
 
     async def get_module_zones(self, module_udid: str) -> dict[int, dict[str, Any]]:
-        """Return Tech module zones.
-
-        Return Tech module zones for given module udid.
+        """Return the cached zones dictionary for ``module_udid``.
 
         Args:
-        self (Tech): The instance of the Tech API.
-        module_udid (string): The Tech module udid.
+            module_udid: Tech module identifier.
 
         Returns:
-        Dictionary of zones indexed by zone ID.
-
+            Mapping of zone identifier to zone payload.
         """
 
         module = await self.module_data(module_udid)
         return module["zones"]
 
     async def get_module_tiles(self, module_udid: str) -> dict[int, dict[str, Any]]:
-        """Return Tech module tiles.
-
-        Return Tech module tiles for given module udid.
+        """Return the cached tiles dictionary for ``module_udid``.
 
         Args:
-        self (Tech): The instance of the Tech API.
-        module_udid (string): The Tech module udid.
+            module_udid: Tech module identifier.
 
         Returns:
-        Dictionary of zones indexed by zone ID.
-
+            Mapping of tile identifier to tile payload.
         """
 
         module = await self.module_data(module_udid)
         return module["tiles"]
 
     async def module_data(self, module_udid: str) -> dict[str, Any]:
-        """Update Tech module zones and tiles.
-
-        Update all the values for Tech module. It includes
-        zones and tiles data.
+        """Refresh module zones and tiles and return the cached payload.
 
         Args:
-        self (Tech): The instance of the Tech API.
-        module_udid (string): The Tech module udid.
+            module_udid: Tech module identifier.
 
         Returns:
-        Dictionary of zones and tiles indexed by zone ID.
-
+            Dictionary containing ``zones`` and ``tiles`` entries.
         """
         now = time.time()
 
@@ -286,44 +267,41 @@ class Tech:
         return cache
 
     async def get_zone(self, module_udid, zone_id):
-        """Return zone from Tech API.
+        """Return a single zone payload.
 
         Args:
-        module_udid (string): The Tech module udid.
-        zone_id (int): The Tech module zone ID.
+            module_udid: Tech module identifier.
+            zone_id: Numeric zone identifier.
 
         Returns:
-        Dictionary of zone.
-
+            Cached zone dictionary.
         """
         await self.get_module_zones(module_udid)
         return self.modules[module_udid]["zones"][zone_id]
 
     async def get_tile(self, module_udid, tile_id):
-        """Return tile from Tech API.
+        """Return a single tile payload.
 
         Args:
-        module_udid (string): The Tech module udid.
-        tile_id (int): The Tech module zone ID.
+            module_udid: Tech module identifier.
+            tile_id: Numeric tile identifier.
 
         Returns:
-        Dictionary of tile.
-
+            Cached tile dictionary.
         """
         await self.get_module_tiles(module_udid)
         return self.modules[module_udid]["tiles"][tile_id]
 
     async def set_const_temp(self, module_udid, zone_id, target_temp):
-        """Set constant temperature of the zone.
+        """Set the constant temperature of a zone.
 
         Args:
-        module_udid (string): The Tech module udid.
-        zone_id (int): The Tech module zone ID.
-        target_temp (float): The target temperature to be set within the zone.
+            module_udid: Tech module identifier.
+            zone_id: Numeric zone identifier.
+            target_temp: Temperature in °C to maintain.
 
         Returns:
-        JSON object with the result.
-
+            Parsed JSON response from the API.
         """
         _LOGGER.debug("Setting zone constant temperature…")
         if self.authenticated:
@@ -346,16 +324,15 @@ class Tech:
         return result
 
     async def set_zone(self, module_udid, zone_id, on=True):
-        """Turn the zone on or off.
+        """Toggle a zone on or off.
 
         Args:
-        module_udid (string): The Tech module udid.
-        zone_id (int): The Tech module zone ID.
-        on (bool): Flag indicating to turn the zone on if True or off if False.
+            module_udid: Tech module identifier.
+            zone_id: Numeric zone identifier.
+            on: ``True`` to turn the zone on, ``False`` to turn it off.
 
         Returns:
-        JSON object with the result.
-
+            Parsed JSON response from the API.
         """
         _LOGGER.debug("Turing zone on/off: %s", on)
         if self.authenticated:
@@ -370,34 +347,21 @@ class Tech:
 
 
 class TechError(Exception):
-    """Raised when Tech API request ended in error.
-
-    Attributes:
-        status_code - error code returned by Tech API
-        status - more detailed description
-
-    """
+    """Raised when a Tech API request results in an error."""
 
     def __init__(self, status_code, status) -> None:
-        """Initialize the status code and status of the object.
+        """Initialise an error with the API status code and message.
 
         Args:
-            status_code (int): The status code to be assigned.
-            status (str): The status to be assigned.
-
+            status_code: HTTP status or API-specific code.
+            status: Human-readable reason message from the API.
         """
         self.status_code = status_code
         self.status = status
 
 
 class TechLoginError(Exception):
-    """Raised when Tech API login fails.
-
-    Attributes:
-        status_code - error code returned by Tech API
-        status - more detailed description
-
-    """
+    """Raised when a Tech API login attempt fails."""
 
     def __init__(self, status_code, status) -> None:
         """Initialize the status code and status of the object.

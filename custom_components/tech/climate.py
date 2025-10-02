@@ -1,4 +1,4 @@
-"""The Tech Controllers Coordinator."""
+"""Climate platform for the Tech Controllers integration."""
 
 import logging
 from typing import Any
@@ -43,7 +43,13 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up entry."""
+    """Set up Tech climate entities for the provided config entry.
+
+    Args:
+        hass: Home Assistant instance.
+        config_entry: Integration entry containing controller data.
+        async_add_entities: Callback to register entities with Home Assistant.
+    """
     udid = config_entry.data[CONTROLLER][UDID]
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     _LOGGER.debug("Setting up entry, controller udid: %s", udid)
@@ -64,7 +70,13 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
     def __init__(
         self, device, coordinator: TechCoordinator, config_entry: ConfigEntry
     ) -> None:
-        """Initialize the Tech device."""
+        """Initialise a thermostat entity backed by a Tech zone payload.
+
+        Args:
+            device: Zone description returned by the Tech API.
+            coordinator: Shared Tech data coordinator instance.
+            config_entry: Config entry that owns the coordinator.
+        """
         _LOGGER.debug("Init TechThermostat…")
         super().__init__(coordinator)
         self._config_entry = config_entry
@@ -92,7 +104,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
-        """Returns device information in a dictionary format."""
+        """Return Home Assistant ``DeviceInfo`` describing the controller."""
         return {
             ATTR_IDENTIFIERS: {
                 (DOMAIN, self._unique_id)
@@ -103,15 +115,10 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         }
 
     def update_properties(self, device):
-        """Update the properties of the HVAC device based on the data from the device.
+        """Populate state attributes from the latest zone payload.
 
         Args:
-        self (object): instance of the class
-        device (dict): The device data containing information about the device's properties.
-
-        Returns:
-        None
-
+            device: Zone dictionary retrieved from the Tech API.
         """
         # Update target temperature
         if device[CONF_ZONE]["setTemperature"] is not None:
@@ -240,7 +247,12 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         return self._target_temperature
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
-        """Set new target temperatures."""
+        """Set a new target temperature on the Tech module.
+
+        Args:
+            **kwargs: Home Assistant service parameters containing
+                ``ATTR_TEMPERATURE``.
+        """
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature:
             _LOGGER.debug(
@@ -254,7 +266,11 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
             await self.coordinator.async_request_refresh()
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
-        """Set new target hvac mode."""
+        """Set the HVAC mode on the Tech module.
+
+        Args:
+            hvac_mode: Desired HVAC mode to apply to the zone.
+        """
         _LOGGER.debug("%s: Setting hvac mode to %s", self.device_name, hvac_mode)
         if hvac_mode == HVACMode.OFF:
             await self._coordinator.api.set_zone(self._udid, self._id, False)

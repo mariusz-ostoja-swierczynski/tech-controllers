@@ -81,7 +81,13 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up entry."""
+    """Set up Tech sensor entities for the provided config entry.
+
+    Args:
+        hass: Home Assistant instance.
+        config_entry: Integration entry containing controller metadata.
+        async_add_entities: Callback used to register entities with Home Assistant.
+    """
     controller_udid = config_entry.data[CONTROLLER][UDID]
     _LOGGER.debug("Setting up sensor entry, controller udid: %s", controller_udid)
 
@@ -105,7 +111,7 @@ async def async_setup_entry(
 
 
 def _iter_mapping(mapping: dict[Any, Any] | Iterable[Any]) -> Iterable[Any]:
-    """Return mapping values regardless of dict/list input."""
+    """Yield mapping values regardless of whether ``mapping`` is a dict or list."""
     if not mapping:
         return ()
     if isinstance(mapping, dict):
@@ -118,7 +124,7 @@ def _build_zone_entities(
     coordinator: TechCoordinator,
     config_entry: ConfigEntry,
 ) -> list[CoordinatorEntity]:
-    """Create entities for a single zone."""
+    """Create coordinator entities for a single zone payload."""
 
     entities: list[CoordinatorEntity] = []
     zone_state = zone.get(CONF_ZONE, {})
@@ -156,7 +162,7 @@ def _build_tile_entities(
     coordinator: TechCoordinator,
     config_entry: ConfigEntry,
 ) -> list[CoordinatorEntity]:
-    """Create entities for a single tile."""
+    """Create coordinator entities for a single tile payload."""
 
     if not tile.get(VISIBILITY, False) or not tile.get(WORKING_STATUS, True):
         return []
@@ -172,6 +178,7 @@ def _build_temperature_tile(
     coordinator: TechCoordinator,
     config_entry: ConfigEntry,
 ) -> list[CoordinatorEntity]:
+    """Create entities for a temperature tile and its optional sensors."""
     params = tile.get(CONF_PARAMS, {})
 
     def _has_value(value: Any) -> bool:
@@ -202,6 +209,7 @@ def _build_valve_tile(
     coordinator: TechCoordinator,
     config_entry: ConfigEntry,
 ) -> list[CoordinatorEntity]:
+    """Create valve-related entities for a tile payload."""
     entities: list[CoordinatorEntity] = [
         TileValveSensor(tile, coordinator, config_entry)
     ]
@@ -224,6 +232,7 @@ def _build_open_therm_tile(
     coordinator: TechCoordinator,
     config_entry: ConfigEntry,
 ) -> list[CoordinatorEntity]:
+    """Create OpenTherm entities for a tile payload."""
     entities: list[CoordinatorEntity] = []
     for description in (
         OPENTHERM_CURRENT_TEMP,
@@ -287,14 +296,10 @@ class TechBatterySensor(CoordinatorEntity, SensorEntity):
         self.update_properties(device)
 
     def update_properties(self, device):
-        """Update properties from the TechBatterySensor object.
+        """Update native values from the provided zone payload.
 
         Args:
-        device: dict, the device data containing information about the device
-
-        Returns:
-        None
-
+            device: Zone dictionary containing the latest telemetry values.
         """
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
         self._attr_native_value = device[CONF_ZONE][BATTERY_LEVEL]
@@ -322,13 +327,7 @@ class TechBatterySensor(CoordinatorEntity, SensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
-        """Get device information.
-
-        Returns:
-        dict: A dictionary containing device information.
-
-        """
-        # Return device information
+        """Return Home Assistant ``DeviceInfo`` for the associated controller."""
         return {
             ATTR_IDENTIFIERS: {
                 (DOMAIN, self._unique_id)
@@ -368,16 +367,11 @@ class TechTemperatureSensor(CoordinatorEntity, SensorEntity):
         self.update_properties(device)
 
     def update_properties(self, device):
-        """Update the properties of the TechTemperatureSensor object.
+        """Update native values from the provided zone payload.
 
         Args:
-        device: dict, the device data containing information about the device
-
-        Returns:
-        None
-
+            device: Zone dictionary containing the latest telemetry values.
         """
-        # Set the name of the device
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Check if the current temperature is available, and update the native value accordingly
@@ -409,13 +403,7 @@ class TechTemperatureSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
-        """Get device information.
-
-        Returns:
-        dict: A dictionary containing device information.
-
-        """
-        # Return device information
+        """Return Home Assistant ``DeviceInfo`` for the associated controller."""
         return {
             ATTR_IDENTIFIERS: {
                 (DOMAIN, self._unique_id)
@@ -461,16 +449,11 @@ class TechOutsideTempTile(CoordinatorEntity, SensorEntity):
         )
 
     def update_properties(self, device):
-        """Update the properties of the TechOutsideTempTile object.
+        """Update native values from an outside temperature tile payload.
 
         Args:
-        device: dict containing information about the device
-
-        Returns:
-        None
-
+            device: Tile dictionary containing temperature information.
         """
-        # Set the name based on the device id
         self._name = "outside_" + str(device[CONF_ID])
 
         if device[CONF_PARAMS][VALUE] is not None:
@@ -503,13 +486,7 @@ class TechOutsideTempTile(CoordinatorEntity, SensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
-        """Get device information.
-
-        Returns:
-        dict: A dictionary containing device information.
-
-        """
-        # Return device information
+        """Return Home Assistant ``DeviceInfo`` for the associated controller."""
         return {
             ATTR_IDENTIFIERS: {
                 (DOMAIN, self._unique_id)
@@ -549,16 +526,11 @@ class TechHumiditySensor(CoordinatorEntity, SensorEntity):
         self.update_properties(device)
 
     def update_properties(self, device):
-        """Update the properties of the TechHumiditySensor object.
+        """Update native values from the provided zone payload.
 
         Args:
-        device (dict): The device information.
-
-        Returns:
-        None
-
+            device: Zone dictionary containing the latest telemetry values.
         """
-        # Update the name of the device
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Check if the humidity value is not zero and update the native value attribute accordingly
@@ -590,13 +562,7 @@ class TechHumiditySensor(CoordinatorEntity, SensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
-        """Get device information.
-
-        Returns:
-        dict: A dictionary containing device information.
-
-        """
-        # Return device information
+        """Return Home Assistant ``DeviceInfo`` for the associated controller."""
         return {
             ATTR_IDENTIFIERS: {
                 (DOMAIN, self._unique_id)
@@ -639,16 +605,11 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
         self.update_properties(device)
 
     def update_properties(self, device):
-        """Update the properties of the device based on the provided device information.
+        """Update cached zone values from the latest coordinator payload.
 
         Args:
-        device: dict, the device information containing description, zone, setTemperature, and currentTemperature
-
-        Returns:
-        None
-
+            device: Zone dictionary containing description and telemetry data.
         """
-        # Update name property
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Update target_temperature property
@@ -671,13 +632,7 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
-        """Get device information.
-
-        Returns:
-        dict: A dictionary containing device information.
-
-        """
-        # Return device information
+        """Return Home Assistant ``DeviceInfo`` for the associated controller."""
         return {
             ATTR_IDENTIFIERS: {
                 (DOMAIN, self._unique_id)
@@ -711,16 +666,11 @@ class ZoneTemperatureSensor(ZoneSensor):
         return "temperature_entity"
 
     def update_properties(self, device):
-        """Update the properties of the TechTemperatureSensor object.
+        """Update native values from the provided zone payload.
 
         Args:
-        device: dict, the device data containing information about the device
-
-        Returns:
-        None
-
+            device: Zone dictionary containing the latest telemetry values.
         """
-        # Set the name of the device
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Check if the current temperature is available, and update the native value accordingly
@@ -748,14 +698,10 @@ class ZoneBatterySensor(ZoneSensor):
         return f"{self._unique_id}_zone_battery"
 
     def update_properties(self, device):
-        """Update properties from the TechBatterySensor object.
+        """Update native values from the provided zone payload.
 
         Args:
-        device: dict, the device data containing information about the device
-
-        Returns:
-        None
-
+            device: Zone dictionary containing the latest telemetry values.
         """
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
         self._attr_native_value = device[CONF_ZONE][BATTERY_LEVEL]
@@ -784,14 +730,10 @@ class ZoneSignalStrengthSensor(ZoneSensor):
         return icon_for_signal_level(self.state)
 
     def update_properties(self, device):
-        """Update properties from the ZoneSignalStrengthSensor object.
+        """Update native values from the provided zone payload.
 
         Args:
-        device: dict, the device data containing information about the device
-
-        Returns:
-        None
-
+            device: Zone dictionary containing the latest telemetry values.
         """
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
         self._attr_native_value = device[CONF_ZONE][SIGNAL_STRENGTH]
@@ -876,16 +818,11 @@ class ZoneActuatorSensor(ZoneSensor):
         return attributes
 
     def update_properties(self, device):
-        """Update the properties of the ZoneActuatorSensor object.
+        """Update native attributes from the provided zone payload.
 
         Args:
-        device (dict): The device information.
-
-        Returns:
-        None
-
+            device: Zone dictionary containing the latest telemetry values.
         """
-        # Update the name of the device
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Update the native value attribute
@@ -946,16 +883,11 @@ class ZoneWindowSensor(BinarySensorEntity, ZoneSensor):
         return attributes
 
     def update_properties(self, device):
-        """Update the properties of the ZoneWindowSensor object.
+        """Update native attributes from the provided zone payload.
 
         Args:
-        device (dict): The device information.
-
-        Returns:
-        None
-
+            device: Zone dictionary containing the latest telemetry values.
         """
-        # Update the name of the device
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Update battery and signal strength
@@ -988,16 +920,11 @@ class ZoneOutsideTempTile(ZoneSensor):
         return "ext_temperature_entity"
 
     def update_properties(self, device):
-        """Update the properties of the TechOutsideTempTile object.
+        """Update native attributes from the provided tile payload.
 
         Args:
-        device: dict containing information about the device
-
-        Returns:
-        None
-
+            device: Tile dictionary containing temperature information.
         """
-        # Set the name based on the device id
         self._name = "outside_" + str(device[CONF_ID])
 
         if device[CONF_PARAMS][VALUE] is not None:
@@ -1040,16 +967,11 @@ class ZoneStateSensor(BinarySensorEntity, ZoneSensor):
         return attributes
 
     def update_properties(self, device):
-        """Update the properties of the ZoneStateSensor object.
+        """Update native attributes from the provided zone payload.
 
         Args:
-        device (dict): The device information.
-
-        Returns:
-        None
-
+            device: Zone dictionary containing the latest telemetry values.
         """
-        # Update the name of the device
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         self.attrs[ZONE_STATE] = device[CONF_ZONE][ZONE_STATE]
