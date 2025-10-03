@@ -1,6 +1,8 @@
 """Support for Tech HVAC system."""
 
-import itertools
+from __future__ import annotations
+
+from collections.abc import Callable, Iterable
 import logging
 from typing import Any, cast
 
@@ -79,409 +81,197 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up entry."""
-    _LOGGER.debug(
-        "Setting up sensor entry, controller udid: %s",
-        config_entry.data[CONTROLLER][UDID],
-    )
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]
-    controller_udid = config_entry.data[CONTROLLER][UDID]
+    """Set up Tech sensor entities for the provided config entry.
 
+    Args:
+        hass: Home Assistant instance.
+        config_entry: Integration entry containing controller metadata.
+        async_add_entities: Callback used to register entities with Home Assistant.
+
+    """
+    controller_udid = config_entry.data[CONTROLLER][UDID]
+    _LOGGER.debug("Setting up sensor entry, controller udid: %s", controller_udid)
+
+    coordinator = hass.data[DOMAIN][config_entry.entry_id]
     zones = await coordinator.api.get_module_zones(controller_udid)
     tiles = await coordinator.api.get_module_tiles(controller_udid)
 
-    entities = []
-    for t in tiles:
-        tile = tiles[t]
-        if tile[VISIBILITY] is False or tile.get(WORKING_STATUS, True) is False:
-            continue
-        if tile[CONF_TYPE] == TYPE_TEMPERATURE:
-            signal_strength = tile[CONF_PARAMS][SIGNAL_STRENGTH]
-            battery_level = tile[CONF_PARAMS][BATTERY_LEVEL]
-            create_devices = False
-            if signal_strength not in (None, "null"):
-                create_devices = True
-                entities.append(
-                    TileTemperatureSignalSensor(
-                        tile, coordinator, config_entry, create_devices
-                    )
-                )
-            if battery_level not in (None, "null"):
-                create_devices = True
-                entities.append(
-                    TileTemperatureBatterySensor(
-                        tile, coordinator, config_entry, create_devices
-                    )
-                )
+    zone_entities = [
+        entity
+        for zone in _iter_mapping(zones)
+        for entity in _build_zone_entities(zone, coordinator, config_entry)
+    ]
+
+    tile_entities = [
+        entity
+        for tile in _iter_mapping(tiles)
+        for entity in _build_tile_entities(tile, coordinator, config_entry)
+    ]
+
+    async_add_entities([*tile_entities, *zone_entities], True)
+
+
+def _iter_mapping(mapping: dict[Any, Any] | Iterable[Any]) -> Iterable[Any]:
+    """Yield mapping values regardless of whether ``mapping`` is a dict or list."""
+    if not mapping:
+        return ()
+    if isinstance(mapping, dict):
+        return mapping.values()
+    return mapping
+
+
+def _build_zone_entities(
+    zone: dict[str, Any],
+    coordinator: TechCoordinator,
+    config_entry: ConfigEntry,
+) -> list[CoordinatorEntity]:
+    """Create coordinator entities for a single zone payload."""
+
+    entities: list[CoordinatorEntity] = []
+    zone_state = zone.get(CONF_ZONE, {})
+
+    if zone_state.get(BATTERY_LEVEL) is not None:
+        entities.append(ZoneBatterySensor(zone, coordinator, config_entry))
+
+    if zone_state.get("currentTemperature") is not None:
+        entities.append(ZoneTemperatureSensor(zone, coordinator, config_entry))
+
+    if zone_state.get(ZONE_STATE) is not None:
+        entities.append(ZoneStateSensor(zone, coordinator, config_entry))
+
+    humidity = zone_state.get("humidity")
+    if humidity is not None and humidity >= 0:
+        entities.append(ZoneHumiditySensor(zone, coordinator, config_entry))
+
+    if zone_state.get(SIGNAL_STRENGTH) is not None:
+        entities.append(ZoneSignalStrengthSensor(zone, coordinator, config_entry))
+
+    for idx, _ in enumerate(zone.get(ACTUATORS, [])):
+        entities.append(ZoneActuatorSensor(zone, coordinator, config_entry, idx))
+
+    for idx, _ in enumerate(zone.get(WINDOW_SENSORS, [])):
+        entities.append(ZoneWindowSensor(zone, coordinator, config_entry, idx))
+
+    return entities
+
+
+TileBuilder = Callable[
+    [dict[str, Any], TechCoordinator, ConfigEntry], list[CoordinatorEntity]
+]
+
+
+def _build_tile_entities(
+    tile: dict[str, Any],
+    coordinator: TechCoordinator,
+    config_entry: ConfigEntry,
+) -> list[CoordinatorEntity]:
+    """Create coordinator entities for a single tile payload."""
+
+    if not tile.get(VISIBILITY, False) or not tile.get(WORKING_STATUS, True):
+        return []
+
+    builder = _TILE_ENTITY_BUILDERS.get(tile[CONF_TYPE])
+    if builder is None:
+        return []
+    return builder(tile, coordinator, config_entry)
+
+
+def _build_temperature_tile(
+    tile: dict[str, Any],
+    coordinator: TechCoordinator,
+    config_entry: ConfigEntry,
+) -> list[CoordinatorEntity]:
+    """Create entities for a temperature tile and its optional sensors."""
+    params = tile.get(CONF_PARAMS, {})
+
+    def _has_value(value: Any) -> bool:
+        return value not in (None, "null")
+
+    create_device = any(
+        _has_value(params.get(key)) for key in (SIGNAL_STRENGTH, BATTERY_LEVEL)
+    )
+
+    entities: list[CoordinatorEntity] = [
+        TileTemperatureSensor(tile, coordinator, config_entry, create_device)
+    ]
+
+    if _has_value(params.get(SIGNAL_STRENGTH)):
+        entities.append(
+            TileTemperatureSignalSensor(tile, coordinator, config_entry, create_device)
+        )
+    if _has_value(params.get(BATTERY_LEVEL)):
+        entities.append(
+            TileTemperatureBatterySensor(tile, coordinator, config_entry, create_device)
+        )
+
+    return entities
+
+
+def _build_valve_tile(
+    tile: dict[str, Any],
+    coordinator: TechCoordinator,
+    config_entry: ConfigEntry,
+) -> list[CoordinatorEntity]:
+    """Create valve-related entities for a tile payload."""
+    entities: list[CoordinatorEntity] = [
+        TileValveSensor(tile, coordinator, config_entry)
+    ]
+
+    for valve_sensor in (
+        VALVE_SENSOR_RETURN_TEMPERATURE,
+        VALVE_SENSOR_SET_TEMPERATURE,
+        VALVE_SENSOR_CURRENT_TEMPERATURE,
+    ):
+        if tile[CONF_PARAMS].get(valve_sensor["state_key"]) is not None:
             entities.append(
-                TileTemperatureSensor(tile, coordinator, config_entry, create_devices)
+                TileValveTemperatureSensor(
+                    tile, coordinator, config_entry, valve_sensor
+                )
             )
-        if tile[CONF_TYPE] == TYPE_TEMPERATURE_CH:
-            entities.append(TileWidgetSensor(tile, coordinator, config_entry))
-        if tile[CONF_TYPE] == TYPE_FAN:
-            entities.append(TileFanSensor(tile, coordinator, config_entry))
-        if tile[CONF_TYPE] == TYPE_VALVE:
-            entities.append(TileValveSensor(tile, coordinator, config_entry))
-            for valve_sensor in [
-                VALVE_SENSOR_RETURN_TEMPERATURE,
-                VALVE_SENSOR_SET_TEMPERATURE,
-                VALVE_SENSOR_CURRENT_TEMPERATURE,
-            ]:
-                if tile[CONF_PARAMS].get(valve_sensor["state_key"]) is not None:
-                    entities.append(
-                        TileValveTemperatureSensor(
-                            tile, coordinator, config_entry, valve_sensor
-                        )
-                    )
-        if tile[CONF_TYPE] == TYPE_MIXING_VALVE:
-            entities.append(TileMixingValveSensor(tile, coordinator, config_entry))
-        if tile[CONF_TYPE] == TYPE_FUEL_SUPPLY:
-            entities.append(TileFuelSupplySensor(tile, coordinator, config_entry))
-        if tile[CONF_TYPE] == TYPE_TEXT:
-            entities.append(TileTextSensor(tile, coordinator, config_entry))
-        if tile[CONF_TYPE] == TYPE_OPEN_THERM:
-            for openThermEntity in [
-                OPENTHERM_CURRENT_TEMP,
-                OPENTHERM_SET_TEMP,
-                OPENTHERM_CURRENT_TEMP_DHW,
-                OPENTHERM_SET_TEMP_DHW,
-            ]:
-                if tile[CONF_PARAMS].get(openThermEntity["state_key"]) is not None:
-                    entities.append(
-                        TileOpenThermSensor(
-                            tile, coordinator, config_entry, openThermEntity
-                        )
-                    )
 
-    async_add_entities(entities, True)
-
-    # async_add_entities(
-    #     [
-    #         ZoneTemperatureSensor(zones[zone], coordinator, controller_udid, model)
-    #         for zone in zones
-    #     ],
-    #     True,
-    # )
-
-    battery_devices = map_to_battery_sensors(zones, coordinator, config_entry)
-    temperature_sensors = map_to_temperature_sensors(zones, coordinator, config_entry)
-    zone_state_sensors = map_to_zone_state_sensors(zones, coordinator, config_entry)
-    humidity_sensors = map_to_humidity_sensors(zones, coordinator, config_entry)
-    actuator_sensors = map_to_actuator_sensors(zones, coordinator, config_entry)
-    window_sensors = map_to_window_sensors(zones, coordinator, config_entry)
-    signal_strength_sensors = map_to_signal_strength_sensors(
-        zones, coordinator, config_entry
-    )
-    # tile_sensors = map_to_tile_sensors(tiles, api, config_entry)
-
-    async_add_entities(
-        itertools.chain(
-            battery_devices,
-            temperature_sensors,
-            zone_state_sensors,
-            humidity_sensors,  # , tile_sensors
-            actuator_sensors,
-            window_sensors,
-            signal_strength_sensors,
-        ),
-        True,
-    )
-
-
-def map_to_battery_sensors(zones, coordinator, config_entry):
-    """Map the battery-operating devices in the zones to TechBatterySensor objects.
-
-    Args:
-    zones: list of devices
-    coordinator: the api object
-    config_entry: the config entry object
-    model: device model
-
-    Returns:
-    - list of TechBatterySensor objects
-
-    """
-    devices = filter(
-        lambda deviceIndex: is_battery_operating_device(zones[deviceIndex]), zones
-    )
-    return (
-        ZoneBatterySensor(zones[deviceIndex], coordinator, config_entry)
-        for deviceIndex in devices
-    )
-
-
-def is_battery_operating_device(device) -> bool:
-    """Check if the device is operating on battery.
-
-    Args:
-    device: dict - The device information.
-
-    Returns:
-    bool - True if the device is operating on battery, False otherwise.
-
-    """
-    return device[CONF_ZONE][BATTERY_LEVEL] is not None
-
-
-def map_to_temperature_sensors(zones, coordinator, config_entry):
-    """Map the zones to temperature sensors using the provided API and config entry.
-
-    Args:
-    zones (list): List of zones
-    coordinator (object): The API object
-    config_entry (object): The config entry object
-    model: device model
-
-    Returns:
-    list: List of TechTemperatureSensor objects
-
-    """
-    devices = filter(
-        lambda deviceIndex: is_temperature_operating_device(zones[deviceIndex]), zones
-    )
-    return (
-        ZoneTemperatureSensor(zones[deviceIndex], coordinator, config_entry)
-        for deviceIndex in devices
-    )
-
-
-def is_temperature_operating_device(device) -> bool:
-    """Check if the device's current temperature is available.
-
-    Args:
-        device (dict): The device information.
-
-    Returns:
-        bool: True if the current temperature is available, False otherwise.
-
-    """
-    return device[CONF_ZONE]["currentTemperature"] is not None
-
-
-def map_to_zone_state_sensors(zones, coordinator, config_entry):
-    """Map the zones to zone state sensors using the provided API and config entry.
-
-    Args:
-    zones (list): List of zones
-    coordinator (object): The API object
-    config_entry (object): The config entry object
-    model: device model
-
-    Returns:
-    list: List of ZoneStateSensor objects
-
-    """
-    devices = filter(
-        lambda deviceIndex: is_zone_state_operating_device(zones[deviceIndex]), zones
-    )
-    return (
-        ZoneStateSensor(zones[deviceIndex], coordinator, config_entry)
-        for deviceIndex in devices
-    )
-
-
-def is_zone_state_operating_device(device) -> bool:
-    """Check if the device's current zone state is available.
-
-    Args:
-        device (dict): The device information.
-
-    Returns:
-        bool: True if the current zone state is available, False otherwise.
-
-    """
-    return device[CONF_ZONE][ZONE_STATE] is not None
-
-
-def map_to_humidity_sensors(zones, coordinator, config_entry):
-    """Map zones to humidity sensors.
-
-    Args:
-    zones: list of zones
-    coordinator: API to interact with humidity sensors
-    config_entry: configuration entry for the sensors
-    model: device model
-
-    Returns:
-    list of TechHumiditySensor instances
-
-    """
-    # Filter devices that are humidity operating devices
-    devices = filter(
-        lambda deviceIndex: is_humidity_operating_device(zones[deviceIndex]), zones
-    )
-    # Map devices to TechHumiditySensor instances
-    return (
-        ZoneHumiditySensor(zones[deviceIndex], coordinator, config_entry)
-        for deviceIndex in devices
-    )
-
-
-def is_humidity_operating_device(device) -> bool:
-    """Check if the device is operating based on the humidity level in its zone.
-
-    Args:
-    device: dict - The device information containing the zone and humidity level.
-
-    Returns:
-    bool - True if the device is operating based on the humidity level, False otherwise.
-
-    """
-    return (
-        device[CONF_ZONE]["humidity"] is not None and device[CONF_ZONE]["humidity"] >= 0
-    )
-
-
-def map_to_actuator_sensors(zones, coordinator, config_entry):
-    """Map zones to actuator sensors.
-
-    Args:
-    zones: list of zones
-    coordinator: API to interact with actuators
-    config_entry: configuration entry for the sensors
-
-    Returns:
-    list of ZoneActuatorSensor instances
-
-    """
-    # Filter devices that are actuator operating devices
-    devices = [
-        deviceIndex
-        for deviceIndex in zones
-        if is_actuator_operating_device(zones[deviceIndex])
-    ]
-
-    return [
-        ZoneActuatorSensor(zones[deviceIndex], coordinator, config_entry, idx)
-        for deviceIndex in devices
-        for idx in range(len(zones[deviceIndex][ACTUATORS]))
-    ]
-
-
-def is_actuator_operating_device(device) -> bool:
-    """Check if the device has any actuators.
-
-    Args:
-    device: dict - The device information containing the zone and humidity level.
-
-    Returns:
-    bool - True if the device has any actuators, False otherwise.
-
-    """
-    return len(device[ACTUATORS]) > 0
-
-
-def map_to_window_sensors(zones, coordinator, config_entry):
-    """Map zones to window sensors.
-
-    Args:
-    zones: list of zones
-    coordinator: API to interact with actuators
-    config_entry: configuration entry for the sensors
-
-    Returns:
-    list of ZoneWindowSensor instances
-
-    """
-    # Filter devices that are window sensors
-    devices = [
-        deviceIndex
-        for deviceIndex in zones
-        if is_window_operating_device(zones[deviceIndex])
-    ]
-
-    return [
-        ZoneWindowSensor(zones[deviceIndex], coordinator, config_entry, idx)
-        for deviceIndex in devices
-        for idx in range(len(zones[deviceIndex][WINDOW_SENSORS]))
-    ]
-
-
-def is_window_operating_device(device) -> bool:
-    """Check if the device has any window sensors.
-
-    Args:
-    device: dict - The device information containing the zone.
-
-    Returns:
-    bool - True if the device has any windows sensors, False otherwise.
-
-    """
-    return len(device[WINDOW_SENSORS]) > 0
-
-
-def map_to_tile_sensors(tiles, coordinator, config_entry):
-    """Map tiles to corresponding sensor objects based on the device type and create a list of sensor objects.
-
-    Args:
-    tiles: List of tiles
-    coordinator: API object
-    config_entry: Configuration entry object
-    model: device model
-
-    Returns:
-    List of sensor objects
-
-    """
-    # Filter devices with outside temperature
-    devices_outside_temperature = filter(
-        lambda deviceIndex: is_outside_temperature_tile(tiles[deviceIndex]), tiles
-    )
-
-    # Create sensor objects for devices with outside temperature
-    return (
-        ZoneOutsideTempTile(tiles[deviceIndex], coordinator, config_entry)
-        for deviceIndex in devices_outside_temperature
-    )
-
-
-def is_outside_temperature_tile(device) -> bool:
-    """Check if the device is a temperature sensor.
-
-    Args:
-    device (dict): The device information.
-
-    Returns:
-    bool: True if the device is a temperature sensor, False otherwise.
-
-    """
-    return device[CONF_PARAMS][CONF_DESCRIPTION] == "Temperature sensor"
-
-
-def map_to_signal_strength_sensors(zones, coordinator, config_entry):
-    """Map the signal strength operating devices in the zones to ZoneSignalStrengthSensor objects.
-
-    Args:
-    zones: list of devices
-    coordinator: the api object
-    config_entry: the config entry object
-    model: device model
-
-    Returns:
-    - list of TechBatterySensor objects
-
-    """
-    devices = filter(
-        lambda deviceIndex: is_signal_strength_operating_device(zones[deviceIndex]),
-        zones,
-    )
-    return (
-        ZoneSignalStrengthSensor(zones[deviceIndex], coordinator, config_entry)
-        for deviceIndex in devices
-    )
-
-
-def is_signal_strength_operating_device(device) -> bool:
-    """Check if the device is operating on battery.
-
-    Args:
-    device: dict - The device information.
-
-    Returns:
-    bool - True if the device is operating on battery, False otherwise.
-
-    """
-    return device[CONF_ZONE][SIGNAL_STRENGTH] is not None
+    return entities
+
+
+def _build_open_therm_tile(
+    tile: dict[str, Any],
+    coordinator: TechCoordinator,
+    config_entry: ConfigEntry,
+) -> list[CoordinatorEntity]:
+    """Create OpenTherm entities for a tile payload."""
+    entities: list[CoordinatorEntity] = []
+    for description in (
+        OPENTHERM_CURRENT_TEMP,
+        OPENTHERM_SET_TEMP,
+        OPENTHERM_CURRENT_TEMP_DHW,
+        OPENTHERM_SET_TEMP_DHW,
+    ):
+        if tile[CONF_PARAMS].get(description["state_key"]) is not None:
+            entities.append(
+                TileOpenThermSensor(tile, coordinator, config_entry, description)
+            )
+    return entities
+
+
+_TILE_ENTITY_BUILDERS: dict[int, TileBuilder] = {
+    TYPE_TEMPERATURE: _build_temperature_tile,
+    TYPE_TEMPERATURE_CH: lambda tile, coordinator, config_entry: [
+        TileWidgetSensor(tile, coordinator, config_entry)
+    ],
+    TYPE_FAN: lambda tile, coordinator, config_entry: [
+        TileFanSensor(tile, coordinator, config_entry)
+    ],
+    TYPE_VALVE: _build_valve_tile,
+    TYPE_MIXING_VALVE: lambda tile, coordinator, config_entry: [
+        TileMixingValveSensor(tile, coordinator, config_entry)
+    ],
+    TYPE_FUEL_SUPPLY: lambda tile, coordinator, config_entry: [
+        TileFuelSupplySensor(tile, coordinator, config_entry)
+    ],
+    TYPE_TEXT: lambda tile, coordinator, config_entry: [
+        TileTextSensor(tile, coordinator, config_entry)
+    ],
+    TYPE_OPEN_THERM: _build_open_therm_tile,
+}
 
 
 class TechBatterySensor(CoordinatorEntity, SensorEntity):
@@ -511,13 +301,10 @@ class TechBatterySensor(CoordinatorEntity, SensorEntity):
         self.update_properties(device)
 
     def update_properties(self, device):
-        """Update properties from the TechBatterySensor object.
+        """Update native values from the provided zone payload.
 
         Args:
-        device: dict, the device data containing information about the device
-
-        Returns:
-        None
+            device: Zone dictionary containing the latest telemetry values.
 
         """
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
@@ -546,13 +333,7 @@ class TechBatterySensor(CoordinatorEntity, SensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
-        """Get device information.
-
-        Returns:
-        dict: A dictionary containing device information.
-
-        """
-        # Return device information
+        """Return Home Assistant ``DeviceInfo`` for the associated controller."""
         return {
             ATTR_IDENTIFIERS: {
                 (DOMAIN, self._unique_id)
@@ -592,16 +373,12 @@ class TechTemperatureSensor(CoordinatorEntity, SensorEntity):
         self.update_properties(device)
 
     def update_properties(self, device):
-        """Update the properties of the TechTemperatureSensor object.
+        """Update native values from the provided zone payload.
 
         Args:
-        device: dict, the device data containing information about the device
-
-        Returns:
-        None
+            device: Zone dictionary containing the latest telemetry values.
 
         """
-        # Set the name of the device
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Check if the current temperature is available, and update the native value accordingly
@@ -633,13 +410,7 @@ class TechTemperatureSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
-        """Get device information.
-
-        Returns:
-        dict: A dictionary containing device information.
-
-        """
-        # Return device information
+        """Return Home Assistant ``DeviceInfo`` for the associated controller."""
         return {
             ATTR_IDENTIFIERS: {
                 (DOMAIN, self._unique_id)
@@ -685,16 +456,12 @@ class TechOutsideTempTile(CoordinatorEntity, SensorEntity):
         )
 
     def update_properties(self, device):
-        """Update the properties of the TechOutsideTempTile object.
+        """Update native values from an outside temperature tile payload.
 
         Args:
-        device: dict containing information about the device
-
-        Returns:
-        None
+            device: Tile dictionary containing temperature information.
 
         """
-        # Set the name based on the device id
         self._name = "outside_" + str(device[CONF_ID])
 
         if device[CONF_PARAMS][VALUE] is not None:
@@ -727,13 +494,7 @@ class TechOutsideTempTile(CoordinatorEntity, SensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
-        """Get device information.
-
-        Returns:
-        dict: A dictionary containing device information.
-
-        """
-        # Return device information
+        """Return Home Assistant ``DeviceInfo`` for the associated controller."""
         return {
             ATTR_IDENTIFIERS: {
                 (DOMAIN, self._unique_id)
@@ -773,16 +534,12 @@ class TechHumiditySensor(CoordinatorEntity, SensorEntity):
         self.update_properties(device)
 
     def update_properties(self, device):
-        """Update the properties of the TechHumiditySensor object.
+        """Update native values from the provided zone payload.
 
         Args:
-        device (dict): The device information.
-
-        Returns:
-        None
+            device: Zone dictionary containing the latest telemetry values.
 
         """
-        # Update the name of the device
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Check if the humidity value is not zero and update the native value attribute accordingly
@@ -814,13 +571,7 @@ class TechHumiditySensor(CoordinatorEntity, SensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
-        """Get device information.
-
-        Returns:
-        dict: A dictionary containing device information.
-
-        """
-        # Return device information
+        """Return Home Assistant ``DeviceInfo`` for the associated controller."""
         return {
             ATTR_IDENTIFIERS: {
                 (DOMAIN, self._unique_id)
@@ -863,16 +614,12 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
         self.update_properties(device)
 
     def update_properties(self, device):
-        """Update the properties of the device based on the provided device information.
+        """Update cached zone values from the latest coordinator payload.
 
         Args:
-        device: dict, the device information containing description, zone, setTemperature, and currentTemperature
-
-        Returns:
-        None
+            device: Zone dictionary containing description and telemetry data.
 
         """
-        # Update name property
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Update target_temperature property
@@ -895,13 +642,7 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
-        """Get device information.
-
-        Returns:
-        dict: A dictionary containing device information.
-
-        """
-        # Return device information
+        """Return Home Assistant ``DeviceInfo`` for the associated controller."""
         return {
             ATTR_IDENTIFIERS: {
                 (DOMAIN, self._unique_id)
@@ -935,16 +676,12 @@ class ZoneTemperatureSensor(ZoneSensor):
         return "temperature_entity"
 
     def update_properties(self, device):
-        """Update the properties of the TechTemperatureSensor object.
+        """Update native values from the provided zone payload.
 
         Args:
-        device: dict, the device data containing information about the device
-
-        Returns:
-        None
+            device: Zone dictionary containing the latest telemetry values.
 
         """
-        # Set the name of the device
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Check if the current temperature is available, and update the native value accordingly
@@ -972,13 +709,10 @@ class ZoneBatterySensor(ZoneSensor):
         return f"{self._unique_id}_zone_battery"
 
     def update_properties(self, device):
-        """Update properties from the TechBatterySensor object.
+        """Update native values from the provided zone payload.
 
         Args:
-        device: dict, the device data containing information about the device
-
-        Returns:
-        None
+            device: Zone dictionary containing the latest telemetry values.
 
         """
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
@@ -1008,13 +742,10 @@ class ZoneSignalStrengthSensor(ZoneSensor):
         return icon_for_signal_level(self.state)
 
     def update_properties(self, device):
-        """Update properties from the ZoneSignalStrengthSensor object.
+        """Update native values from the provided zone payload.
 
         Args:
-        device: dict, the device data containing information about the device
-
-        Returns:
-        None
+            device: Zone dictionary containing the latest telemetry values.
 
         """
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
@@ -1100,16 +831,12 @@ class ZoneActuatorSensor(ZoneSensor):
         return attributes
 
     def update_properties(self, device):
-        """Update the properties of the ZoneActuatorSensor object.
+        """Update native attributes from the provided zone payload.
 
         Args:
-        device (dict): The device information.
-
-        Returns:
-        None
+            device: Zone dictionary containing the latest telemetry values.
 
         """
-        # Update the name of the device
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Update the native value attribute
@@ -1170,16 +897,12 @@ class ZoneWindowSensor(BinarySensorEntity, ZoneSensor):
         return attributes
 
     def update_properties(self, device):
-        """Update the properties of the ZoneWindowSensor object.
+        """Update native attributes from the provided zone payload.
 
         Args:
-        device (dict): The device information.
-
-        Returns:
-        None
+            device: Zone dictionary containing the latest telemetry values.
 
         """
-        # Update the name of the device
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Update battery and signal strength
@@ -1212,16 +935,12 @@ class ZoneOutsideTempTile(ZoneSensor):
         return "ext_temperature_entity"
 
     def update_properties(self, device):
-        """Update the properties of the TechOutsideTempTile object.
+        """Update native attributes from the provided tile payload.
 
         Args:
-        device: dict containing information about the device
-
-        Returns:
-        None
+            device: Tile dictionary containing temperature information.
 
         """
-        # Set the name based on the device id
         self._name = "outside_" + str(device[CONF_ID])
 
         if device[CONF_PARAMS][VALUE] is not None:
@@ -1264,16 +983,12 @@ class ZoneStateSensor(BinarySensorEntity, ZoneSensor):
         return attributes
 
     def update_properties(self, device):
-        """Update the properties of the ZoneStateSensor object.
+        """Update native attributes from the provided zone payload.
 
         Args:
-        device (dict): The device information.
-
-        Returns:
-        None
+            device: Zone dictionary containing the latest telemetry values.
 
         """
-        # Update the name of the device
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         self.attrs[ZONE_STATE] = device[CONF_ZONE][ZONE_STATE]

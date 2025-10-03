@@ -18,14 +18,22 @@ _LOGGER = logging.getLogger(__package__)
 
 
 class TechCoordinator(DataUpdateCoordinator):
-    """TECH API data update coordinator."""
+    """Coordinate periodic refreshes from the Tech HTTP API."""
 
     config_entry: ConfigEntry
 
     def __init__(
         self, hass: HomeAssistant, session: ClientSession, user_id: str, token: str
     ) -> None:
-        """Initialize my coordinator."""
+        """Initialise the coordinator responsible for a single Tech account.
+
+        Args:
+            hass: Home Assistant instance.
+            session: Shared aiohttp client session.
+            user_id: Tech platform user identifier.
+            token: Bearer token returned by the authentication flow.
+
+        """
         super().__init__(
             hass,
             _LOGGER,
@@ -37,7 +45,16 @@ class TechCoordinator(DataUpdateCoordinator):
         self.api = Tech(session, user_id, token)
 
     async def _async_update_data(self) -> dict:
-        """Fetch data from TECH API endpoint(s)."""
+        """Fetch the latest module data for the configured controller.
+
+        Returns:
+            Fresh module payload containing ``zones`` and ``tiles`` data.
+
+        Raises:
+            ConfigEntryAuthFailed: If the API indicates that the token expired.
+            UpdateFailed: If any other API error occurs during refresh.
+
+        """
 
         _LOGGER.debug(
             "Updating data for: %s", str(self.config_entry.data[CONTROLLER][CONF_NAME])

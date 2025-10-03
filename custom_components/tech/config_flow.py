@@ -1,22 +1,33 @@
 """Config flow for Tech Sterowniki integration."""
 
 import logging
-import uuid
 from types import MappingProxyType
 from typing import Any
+import uuid
 
 import voluptuous as vol
+
 from homeassistant import config_entries, core, exceptions
-from homeassistant.config_entries import (SOURCE_USER, ConfigEntry,
-                                          ConfigFlowResult)
-from homeassistant.const import (ATTR_ID, CONF_NAME, CONF_PASSWORD, CONF_TOKEN,
-                                 CONF_USERNAME)
-from homeassistant.helpers import aiohttp_client
-from homeassistant.helpers import config_validation as cv
+from homeassistant.config_entries import SOURCE_USER, ConfigEntry, ConfigFlowResult
+from homeassistant.const import (
+    ATTR_ID,
+    CONF_NAME,
+    CONF_PASSWORD,
+    CONF_TOKEN,
+    CONF_USERNAME,
+)
+from homeassistant.helpers import aiohttp_client, config_validation as cv
 
 from . import assets
-from .const import (CONTROLLER, CONTROLLERS, DOMAIN, INCLUDE_HUB_IN_NAME, UDID,
-                    USER_ID, VER)
+from .const import (
+    CONTROLLER,
+    CONTROLLERS,
+    DOMAIN,
+    INCLUDE_HUB_IN_NAME,
+    UDID,
+    USER_ID,
+    VER,
+)
 from .tech import Tech, TechError, TechLoginError
 
 _LOGGER = logging.getLogger(__name__)
@@ -30,7 +41,15 @@ DATA_SCHEMA = vol.Schema(
 
 
 def controllers_schema(controllers) -> vol.Schema:
-    """Return the data schema for controllers."""
+    """Build a selection form for the provided controller list.
+
+    Args:
+        controllers: Sequence returned by the Tech API describing modules.
+
+    Returns:
+        Voluptuous schema that lets the user pick controllers to configure.
+
+    """
 
     return vol.Schema(
         {
@@ -51,9 +70,19 @@ def controllers_schema(controllers) -> vol.Schema:
 
 
 async def validate_input(hass: core.HomeAssistant, data):
-    """Validate the user input allows us to connect.
+    """Validate provided credentials against the Tech API.
 
-    Data has the keys from DATA_SCHEMA with values provided by the user.
+    Args:
+        hass: Home Assistant instance.
+        data: Mapping containing ``CONF_USERNAME`` and ``CONF_PASSWORD``.
+
+    Returns:
+        A dictionary with API metadata (user id, token, controllers) suitable
+        for storing in a config entry.
+
+    Raises:
+        InvalidAuth: If the credentials are rejected by the API.
+
     """
 
     http_session = aiohttp_client.async_get_clientsession(hass)
@@ -89,7 +118,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _async_finish_controller(
         self, user_input: dict[str, str]
     ) -> ConfigFlowResult:
-        """Finish setting up controllers."""
+        """Create config entries for the selected controller identifiers.
+
+        Args:
+            user_input: Form payload returning controller ids and options.
+
+        Returns:
+            Config flow result signalling completion, continuation, or abort.
+
+        """
 
         include_name: bool = INCLUDE_HUB_IN_NAME in user_input
 
@@ -164,7 +201,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self,
         user_input: dict[str, str] | None = None,
     ) -> ConfigFlowResult:
-        """Handle the selection of controllers."""
+        """Display the controller selection form or persist the choice.
+
+        Args:
+            user_input: User-provided selection of controller identifiers.
+
+        Returns:
+            Next config flow step or the final entry creation result.
+
+        """
         if not user_input:
             if self._init_info is not None:
                 self._controllers = self._create_controllers_array(
@@ -181,7 +226,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, str] | None = None
     ) -> ConfigFlowResult:
-        """Handle the initial step."""
+        """Handle the initial credential entry step.
+
+        Args:
+            user_input: Optional mapping with username and password.
+
+        Returns:
+            Either the next flow step or the rendered login form.
+
+        """
         errors = {}
         if user_input is not None:
             try:
@@ -204,6 +257,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     def _create_config_entry(self, controller: dict) -> ConfigEntry:
+        """Instantiate an in-memory config entry for ``controller``.
+
+        Args:
+            controller: Controller payload returned by the Tech API.
+
+        Returns:
+            Unsaved :class:`ConfigEntry` instance mirroring ``controller``.
+
+        """
         return ConfigEntry(
             data=controller,
             title=controller[CONTROLLER][CONF_NAME],
@@ -219,6 +281,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     def _create_controllers_array(self, validated_input: dict[str, Any]) -> list[dict]:
+        """Convert API response into config-entry-ready controller payloads."""
         return [
             self._create_controller_dict(validated_input, controller_dict)
             for controller_dict in validated_input[CONTROLLERS]
@@ -227,6 +290,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def _create_controller_dict(
         self, validated_input: dict[str, str], controller_dict: dict[str, str]
     ) -> dict[str, Any]:
+        """Compose controller metadata shared across config entries."""
         return {
             USER_ID: validated_input[USER_ID],
             CONF_TOKEN: validated_input[CONF_TOKEN],
