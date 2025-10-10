@@ -1254,13 +1254,22 @@ class TileWidgetSensor(TileSensor, SensorEntity):
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(self, device, coordinator, config_entry) -> None:
+        # wybór widgeta na podstawie txtId
+        if device[CONF_PARAMS].get("widget1", {}).get("txtId", 0) != 0:
+            self._widget = "widget1"
+        elif device[CONF_PARAMS].get("widget2", {}).get("txtId", 0) != 0:
+            self._widget = "widget2"
+        else:
+            self._widget = "widget1"
+
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
+
         self._name = (
             self._config_entry.title + " "
             if self._config_entry.data[INCLUDE_HUB_IN_NAME]
             else ""
-        ) + assets.get_text(device[CONF_PARAMS]["widget1"]["txtId"])
+        ) + assets.get_text(device[CONF_PARAMS][self._widget]["txtId"])
 
     @property
     def unique_id(self) -> str:
@@ -1274,7 +1283,7 @@ class TileWidgetSensor(TileSensor, SensorEntity):
 
     def get_state(self, device) -> Any:
         """Get the state of the device."""
-        return device[CONF_PARAMS]["widget1"][VALUE] / 10
+        return device[CONF_PARAMS][self._widget][VALUE] / 10
 
 
 class TileValveSensor(TileSensor, SensorEntity):
