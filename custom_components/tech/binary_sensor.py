@@ -35,7 +35,14 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up entry."""
+    """Set up Tech binary sensors for a newly created config entry.
+
+    Args:
+        hass: Home Assistant instance.
+        config_entry: Integration entry containing controller metadata.
+        async_add_entities: Callback used to register entities with Home Assistant.
+
+    """
     _LOGGER.debug("Setting up entry for sensors…")
     controller = config_entry.data[CONTROLLER]
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
@@ -67,12 +74,12 @@ async def async_setup_entry(
 
 
 class TileBinarySensor(TileEntity, binary_sensor.BinarySensorEntity):
-    """Representation of a TileBinarySensor."""
+    """Base class for Tech tiles that expose binary sensor semantics."""
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def get_state(self, device):
-        """Get the state of the device."""
+        """Return the raw binary state extracted from ``device`` data."""
 
     @property
     def unique_id(self) -> str:
@@ -96,7 +103,15 @@ class RelaySensor(TileBinarySensor):
     def __init__(
         self, device, coordinator: TechCoordinator, config_entry, device_class=None
     ) -> None:
-        """Initialize the tile relay sensor."""
+        """Initialize the relay-backed binary sensor tile.
+
+        Args:
+            device: Tile payload returned from the Tech API.
+            coordinator: Shared Tech data coordinator instance.
+            config_entry: Config entry providing controller metadata.
+            device_class: Optional Home Assistant device class for the sensor.
+
+        """
         TileBinarySensor.__init__(self, device, coordinator, config_entry)
         self._attr_device_class = device_class
         self._coordinator = coordinator
@@ -107,5 +122,5 @@ class RelaySensor(TileBinarySensor):
             self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
 
     def get_state(self, device):
-        """Get device state."""
+        """Return the on/off working status for the provided ``device`` payload."""
         return device[CONF_PARAMS]["workingStatus"]

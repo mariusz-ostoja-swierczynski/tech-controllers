@@ -1,4 +1,4 @@
-"""TileEntity."""
+"""Shared base entity helpers for Tech tile-derived devices."""
 
 from abc import abstractmethod
 import logging
@@ -25,11 +25,17 @@ class TileEntity(
     _attr_has_entity_name = True
 
     def __init__(self, device, coordinator: TechCoordinator, config_entry) -> None:
-        """Initialize the tile entity."""
+        """Initialise common attributes for a Tech tile entity.
+
+        Args:
+            device: Tile payload returned by the Tech API.
+            coordinator: Shared Tech data coordinator instance.
+            config_entry: Config entry that owns the coordinator.
+
+        """
         super().__init__(coordinator)
         self._config_entry = config_entry
         self._udid = config_entry.data[CONTROLLER][UDID]
-        self._coordinator = coordinator
         self._id = device[CONF_ID]
         self._unique_id = self._udid + "_" + str(device[CONF_ID])
         self._model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
@@ -52,22 +58,19 @@ class TileEntity(
 
     @property
     def state(self):
-        """Return the state of the sensor."""
+        """Return the cached state reported by the Tech API."""
         return self._state
 
     @abstractmethod
     def get_state(self, device):
-        """Get device state."""
+        """Extract the integration-specific state from ``device`` data."""
         raise NotImplementedError("Must override get_state")
 
     def update_properties(self, device):
-        """Update the properties of the device based on the provided device information.
+        """Refresh entity attributes using the latest tile payload.
 
         Args:
-        device: dict, the device information containing description, zone, setTemperature, and currentTemperature
-
-        Returns:
-        None
+            device: Tile dictionary with the most recent values.
 
         """
         # Update _state property
@@ -76,5 +79,5 @@ class TileEntity(
     @callback
     def _handle_coordinator_update(self, *args: Any) -> None:
         """Handle updated data from the coordinator."""
-        self.update_properties(self._coordinator.data["tiles"][self._id])
+        self.update_properties(self.coordinator.data["tiles"][self._id])
         self.async_write_ha_state()

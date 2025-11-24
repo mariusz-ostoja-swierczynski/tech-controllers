@@ -17,3 +17,19 @@ config/*
 !config/configuration.yaml
 
 homeassistant/*
+
+# Devenv
+.devenv*
+devenv.local.nix
+
+# direnv
+.direnv
+
+# pre-commit
+.pre-commit-config.yaml
+
+### macOS ###
+# General
+.DS_Store
+.AppleDouble
+.LSOverride

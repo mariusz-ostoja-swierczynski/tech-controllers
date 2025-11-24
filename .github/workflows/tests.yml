@@ -12,14 +12,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.13"]
 
     steps:
       - uses: MathRobin/timezone-action@v1.1
         with:
           timezoneLinux: "Europe/Berlin"
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:

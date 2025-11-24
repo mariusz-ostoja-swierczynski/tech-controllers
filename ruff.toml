@@ -32,8 +32,8 @@ exclude = [
 line-length = 88
 indent-width = 4
 
-# Assume Python 3.12
-target-version = "py312"
+# Assume Python 3.13
+target-version = "py313"
 
 [lint]
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
@@ -79,7 +79,6 @@ select = [
     "S317",  # suspicious-xml-sax-usage
     "S318",  # suspicious-xml-mini-dom-usage
     "S319",  # suspicious-xml-pull-dom-usage
-    "S320",  # suspicious-xmle-tree-usage
     "S601",  # paramiko-call
     "S602",  # subprocess-popen-with-shell-equals-true
     "S604",  # call-with-shell-equals-true

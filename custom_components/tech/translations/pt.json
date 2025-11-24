@@ -1,0 +1,60 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Dispositivo já configurado",
+            "no_modules": "Nenhum módulo detetado ou selecionado"
+        },
+        "error": {
+            "cannot_connect": "Não é possível ligar à API da Tech.",
+            "invalid_auth": "Nome de utilizador ou palavra-passe inválidos!",
+            "unknown": "Erro desconhecido. Tente novamente ou reporte o problema para ..."
+        },
+        "step": {
+            "user": {
+                "title": "Início de Sessão nos Controladores Tech",
+                "description": "Por favor, insira as suas credenciais para o serviço emodul.eu ou emodul.pl.",
+                "data": {
+                    "password": "Palavra-passe",
+                    "username": "Nome de utilizador"
+                }
+            },
+            "select_controllers": {
+                "title": "Seleção de Controladores",
+                "description": "Por favor, selecione os controladores que pretende integrar.",
+                "data": {
+                    "controllers": "Controladores a importar",
+                    "include_hub_in_name": "Incluir o nome do hub (controlador) nos nomes das entidades"
+                }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "temperature_entity": {
+                "name": "Temperatura de {entity_name}"
+            },
+            "battery_entity": {
+                "name": "Bateria de {entity_name}"
+            },
+            "humidity_entity": {
+                "name": "Humidade"
+            },
+            "actuator_entity": {
+                "name": "Atuador {actuator_number}"
+            },
+            "window_sensor_entity": {
+                "name": "Janela {window_number}"
+            },
+            "ext_temperature_entity": {
+                "name": "Temperatura externa"
+            },
+            "signal_strength_entity": {
+                "name": "Força do sinal de {entity_name}"
+            },
+            "zone_state_entity": {
+                "name": "Estado de alarme de {entity_name}"
+            }
+        }
+    },
+    "title": "Controladores Tech"
+}
