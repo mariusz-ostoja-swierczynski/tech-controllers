@@ -2,21 +2,33 @@
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Callable, Iterable
+import logging
 from typing import Any, cast
 
-from homeassistant.components.binary_sensor import (BinarySensorDeviceClass,
-                                                    BinarySensorEntity)
+from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+)
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.components.sensor.const import (SensorDeviceClass,
-                                                   SensorStateClass)
+from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (ATTR_IDENTIFIERS, ATTR_MANUFACTURER,
-                                 CONF_DESCRIPTION, CONF_ID, CONF_MODEL,
-                                 CONF_NAME, CONF_PARAMS, CONF_TYPE, CONF_ZONE,
-                                 PERCENTAGE, STATE_OFF, STATE_ON,
-                                 EntityCategory, UnitOfTemperature)
+from homeassistant.const import (
+    ATTR_IDENTIFIERS,
+    ATTR_MANUFACTURER,
+    CONF_DESCRIPTION,
+    CONF_ID,
+    CONF_MODEL,
+    CONF_NAME,
+    CONF_PARAMS,
+    CONF_TYPE,
+    CONF_ZONE,
+    PERCENTAGE,
+    STATE_OFF,
+    STATE_ON,
+    EntityCategory,
+    UnitOfTemperature,
+)
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -25,20 +37,53 @@ from homeassistant.helpers.typing import UndefinedType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import assets
-from .const import (ACTUATORS, ACTUATORS_OPEN, BATTERY_LEVEL, CONTROLLER,
-                    CORRECT_WORK, CURRENT_STATE, DOMAIN, EVENTS, FLOOR_PUMP,
-                    INCLUDE_HUB_IN_NAME, LOW_BATTERY, LOW_SIGNAL, MANUFACTURER,
-                    MODE, NO_COMMUNICATION, OPENTHERM_CURRENT_TEMP,
-                    OPENTHERM_CURRENT_TEMP_DHW, OPENTHERM_SET_TEMP,
-                    OPENTHERM_SET_TEMP_DHW, SENSOR_DAMAGED, SENSOR_TYPE,
-                    SERVICE_ERROR, SIGNAL_STRENGTH, TEMP_TOO_HIGH,
-                    TEMP_TOO_LOW, TYPE_FAN, TYPE_FUEL_SUPPLY,
-                    TYPE_MIXING_VALVE, TYPE_OPEN_THERM, TYPE_TEMPERATURE,
-                    TYPE_TEMPERATURE_CH, TYPE_TEXT, TYPE_VALVE, UDID,
-                    UNDERFLOOR, VALUE, VALVE_SENSOR_CURRENT_TEMPERATURE,
-                    VALVE_SENSOR_RETURN_TEMPERATURE,
-                    VALVE_SENSOR_SET_TEMPERATURE, VER, VISIBILITY,
-                    WINDOW_SENSORS, WINDOW_STATE, WORKING_STATUS, ZONE_STATE)
+from .const import (
+    ACTUATORS,
+    ACTUATORS_OPEN,
+    BATTERY_LEVEL,
+    CONTROLLER,
+    CORRECT_WORK,
+    CURRENT_STATE,
+    DOMAIN,
+    EVENTS,
+    FLOOR_PUMP,
+    INCLUDE_HUB_IN_NAME,
+    LOW_BATTERY,
+    LOW_SIGNAL,
+    MANUFACTURER,
+    MODE,
+    NO_COMMUNICATION,
+    OPENTHERM_CURRENT_TEMP,
+    OPENTHERM_CURRENT_TEMP_DHW,
+    OPENTHERM_SET_TEMP,
+    OPENTHERM_SET_TEMP_DHW,
+    SENSOR_DAMAGED,
+    SENSOR_TYPE,
+    SERVICE_ERROR,
+    SIGNAL_STRENGTH,
+    TEMP_TOO_HIGH,
+    TEMP_TOO_LOW,
+    TYPE_FAN,
+    TYPE_FUEL_SUPPLY,
+    TYPE_MIXING_VALVE,
+    TYPE_OPEN_THERM,
+    TYPE_TEMPERATURE,
+    TYPE_TEMPERATURE_CH,
+    TYPE_TEXT,
+    TYPE_VALVE,
+    UDID,
+    UNDERFLOOR,
+    VALUE,
+    VALVE_SENSOR_CURRENT_TEMPERATURE,
+    VALVE_SENSOR_RETURN_TEMPERATURE,
+    VALVE_SENSOR_SET_TEMPERATURE,
+    VER,
+    VISIBILITY,
+    WINDOW_SENSORS,
+    WINDOW_STATE,
+    WORKING_STATUS,
+    ZONE_STATE,
+)
 from .coordinator import TechCoordinator
 from .entity import TileEntity
 
