@@ -19,7 +19,7 @@ jobs:
         with:
           timezoneLinux: "Europe/Berlin"
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
