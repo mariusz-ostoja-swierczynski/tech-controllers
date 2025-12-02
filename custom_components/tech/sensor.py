@@ -42,14 +42,27 @@ from .const import (
     ACTUATORS_OPEN,
     BATTERY_LEVEL,
     CONTROLLER,
+    CORRECT_WORK,
+    CURRENT_STATE,
     DOMAIN,
+    EVENTS,
+    FLOOR_PUMP,
     INCLUDE_HUB_IN_NAME,
+    LOW_BATTERY,
+    LOW_SIGNAL,
     MANUFACTURER,
+    MODE,
+    NO_COMMUNICATION,
     OPENTHERM_CURRENT_TEMP,
     OPENTHERM_CURRENT_TEMP_DHW,
     OPENTHERM_SET_TEMP,
     OPENTHERM_SET_TEMP_DHW,
+    SENSOR_DAMAGED,
+    SENSOR_TYPE,
+    SERVICE_ERROR,
     SIGNAL_STRENGTH,
+    TEMP_TOO_HIGH,
+    TEMP_TOO_LOW,
     TYPE_FAN,
     TYPE_FUEL_SUPPLY,
     TYPE_MIXING_VALVE,
@@ -59,6 +72,7 @@ from .const import (
     TYPE_TEXT,
     TYPE_VALVE,
     UDID,
+    UNDERFLOOR,
     VALUE,
     VALVE_SENSOR_CURRENT_TEMPERATURE,
     VALVE_SENSOR_RETURN_TEMPERATURE,
@@ -151,6 +165,9 @@ def _build_zone_entities(
 
     for idx, _ in enumerate(zone.get(WINDOW_SENSORS, [])):
         entities.append(ZoneWindowSensor(zone, coordinator, config_entry, idx))
+
+    if isinstance(zone.get(UNDERFLOOR), dict) and zone.get(UNDERFLOOR):
+        entities.append(ZoneUnderfloorSensor(zone, coordinator, config_entry))
 
     return entities
 
@@ -915,6 +932,91 @@ class ZoneWindowSensor(BinarySensorEntity, ZoneSensor):
         self._attr_is_on = (
             device[WINDOW_SENSORS][self._window_index][WINDOW_STATE] == "open"
         )
+
+
+class ZoneUnderfloorSensor(ZoneSensor):
+    """Representation of a Zone Temperature Sensor."""
+
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, device, coordinator, config_entry) -> None:
+        """Initialize the sensor.
+
+        These are needed before the call to super, as ZoneSensor class
+        calls update_properties in its init, which actually calls this class
+        update_properties, which does not know attrs yet.
+
+        """
+        self.attrs: dict[str, Any] = {}
+        super().__init__(device, coordinator, config_entry)
+        self.attrs[MODE] = device[UNDERFLOOR][MODE]
+        self.attrs[CURRENT_STATE] = device[UNDERFLOOR][CURRENT_STATE]
+        self.attrs[FLOOR_PUMP] = device[UNDERFLOOR][FLOOR_PUMP]
+        self.attrs[SENSOR_TYPE] = device[UNDERFLOOR][SENSOR_TYPE]
+        self.attrs[CORRECT_WORK] = device[UNDERFLOOR][EVENTS][CORRECT_WORK]
+        self.attrs[NO_COMMUNICATION] = device[UNDERFLOOR][EVENTS][NO_COMMUNICATION]
+        self.attrs[SENSOR_DAMAGED] = device[UNDERFLOOR][EVENTS][SENSOR_DAMAGED]  # noqa: F821
+        self.attrs[LOW_BATTERY] = device[UNDERFLOOR][EVENTS][LOW_BATTERY]
+        self.attrs[LOW_SIGNAL] = device[UNDERFLOOR][EVENTS][LOW_SIGNAL]
+        self.attrs[TEMP_TOO_HIGH] = device[UNDERFLOOR][EVENTS][TEMP_TOO_HIGH]
+        self.attrs[TEMP_TOO_LOW] = device[UNDERFLOOR][EVENTS][TEMP_TOO_LOW]
+        self.attrs[SERVICE_ERROR] = device[UNDERFLOOR][EVENTS][SERVICE_ERROR]
+        self.attrs[SIGNAL_STRENGTH] = device[UNDERFLOOR][SIGNAL_STRENGTH]
+        self.attrs[BATTERY_LEVEL] = device[UNDERFLOOR][BATTERY_LEVEL]
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_zone_underfloor"
+
+    @property
+    def translation_key(self):
+        """Return the translation key to translate the entity's name and states."""
+        return "underfloor_entity"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the state attributes."""
+        attributes = {}
+        attributes.update(self.attrs)
+        return attributes
+
+    def update_properties(self, device):
+        """Update the properties of the ZoneUnderfloorSensor object.
+
+        Args:
+        device: dict, the device data containing information about the device
+
+        Returns:
+        None
+
+        """
+        # Set the name of the device
+        self._name = device[CONF_DESCRIPTION][CONF_NAME]
+
+        # Check if the current temperature is available, and update the native value accordingly
+        if device[UNDERFLOOR]["temperature"] is not None:
+            self._attr_native_value = device[UNDERFLOOR]["temperature"] / 10
+        else:
+            self._attr_native_value = None
+
+        # Update attributes
+        self.attrs[MODE] = device[UNDERFLOOR][MODE]
+        self.attrs[CURRENT_STATE] = device[UNDERFLOOR][CURRENT_STATE]
+        self.attrs[FLOOR_PUMP] = device[UNDERFLOOR][FLOOR_PUMP]
+        self.attrs[SENSOR_TYPE] = device[UNDERFLOOR][SENSOR_TYPE]
+        self.attrs[CORRECT_WORK] = device[UNDERFLOOR][EVENTS][CORRECT_WORK]
+        self.attrs[NO_COMMUNICATION] = device[UNDERFLOOR][EVENTS][NO_COMMUNICATION]
+        self.attrs[SENSOR_DAMAGED] = device[UNDERFLOOR][EVENTS][SENSOR_DAMAGED]  # noqa: F821
+        self.attrs[LOW_BATTERY] = device[UNDERFLOOR][EVENTS][LOW_BATTERY]
+        self.attrs[LOW_SIGNAL] = device[UNDERFLOOR][EVENTS][LOW_SIGNAL]
+        self.attrs[TEMP_TOO_HIGH] = device[UNDERFLOOR][EVENTS][TEMP_TOO_HIGH]
+        self.attrs[TEMP_TOO_LOW] = device[UNDERFLOOR][EVENTS][TEMP_TOO_LOW]
+        self.attrs[SERVICE_ERROR] = device[UNDERFLOOR][EVENTS][SERVICE_ERROR]
+        self.attrs[SIGNAL_STRENGTH] = device[UNDERFLOOR][SIGNAL_STRENGTH]
+        self.attrs[BATTERY_LEVEL] = device[UNDERFLOOR][BATTERY_LEVEL]
 
 
 class ZoneOutsideTempTile(ZoneSensor):

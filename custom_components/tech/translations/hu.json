@@ -42,6 +42,9 @@
             "actuator_entity": {
                 "name": "Aktuátor {actuator_number}"
             },
+            "underfloor_entity": {
+                "name": "Padlófűtés"
+            },
             "window_sensor_entity": {
                 "name": "Ablak {window_number}"
             },
