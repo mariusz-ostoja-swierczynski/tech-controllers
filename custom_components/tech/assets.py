@@ -30,10 +30,11 @@ def redact(entry_data: dict[str, Any], keys: Iterable[str]) -> str:
         ``***HIDDEN***``.
 
     """
-    sanitized_data = entry_data.copy()
-    for key in keys:
-        if key in sanitized_data:
-            sanitized_data[key] = _REDACTED_VALUE
+    keys_set = set(keys)
+    sanitized_data = {
+        k: _REDACTED_VALUE if k in keys_set else v
+        for k, v in entry_data.items()
+    }
     return str(sanitized_data)
 
 

@@ -1,4 +1,4 @@
-"""Ruckus DataUpdateCoordinator."""
+"""Tech DataUpdateCoordinator."""
 
 import asyncio
 import logging
