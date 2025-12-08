@@ -37,7 +37,7 @@ class TileEntity(
         self._config_entry = config_entry
         self._udid = config_entry.data[CONTROLLER][UDID]
         self._id = device[CONF_ID]
-        self._unique_id = self._udid + "_" + str(device[CONF_ID])
+        self._unique_id = f"{self._udid}_{device[CONF_ID]}"
         self._model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
         self._state = self.get_state(device)
         self.manufacturer = MANUFACTURER
