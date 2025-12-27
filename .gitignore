@@ -27,3 +27,9 @@ devenv.local.nix
 
 # pre-commit
 .pre-commit-config.yaml
+
+### macOS ###
+# General
+.DS_Store
+.AppleDouble
+.LSOverride

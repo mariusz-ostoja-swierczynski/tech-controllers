@@ -12,7 +12,6 @@ from homeassistant.helpers.typing import ConfigType
 from . import assets
 from .const import DOMAIN, PLATFORMS, USER_ID
 from .coordinator import TechCoordinator
-from .tech import Tech
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,12 +19,38 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # pylint: disable=unused-argument
-    """Set up the Tech Controllers component."""
+    """Set up the Tech Controllers integration via YAML configuration.
+
+    This entry point exists for completeness; the integration relies on
+    config entries, so the function simply returns ``True`` to signal
+    successful initialization.
+
+    Args:
+        hass: Home Assistant instance.
+        config: Top-level configuration data (unused).
+
+    Returns:
+        ``True`` to indicate setup should continue.
+
+    """
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Tech Controllers from a config entry."""
+    """Initialize Tech Controllers from a config entry.
+
+    The method creates a :class:`TechCoordinator`, refreshes the initial
+    dataset, loads translated subtitles, and forwards the setup to the
+    supported platforms.
+
+    Args:
+        hass: Home Assistant instance.
+        entry: Active configuration entry for the integration.
+
+    Returns:
+        ``True`` if the entry was set up successfully.
+
+    """
     _LOGGER.debug("Setting up component's entry")
     _LOGGER.debug("Entry id: %s", str(entry.entry_id))
     _LOGGER.debug(
@@ -48,10 +73,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await coordinator.async_config_entry_first_refresh()
 
-    # Load filter reset date from storage
     await coordinator.async_load_filter_reset_date()
 
-    await assets.load_subtitles(language_code, Tech(websession, user_id, token))
+    await assets.load_subtitles(language_code, coordinator.api)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -59,7 +83,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
+    """Unload a config entry.
+
+    Args:
+        hass: Home Assistant instance.
+        entry: Configuration entry to unload.
+
+    Returns:
+        ``True`` if all platforms were unloaded successfully.
+
+    """
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:

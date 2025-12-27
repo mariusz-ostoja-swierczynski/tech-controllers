@@ -42,6 +42,9 @@
             "actuator_entity": {
                 "name": "Aktuator {actuator_number}"
             },
+            "underfloor_entity": {
+                "name": "Talno ogrevanje"
+            },
             "window_sensor_entity": {
                 "name": "Okno {window_number}"
             },
