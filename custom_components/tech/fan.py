@@ -68,8 +68,18 @@ async def async_setup_entry(
         # Check if this is a fan tile that could be a recuperation unit
         if tile[CONF_TYPE] == TYPE_FAN:
             # Check if it has recuperation-like characteristics
+            # Use common root words that work across all supported languages:
+            # recup/rekup (en/de/fr/es/it/nl/cs/sk/hu/pl/lt/et/ru/si/hr)
+            # ventil/wentyl (en/de/fr/es/it/nl/cs/sk/pl), větr (cs), szellőz (hu)
+            # vėdin (lt), ventilatsioon (et), вентиля (ru)
             description = tile[CONF_PARAMS].get(CONF_DESCRIPTION, "").lower()
-            if any(keyword in description for keyword in ["recuperation", "rekuperacja", "ventilation", "wentylacja"]):
+            recuperation_keywords = [
+                "recup", "rekup",  # Covers most languages
+                "ventil", "wentyl", "větr", "vėdin", "szellőz",  # Ventilation variants
+                "lüft",  # German: Lüftung
+                "вентиля", "рекупер",  # Russian: вентиляция, рекуперация
+            ]
+            if any(keyword in description for keyword in recuperation_keywords):
                 entities.append(TileRecuperationFanEntity(tile, coordinator, config_entry))
             else:
                 entities.append(TileFanEntity(tile, coordinator, config_entry))
@@ -172,7 +182,7 @@ class TileFanEntity(TileEntity, CoordinatorEntity, FanEntity):
         if percentage == 0:
             await self.async_turn_off()
         else:
-            speed_level = percentage_to_ranged_value(SPEED_RANGE, percentage)
+            speed_level = int(round(percentage_to_ranged_value(SPEED_RANGE, percentage)))
             # For now, use None for configured_values (will use defaults)
             await self._coordinator.api.set_recuperation_speed(self._udid, speed_level, None)
             await self._coordinator.async_request_refresh()
@@ -329,7 +339,9 @@ class TileRecuperationFanEntity(TileFanEntity):
 
         # Update name to indicate it's a recuperation unit
         base_name = assets.get_text_by_type(device[CONF_TYPE])
-        if "recuperation" not in base_name.lower() and "rekuperacja" not in base_name.lower():
+        # Check if name already contains recuperation keywords in any language
+        base_name_lower = base_name.lower()
+        if not any(kw in base_name_lower for kw in ["recup", "rekup"]):
             base_name = f"Recuperation {base_name}"
 
         self._name = (

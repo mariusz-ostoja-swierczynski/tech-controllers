@@ -383,8 +383,15 @@ def _build_open_therm_tile(
                 entities.append(TileWidgetSensor(tile, coordinator, config_entry))
         if tile[CONF_TYPE] == TYPE_FAN:
             # Check if this fan is handled by the fan platform (recuperation)
+            # Use common root words that work across all supported languages
             description = tile[CONF_PARAMS].get(CONF_DESCRIPTION, "").lower()
-            if not any(keyword in description for keyword in ["recuperation", "rekuperacja", "ventilation", "wentylacja"]):
+            recuperation_keywords = [
+                "recup", "rekup",  # Covers most languages
+                "ventil", "wentyl", "větr", "vėdin", "szellőz",  # Ventilation variants
+                "lüft",  # German: Lüftung
+                "вентиля", "рекупер",  # Russian
+            ]
+            if not any(keyword in description for keyword in recuperation_keywords):
                 entities.append(TileFanSensor(tile, coordinator, config_entry))
         if tile[CONF_TYPE] == TYPE_RECUPERATION:
             # TYPE_RECUPERATION fans are handled by fan platform, create sensor for monitoring only

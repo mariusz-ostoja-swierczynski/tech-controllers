@@ -88,6 +88,7 @@ class RecuperationModeSelect(CoordinatorEntity, SelectEntity):
 
     _attr_has_entity_name = True
     _attr_icon = "mdi:fan-speed"
+    _attr_translation_key = "recuperation_fan_mode"
 
     def __init__(
         self,
@@ -101,12 +102,12 @@ class RecuperationModeSelect(CoordinatorEntity, SelectEntity):
         self._udid = config_entry.data[CONTROLLER][UDID]
         self._attr_unique_id = f"{self._udid}_recuperation_fan_mode"
 
-        # Define options with Polish names
+        # Use English option keys - translations are handled by HA's translation system
         self._attr_options = [
-            "Zatrzymaj wentylator",
-            "1 bieg",
-            "2 bieg",
-            "3 bieg"
+            "stop",
+            "speed_1",
+            "speed_2",
+            "speed_3"
         ]
 
         self._name = (
@@ -125,18 +126,18 @@ class RecuperationModeSelect(CoordinatorEntity, SelectEntity):
         """Return the current selected option."""
         # For now, always return default - the actual state tracking
         # would need more complex implementation with HA storage
-        return "Zatrzymaj wentylator"
+        return "stop"
 
     async def async_select_option(self, option: str) -> None:
         """Select the fan mode option."""
         _LOGGER.debug("Selecting fan mode option: %s", option)
 
-        # Map option name to value
+        # Map option key to value
         option_value_map = {
-            "Zatrzymaj wentylator": 0,
-            "1 bieg": 1,
-            "2 bieg": 2,
-            "3 bieg": 3
+            "stop": 0,
+            "speed_1": 1,
+            "speed_2": 2,
+            "speed_3": 3
         }
 
         mode_value = option_value_map.get(option)
@@ -169,6 +170,7 @@ class RecuperationGearSelect(CoordinatorEntity, SelectEntity):
 
     _attr_has_entity_name = True
     _attr_icon = "mdi:speedometer"
+    _attr_translation_key = "recuperation_gear"
 
     def __init__(
         self,
@@ -181,7 +183,8 @@ class RecuperationGearSelect(CoordinatorEntity, SelectEntity):
         self._config_entry = config_entry
         self._udid = config_entry.data[CONTROLLER][UDID]
         self._attr_unique_id = f"{self._udid}_recuperation_gear"
-        self._attr_options = ["Zatrzymaj", "1 bieg", "2 bieg", "3 bieg"]
+        # Use English option keys - translations are handled by HA's translation system
+        self._attr_options = ["stop", "speed_1", "speed_2", "speed_3"]
 
         self._name = (
             self._config_entry.title + " "
@@ -190,7 +193,7 @@ class RecuperationGearSelect(CoordinatorEntity, SelectEntity):
         ) + "Recuperation Gear"
 
         # Initialize with default, will be updated by coordinator data
-        self._last_selected_gear = "Zatrzymaj"
+        self._last_selected_gear = "stop"
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -201,12 +204,12 @@ class RecuperationGearSelect(CoordinatorEntity, SelectEntity):
                 if tile_data.get("type") in [22, 122]:  # TYPE_FAN or TYPE_RECUPERATION
                     current_gear = tile_data.get("params", {}).get("gear", 0)
                     gear_mapping = {
-                        0: "Zatrzymaj",
-                        1: "1 bieg",
-                        2: "2 bieg",
-                        3: "3 bieg"
+                        0: "stop",
+                        1: "speed_1",
+                        2: "speed_2",
+                        3: "speed_3"
                     }
-                    new_gear = gear_mapping.get(current_gear, "Zatrzymaj")
+                    new_gear = gear_mapping.get(current_gear, "stop")
                     if new_gear != self._last_selected_gear:
                         self._last_selected_gear = new_gear
                         _LOGGER.debug("Updated gear from coordinator: %s", new_gear)
@@ -229,23 +232,23 @@ class RecuperationGearSelect(CoordinatorEntity, SelectEntity):
                 if tile_data.get("type") in [22, 122]:  # TYPE_FAN or TYPE_RECUPERATION
                     current_gear = tile_data.get("params", {}).get("gear", 0)
                     gear_mapping = {
-                        0: "Zatrzymaj",
-                        1: "1 bieg",
-                        2: "2 bieg",
-                        3: "3 bieg"
+                        0: "stop",
+                        1: "speed_1",
+                        2: "speed_2",
+                        3: "speed_3"
                     }
-                    return gear_mapping.get(current_gear, "Zatrzymaj")
+                    return gear_mapping.get(current_gear, "stop")
 
         # Fallback: check stored state from last API call
-        return getattr(self, '_last_selected_gear', "Zatrzymaj")
+        return getattr(self, '_last_selected_gear', "stop")
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected gear."""
         gear_mapping = {
-            "Zatrzymaj": 0,
-            "1 bieg": 1,
-            "2 bieg": 2,
-            "3 bieg": 3,
+            "stop": 0,
+            "speed_1": 1,
+            "speed_2": 2,
+            "speed_3": 3,
         }
 
         gear_value = gear_mapping.get(option, 0)

@@ -57,6 +57,26 @@
             "zone_state_entity": {
                 "name": "{entity_name} Häire olek"
             }
+        },
+        "select": {
+            "recuperation_fan_mode": {
+                "name": "Ventilaatori režiim (ajastatud)",
+                "state": {
+                    "stop": "Peata ventilaator",
+                    "speed_1": "Kiirus 1",
+                    "speed_2": "Kiirus 2",
+                    "speed_3": "Kiirus 3"
+                }
+            },
+            "recuperation_gear": {
+                "name": "Rekuperatsiooni kiirus",
+                "state": {
+                    "stop": "Seiska",
+                    "speed_1": "Kiirus 1",
+                    "speed_2": "Kiirus 2",
+                    "speed_3": "Kiirus 3"
+                }
+            }
         }
     },
     "title": "Tech Controllers"

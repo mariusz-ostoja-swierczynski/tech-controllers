@@ -57,6 +57,26 @@
             "zone_state_entity": {
                 "name": "{entity_name} Состояние тревоги"
             }
+        },
+        "select": {
+            "recuperation_fan_mode": {
+                "name": "Режим вентилятора (временной)",
+                "state": {
+                    "stop": "Остановить вентилятор",
+                    "speed_1": "Скорость 1",
+                    "speed_2": "Скорость 2",
+                    "speed_3": "Скорость 3"
+                }
+            },
+            "recuperation_gear": {
+                "name": "Скорость рекуператора",
+                "state": {
+                    "stop": "Стоп",
+                    "speed_1": "Скорость 1",
+                    "speed_2": "Скорость 2",
+                    "speed_3": "Скорость 3"
+                }
+            }
         }
     },
     "title": "Tech Controllers"

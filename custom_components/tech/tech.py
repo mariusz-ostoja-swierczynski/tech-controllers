@@ -43,7 +43,7 @@ class Tech:
         self.headers = {
             "Accept": "application/json",
             "Accept-Encoding": "gzip",
-            "User-Agent": "TechController/1.0 (Home Assistant Integration)"
+            "User-Agent": "Mozilla/5.0",
         }
         self.base_url = base_url
         self.session = session
@@ -96,8 +96,9 @@ class Tech:
         """
         url = self.base_url + request_path
         _LOGGER.debug("Sending POST request: %s", url)
+        post_headers = {**self.headers, "Content-Type": "application/json"}
         async with self.session.post(
-            url, data=post_data, headers=self.headers
+            url, data=post_data, headers=post_headers
         ) as response:
             if response.status != 200:
                 _LOGGER.warning("Invalid response from Tech API: %s", response.status)
@@ -127,12 +128,7 @@ class Tech:
             if self.authenticated:
                 self.user_id = str(result["user_id"])
                 self.token = result["token"]
-                self.headers = {
-                    "Accept": "application/json",
-                    "Accept-Encoding": "gzip",
-                    "User-Agent": "TechController/1.0 (Home Assistant Integration)",
-                    "Authorization": f"Bearer {self.token}",
-                }
+                self.headers["Authorization"] = f"Bearer {self.token}"
         except TechError as err:
             raise TechLoginError(401, "Unauthorized") from err
         return result["authenticated"]
@@ -355,7 +351,7 @@ class Tech:
             Parsed JSON response from the API.
 
         """
-        _LOGGER.debug("Turing zone on/off: %s", on)
+        _LOGGER.debug("Turning zone on/off: %s", on)
         if self.authenticated:
             path = f"users/{self.user_id}/modules/{module_udid}/zones"
             data = {"zone": {"id": zone_id, "zoneState": "zoneOn" if on else "zoneOff"}}
@@ -734,6 +730,10 @@ class Tech:
 
         _LOGGER.debug("Setting recuperation gear to: %d", gear_value)
         if self.authenticated:
+            # Validate gear value
+            if not (0 <= gear_value <= 3):
+                raise TechError(400, f"Invalid gear value: {gear_value}. Must be between 0 and 3")
+
             path = f"users/{self.user_id}/modules/{module_udid}/menu/MU/ido/{GEAR_CONTROL_IDO_ID}"
             data = {"value": gear_value}
             _LOGGER.debug("POST to: %s with data: %s", path, data)
@@ -747,7 +747,7 @@ class Tech:
 class TechError(Exception):
     """Raised when a Tech API request results in an error."""
 
-    def __init__(self, status_code, status) -> None:
+    def __init__(self, status_code: int, status: str) -> None:
         """Initialise an error with the API status code and message.
 
         Args:
@@ -755,6 +755,7 @@ class TechError(Exception):
             status: Human-readable reason message from the API.
 
         """
+        super().__init__(f"{status_code}: {status}")
         self.status_code = status_code
         self.status = status
 
@@ -762,13 +763,14 @@ class TechError(Exception):
 class TechLoginError(Exception):
     """Raised when a Tech API login attempt fails."""
 
-    def __init__(self, status_code, status) -> None:
+    def __init__(self, status_code: int, status: str) -> None:
         """Initialize the status code and status of the object.
 
         Args:
-            status_code (int): The status code to be assigned.
-            status (str): The status to be assigned.
+            status_code: The status code to be assigned.
+            status: The status to be assigned.
 
         """
+        super().__init__(f"{status_code}: {status}")
         self.status_code = status_code
         self.status = status

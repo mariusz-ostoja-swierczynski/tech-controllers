@@ -152,11 +152,11 @@ SPEED_CONFIG_KEYS = {
 }
 
 # Humidity sensor txtId values (unit: 8, type: 2)
-# 2024: Pokój czujnik bezprzewodowy 1
-# 2025: Pokój czujnik bezprzewodowy 2
-# 2027: Łazienka czujnik bezprzewodowy 4
-# 2658: Łazienka 2 czujnik bezprzewodowy 5
-# TODO: Add txtId for "łazienka 3 czujnik bezprzewodowy 6" when available
+# 2024: Room wireless sensor 1
+# 2025: Room wireless sensor 2
+# 2027: Bathroom wireless sensor 4
+# 2658: Bathroom 2 wireless sensor 5
+# TODO: Add txtId for bathroom 3 wireless sensor 6 when available
 HUMIDITY_SENSOR_TXT_IDS = [2024, 2025, 2027, 2658]
 
 # Party mode settings
@@ -167,27 +167,28 @@ PARTY_MODE_MAX_MINUTES = 720
 # Direct gear control settings
 GEAR_CONTROL_IDO_ID = 1833
 GEAR_OPTIONS = {
-    "stop": 0,          # Zatrzymaj wentylator
-    "speed_1": 1,       # 1 bieg
-    "speed_2": 2,       # 2 bieg
-    "speed_3": 3,       # 3 bieg
+    "stop": 0,          # Stop fan
+    "speed_1": 1,       # Speed 1
+    "speed_2": 2,       # Speed 2
+    "speed_3": 3,       # Speed 3
 }
 GEAR_OPTIONS_REVERSE = {v: k for k, v in GEAR_OPTIONS.items()}
 
 # Fan mode select settings (timed mode changes)
 FAN_MODE_IDO_ID = 1966
 FAN_MODE_OPTIONS = {
-    "stop": 0,          # Zatrzymaj wentylator
-    "speed_1": 1,       # 1 bieg
-    "speed_2": 2,       # 2 bieg
-    "speed_3": 3,       # 3 bieg
+    "stop": 0,          # Stop fan
+    "speed_1": 1,       # Speed 1
+    "speed_2": 2,       # Speed 2
+    "speed_3": 3,       # Speed 3
 }
 FAN_MODE_OPTIONS_REVERSE = {v: k for k, v in FAN_MODE_OPTIONS.items()}
 
-# Filter management settings
+# Filter management settings (values from Tech Defro DRX recuperation system)
+# These are the allowed range for filter replacement reminder in the device settings
 FILTER_ALARM_IDO_ID = 2080
-FILTER_ALARM_MIN_DAYS = 30
-FILTER_ALARM_MAX_DAYS = 120
+FILTER_ALARM_MIN_DAYS = 30   # Minimum days for filter alarm setting
+FILTER_ALARM_MAX_DAYS = 120  # Maximum days for filter alarm setting
 
 # Filter usage tracking
 FILTER_USAGE_IDO_ID = 2081

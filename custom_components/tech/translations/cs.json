@@ -57,6 +57,26 @@
             "zone_state_entity": {
                 "name": "{entity_name} Stav alarmu"
             }
+        },
+        "select": {
+            "recuperation_fan_mode": {
+                "name": "Režim ventilátoru (časovaný)",
+                "state": {
+                    "stop": "Zastavit ventilátor",
+                    "speed_1": "Rychlost 1",
+                    "speed_2": "Rychlost 2",
+                    "speed_3": "Rychlost 3"
+                }
+            },
+            "recuperation_gear": {
+                "name": "Stupeň rekuperace",
+                "state": {
+                    "stop": "Zastavit",
+                    "speed_1": "Rychlost 1",
+                    "speed_2": "Rychlost 2",
+                    "speed_3": "Rychlost 3"
+                }
+            }
         }
     },
     "title": "Tech Controllers"

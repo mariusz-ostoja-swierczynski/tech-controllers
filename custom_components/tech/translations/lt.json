@@ -57,6 +57,26 @@
             "zone_state_entity": {
                 "name": "{entity_name} Signalizacijos būsena"
             }
+        },
+        "select": {
+            "recuperation_fan_mode": {
+                "name": "Ventiliatoriaus režimas (laikinis)",
+                "state": {
+                    "stop": "Sustabdyti ventiliatorių",
+                    "speed_1": "Greitis 1",
+                    "speed_2": "Greitis 2",
+                    "speed_3": "Greitis 3"
+                }
+            },
+            "recuperation_gear": {
+                "name": "Rekuperatoriaus pavara",
+                "state": {
+                    "stop": "Sustabdyti",
+                    "speed_1": "Greitis 1",
+                    "speed_2": "Greitis 2",
+                    "speed_3": "Greitis 3"
+                }
+            }
         }
     },
     "title": "Tech Valdikliai"

@@ -57,6 +57,26 @@
             "zone_state_entity": {
                 "name": "{entity_name} Stanje alarma"
             }
+        },
+        "select": {
+            "recuperation_fan_mode": {
+                "name": "Način ventilatorja (časovni)",
+                "state": {
+                    "stop": "Ustavi ventilator",
+                    "speed_1": "Hitrost 1",
+                    "speed_2": "Hitrost 2",
+                    "speed_3": "Hitrost 3"
+                }
+            },
+            "recuperation_gear": {
+                "name": "Stopnja rekuperatorja",
+                "state": {
+                    "stop": "Ustavi",
+                    "speed_1": "Hitrost 1",
+                    "speed_2": "Hitrost 2",
+                    "speed_3": "Hitrost 3"
+                }
+            }
         }
     },
     "title": "Tech Controllers"
