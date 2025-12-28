@@ -40,7 +40,11 @@ class Tech:
 
         """
         _LOGGER.debug("Init Tech")
-        self.headers = {"Accept": "application/json", "Accept-Encoding": "gzip"}
+        self.headers = {
+            "Accept": "application/json",
+            "Accept-Encoding": "gzip",
+            "User-Agent": "Mozilla/5.0",
+        }
         self.base_url = base_url
         self.session = session
         if user_id and token:
@@ -92,8 +96,9 @@ class Tech:
         """
         url = self.base_url + request_path
         _LOGGER.debug("Sending POST request: %s", url)
+        post_headers = {**self.headers, "Content-Type": "application/json"}
         async with self.session.post(
-            url, data=post_data, headers=self.headers
+            url, data=post_data, headers=post_headers
         ) as response:
             if response.status != 200:
                 _LOGGER.warning("Invalid response from Tech API: %s", response.status)
@@ -123,11 +128,7 @@ class Tech:
             if self.authenticated:
                 self.user_id = str(result["user_id"])
                 self.token = result["token"]
-                self.headers = {
-                    "Accept": "application/json",
-                    "Accept-Encoding": "gzip",
-                    "Authorization": f"Bearer {self.token}",
-                }
+                self.headers["Authorization"] = f"Bearer {self.token}"
         except TechError as err:
             raise TechLoginError(401, "Unauthorized") from err
         return result["authenticated"]
@@ -350,7 +351,7 @@ class Tech:
             Parsed JSON response from the API.
 
         """
-        _LOGGER.debug("Turing zone on/off: %s", on)
+        _LOGGER.debug("Turning zone on/off: %s", on)
         if self.authenticated:
             path = f"users/{self.user_id}/modules/{module_udid}/zones"
             data = {"zone": {"id": zone_id, "zoneState": "zoneOn" if on else "zoneOff"}}
@@ -361,11 +362,392 @@ class Tech:
             raise TechError(401, "Unauthorized")
         return result
 
+    async def set_fan_gear(self, module_udid, tile_id, gear):
+        """Set the gear (speed) of a fan/recuperation unit.
+
+        Args:
+        module_udid (string): The Tech module udid.
+        tile_id (int): The tile ID.
+        gear (int): The gear/speed level (0 = off, 1-3 = speeds).
+
+        Returns:
+        JSON object with the result.
+
+        """
+        _LOGGER.debug("Setting fan gear: tile_id=%s, gear=%s", tile_id, gear)
+        if self.authenticated:
+            path = f"users/{self.user_id}/modules/{module_udid}/menu/MI/ido/{tile_id}"
+            data = {"gear": gear}
+            _LOGGER.debug("POST data: %s", data)
+            result = await self.post(path, json.dumps(data))
+            _LOGGER.debug("Response: %s", result)
+        else:
+            raise TechError(401, "Unauthorized")
+        return result
+
+    async def set_recuperation_speed(self, module_udid, speed_level, configured_values=None):
+        """Set the speed of recuperation unit.
+
+        Args:
+        module_udid (string): The Tech module udid.
+        speed_level (int): The speed level (1-3 = speeds, 0 = off).
+        configured_values (dict): Optional configured flow values for each speed.
+
+        Returns:
+        JSON object with the result.
+
+        """
+        from .const import RECUPERATION_SPEED_ENDPOINTS, DEFAULT_SPEED_VALUES
+
+        _LOGGER.debug("Setting recuperation speed: speed_level=%s", speed_level)
+        if self.authenticated:
+            if speed_level == 0:
+                # Turn off - set speed 1 to 0
+                ido_id = RECUPERATION_SPEED_ENDPOINTS[1]["ido_id"]
+                path = f"users/{self.user_id}/modules/{module_udid}/menu/MI/ido/{ido_id}"
+                data = {"value": 0}
+            elif speed_level in RECUPERATION_SPEED_ENDPOINTS:
+                endpoint_config = RECUPERATION_SPEED_ENDPOINTS[speed_level]
+                ido_id = endpoint_config["ido_id"]
+
+                # Use configured value if available, otherwise default
+                if configured_values and speed_level in configured_values:
+                    flow_value = configured_values[speed_level]
+                else:
+                    flow_value = DEFAULT_SPEED_VALUES[speed_level]
+
+                path = f"users/{self.user_id}/modules/{module_udid}/menu/MI/ido/{ido_id}"
+                data = {"value": flow_value}
+            else:
+                raise TechError(400, f"Invalid speed level: {speed_level}")
+
+            _LOGGER.debug("POST to: %s with data: %s", path, data)
+            result = await self.post(path, json.dumps(data))
+            _LOGGER.debug("Response: %s", result)
+        else:
+            raise TechError(401, "Unauthorized")
+        return result
+
+    async def set_party_mode(self, module_udid, duration_minutes):
+        """Set party mode duration for recuperation.
+
+        Args:
+        module_udid (string): The Tech module udid.
+        duration_minutes (int): Duration in minutes (15-720).
+
+        Returns:
+        JSON object with the result.
+
+        """
+        from .const import PARTY_MODE_IDO_ID, PARTY_MODE_MIN_MINUTES, PARTY_MODE_MAX_MINUTES
+
+        _LOGGER.debug("Setting party mode: duration=%s minutes", duration_minutes)
+        if self.authenticated:
+            # Validate duration
+            if not (PARTY_MODE_MIN_MINUTES <= duration_minutes <= PARTY_MODE_MAX_MINUTES):
+                raise TechError(400, f"Invalid duration: {duration_minutes}. Must be between {PARTY_MODE_MIN_MINUTES} and {PARTY_MODE_MAX_MINUTES} minutes")
+
+            path = f"users/{self.user_id}/modules/{module_udid}/menu/MU/ido/{PARTY_MODE_IDO_ID}"
+            data = {"value": duration_minutes}
+            _LOGGER.debug("POST to: %s with data: %s", path, data)
+            result = await self.post(path, json.dumps(data))
+            _LOGGER.debug("Response: %s", result)
+        else:
+            raise TechError(401, "Unauthorized")
+        return result
+
+    async def set_fan_mode(self, module_udid, mode_value):
+        """Set fan mode (stop, speed 1-3).
+
+        Args:
+        module_udid (string): The Tech module udid.
+        mode_value (int): Mode value (0=stop, 1-3=speeds).
+
+        Returns:
+        JSON object with the result.
+
+        """
+        from .const import FAN_MODE_IDO_ID
+
+        _LOGGER.debug("Setting fan mode: mode_value=%s", mode_value)
+        if self.authenticated:
+            # Validate mode value
+            if not (0 <= mode_value <= 3):
+                raise TechError(400, f"Invalid mode value: {mode_value}. Must be between 0 and 3")
+
+            path = f"users/{self.user_id}/modules/{module_udid}/menu/MU/ido/{FAN_MODE_IDO_ID}"
+            data = {"value": mode_value}
+            _LOGGER.debug("POST to: %s with data: %s", path, data)
+            result = await self.post(path, json.dumps(data))
+            _LOGGER.debug("Response: %s", result)
+        else:
+            raise TechError(401, "Unauthorized")
+        return result
+
+    async def set_filter_alarm(self, module_udid, days):
+        """Set filter alarm interval in days.
+
+        Args:
+        module_udid (string): The Tech module udid.
+        days (int): Days until filter alarm (30-120).
+
+        Returns:
+        JSON object with the result.
+
+        """
+        from .const import FILTER_ALARM_IDO_ID, FILTER_ALARM_MIN_DAYS, FILTER_ALARM_MAX_DAYS
+
+        _LOGGER.debug("Setting filter alarm: days=%s", days)
+        if self.authenticated:
+            # Validate days
+            if not (FILTER_ALARM_MIN_DAYS <= days <= FILTER_ALARM_MAX_DAYS):
+                raise TechError(400, f"Invalid days: {days}. Must be between {FILTER_ALARM_MIN_DAYS} and {FILTER_ALARM_MAX_DAYS} days")
+
+            path = f"users/{self.user_id}/modules/{module_udid}/menu/MI/ido/{FILTER_ALARM_IDO_ID}"
+            data = {"value": days}
+            _LOGGER.debug("POST to: %s with data: %s", path, data)
+            result = await self.post(path, json.dumps(data))
+            _LOGGER.debug("Response: %s", result)
+        else:
+            raise TechError(401, "Unauthorized")
+        return result
+
+    async def get_filter_usage(self, module_udid):
+        """Get filter usage counter.
+
+        Args:
+        module_udid (string): The Tech module udid.
+
+        Returns:
+        JSON object with the result.
+
+        """
+        from .const import FILTER_USAGE_IDO_ID
+
+        _LOGGER.debug("Getting filter usage")
+        if self.authenticated:
+            path = f"users/{self.user_id}/modules/{module_udid}/menu/MI/ido/{FILTER_USAGE_IDO_ID}"
+            _LOGGER.debug("GET from: %s", path)
+            result = await self.get(path)
+            _LOGGER.debug("Response: %s", result)
+        else:
+            raise TechError(401, "Unauthorized")
+        return result
+
+    async def update_filter_data(self, module_udid):
+        """Update filter data/reset filter timer.
+
+        Args:
+        module_udid (string): The Tech module udid.
+
+        Returns:
+        JSON object with the result.
+
+        """
+        _LOGGER.debug("Updating filter data")
+        if self.authenticated:
+            # Get current timestamp
+            from datetime import datetime
+            current_time = datetime.now().isoformat()
+
+            path = f"users/{self.user_id}/modules/{module_udid}/update/data/parents/[]/alarm_ids/[]/last_update/{current_time}"
+            result = await self.post(path, "{}")
+            _LOGGER.debug("Filter update response: %s", result)
+        else:
+            raise TechError(401, "Unauthorized")
+        return result
+
+    async def set_ventilation_room_parameter(self, module_udid, percent):
+        """Set room ventilation parameter.
+
+        Args:
+        module_udid (string): The Tech module udid.
+        percent (int): Ventilation percentage (10-90).
+
+        Returns:
+        JSON object with the result.
+
+        """
+        from .const import VENTILATION_ROOM_IDO_ID, VENTILATION_MIN_PERCENT, VENTILATION_MAX_PERCENT
+
+        _LOGGER.debug("Setting room ventilation parameter: percent=%s", percent)
+        if self.authenticated:
+            # Validate percent
+            if not (VENTILATION_MIN_PERCENT <= percent <= VENTILATION_MAX_PERCENT):
+                raise TechError(400, f"Invalid percent: {percent}. Must be between {VENTILATION_MIN_PERCENT} and {VENTILATION_MAX_PERCENT}%")
+
+            path = f"users/{self.user_id}/modules/{module_udid}/menu/MI/ido/{VENTILATION_ROOM_IDO_ID}"
+            data = {"value": percent}
+            _LOGGER.debug("POST to: %s with data: %s", path, data)
+            result = await self.post(path, json.dumps(data))
+            _LOGGER.debug("Response: %s", result)
+        else:
+            raise TechError(401, "Unauthorized")
+        return result
+
+    async def set_ventilation_bathroom_parameter(self, module_udid, percent):
+        """Set bathroom ventilation parameter.
+
+        Args:
+        module_udid (string): The Tech module udid.
+        percent (int): Ventilation percentage (10-90).
+
+        Returns:
+        JSON object with the result.
+
+        """
+        from .const import VENTILATION_BATHROOM_IDO_ID, VENTILATION_MIN_PERCENT, VENTILATION_MAX_PERCENT
+
+        _LOGGER.debug("Setting bathroom ventilation parameter: percent=%s", percent)
+        if self.authenticated:
+            # Validate percent
+            if not (VENTILATION_MIN_PERCENT <= percent <= VENTILATION_MAX_PERCENT):
+                raise TechError(400, f"Invalid percent: {percent}. Must be between {VENTILATION_MIN_PERCENT} and {VENTILATION_MAX_PERCENT}%")
+
+            path = f"users/{self.user_id}/modules/{module_udid}/menu/MI/ido/{VENTILATION_BATHROOM_IDO_ID}"
+            data = {"value": percent}
+            _LOGGER.debug("POST to: %s with data: %s", path, data)
+            result = await self.post(path, json.dumps(data))
+            _LOGGER.debug("Response: %s", result)
+        else:
+            raise TechError(401, "Unauthorized")
+        return result
+
+    async def set_co2_threshold(self, module_udid, ppm):
+        """Set CO2 threshold parameter.
+
+        Args:
+        module_udid (string): The Tech module udid.
+        ppm (int): CO2 threshold in PPM (400-2000).
+
+        Returns:
+        JSON object with the result.
+
+        """
+        from .const import CO2_THRESHOLD_IDO_ID, CO2_MIN_PPM, CO2_MAX_PPM
+
+        _LOGGER.debug("Setting CO2 threshold: ppm=%s", ppm)
+        if self.authenticated:
+            # Validate ppm
+            if not (CO2_MIN_PPM <= ppm <= CO2_MAX_PPM):
+                raise TechError(400, f"Invalid ppm: {ppm}. Must be between {CO2_MIN_PPM} and {CO2_MAX_PPM} PPM")
+
+            path = f"users/{self.user_id}/modules/{module_udid}/menu/MI/ido/{CO2_THRESHOLD_IDO_ID}"
+            data = {"value": ppm}
+            _LOGGER.debug("POST to: %s with data: %s", path, data)
+            result = await self.post(path, json.dumps(data))
+            _LOGGER.debug("Response: %s", result)
+        else:
+            raise TechError(401, "Unauthorized")
+        return result
+
+    async def set_hysteresis(self, module_udid, percent):
+        """Set hysteresis parameter.
+
+        Args:
+        module_udid (string): The Tech module udid.
+        percent (int): Hysteresis percentage (5-10).
+
+        Returns:
+        JSON object with the result.
+
+        """
+        from .const import HYSTERESIS_IDO_ID, HYSTERESIS_MIN_PERCENT, HYSTERESIS_MAX_PERCENT
+
+        _LOGGER.debug("Setting hysteresis: percent=%s", percent)
+        if self.authenticated:
+            # Validate percent
+            if not (HYSTERESIS_MIN_PERCENT <= percent <= HYSTERESIS_MAX_PERCENT):
+                raise TechError(400, f"Invalid percent: {percent}. Must be between {HYSTERESIS_MIN_PERCENT} and {HYSTERESIS_MAX_PERCENT}%")
+
+            path = f"users/{self.user_id}/modules/{module_udid}/menu/MI/ido/{HYSTERESIS_IDO_ID}"
+            data = {"value": percent}
+            _LOGGER.debug("POST to: %s with data: %s", path, data)
+            result = await self.post(path, json.dumps(data))
+            _LOGGER.debug("Response: %s", result)
+        else:
+            raise TechError(401, "Unauthorized")
+        return result
+
+    async def set_flow_balancing(self, module_udid, enabled):
+        """Set flow balancing setting.
+
+        Args:
+        module_udid (string): The Tech module udid.
+        enabled (bool): Flow balancing enabled (True/False).
+
+        Returns:
+        JSON object with the result.
+
+        """
+        from .const import FLOW_BALANCING_IDO_ID
+
+        _LOGGER.debug("Setting flow balancing: enabled=%s", enabled)
+        if self.authenticated:
+            value = 1 if enabled else 0
+            path = f"users/{self.user_id}/modules/{module_udid}/menu/MI/ido/{FLOW_BALANCING_IDO_ID}"
+            data = {"value": value}
+            _LOGGER.debug("POST to: %s with data: %s", path, data)
+            result = await self.post(path, json.dumps(data))
+            _LOGGER.debug("Response: %s", result)
+        else:
+            raise TechError(401, "Unauthorized")
+        return result
+
+    async def get_current_gear(self, module_udid):
+        """Get current recuperation gear value.
+
+        Args:
+        module_udid (string): The Tech module udid.
+
+        Returns:
+        Current gear value (0-3).
+
+        """
+        from .const import GEAR_CONTROL_IDO_ID
+
+        if self.authenticated:
+            path = f"users/{self.user_id}/modules/{module_udid}/menu/MU/ido/{GEAR_CONTROL_IDO_ID}"
+            _LOGGER.debug("GET from: %s", path)
+            result = await self.get(path)
+            _LOGGER.debug("Current gear response: %s", result)
+            return result.get("value", 0) if result else 0
+        else:
+            raise TechError(401, "Unauthorized")
+
+    async def set_gear_direct(self, module_udid, gear_value):
+        """Set recuperation gear directly.
+
+        Args:
+        module_udid (string): The Tech module udid.
+        gear_value (int): Gear value (0=stop, 1=speed1, 2=speed2, 3=speed3).
+
+        Returns:
+        JSON object with the result.
+
+        """
+        from .const import GEAR_CONTROL_IDO_ID
+
+        _LOGGER.debug("Setting recuperation gear to: %d", gear_value)
+        if self.authenticated:
+            # Validate gear value
+            if not (0 <= gear_value <= 3):
+                raise TechError(400, f"Invalid gear value: {gear_value}. Must be between 0 and 3")
+
+            path = f"users/{self.user_id}/modules/{module_udid}/menu/MU/ido/{GEAR_CONTROL_IDO_ID}"
+            data = {"value": gear_value}
+            _LOGGER.debug("POST to: %s with data: %s", path, data)
+            result = await self.post(path, json.dumps(data))
+            _LOGGER.debug("Response: %s", result)
+        else:
+            raise TechError(401, "Unauthorized")
+        return result
+
 
 class TechError(Exception):
     """Raised when a Tech API request results in an error."""
 
-    def __init__(self, status_code, status) -> None:
+    def __init__(self, status_code: int, status: str) -> None:
         """Initialise an error with the API status code and message.
 
         Args:
@@ -373,6 +755,7 @@ class TechError(Exception):
             status: Human-readable reason message from the API.
 
         """
+        super().__init__(f"{status_code}: {status}")
         self.status_code = status_code
         self.status = status
 
@@ -380,13 +763,14 @@ class TechError(Exception):
 class TechLoginError(Exception):
     """Raised when a Tech API login attempt fails."""
 
-    def __init__(self, status_code, status) -> None:
+    def __init__(self, status_code: int, status: str) -> None:
         """Initialize the status code and status of the object.
 
         Args:
-            status_code (int): The status code to be assigned.
-            status (str): The status to be assigned.
+            status_code: The status code to be assigned.
+            status: The status to be assigned.
 
         """
+        super().__init__(f"{status_code}: {status}")
         self.status_code = status_code
         self.status = status

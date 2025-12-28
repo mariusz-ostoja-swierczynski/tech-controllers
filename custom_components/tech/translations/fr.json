@@ -57,6 +57,26 @@
             "zone_state_entity": {
                 "name": "{entity_name} État d'alarme"
             }
+        },
+        "select": {
+            "recuperation_fan_mode": {
+                "name": "Mode ventilateur (minuté)",
+                "state": {
+                    "stop": "Arrêter le ventilateur",
+                    "speed_1": "Vitesse 1",
+                    "speed_2": "Vitesse 2",
+                    "speed_3": "Vitesse 3"
+                }
+            },
+            "recuperation_gear": {
+                "name": "Vitesse du récupérateur",
+                "state": {
+                    "stop": "Arrêt",
+                    "speed_1": "Vitesse 1",
+                    "speed_2": "Vitesse 2",
+                    "speed_3": "Vitesse 3"
+                }
+            }
         }
     },
     "title": "Contrôleurs Tech"

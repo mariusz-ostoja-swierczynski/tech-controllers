@@ -57,6 +57,26 @@
             "zone_state_entity": {
                 "name": "{entity_name} Alarmstatus"
             }
+        },
+        "select": {
+            "recuperation_fan_mode": {
+                "name": "Ventilatormodus (getimed)",
+                "state": {
+                    "stop": "Stop ventilator",
+                    "speed_1": "Snelheid 1",
+                    "speed_2": "Snelheid 2",
+                    "speed_3": "Snelheid 3"
+                }
+            },
+            "recuperation_gear": {
+                "name": "Recuperatie versnelling",
+                "state": {
+                    "stop": "Stop",
+                    "speed_1": "Snelheid 1",
+                    "speed_2": "Snelheid 2",
+                    "speed_3": "Snelheid 3"
+                }
+            }
         }
     },
     "title": "Tech Controllers"

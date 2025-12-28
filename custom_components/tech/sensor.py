@@ -26,6 +26,8 @@ from homeassistant.const import (
     PERCENTAGE,
     STATE_OFF,
     STATE_ON,
+    STATE_UNAVAILABLE,
+    STATE_UNKNOWN,
     EntityCategory,
     UnitOfTemperature,
 )
@@ -45,6 +47,7 @@ from .const import (
     CORRECT_WORK,
     CURRENT_STATE,
     DOMAIN,
+    HUMIDITY_SENSOR_TXT_IDS,
     EVENTS,
     FLOOR_PUMP,
     INCLUDE_HUB_IN_NAME,
@@ -57,6 +60,10 @@ from .const import (
     OPENTHERM_CURRENT_TEMP_DHW,
     OPENTHERM_SET_TEMP,
     OPENTHERM_SET_TEMP_DHW,
+    RECUPERATION_EXHAUST_FLOW,
+    RECUPERATION_SUPPLY_FLOW,
+    RECUPERATION_SUPPLY_FLOW_ALT,
+    RECUPERATION_TEMP_SENSORS,
     SENSOR_DAMAGED,
     SENSOR_TYPE,
     SERVICE_ERROR,
@@ -67,6 +74,7 @@ from .const import (
     TYPE_FUEL_SUPPLY,
     TYPE_MIXING_VALVE,
     TYPE_OPEN_THERM,
+    TYPE_RECUPERATION,
     TYPE_TEMPERATURE,
     TYPE_TEMPERATURE_CH,
     TYPE_TEXT,
@@ -267,6 +275,240 @@ def _build_open_therm_tile(
                 TileOpenThermSensor(tile, coordinator, config_entry, description)
             )
     return entities
+    entities = []
+    for t in tiles:
+        tile = tiles[t]
+        if tile[VISIBILITY] is False or tile.get(WORKING_STATUS, True) is False:
+            continue
+        if tile[CONF_TYPE] == TYPE_TEMPERATURE:
+            _LOGGER.debug("Creating temperature sensor: id=%s, txtId=%s, value=%s",
+                         tile[CONF_ID], tile[CONF_PARAMS].get("txtId"), tile[CONF_PARAMS].get("value"))
+
+            # Check if this is a recuperation temperature sensor by txtId
+            tile_txt_id = tile[CONF_PARAMS].get("txtId", 0)
+            is_recuperation_temp = False
+            for temp_sensor in RECUPERATION_TEMP_SENSORS:
+                if temp_sensor["txt_id"] == tile_txt_id:
+                    is_recuperation_temp = True
+                    _LOGGER.debug("Creating recuperation temperature sensor from TYPE_TEMPERATURE tile: %s (txtId: %s)", temp_sensor["name"], temp_sensor["txt_id"])
+                    entities.append(
+                        SimpleRecuperationTemperatureSensor(
+                            tile, coordinator, config_entry, temp_sensor
+                        )
+                    )
+                    break
+
+            if not is_recuperation_temp:
+                # Regular temperature sensor processing
+                signal_strength = tile[CONF_PARAMS].get(SIGNAL_STRENGTH)
+                battery_level = tile[CONF_PARAMS].get(BATTERY_LEVEL)
+                create_devices = False
+                if signal_strength not in (None, "null"):
+                    create_devices = True
+                    entities.append(
+                        TileTemperatureSignalSensor(
+                            tile, coordinator, config_entry, create_devices
+                        )
+                    )
+                if battery_level not in (None, "null"):
+                    create_devices = True
+                    entities.append(
+                        TileTemperatureBatterySensor(
+                            tile, coordinator, config_entry, create_devices
+                        )
+                    )
+                entities.append(
+                    TileTemperatureSensor(tile, coordinator, config_entry, create_devices)
+                )
+        if tile[CONF_TYPE] == TYPE_TEMPERATURE_CH:
+            # Check if this tile contains recuperation flow data
+            widget1_txt_id = tile[CONF_PARAMS].get("widget1", {}).get("txtId", 0)
+            widget2_txt_id = tile[CONF_PARAMS].get("widget2", {}).get("txtId", 0)
+
+            # Check for recuperation flow sensors
+            is_recuperation_flow = False
+            for flow_sensor in [RECUPERATION_EXHAUST_FLOW, RECUPERATION_SUPPLY_FLOW, RECUPERATION_SUPPLY_FLOW_ALT]:
+                if flow_sensor["txt_id"] in [widget1_txt_id, widget2_txt_id]:
+                    is_recuperation_flow = True
+                    # Create flow sensor if widget has data
+                    widget_key = flow_sensor["widget"]
+                    if tile[CONF_PARAMS].get(widget_key, {}).get("txtId") == flow_sensor["txt_id"]:
+                        entities.append(
+                            TileRecuperationFlowSensor(
+                                tile, coordinator, config_entry, flow_sensor
+                            )
+                        )
+
+            # Check for recuperation temperature sensors
+            is_recuperation_temp = False
+            for widget_key in ["widget1", "widget2"]:
+                widget_data = tile[CONF_PARAMS].get(widget_key, {})
+                widget_txt_id = widget_data.get("txtId", 0)
+                widget_unit = widget_data.get("unit", -1)
+                widget_type = widget_data.get("type", 0)
+
+                # Check if this is a recuperation temperature sensor
+                for temp_sensor in RECUPERATION_TEMP_SENSORS:
+                    if temp_sensor["txt_id"] == widget_txt_id:
+                        is_recuperation_temp = True
+                        # Always create sensor if txtId matches, even if current value is None/0
+                        entities.append(
+                            TileRecuperationTemperatureSensor(
+                                tile, coordinator, config_entry, widget_key, temp_sensor
+                            )
+                        )
+                        _LOGGER.debug("Created temperature sensor: %s (txtId: %s)", temp_sensor["name"], temp_sensor["txt_id"])
+                        break
+
+            # Check for humidity sensors in widgets
+            is_humidity_sensor = False
+            for widget_key in ["widget1", "widget2"]:
+                widget_data = tile[CONF_PARAMS].get(widget_key, {})
+                widget_txt_id = widget_data.get("txtId", 0)
+                widget_unit = widget_data.get("unit", -1)
+                widget_type = widget_data.get("type", 0)
+
+                # Check if this is a humidity sensor (unit: 8, type: 2)
+                if widget_txt_id in HUMIDITY_SENSOR_TXT_IDS or (widget_unit == 8 and widget_type == 2):
+                    is_humidity_sensor = True
+                    if widget_data.get("value", 0) > 0 or widget_txt_id > 0:  # Has data
+                        entities.append(
+                            TileHumiditySensorWidget(
+                                tile, coordinator, config_entry, widget_key, widget_txt_id
+                            )
+                        )
+
+            # If not recuperation flow data, humidity sensor, or temperature sensor, create regular widget sensor
+            if not is_recuperation_flow and not is_humidity_sensor and not is_recuperation_temp and widget1_txt_id > 0:
+                entities.append(TileWidgetSensor(tile, coordinator, config_entry))
+        if tile[CONF_TYPE] == TYPE_FAN:
+            # Check if this fan is handled by the fan platform (recuperation)
+            # Use common root words that work across all supported languages
+            description = tile[CONF_PARAMS].get(CONF_DESCRIPTION, "").lower()
+            recuperation_keywords = [
+                "recup", "rekup",  # Covers most languages
+                "ventil", "wentyl", "větr", "vėdin", "szellőz",  # Ventilation variants
+                "lüft",  # German: Lüftung
+                "вентиля", "рекупер",  # Russian
+            ]
+            if not any(keyword in description for keyword in recuperation_keywords):
+                entities.append(TileFanSensor(tile, coordinator, config_entry))
+        if tile[CONF_TYPE] == TYPE_RECUPERATION:
+            # TYPE_RECUPERATION fans are handled by fan platform, create sensor for monitoring only
+            entities.append(TileRecuperationSensor(tile, coordinator, config_entry))
+        if tile[CONF_TYPE] == TYPE_VALVE:
+            entities.append(TileValveSensor(tile, coordinator, config_entry))
+            for valve_sensor in [
+                VALVE_SENSOR_RETURN_TEMPERATURE,
+                VALVE_SENSOR_SET_TEMPERATURE,
+                VALVE_SENSOR_CURRENT_TEMPERATURE,
+            ]:
+                if tile[CONF_PARAMS].get(valve_sensor["state_key"]) is not None:
+                    entities.append(
+                        TileValveTemperatureSensor(
+                            tile, coordinator, config_entry, valve_sensor
+                        )
+                    )
+        if tile[CONF_TYPE] == TYPE_MIXING_VALVE:
+            entities.append(TileMixingValveSensor(tile, coordinator, config_entry))
+        if tile[CONF_TYPE] == TYPE_FUEL_SUPPLY:
+            entities.append(TileFuelSupplySensor(tile, coordinator, config_entry))
+        if tile[CONF_TYPE] == TYPE_TEXT:
+            entities.append(TileTextSensor(tile, coordinator, config_entry))
+        if tile[CONF_TYPE] == TYPE_OPEN_THERM:
+            for openThermEntity in [
+                OPENTHERM_CURRENT_TEMP,
+                OPENTHERM_SET_TEMP,
+                OPENTHERM_CURRENT_TEMP_DHW,
+                OPENTHERM_SET_TEMP_DHW,
+            ]:
+                if tile[CONF_PARAMS].get(openThermEntity["state_key"]) is not None:
+                    entities.append(
+                        TileOpenThermSensor(
+                            tile, coordinator, config_entry, openThermEntity
+                        )
+                    )
+
+    # Check if we have recuperation system (detected by flow sensors) for filter usage sensor
+    has_recuperation_flow = False
+    for t in tiles:
+        tile = tiles[t]
+        if tile.get("type") == TYPE_TEMPERATURE_CH:
+            widget1_txt_id = tile.get("params", {}).get("widget1", {}).get("txtId", 0)
+            widget2_txt_id = tile.get("params", {}).get("widget2", {}).get("txtId", 0)
+            for flow_sensor in [RECUPERATION_EXHAUST_FLOW, RECUPERATION_SUPPLY_FLOW, RECUPERATION_SUPPLY_FLOW_ALT]:
+                if flow_sensor["txt_id"] in [widget1_txt_id, widget2_txt_id]:
+                    has_recuperation_flow = True
+                    break
+        if has_recuperation_flow:
+            break
+
+    # Create filter usage sensor, efficiency sensor, and outdoor temperature if we have recuperation
+    if has_recuperation_flow:
+        _LOGGER.debug("Creating filter usage, efficiency, and outdoor temperature sensors")
+        entities.append(FilterUsageSensor(coordinator, config_entry))
+        entities.append(RecuperationEfficiencySensor(coordinator, config_entry))
+        entities.append(OutdoorTemperatureSensor(coordinator, config_entry))
+
+    async_add_entities(entities, True)
+
+    # async_add_entities(
+    #     [
+    #         ZoneTemperatureSensor(zones[zone], coordinator, controller_udid, model)
+    #         for zone in zones
+    #     ],
+    #     True,
+    # )
+
+    battery_devices = map_to_battery_sensors(zones, coordinator, config_entry)
+    temperature_sensors = map_to_temperature_sensors(zones, coordinator, config_entry)
+    zone_state_sensors = map_to_zone_state_sensors(zones, coordinator, config_entry)
+    humidity_sensors = map_to_humidity_sensors(zones, coordinator, config_entry)
+    actuator_sensors = map_to_actuator_sensors(zones, coordinator, config_entry)
+    window_sensors = map_to_window_sensors(zones, coordinator, config_entry)
+    signal_strength_sensors = map_to_signal_strength_sensors(
+        zones, coordinator, config_entry
+    )
+    # tile_sensors = map_to_tile_sensors(tiles, api, config_entry)
+
+    async_add_entities(
+        itertools.chain(
+            battery_devices,
+            temperature_sensors,
+            zone_state_sensors,
+            humidity_sensors,  # , tile_sensors
+            actuator_sensors,
+            window_sensors,
+            signal_strength_sensors,
+        ),
+        True,
+    )
+
+
+def map_to_battery_sensors(zones, coordinator, config_entry):
+    """Map the battery-operating devices in the zones to TechBatterySensor objects.
+
+    Args:
+    zones: list of devices
+    coordinator: the api object
+    config_entry: the config entry object
+    model: device model
+
+    Returns:
+    - list of TechBatterySensor objects
+
+    """
+    devices = filter(
+        lambda deviceIndex: is_battery_operating_device(zones[deviceIndex]), zones
+    )
+    return (
+        ZoneBatterySensor(zones[deviceIndex], coordinator, config_entry)
+        for deviceIndex in devices
+    )
+
+
+def is_battery_operating_device(device) -> bool:
+    """Check if the device is operating on battery.
 
 
 _TILE_ENTITY_BUILDERS: dict[int, TileBuilder] = {
@@ -1575,4 +1817,665 @@ class TileOpenThermSensor(TileSensor, SensorEntity):
             CONF_NAME: self.device_name,  # Name of the device
             CONF_MODEL: self.model,  # Model of the device
             ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+        }
+
+
+class TileRecuperationSensor(TileSensor, SensorEntity):
+    """Representation of a Tile Recuperation Sensor for monitoring."""
+
+    def __init__(self, device, coordinator, config_entry) -> None:
+        """Initialize the sensor."""
+        TileSensor.__init__(self, device, coordinator, config_entry)
+        self.state_class = SensorStateClass.MEASUREMENT
+        self._attr_icon = assets.get_icon_by_type(TYPE_RECUPERATION)
+        self._name = (
+            self._config_entry.title + " "
+            if self._config_entry.data[INCLUDE_HUB_IN_NAME]
+            else ""
+        ) + "Recuperation Status"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_recuperation_sensor"
+
+    @property
+    def name(self) -> str | UndefinedType | None:
+        """Return the name of the sensor."""
+        return self._name
+
+    def get_state(self, device) -> Any:
+        """Get the state of the device."""
+        gear = device[CONF_PARAMS].get("gear", 0)
+        if gear == 0:
+            return "off"
+        elif gear == 1:
+            return "low"
+        elif gear == 2:
+            return "medium"
+        elif gear == 3:
+            return "high"
+        else:
+            return f"speed_{gear}"
+
+
+class TileRecuperationFlowSensor(TileSensor, SensorEntity):
+    """Representation of a Tile Recuperation Flow Sensor."""
+
+    _attr_has_entity_name = True
+    _attr_native_unit_of_measurement = "m³/h"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:air-filter"
+
+    def __init__(
+        self,
+        device,
+        coordinator: TechCoordinator,
+        config_entry,
+        flow_sensor_config,
+    ) -> None:
+        """Initialize the sensor."""
+        self._flow_config = flow_sensor_config
+        self._widget_key = flow_sensor_config["widget"]
+        self._flow_name = flow_sensor_config["name"]
+
+        TileSensor.__init__(self, device, coordinator, config_entry)
+
+        # Set the appropriate device class and icon based on flow type
+        if self._flow_name == "exhaust_flow":
+            self._attr_icon = "mdi:arrow-up-bold"
+            self._flow_display_name = "Exhaust Flow"
+        elif self._flow_name == "supply_flow":
+            self._attr_icon = "mdi:arrow-down-bold"
+            self._flow_display_name = "Supply Flow"
+        else:
+            self._flow_display_name = "Air Flow"
+
+        self._name = (
+            self._config_entry.title + " "
+            if self._config_entry.data[INCLUDE_HUB_IN_NAME]
+            else ""
+        ) + f"Recuperation {self._flow_display_name}"
+
+    @property
+    def name(self) -> str | UndefinedType | None:
+        """Return the name of the device."""
+        return self._name
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_recuperation_{self._flow_name}"
+
+    def get_state(self, device) -> Any:
+        """Get the state of the device."""
+        widget_data = device[CONF_PARAMS].get(self._widget_key, {})
+        flow_value = widget_data.get("value", 0)
+        # Flow values are in m³/h units, no conversion needed
+        return flow_value if flow_value else 0
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Returns device information in a dictionary format."""
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, f"{self._unique_id}_recuperation")
+            },  # Unique identifiers for the device
+            CONF_NAME: f"{self._config_entry.title} Recuperation",  # Name of the device
+            CONF_MODEL: (
+                self._config_entry.data[CONTROLLER][CONF_NAME]
+                + ": "
+                + self._config_entry.data[CONTROLLER][VER]
+            ),  # Model of the device
+            ATTR_MANUFACTURER: MANUFACTURER,  # Manufacturer of the device
+        }
+
+
+class TileHumiditySensorWidget(TileSensor, SensorEntity):
+    """Representation of a Tile Humidity Sensor Widget."""
+
+    _attr_has_entity_name = True
+    _attr_native_unit_of_measurement = "%"
+    _attr_device_class = SensorDeviceClass.HUMIDITY
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:water-percent"
+
+    def __init__(
+        self,
+        device,
+        coordinator: TechCoordinator,
+        config_entry,
+        widget_key: str,
+        txt_id: int,
+    ) -> None:
+        """Initialize the humidity sensor."""
+        self._widget_key = widget_key
+        self._txt_id = txt_id
+
+        TileSensor.__init__(self, device, coordinator, config_entry)
+
+        # Get the proper name from assets using txtId
+        sensor_name = assets.get_text(txt_id) if txt_id > 0 else f"Humidity Sensor {txt_id}"
+
+        self._name = (
+            self._config_entry.title + " "
+            if self._config_entry.data[INCLUDE_HUB_IN_NAME]
+            else ""
+        ) + sensor_name
+
+    @property
+    def name(self) -> str | UndefinedType | None:
+        """Return the name of the device."""
+        return self._name
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_humidity_{self._txt_id}"
+
+    def get_state(self, device) -> Any:
+        """Get the state of the device."""
+        widget_data = device[CONF_PARAMS].get(self._widget_key, {})
+        humidity_value = widget_data.get("value", 0)
+        # Humidity values are already in percent, no conversion needed
+        return humidity_value if humidity_value else 0
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Returns device information in a dictionary format."""
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, f"{self._unique_id}_humidity_sensors")
+            },  # Unique identifiers for the device
+            CONF_NAME: f"{self._config_entry.title} Humidity Sensors",  # Name of the device
+            CONF_MODEL: (
+                self._config_entry.data[CONTROLLER][CONF_NAME]
+                + ": "
+                + self._config_entry.data[CONTROLLER][VER]
+            ),  # Model of the device
+            ATTR_MANUFACTURER: MANUFACTURER,  # Manufacturer of the device
+        }
+
+
+class FilterUsageSensor(CoordinatorEntity, SensorEntity):
+    """Representation of filter usage tracking sensor."""
+
+    _attr_has_entity_name = True
+    _attr_native_unit_of_measurement = "days"
+    _attr_icon = "mdi:air-filter"
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+
+    def __init__(
+        self,
+        coordinator,
+        config_entry: ConfigEntry,
+    ) -> None:
+        """Initialize the filter usage sensor."""
+        super().__init__(coordinator)
+        self._coordinator = coordinator
+        self._config_entry = config_entry
+        self._udid = config_entry.data[CONTROLLER][UDID]
+        self._attr_unique_id = f"{self._udid}_filter_usage_days"
+
+        self._name = (
+            self._config_entry.title + " "
+            if self._config_entry.data[INCLUDE_HUB_IN_NAME]
+            else ""
+        ) + "Filter Usage Days"
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return self._name
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the current filter usage in days."""
+        # Calculate days since last filter reset from stored date
+        if hasattr(self._coordinator, '_filter_reset_date') and self._coordinator._filter_reset_date:
+            from datetime import datetime
+            reset_date = datetime.fromisoformat(self._coordinator._filter_reset_date)
+            current_date = datetime.now()
+            days_diff = (current_date - reset_date).days
+            return days_diff
+        else:
+            # No reset date stored, assume filter is new (0 days)
+            return 0
+
+    @property
+    def entity_category(self):
+        """Return the entity category for diagnostic entities."""
+        return EntityCategory.DIAGNOSTIC
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Returns device information in a dictionary format."""
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, f"{self._udid}_recuperation")
+            },  # Unique identifiers for the device
+            CONF_NAME: f"{self._config_entry.title} Recuperation",  # Name of the device
+            CONF_MODEL: (
+                self._config_entry.data[CONTROLLER][CONF_NAME]
+                + ": "
+                + self._config_entry.data[CONTROLLER][VER]
+            ),  # Model of the device
+            ATTR_MANUFACTURER: MANUFACTURER,  # Manufacturer of the device
+        }
+
+
+class TileRecuperationTemperatureSensor(TileSensor, SensorEntity):
+    """Representation of a recuperation temperature sensor."""
+
+    def __init__(
+        self,
+        device,
+        coordinator: TechCoordinator,
+        config_entry: ConfigEntry,
+        widget_key: str,
+        temp_sensor: dict,
+    ) -> None:
+        """Initialize the recuperation temperature sensor."""
+        TileSensor.__init__(self, device, coordinator, config_entry)
+        self._widget_key = widget_key
+        self._temp_sensor = temp_sensor
+        self._attr_unique_id = f"{self._unique_id}_{widget_key}_{temp_sensor['txt_id']}_temp"
+        self._attr_device_class = SensorDeviceClass.TEMPERATURE
+        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_icon = "mdi:thermometer"
+
+        self._name = (
+            self._config_entry.title + " "
+            if self._config_entry.data[INCLUDE_HUB_IN_NAME]
+            else ""
+        ) + temp_sensor["name"]
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return self._name
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return self._attr_unique_id
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the temperature value."""
+        if self._coordinator.data and "tiles" in self._coordinator.data:
+            tile_data = self._coordinator.data["tiles"].get(self._id)
+            if tile_data:
+                widget_data = tile_data.get("params", {}).get(self._widget_key, {})
+                temp_value = widget_data.get("value")
+                # Temperature values might need conversion from tenths of degrees
+                if temp_value is not None:
+                    return float(temp_value) / 10.0 if temp_value > 100 else float(temp_value)
+        return None
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Returns device information in a dictionary format."""
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, f"{self._udid}_recuperation")
+            },
+            CONF_NAME: f"{self._config_entry.title} Recuperation",
+            CONF_MODEL: (
+                self._config_entry.data[CONTROLLER][CONF_NAME]
+                + ": "
+                + self._config_entry.data[CONTROLLER][VER]
+            ),
+            ATTR_MANUFACTURER: MANUFACTURER,
+        }
+
+
+class SimpleRecuperationTemperatureSensor(TileSensor, SensorEntity):
+    """Representation of a simple recuperation temperature sensor following TYPE_TEMPERATURE pattern."""
+
+    _attr_has_entity_name = True
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(
+        self,
+        device,
+        coordinator: TechCoordinator,
+        config_entry,
+        temp_sensor: dict,
+    ) -> None:
+        """Initialize the sensor."""
+        TileSensor.__init__(self, device, coordinator, config_entry)
+        self._coordinator = coordinator
+        self._temp_sensor = temp_sensor
+        self._attr_unique_id = f"{self._unique_id}_recuperation_temp_{temp_sensor['txt_id']}"
+        self._attr_icon = "mdi:thermometer"
+
+        # Use the temperature sensor name from the config
+        self._name = (
+            self._config_entry.title + " "
+            if self._config_entry.data[INCLUDE_HUB_IN_NAME]
+            else ""
+        ) + temp_sensor["name"]
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return self._name
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return self._attr_unique_id
+
+    def get_state(self, device) -> Any:
+        """Get the state of the device using TYPE_TEMPERATURE pattern."""
+        temp_value = device[CONF_PARAMS].get(VALUE)
+        if temp_value is not None:
+            # Follow the same pattern as other temperature sensors: divide by 10
+            return temp_value / 10
+        return None
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Returns device information in a dictionary format."""
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, f"{self._config_entry.data[CONTROLLER][UDID]}_recuperation")
+            },
+            CONF_NAME: f"{self._config_entry.title} Recuperation",
+            CONF_MODEL: (
+                self._config_entry.data[CONTROLLER][CONF_NAME]
+                + ": "
+                + self._config_entry.data[CONTROLLER][VER]
+            ),
+            ATTR_MANUFACTURER: MANUFACTURER,
+        }
+class RecuperationEfficiencySensor(CoordinatorEntity, SensorEntity):
+    """Sensor for calculating recuperation heat recovery efficiency."""
+
+    _attr_has_entity_name = True
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_icon = "mdi:percent"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(
+        self,
+        coordinator: TechCoordinator,
+        config_entry: ConfigEntry,
+    ) -> None:
+        """Initialize the efficiency sensor."""
+        super().__init__(coordinator)
+        self._coordinator = coordinator
+        self._config_entry = config_entry
+        self._udid = config_entry.data[CONTROLLER][UDID]
+        self._attr_unique_id = f"{self._udid}_recuperation_efficiency"
+
+        self._name = (
+            self._config_entry.title + " "
+            if self._config_entry.data[INCLUDE_HUB_IN_NAME]
+            else ""
+        ) + "Recuperation Efficiency"
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return self._name
+
+    @property
+    def native_value(self) -> float | None:
+        """Calculate heat recovery efficiency based on temperature sensors."""
+        if self._coordinator.data and "tiles" in self._coordinator.data:
+            tiles_data = self._coordinator.data["tiles"]
+            if not tiles_data:
+                _LOGGER.debug("No tiles data available for efficiency calculation")
+                return None
+
+            _LOGGER.debug("Starting efficiency calculation, searching for temperature sensors...")
+            _LOGGER.debug("Found %d tiles to examine", len(tiles_data))
+
+            # Try to find temperature sensors for efficiency calculation
+            # Standard efficiency formula: (Supply - Outdoor) / (Exhaust - Outdoor) * 100
+            supply_temp = None
+            exhaust_temp = None
+            outdoor_temp = None
+
+            # First, log all available tiles for debugging
+            _LOGGER.debug("Available tiles for efficiency calculation:")
+            for tile_id, tile_data in tiles_data.items():
+                tile_type = tile_data.get("type", "unknown")
+                tile_params = tile_data.get("params", {})
+                # Safe logging - only log key parameters to avoid issues
+                txtId = tile_params.get("txtId", "none")
+                value = tile_params.get("value", "none")
+                _LOGGER.debug("Tile %s: type=%s, txtId=%s, value=%s", tile_id, tile_type, txtId, value)
+
+            # Look for temperature sensors in tiles
+            for tile_id, tile_data in tiles_data.items():
+                # Check TYPE_TEMPERATURE tiles for recuperation sensors
+                if tile_data.get("type") == TYPE_TEMPERATURE:
+                    tile_txt_id = tile_data.get("params", {}).get("txtId", 0)
+                    temp_value = tile_data.get("params", {}).get("value")
+
+                    _LOGGER.debug("Found TYPE_TEMPERATURE tile: txtId=%s, value=%s", tile_txt_id, temp_value)
+
+                    if temp_value is not None:
+                        try:
+                            # Temperature processing - handle both formats (tenths vs direct)
+                            if isinstance(temp_value, (int, float)) and temp_value > 100:
+                                temp_celsius = temp_value / 10  # Likely in tenths (e.g., 215 = 21.5°C)
+                            else:
+                                temp_celsius = float(temp_value)  # Already in correct format
+
+                            _LOGGER.debug("Temperature processed: txtId=%s, raw_value=%s, temp_celsius=%.1f", tile_txt_id, temp_value, temp_celsius)
+                        except (ValueError, TypeError) as e:
+                            _LOGGER.debug("Could not process temperature value: txtId=%s, value=%s, error=%s", tile_txt_id, temp_value, e)
+                            continue
+
+                        # Comprehensive txtId mapping - trying all possible recuperation temperature sensors
+                        # Supply Air Temperature (expanded list from various implementations)
+                        if tile_txt_id in [119, 126, 127, 5997, 2010, 6001, 6002, 6003]:
+                            supply_temp = temp_celsius
+                            _LOGGER.debug("Found Supply Air Temperature: %.1f°C (txtId: %s)", temp_celsius, tile_txt_id)
+                        # Exhaust Air Temperature (expanded list)
+                        elif tile_txt_id in [120, 127, 128, 5998, 5996, 2011, 6004, 6005, 6006]:
+                            exhaust_temp = temp_celsius
+                            _LOGGER.debug("Found Exhaust Air Temperature: %.1f°C (txtId: %s)", temp_celsius, tile_txt_id)
+                        # External/Fresh Air Temperature (expanded list)
+                        elif tile_txt_id in [121, 122, 129, 5995, 2012, 6007, 6008, 6009]:
+                            outdoor_temp = temp_celsius
+                            _LOGGER.debug("Found External Air Temperature: %.1f°C (txtId: %s)", temp_celsius, tile_txt_id)
+                        # Log any reasonable temperature for manual identification
+                        elif -30 <= temp_celsius <= 70:  # Reasonable temperature range
+                            _LOGGER.warning("UNRECOGNIZED TEMPERATURE SENSOR: txtId=%s, temp=%.1f°C - could be supply/exhaust/outdoor air", tile_txt_id, temp_celsius)
+                        else:
+                            _LOGGER.debug("Found non-temperature sensor: txtId=%s, value=%s", tile_txt_id, temp_value)
+
+                # Check all other tile types too in case temperature is elsewhere
+                elif tile_data.get("type") not in [TYPE_TEMPERATURE_CH]:  # Skip TYPE_TEMPERATURE_CH as we handle it separately
+                    tile_params = tile_data.get("params", {})
+                    if "value" in tile_params and isinstance(tile_params.get("value"), (int, float)):
+                        potential_temp = tile_params["value"]
+                        txtId = tile_params.get("txtId", 0)
+                        if txtId > 0:  # Valid txtId
+                            _LOGGER.debug("Found other tile type %s with numeric value: txtId=%s, value=%s", tile_data.get("type"), txtId, potential_temp)
+
+                # Also check TYPE_TEMPERATURE_CH widgets
+                elif tile_data.get("type") == TYPE_TEMPERATURE_CH:
+                    for widget_key in ["widget1", "widget2"]:
+                        widget_data = tile_data.get("params", {}).get(widget_key, {})
+                        widget_txt_id = widget_data.get("txtId", 0)
+                        temp_value = widget_data.get("value")
+
+                        if widget_txt_id > 0:  # Only log if we have a valid txtId
+                            _LOGGER.debug("Found TYPE_TEMPERATURE_CH widget: %s, txtId=%s, value=%s", widget_key, widget_txt_id, temp_value)
+
+                        if temp_value is not None:
+                            try:
+                                # Same temperature processing for widgets
+                                if isinstance(temp_value, (int, float)) and temp_value > 100:
+                                    temp_celsius = temp_value / 10
+                                else:
+                                    temp_celsius = float(temp_value)
+
+                                _LOGGER.debug("Widget temperature processed: txtId=%s, raw_value=%s, temp_celsius=%.1f", widget_txt_id, temp_value, temp_celsius)
+                            except (ValueError, TypeError) as e:
+                                _LOGGER.debug("Could not process widget temperature value: txtId=%s, value=%s, error=%s", widget_txt_id, temp_value, e)
+                                continue
+
+                            # Same comprehensive txtId mapping for widgets
+                            if widget_txt_id in [119, 126, 127, 5997, 2010, 6001, 6002, 6003]:  # Supply Air
+                                supply_temp = temp_celsius
+                                _LOGGER.debug("Found Supply Air Temperature (widget): %.1f°C (txtId: %s)", temp_celsius, widget_txt_id)
+                            elif widget_txt_id in [120, 127, 128, 5998, 5996, 2011, 6004, 6005, 6006]:  # Exhaust Air
+                                exhaust_temp = temp_celsius
+                                _LOGGER.debug("Found Exhaust Air Temperature (widget): %.1f°C (txtId: %s)", temp_celsius, widget_txt_id)
+                            elif widget_txt_id in [121, 122, 129, 5995, 2012, 6007, 6008, 6009]:  # External Air
+                                outdoor_temp = temp_celsius
+                                _LOGGER.debug("Found External Air Temperature (widget): %.1f°C (txtId: %s)", temp_celsius, widget_txt_id)
+                            elif -30 <= temp_celsius <= 70:  # Reasonable temperature range
+                                _LOGGER.warning("UNRECOGNIZED TEMPERATURE WIDGET: txtId=%s, temp=%.1f°C - could be supply/exhaust/outdoor air", widget_txt_id, temp_celsius)
+                            else:
+                                _LOGGER.debug("Found non-temperature widget: txtId=%s, value=%s", widget_txt_id, temp_value)
+
+            # Try to get outdoor temperature from existing sensor if not found in tiles
+            if outdoor_temp is None:
+                try:
+                    external_sensor_state = self._coordinator.hass.states.get("sensor.external_air_temperature")
+                    if external_sensor_state and external_sensor_state.state not in [STATE_UNKNOWN, STATE_UNAVAILABLE]:
+                        outdoor_temp = float(external_sensor_state.state)
+                        _LOGGER.debug("Using external_air_temperature sensor: %.1f°C", outdoor_temp)
+                except (ValueError, AttributeError) as e:
+                    _LOGGER.debug("Could not get outdoor temperature from external sensor: %s", e)
+
+            # Final temperature summary and calculation
+            _LOGGER.debug("Temperature summary: Supply=%.1f, Exhaust=%.1f, Outdoor=%.1f",
+                         supply_temp if supply_temp is not None else float('nan'),
+                         exhaust_temp if exhaust_temp is not None else float('nan'),
+                         outdoor_temp if outdoor_temp is not None else float('nan'))
+
+            # Calculate efficiency if we have all required temperatures
+            if supply_temp is not None and exhaust_temp is not None and outdoor_temp is not None:
+                # Avoid division by zero
+                temperature_diff = exhaust_temp - outdoor_temp
+                _LOGGER.debug("Temperature difference (Exhaust - Outdoor): %.1f°C", temperature_diff)
+
+                if abs(temperature_diff) > 0.1:  # Minimum difference threshold
+                    efficiency = ((supply_temp - outdoor_temp) / temperature_diff) * 100
+                    _LOGGER.debug("Calculated efficiency: %.1f%% (formula: (%.1f - %.1f) / %.1f * 100)",
+                                 efficiency, supply_temp, outdoor_temp, temperature_diff)
+
+                    # Clamp efficiency between 0 and 100%
+                    final_efficiency = max(0, min(100, round(efficiency, 1)))
+                    _LOGGER.debug("Final clamped efficiency: %.1f%%", final_efficiency)
+                    return final_efficiency
+                else:
+                    _LOGGER.debug("Temperature difference too small: %.1f°C", temperature_diff)
+            else:
+                missing = []
+                if supply_temp is None: missing.append("Supply")
+                if exhaust_temp is None: missing.append("Exhaust")
+                if outdoor_temp is None: missing.append("Outdoor")
+                _LOGGER.debug("Missing temperature sensors for efficiency calculation: %s", ", ".join(missing))
+
+        return None
+
+    @property
+    def entity_category(self):
+        """Return the entity category for diagnostic entities."""
+        return EntityCategory.DIAGNOSTIC
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Returns device information in a dictionary format."""
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, f"{self._udid}_recuperation")
+            },
+            CONF_NAME: f"{self._config_entry.title} Recuperation",
+            CONF_MODEL: (
+                self._config_entry.data[CONTROLLER][CONF_NAME]
+                + ": "
+                + self._config_entry.data[CONTROLLER][VER]
+            ),
+            ATTR_MANUFACTURER: MANUFACTURER,
+        }
+
+
+class OutdoorTemperatureSensor(CoordinatorEntity, SensorEntity):
+    """Sensor for outdoor temperature from recuperation system - HomeKit friendly."""
+
+    _attr_has_entity_name = True
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:thermometer"
+
+    def __init__(
+        self,
+        coordinator: TechCoordinator,
+        config_entry: ConfigEntry,
+    ) -> None:
+        """Initialize the outdoor temperature sensor."""
+        super().__init__(coordinator)
+        self._coordinator = coordinator
+        self._config_entry = config_entry
+        self._udid = config_entry.data[CONTROLLER][UDID]
+        self._attr_unique_id = f"{self._udid}_outdoor_temperature"
+
+        # Simple, HomeKit-friendly name
+        self._name = (
+            self._config_entry.title + " "
+            if self._config_entry.data[INCLUDE_HUB_IN_NAME]
+            else ""
+        ) + "Outdoor Temperature"
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return self._name
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the outdoor temperature value."""
+        if self._coordinator.data and "tiles" in self._coordinator.data:
+            # Search for outdoor temperature in both TYPE_TEMPERATURE and TYPE_TEMPERATURE_CH tiles
+            for tile_data in self._coordinator.data["tiles"].values():
+                # Check TYPE_TEMPERATURE tiles
+                if tile_data.get("type") == TYPE_TEMPERATURE:
+                    tile_txt_id = tile_data.get("params", {}).get("txtId", 0)
+                    temp_value = tile_data.get("params", {}).get("value")
+
+                    if temp_value is not None and tile_txt_id in [121, 5995]:  # External/Fresh Air
+                        return temp_value / 10  # Convert from tenths
+
+                # Check TYPE_TEMPERATURE_CH widgets
+                elif tile_data.get("type") == TYPE_TEMPERATURE_CH:
+                    for widget_key in ["widget1", "widget2"]:
+                        widget_data = tile_data.get("params", {}).get(widget_key, {})
+                        widget_txt_id = widget_data.get("txtId", 0)
+                        temp_value = widget_data.get("value")
+
+                        if temp_value is not None and widget_txt_id in [121, 5995]:  # External/Fresh Air
+                            return temp_value / 10  # Convert from tenths
+
+        return None
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Returns device information in a dictionary format - separate device for HomeKit."""
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, f"{self._udid}_weather_station")
+            },
+            CONF_NAME: f"{self._config_entry.title} Weather Station",
+            CONF_MODEL: (
+                self._config_entry.data[CONTROLLER][CONF_NAME]
+                + ": "
+                + self._config_entry.data[CONTROLLER][VER]
+            ),
+            ATTR_MANUFACTURER: MANUFACTURER,
         }

@@ -57,6 +57,26 @@
             "zone_state_entity": {
                 "name": "{entity_name} Alarmzustand"
             }
+        },
+        "select": {
+            "recuperation_fan_mode": {
+                "name": "Lüftermodus (zeitgesteuert)",
+                "state": {
+                    "stop": "Lüfter stoppen",
+                    "speed_1": "Stufe 1",
+                    "speed_2": "Stufe 2",
+                    "speed_3": "Stufe 3"
+                }
+            },
+            "recuperation_gear": {
+                "name": "Rekuperator Stufe",
+                "state": {
+                    "stop": "Stopp",
+                    "speed_1": "Stufe 1",
+                    "speed_2": "Stufe 2",
+                    "speed_3": "Stufe 3"
+                }
+            }
         }
     },
     "title": "Tech Controllers"
