@@ -27,8 +27,7 @@ jobs:
       - name: Install requirements
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements_test_api.txt
+          pip install -e .[test_api]
       - name: Run tests
         uses: pavelzw/pytest-action@v2
         with:
