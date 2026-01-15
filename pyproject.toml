@@ -112,6 +112,8 @@ test_api = [
   "pytest-picked==0.5.1",
   "pytest-xdist==3.8.0",
   "pytest==9.0.0",
+  "pytest-md==0.2.0",
+  "pytest-emoji==0.2.0",
   "requests-mock==1.12.1",
   "respx==0.22.0",
   "syrupy==5.0.0",
