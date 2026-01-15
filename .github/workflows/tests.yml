@@ -26,7 +26,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install requirements
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade "pip>=24.1" 
           pip install -e .                                 # core package
           pip install --dependency-groups test_api          # test_api group
       - name: Run tests
