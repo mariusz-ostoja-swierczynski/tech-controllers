@@ -38,6 +38,8 @@ class TechThermostatCard extends LitElement {
     this._duration = 60;
     this._showTimerDialog = false;
     this._targetTemperature = null;
+    this._pendingZoneMode = null;
+    this._pendingConstTempTime = null;
   }
 
   get _stateObj() {
@@ -67,6 +69,20 @@ class TechThermostatCard extends LitElement {
 
   get _max() {
     return this._stateObj?.attributes?.max_temp;
+  }
+
+  get _isTimerActive() {
+    if (this._pendingZoneMode !== null) {
+      return this._pendingZoneMode === "timeLimit";
+    }
+    return this._stateObj?.attributes?.zone_mode === "timeLimit";
+  }
+
+  get _remainingTime() {
+    if (this._pendingConstTempTime !== null) {
+      return this._pendingConstTempTime;
+    }
+    return this._stateObj?.attributes?.const_temp_time;
   }
 
   get _containerStyle() {
@@ -191,6 +207,18 @@ class TechThermostatCard extends LitElement {
         ? this.hass.formatEntityAttributeValue(stateObj, "hvac_action")
         : this.hass.formatEntityState(stateObj)}
       </p>
+    `;
+  }
+
+  _renderActiveTimer() {
+    if (!this._isTimerActive || !this._remainingTime) {
+      return null;
+    }
+    return html`
+      <div class="active-timer">
+        <ha-icon icon="mdi:timer-outline"></ha-icon>
+        <span>${this._formatDuration(this._remainingTime)}</span>
+      </div>
     `;
   }
 
@@ -344,6 +372,23 @@ class TechThermostatCard extends LitElement {
         flex: none;
       }
 
+      .active-timer {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        background: var(--state-climate-heat-color, var(--primary-color));
+        color: white;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 500;
+        --mdc-icon-size: 14px;
+        z-index: 1;
+      }
+
       .info {
         position: absolute;
         top: 0;
@@ -478,6 +523,7 @@ class TechThermostatCard extends LitElement {
     return html`
       <ha-card>
         <p class="title">${name}</p>
+        ${this._renderActiveTimer()}
         <div class="container" style="${this._containerStyle}">
           <ha-control-circular-slider
             prevent-interaction-on-scroll
@@ -497,10 +543,10 @@ class TechThermostatCard extends LitElement {
           <div class="timer-section">
 
               <div class="timer-quick-buttons">
-                <ha-button variant="neutral" class="${this._duration === 60 ? 'active' : ''}" @click=${() => this._handleQuickDuration(60)}>1h</ha-button>
-                <ha-button variant="neutral" class="${this._duration === 120 ? 'active' : ''}" @click=${() => this._handleQuickDuration(120)}>2h</ha-button>
-                <ha-button variant="neutral" class="${this._duration === 240 ? 'active' : ''}" @click=${() => this._handleQuickDuration(240)}>4h</ha-button>
-                <ha-button variant="neutral" class="${this._duration === 480 ? 'active' : ''}" @click=${() => this._handleQuickDuration(480)}>8h</ha-button>
+                <ha-button variant="neutral" appearance="outlined" class="${this._duration === 60 ? 'active' : ''}" @click=${() => this._handleQuickDuration(60)}>1h</ha-button>
+                <ha-button variant="neutral" appearance="outlined" class="${this._duration === 120 ? 'active' : ''}" @click=${() => this._handleQuickDuration(120)}>2h</ha-button>
+                <ha-button variant="neutral" appearance="outlined" class="${this._duration === 240 ? 'active' : ''}" @click=${() => this._handleQuickDuration(240)}>4h</ha-button>
+                <ha-button variant="neutral" appearance="outlined" class="${this._duration === 480 ? 'active' : ''}" @click=${() => this._handleQuickDuration(480)}>8h</ha-button>
               </div>
                 <ha-slider
                   labeled

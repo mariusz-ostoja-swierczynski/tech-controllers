@@ -101,6 +101,8 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         )
         self._temperature = None
         self._target_temperature = None
+        self._zone_mode = None
+        self._const_temp_time = None
         self.update_properties(device)
         # Remove the line below after HA 2025.1
         self._enable_turn_on_off_backwards_compatibility = False
@@ -170,6 +172,11 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
             self._mode = HVACMode.HEAT
         else:
             self._mode = HVACMode.OFF
+
+        # Update zone mode and const temp time from mode object
+        if "mode" in device:
+            self._zone_mode = device["mode"].get("mode")
+            self._const_temp_time = device["mode"].get("constTempTime")
 
     @callback
     def _handle_coordinator_update(self, *args: Any) -> None:
@@ -249,6 +256,16 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
     def target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
         return self._target_temperature
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra state attributes for the custom card."""
+        attrs = {}
+        if self._zone_mode is not None:
+            attrs["zone_mode"] = self._zone_mode
+        if self._const_temp_time is not None:
+            attrs["const_temp_time"] = self._const_temp_time
+        return attrs
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set a new target temperature on the Tech module.
