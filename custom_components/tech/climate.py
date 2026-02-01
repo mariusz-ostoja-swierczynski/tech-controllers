@@ -24,6 +24,7 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -265,6 +266,34 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
             self._temperature = temperature
             await self._coordinator.api.set_const_temp(
                 self._udid, self._id, temperature
+            )
+            self._target_temperature = temperature
+            await self.coordinator.async_request_refresh()
+
+
+    async def async_set_temperature_with_duration(
+        self, temperature: float, duration_minutes: int
+    ) -> None:
+        """Set a new target temperature with time limit on the Tech module.
+
+        This is a custom service that provides a UI-friendly way to set
+        temperature with duration. It will use the timeLimit mode.
+
+        Args:
+            temperature: Target temperature in °C.
+            duration_minutes: Duration in minutes for the time-limited temperature.
+
+        """
+        _LOGGER.debug(
+            "%s: Setting temperature to %s for %s minutes",
+            self.device_name,
+            temperature,
+            duration_minutes,
+        )
+        if temperature:
+            self._temperature = temperature
+            await self._coordinator.api.set_const_temp(
+                self._udid, self._id, temperature, duration_minutes
             )
             self._target_temperature = temperature
             await self.coordinator.async_request_refresh()

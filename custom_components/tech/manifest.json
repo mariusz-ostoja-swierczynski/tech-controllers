@@ -12,5 +12,8 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/mariusz-ostoja-swierczynski/tech-controllers/issues",
   "requirements": [],
+  "resources": {
+    "tech-thermostat-card": "www/tech-thermostat-card.js"
+  },
   "version": "2.0.0"
 }

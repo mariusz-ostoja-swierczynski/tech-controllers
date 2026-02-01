@@ -2,10 +2,12 @@
 
 import logging
 
+import voluptuous as vol
+
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_TOKEN
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import config_validation as cv
+from homeassistant.const import ATTR_ENTITY_ID, CONF_TOKEN
+from homeassistant.core import HomeAssistant, ServiceCall, Context
+from homeassistant.helpers import config_validation as cv, entity_registry as er, template
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
@@ -33,6 +35,107 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # pylin
         ``True`` to indicate setup should continue.
 
     """
+    # Register custom service for setting temperature with duration
+    async def async_set_temperature_with_duration_service(call: ServiceCall) -> None:
+        """Service to set temperature with duration for Tech climate entities."""
+        entity_ids = cv.ensure_list(call.data[ATTR_ENTITY_ID])
+        
+        # Get raw values
+        temp_value = call.data["temperature"]
+        duration_value = call.data["duration_minutes"]
+        
+        # Get context for template rendering
+        context = call.context if hasattr(call, 'context') else Context()
+        
+        # Process temperature - handle templates, strings, and numbers
+        if isinstance(temp_value, str):
+            # Check if it's a template (contains {{ or states()
+            if "{{" in temp_value or "states(" in temp_value:
+                try:
+                    temp_template = template.Template(temp_value, hass)
+                    temp_value = temp_template.async_render(context=context, parse_result=False)
+                    _LOGGER.debug("Rendered temperature template: %s -> %s", call.data["temperature"], temp_value)
+                except Exception as err:
+                    _LOGGER.warning("Failed to render temperature template %s: %s", temp_value, err)
+                    return
+        
+        # Process duration - handle templates, strings, and numbers
+        if isinstance(duration_value, str):
+            # Check if it's a template (contains {{ or states()
+            if "{{" in duration_value or "states(" in duration_value:
+                try:
+                    duration_template = template.Template(duration_value, hass)
+                    duration_value = duration_template.async_render(context=context, parse_result=False)
+                    _LOGGER.debug("Rendered duration template: %s -> %s", call.data["duration_minutes"], duration_value)
+                except Exception as err:
+                    _LOGGER.warning("Failed to render duration template %s: %s", duration_value, err)
+                    return
+        
+        # Convert to proper types - handle both string and numeric inputs
+        try:
+            # Try to convert to float (handles both string numbers and actual numbers)
+            temperature = float(temp_value)
+        except (ValueError, TypeError) as err:
+            _LOGGER.error("Invalid temperature value: %s (type: %s, original: %s)", 
+                         temp_value, type(temp_value).__name__, call.data.get("temperature"))
+            return
+            
+        try:
+            # Allow float input and convert to int
+            duration_minutes = int(float(duration_value))
+        except (ValueError, TypeError) as err:
+            _LOGGER.error("Invalid duration_minutes value: %s (type: %s, original: %s)", 
+                         duration_value, type(duration_value).__name__, call.data.get("duration_minutes"))
+            return
+
+        _LOGGER.debug(
+            "Service called: set_temperature_with_duration for %s, temp=%s, duration=%s",
+            entity_ids,
+            temperature,
+            duration_minutes,
+        )
+
+        # Get the climate component
+        entity_components = hass.data.get("entity_components")
+        if not entity_components:
+            _LOGGER.error("Entity components not found")
+            return
+
+        climate_component = entity_components.get("climate")
+        if not climate_component:
+            _LOGGER.error("Climate component not found")
+            return
+
+        # Find and call the method on each entity
+        for entity_id in entity_ids:
+            # Get entity from component
+            entity = climate_component.get_entity(entity_id)
+            
+            if entity and hasattr(entity, "async_set_temperature_with_duration"):
+                _LOGGER.debug("Calling async_set_temperature_with_duration on %s", entity_id)
+                await entity.async_set_temperature_with_duration(
+                    temperature, duration_minutes
+                )
+            else:
+                _LOGGER.warning(
+                    "Entity %s does not support set_temperature_with_duration",
+                    entity_id,
+                )
+
+    # Register the service - use cv.string to accept any input, convert in handler
+    hass.services.async_register(
+        DOMAIN,
+        "set_temperature_with_duration",
+        async_set_temperature_with_duration_service,
+        schema=cv.make_entity_service_schema(
+            {
+                vol.Required("temperature"): cv.string,
+                vol.Required("duration_minutes"): cv.string,
+            }
+        ),
+    )
+    _LOGGER.debug("Registered tech.set_temperature_with_duration service")
+
     return True
 
 

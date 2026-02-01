@@ -306,27 +306,33 @@ class Tech:
         await self.get_module_tiles(module_udid)
         return self.modules[module_udid]["tiles"][tile_id]
 
-    async def set_const_temp(self, module_udid, zone_id, target_temp):
+    async def set_const_temp(self, module_udid, zone_id, target_temp, const_temp_time=None):
         """Set the constant temperature of a zone.
 
         Args:
             module_udid: Tech module identifier.
             zone_id: Numeric zone identifier.
             target_temp: Temperature in °C to maintain.
+            const_temp_time: Optional time in minutes for time-limited temperature.
+                If provided, mode will be set to "timeLimit", otherwise "constantTemp".
 
         Returns:
             Parsed JSON response from the API.
 
         """
-        _LOGGER.debug("Setting zone constant temperature…")
+        _LOGGER.debug("Setting zone constant temperature… %s", const_temp_time)
         if self.authenticated:
             path = f"users/{self.user_id}/modules/{module_udid}/zones"
+            # Use timeLimit mode if const_temp_time is provided, otherwise constantTemp
+            mode = "timeLimit" if const_temp_time is not None else "constantTemp"
+            const_temp_time_value = const_temp_time if const_temp_time is not None else 60
+            
             data = {
                 "mode": {
                     "id": self.modules[module_udid]["zones"][zone_id]["mode"]["id"],
                     "parentId": zone_id,
-                    "mode": "constantTemp",
-                    "constTempTime": 60,
+                    "mode": mode,
+                    "constTempTime": const_temp_time_value,
                     "setTemperature": int(target_temp * 10),
                     "scheduleIndex": 0,
                 }

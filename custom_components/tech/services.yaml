@@ -1,0 +1,30 @@
+set_temperature_with_duration:
+  name: Set temperature with duration
+  description: Set the target temperature for a Tech climate entity with a time limit in minutes
+  target:
+    entity:
+      domain: climate
+      integration: tech
+  fields:
+    temperature:
+      name: Temperature
+      description: Target temperature in Celsius
+      required: true
+      selector:
+        number:
+          min: 5
+          max: 35
+          step: 0.1
+          unit_of_measurement: "°C"
+          mode: box
+    duration_minutes:
+      name: Duration
+      description: Duration in minutes for the time-limited temperature setting
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 1440
+          step: 1
+          unit_of_measurement: "min"
+          mode: box
