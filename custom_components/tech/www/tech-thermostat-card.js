@@ -251,14 +251,12 @@ class TechThermostatCard extends LitElement {
           ${this._showTimerDialog ? html`<ha-icon slot="start" icon="mdi:clock-outline"></ha-icon>` : null}
           ${this._showTimerDialog ? this._formatDuration(this._duration) : permanentLabel}
         </ha-button>
-        <ha-button
-          variant="brand"
-          appearance="filled"
+        <button
           class="apply-btn"
           @click=${this._handleApply}
           ?disabled=${!hasChanges}>
           <ha-icon icon="mdi:check"></ha-icon>
-        </ha-button>
+        </button>
       </div>
     `;
   }
@@ -360,7 +358,6 @@ class TechThermostatCard extends LitElement {
         font-size: var(--ha-font-size-l);
         line-height: var(--ha-line-height-normal, 1.5);
         letter-spacing: .1px;
-        gap: var(--ha-space-2, 8px);
         --mdc-icon-size: 16px;
       }
 
@@ -394,10 +391,35 @@ class TechThermostatCard extends LitElement {
         pointer-events: none;
       }
 
-      .timer-toggle {
+      .timer-toggle.active {
         min-width: 105px;
       }
-      
+
+      .apply-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--state-climate-heat-color, var(--primary-color));
+        color: white;
+        transition: background 0.2s ease;
+        --mdc-icon-size: 20px;
+      }
+
+      .apply-btn:hover:not([disabled]) {
+        background: var(--state-active-color, var(--primary-color));
+      }
+
+      .apply-btn[disabled] {
+        background: var(--disabled-color);
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+
       .buttons {
         position: absolute;
         bottom: 10px;
@@ -409,27 +431,6 @@ class TechThermostatCard extends LitElement {
         flex-direction: row;
         align-items: center;
         justify-content: center;
-      }
-      
-      .more-info {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        right: 0;
-        inset-inline-end: 0px;
-        inset-inline-start: initial;
-        border-radius: var(--ha-border-radius-pill, 50px);
-        color: var(--secondary-text-color);
-        background: none;
-        border: none;
-        padding: 8px;
-        font-size: 20px;
-        direction: var(--direction, ltr);
-      }
-
-      .more-info:hover {
-        background: var(--primary-color);
-        color: white;
       }
 
       .timer-section {
@@ -452,12 +453,6 @@ class TechThermostatCard extends LitElement {
 
       .timer-quick-buttons ha-button {
         flex: 1;
-      }
-
-      .duration-label {
-        min-width: 60px;
-        text-align: right;
-        font-size: 14px;
       }
     `;
   }

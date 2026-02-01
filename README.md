@@ -47,6 +47,8 @@ Platform | Description
 
 This integration includes a custom Lovelace card specifically designed for Tech Controllers thermostats. It provides a visual thermostat interface with built-in timer functionality.
 
+![Tech Custon Thermostat Cards](./images/ha-dashboard-tech-custom-thermostat.png)
+
 ### Features
 
 - Circular temperature slider (same as native HA thermostat)
