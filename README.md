@@ -43,6 +43,98 @@ Platform | Description
 
 ![Tech Thermostat Cards](./images/ha-tech-1.png)
 
+## :fire: Tech Thermostat Card
+
+This integration includes a custom Lovelace card specifically designed for Tech Controllers thermostats. It provides a visual thermostat interface with built-in timer functionality.
+
+### Features
+
+- Circular temperature slider (same as native HA thermostat)
+- Visual heating indicator with glow effect when actively heating
+- Built-in timer for temporary temperature changes
+- Quick duration buttons (1h, 2h, 4h, 8h)
+- Duration slider for custom time selection (up to 24 hours)
+
+![Tech Custon Thermostat Cards](./images/ha-tech-custom-thermostat.png)
+
+### Installation
+
+The card is automatically registered when the integration is loaded. To use it:
+
+1. Add a new card to your dashboard
+2. Search for "Tech Thermostat" in the card picker
+3. Select your climate entity
+
+### Manual YAML Configuration
+
+```yaml
+type: custom:tech-thermostat-card
+entity: climate.your_zone_name
+```
+
+## :clock1: Services
+
+### Set Temperature with Duration
+
+The integration provides a custom service `tech.set_temperature_with_duration` that allows you to set a temporary temperature for a specified duration.
+
+**Service Data:**
+
+| Field | Description | Required |
+|-------|-------------|----------|
+| `entity_id` | Target climate entity | Yes |
+| `temperature` | Target temperature (5-35°C) | Yes |
+| `duration_minutes` | Duration in minutes (1-1440) | Yes |
+
+### Example: Button Card
+
+You can create buttons to quickly set temporary temperatures:
+
+```yaml
+type: button
+name: Boost Heat 1h
+icon: mdi:fire
+tap_action:
+  action: call-service
+  service: tech.set_temperature_with_duration
+  data:
+    entity_id: climate.living_room
+    temperature: 24
+    duration_minutes: 60
+```
+
+### Example: Script
+
+```yaml
+script:
+  boost_heating:
+    alias: "Boost Heating for 2 Hours"
+    sequence:
+      - service: tech.set_temperature_with_duration
+        target:
+          entity_id: climate.living_room
+        data:
+          temperature: 25
+          duration_minutes: 120
+```
+
+### Example: Automation
+
+```yaml
+automation:
+  - alias: "Morning Warmup"
+    trigger:
+      - platform: time
+        at: "06:00:00"
+    action:
+      - service: tech.set_temperature_with_duration
+        target:
+          entity_id: climate.bedroom
+        data:
+          temperature: 23
+          duration_minutes: 90
+```
+
 ## :building_construction: Installation
 
 ### HACS
