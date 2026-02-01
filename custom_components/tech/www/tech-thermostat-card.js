@@ -19,6 +19,8 @@ class TechThermostatCard extends LitElement {
       _duration: { type: Number },
       _showTimerDialog: { type: Boolean },
       _targetTemperature: { type: Number },
+      _pendingZoneMode: { type: String },
+      _pendingConstTempTime: { type: Number },
     };
   }
 
@@ -48,10 +50,34 @@ class TechThermostatCard extends LitElement {
 
   willUpdate(changedProps) {
     super.willUpdate(changedProps);
-    if (changedProps.has("_stateObj") || (this.hass && this._targetTemperature == null && this._stateObj)) {
-      const stateObj = this._stateObj;
-      if (stateObj) {
-        this._targetTemperature = stateObj.attributes?.temperature;
+    const stateObj = this._stateObj;
+    if (!stateObj) return;
+
+    // Sync target temperature from API on first load
+    if (this._targetTemperature == null) {
+      this._targetTemperature = stateObj.attributes?.temperature;
+    }
+
+    // Clear pending values only when API confirms our changes
+    if (changedProps.has("hass") && (this._pendingZoneMode !== null || this._pendingConstTempTime !== null)) {
+      const apiZoneMode = stateObj.attributes?.zone_mode;
+      const apiConstTempTime = stateObj.attributes?.const_temp_time;
+
+      if (this._pendingZoneMode === "timeLimit" && this._pendingConstTempTime !== null) {
+        // We set a timer - only clear when API shows timeLimit AND time is close to what we set
+        if (apiZoneMode === "timeLimit" && apiConstTempTime != null) {
+          const timeDiff = Math.abs(apiConstTempTime - this._pendingConstTempTime);
+          if (timeDiff <= 5) {
+            this._pendingZoneMode = null;
+            this._pendingConstTempTime = null;
+          }
+        }
+      } else if (this._pendingZoneMode === "constantTemp") {
+        // We set permanent temp - clear when API confirms constantTemp
+        if (apiZoneMode === "constantTemp") {
+          this._pendingZoneMode = null;
+          this._pendingConstTempTime = null;
+        }
       }
     }
   }
@@ -71,11 +97,23 @@ class TechThermostatCard extends LitElement {
     return this._stateObj?.attributes?.max_temp;
   }
 
-  get _isTimerActive() {
+  // Zone mode types from Tech API:
+  // - timeLimit: temporary temperature with timer
+  // - constantTemp: constant/permanent temperature
+  // - globalSchedule: following global schedule
+  // - localSchedule: following local/zone schedule
+  static MODE_CONFIG = {
+    timeLimit: { icon: "mdi:timer-outline", showTime: true },
+    constantTemp: { icon: "mdi:infinity", showTime: false },
+    globalSchedule: { icon: "mdi:calendar", showTime: false },
+    localSchedule: { icon: "mdi:calendar-clock", showTime: false },
+  };
+
+  get _zoneMode() {
     if (this._pendingZoneMode !== null) {
-      return this._pendingZoneMode === "timeLimit";
+      return this._pendingZoneMode;
     }
-    return this._stateObj?.attributes?.zone_mode === "timeLimit";
+    return this._stateObj?.attributes?.zone_mode;
   }
 
   get _remainingTime() {
@@ -156,17 +194,22 @@ class TechThermostatCard extends LitElement {
 
   _handleApplyWithTimer = () => {
     if (!this.hass) return;
+    // Set pending values for optimistic update (shows timer immediately)
+    this._pendingZoneMode = "timeLimit";
+    this._pendingConstTempTime = this._duration;
     this.hass.callService("tech", "set_temperature_with_duration", {
       entity_id: this.config.entity,
       temperature: this._targetTemperature,
       duration_minutes: this._duration,
     });
     this._showTimerDialog = false;
-    this.requestUpdate();
   }
 
   _handleSetTemp = () => {
     if (!this.hass) return;
+    // Set pending values for optimistic update (hides timer immediately)
+    this._pendingZoneMode = "constantTemp";
+    this._pendingConstTempTime = null;
     this.hass.callService("climate", "set_temperature", {
       entity_id: this.config.entity,
       temperature: this._targetTemperature,
@@ -210,14 +253,19 @@ class TechThermostatCard extends LitElement {
     `;
   }
 
-  _renderActiveTimer() {
-    if (!this._isTimerActive || !this._remainingTime) {
-      return null;
-    }
+  _renderModeBadge() {
+    const mode = this._zoneMode;
+    if (!mode) return null;
+
+    const config = TechThermostatCard.MODE_CONFIG[mode];
+    if (!config) return null;
+
+    const showTime = config.showTime && this._remainingTime;
+
     return html`
-      <div class="active-timer">
-        <ha-icon icon="mdi:timer-outline"></ha-icon>
-        <span>${this._formatDuration(this._remainingTime)}</span>
+      <div class="mode-badge">
+        <ha-icon icon="${config.icon}"></ha-icon>
+        ${showTime ? html`<span>${this._formatDuration(this._remainingTime)}</span>` : null}
       </div>
     `;
   }
@@ -372,7 +420,7 @@ class TechThermostatCard extends LitElement {
         flex: none;
       }
 
-      .active-timer {
+      .mode-badge {
         position: absolute;
         top: 8px;
         right: 8px;
@@ -380,8 +428,8 @@ class TechThermostatCard extends LitElement {
         align-items: center;
         gap: 4px;
         padding: 4px 10px;
-        background: var(--state-climate-heat-color, var(--primary-color));
-        color: white;
+        background: var(--secondary-background-color, rgba(0, 0, 0, 0.1));
+        color: var(--primary-text-color);
         border-radius: 16px;
         font-size: 12px;
         font-weight: 500;
@@ -523,7 +571,7 @@ class TechThermostatCard extends LitElement {
     return html`
       <ha-card>
         <p class="title">${name}</p>
-        ${this._renderActiveTimer()}
+        ${this._renderModeBadge()}
         <div class="container" style="${this._containerStyle}">
           <ha-control-circular-slider
             prevent-interaction-on-scroll

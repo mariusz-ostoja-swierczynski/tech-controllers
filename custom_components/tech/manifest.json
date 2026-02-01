@@ -3,17 +3,18 @@
   "name": "Tech Controllers",
   "codeowners": [
     "@mariusz-ostoja-swierczynski",
-    "@anarion80"
+    "@anarion80",
+    "@sashamykhalchuk93"
   ],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/mariusz-ostoja-swierczynski/tech-controllers",
+  "documentation": "https://github.com/sashamykhalchuk93/tech-controllers",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/mariusz-ostoja-swierczynski/tech-controllers/issues",
+  "issue_tracker": "https://github.com/sashamykhalchuk93/tech-controllers/issues",
   "requirements": [],
   "resources": {
     "tech-thermostat-card": "www/tech-thermostat-card.js"
   },
-  "version": "2.0.0"
+  "version": "2.7.2"
 }
