@@ -103,6 +103,8 @@ tap_action:
     duration_minutes: 60
 ```
 
+![Tech Custon Thermostat Cards](./images/ha-tech-original-thermostat-and-buttons.png)
+
 ### Example: Script
 
 ```yaml
