@@ -15,5 +15,6 @@
   "requirements": [],
   "resources": {
     "tech-thermostat-card": "www/tech-thermostat-card.js"
-  }
+  },
+  "version": "2.7.2"
 }

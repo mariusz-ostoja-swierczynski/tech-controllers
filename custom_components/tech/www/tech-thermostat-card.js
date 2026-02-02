@@ -649,6 +649,15 @@ class TechThermostatCardEditor extends LitElement {
           },
         },
       },
+      {
+        name: "underfloor_sensor",
+        required: true,
+        selector: {
+          entity: {
+            domain: "sensor", //
+          },
+        },
+      },
     ];
   }
 
