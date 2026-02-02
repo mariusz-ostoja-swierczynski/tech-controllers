@@ -98,6 +98,7 @@ OPENTHERM_CURRENT_TEMP = {"txt_id": 127, "state_key": "currentTemp"}
 OPENTHERM_CURRENT_TEMP_DHW = {"txt_id": 128, "state_key": "currentTempDHW"}
 OPENTHERM_SET_TEMP = {"txt_id": 1058, "state_key": "setCurrentTemp"}
 OPENTHERM_SET_TEMP_DHW = {"txt_id": 1059, "state_key": "setTempDHW"}
+OPENTHERM_MODULATION = {"txt_id": 428, "state_key": "modulationPercentage"}
 
 TECH_SUPPORTED_LANGUAGES = [
     "en",
