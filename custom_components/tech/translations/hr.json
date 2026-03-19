@@ -31,10 +31,10 @@
     "entity": {
         "sensor": {
             "temperature_entity": {
-                "name": "{entity_name} Temperatura"
+                "name": "Temperatura"
             },
             "battery_entity": {
-                "name": "{entity_name} Baterija"
+                "name": "Baterija"
             },
             "humidity_entity": {
                 "name": "Vlažnost"
@@ -52,31 +52,31 @@
                 "name": "Vanjska temperatura"
             },
             "signal_strength_entity": {
-                "name": "Jačina signala za {entity_name}"
+                "name": "Jačina signala za"
             },
             "tiles_last_update_entity": {
-                "name": "{entity_name} Zadnje ažuriranje pločica"
+                "name": "Zadnje ažuriranje"
             },
             "zone_state_entity": {
-                "name": "{entity_name} Stanje alarma"
+                "name": "Stanje alarma"
             },
             "opentherm_modulation_entity": {
-                "name": "Modulacija za {entity_name}"
+                "name": "Modulacija za"
             },
             "opentherm_alarm_code_entity": {
-                "name": "{entity_name} Šifra alarma"
+                "name": "Šifra alarma"
             },
             "opentherm_communication_entity": {
-                "name": "{entity_name} Komunikacija"
+                "name": "Komunikacija"
             },
             "opentherm_heating_curve_entity": {
-                "name": "{entity_name} Krivulja grijanja"
+                "name": "Krivulja grijanja"
             },
             "opentherm_active_heating_entity": {
-                "name": "{entity_name} Aktivno grijanje"
+                "name": "Aktivno grijanje"
             },
             "opentherm_active_dhw_entity": {
-                "name": "{entity_name} Aktivna potrošna topla voda"
+                "name": "Aktivna potrošna topla voda"
             }
         }
     },

@@ -31,10 +31,10 @@
     "entity": {
         "sensor": {
             "temperature_entity": {
-                "name": "{entity_name} Temperatură"
+                "name": "Temperatură"
             },
             "battery_entity": {
-                "name": "{entity_name} Baterie"
+                "name": "Baterie"
             },
             "humidity_entity": {
                 "name": "Umiditate"
@@ -52,31 +52,31 @@
                 "name": "Temperatură externă"
             },
             "signal_strength_entity": {
-                "name": "{entity_name} Putere semnal"
+                "name": "Putere semnal"
             },
             "tiles_last_update_entity": {
-                "name": "{entity_name} Ultima actualizare a tile-urilor"
+                "name": "Ultima actualizare"
             },
             "zone_state_entity": {
-                "name": "{entity_name} Stare de alarmă"
+                "name": "Stare de alarmă"
             },
             "opentherm_modulation_entity": {
-                "name": "{entity_name} Modulație"
+                "name": "Modulație"
             },
             "opentherm_alarm_code_entity": {
-                "name": "{entity_name} Cod alarmă"
+                "name": "Cod alarmă"
             },
             "opentherm_communication_entity": {
-                "name": "{entity_name} Comunicare"
+                "name": "Comunicare"
             },
             "opentherm_heating_curve_entity": {
-                "name": "{entity_name} Curba de încălzire"
+                "name": "Curba de încălzire"
             },
             "opentherm_active_heating_entity": {
-                "name": "{entity_name} Încălzire activă"
+                "name": "Încălzire activă"
             },
             "opentherm_active_dhw_entity": {
-                "name": "{entity_name} Apă caldă activă"
+                "name": "Apă caldă activă"
             }
         }
     },

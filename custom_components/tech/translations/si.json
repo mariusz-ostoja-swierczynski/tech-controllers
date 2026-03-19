@@ -31,10 +31,10 @@
     "entity": {
         "sensor": {
             "temperature_entity": {
-                "name": "{entity_name} Temperatura"
+                "name": "Temperatura"
             },
             "battery_entity": {
-                "name": "{entity_name} Baterija"
+                "name": "Baterija"
             },
             "humidity_entity": {
                 "name": "Vlažnost"
@@ -52,31 +52,31 @@
                 "name": "Zunanja temperatura"
             },
             "signal_strength_entity": {
-                "name": "{entity_name} Moč signala"
+                "name": "Moč signala"
             },
             "tiles_last_update_entity": {
-                "name": "{entity_name} Zadnja posodobitev ploščic"
+                "name": "Zadnja posodobitev"
             },
             "zone_state_entity": {
-                "name": "{entity_name} Stanje alarma"
+                "name": "Stanje alarma"
             },
             "opentherm_modulation_entity": {
-                "name": "{entity_name} Modulacija"
+                "name": "Modulacija"
             },
             "opentherm_alarm_code_entity": {
-                "name": "{entity_name} Koda alarma"
+                "name": "Koda alarma"
             },
             "opentherm_communication_entity": {
-                "name": "{entity_name} Komunikacija"
+                "name": "Komunikacija"
             },
             "opentherm_heating_curve_entity": {
-                "name": "{entity_name} Ogrevalna krivulja"
+                "name": "Ogrevalna krivulja"
             },
             "opentherm_active_heating_entity": {
-                "name": "{entity_name} Aktivno ogrevanje"
+                "name": "Aktivno ogrevanje"
             },
             "opentherm_active_dhw_entity": {
-                "name": "{entity_name} Aktivna sanitarna topla voda"
+                "name": "Aktivna sanitarna topla voda"
             }
         }
     },

@@ -31,10 +31,10 @@
     "entity": {
         "sensor": {
             "temperature_entity": {
-                "name": "Température {entity_name}"
+                "name": "Température"
             },
             "battery_entity": {
-                "name": "Batterie {entity_name}"
+                "name": "Batterie"
             },
             "humidity_entity": {
                 "name": "Humidité"
@@ -52,31 +52,31 @@
                 "name": "Température extérieure"
             },
             "signal_strength_entity": {
-                "name": "Puissance du signal de {entity_name}"
+                "name": "Puissance du signal de"
             },
             "tiles_last_update_entity": {
-                "name": "{entity_name} Dernière mise à jour des tuiles"
+                "name": "Dernière mise à jour"
             },
             "zone_state_entity": {
-                "name": "{entity_name} État d'alarme"
+                "name": "État d'alarme"
             },
             "opentherm_modulation_entity": {
-                "name": "Modulation de {entity_name}"
+                "name": "Modulation de"
             },
             "opentherm_alarm_code_entity": {
-                "name": "{entity_name} Code d'alarme"
+                "name": "Code d'alarme"
             },
             "opentherm_communication_entity": {
-                "name": "{entity_name} Communication"
+                "name": "Communication"
             },
             "opentherm_heating_curve_entity": {
-                "name": "{entity_name} Courbe de chauffe"
+                "name": "Courbe de chauffe"
             },
             "opentherm_active_heating_entity": {
-                "name": "{entity_name} Chauffage actif"
+                "name": "Chauffage actif"
             },
             "opentherm_active_dhw_entity": {
-                "name": "{entity_name} Eau chaude active"
+                "name": "Eau chaude active"
             }
         }
     },

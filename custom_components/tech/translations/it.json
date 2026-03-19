@@ -31,10 +31,10 @@
     "entity": {
         "sensor": {
             "temperature_entity": {
-                "name": "{entity_name} Temperatura"
+                "name": "Temperatura"
             },
             "battery_entity": {
-                "name": "{entity_name} Batteria"
+                "name": "Batteria"
             },
             "humidity_entity": {
                 "name": "Umidità"
@@ -52,31 +52,31 @@
                 "name": "Temperatura esterna"
             },
             "signal_strength_entity": {
-                "name": "Potenza segnale di {entity_name}"
+                "name": "Potenza segnale di"
             },
             "tiles_last_update_entity": {
-                "name": "{entity_name} Ultimo aggiornamento dei riquadri"
+                "name": "Ultimo aggiornamento"
             },
             "zone_state_entity": {
-                "name": "{entity_name} Stato di allarme"
+                "name": "Stato di allarme"
             },
             "opentherm_modulation_entity": {
-                "name": "Modulazione di {entity_name}"
+                "name": "Modulazione di"
             },
             "opentherm_alarm_code_entity": {
-                "name": "{entity_name} Codice di allarme"
+                "name": "Codice di allarme"
             },
             "opentherm_communication_entity": {
-                "name": "{entity_name} Comunicazione"
+                "name": "Comunicazione"
             },
             "opentherm_heating_curve_entity": {
-                "name": "{entity_name} Curva di riscaldamento"
+                "name": "Curva di riscaldamento"
             },
             "opentherm_active_heating_entity": {
-                "name": "{entity_name} Riscaldamento attivo"
+                "name": "Riscaldamento attivo"
             },
             "opentherm_active_dhw_entity": {
-                "name": "{entity_name} Acqua calda sanitaria attiva"
+                "name": "Acqua calda sanitaria attiva"
             }
         }
     },

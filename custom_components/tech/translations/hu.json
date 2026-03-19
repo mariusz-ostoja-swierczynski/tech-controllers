@@ -31,10 +31,10 @@
     "entity": {
         "sensor": {
             "temperature_entity": {
-                "name": "{entity_name} Hőmérséklet"
+                "name": "Hőmérséklet"
             },
             "battery_entity": {
-                "name": "{entity_name} Akkumulátor"
+                "name": "Akkumulátor"
             },
             "humidity_entity": {
                 "name": "Páratartalom"
@@ -52,31 +52,31 @@
                 "name": "Külső hőmérséklet"
             },
             "signal_strength_entity": {
-                "name": "{entity_name} Jel erőssége"
+                "name": "Jel erőssége"
             },
             "tiles_last_update_entity": {
-                "name": "{entity_name} Csempék utolsó frissítése"
+                "name": "Utolsó frissítés"
             },
             "zone_state_entity": {
-                "name": "{entity_name} Riasztási állapot"
+                "name": "Riasztási állapot"
             },
             "opentherm_modulation_entity": {
-                "name": "{entity_name} Moduláció"
+                "name": "Moduláció"
             },
             "opentherm_alarm_code_entity": {
-                "name": "{entity_name} Riasztási kód"
+                "name": "Riasztási kód"
             },
             "opentherm_communication_entity": {
-                "name": "{entity_name} Kommunikáció"
+                "name": "Kommunikáció"
             },
             "opentherm_heating_curve_entity": {
-                "name": "{entity_name} Fűtési görbe"
+                "name": "Fűtési görbe"
             },
             "opentherm_active_heating_entity": {
-                "name": "{entity_name} Aktív fűtés"
+                "name": "Aktív fűtés"
             },
             "opentherm_active_dhw_entity": {
-                "name": "{entity_name} Aktív használati melegvíz"
+                "name": "Aktív használati melegvíz"
             }
         }
     },

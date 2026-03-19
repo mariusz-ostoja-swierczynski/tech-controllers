@@ -31,10 +31,10 @@
     "entity": {
         "sensor": {
             "temperature_entity": {
-                "name": "Temperatura de {entity_name}"
+                "name": "Temperatura de"
             },
             "battery_entity": {
-                "name": "Bateria de {entity_name}"
+                "name": "Bateria de"
             },
             "humidity_entity": {
                 "name": "Humidade"
@@ -52,31 +52,31 @@
                 "name": "Temperatura externa"
             },
             "signal_strength_entity": {
-                "name": "Força do sinal de {entity_name}"
+                "name": "Força do sinal de"
             },
             "tiles_last_update_entity": {
-                "name": "Última atualização dos mosaicos de {entity_name}"
+                "name": "Última atualização"
             },
             "zone_state_entity": {
-                "name": "Estado de alarme de {entity_name}"
+                "name": "Estado de alarme de"
             },
             "opentherm_modulation_entity": {
-                "name": "Modulação de {entity_name}"
+                "name": "Modulação de"
             },
             "opentherm_alarm_code_entity": {
-                "name": "Código de alarme de {entity_name}"
+                "name": "Código de alarme de"
             },
             "opentherm_communication_entity": {
-                "name": "Comunicação de {entity_name}"
+                "name": "Comunicação de"
             },
             "opentherm_heating_curve_entity": {
-                "name": "Curva de aquecimento de {entity_name}"
+                "name": "Curva de aquecimento de"
             },
             "opentherm_active_heating_entity": {
-                "name": "Aquecimento ativo de {entity_name}"
+                "name": "Aquecimento ativo de"
             },
             "opentherm_active_dhw_entity": {
-                "name": "Água quente sanitária ativa de {entity_name}"
+                "name": "Água quente sanitária ativa de"
             }
         }
     },

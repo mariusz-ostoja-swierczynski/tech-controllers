@@ -30,55 +30,55 @@
     },
     "entity": {
         "sensor": {
-          "temperature_entity": {
-            "name": "{entity_name} Temperatura"
-          },
-          "battery_entity": {
-            "name": "{entity_name} Bateria"
-          },
-          "humidity_entity": {
-            "name": "Wilgotność"
-          },
-          "actuator_entity": {
-            "name": "Siłownik {actuator_number}"
-          },
-          "underfloor_entity": {
-            "name": "Podłogówka"
-          },
-          "window_sensor_entity": {
-            "name": "Okno {window_number}"
-          },
-          "ext_temperature_entity": {
-            "name": "Temperatura zewnętrzna"
-          },
-          "signal_strength_entity": {
-            "name": "{entity_name} Siła sygnału"
-          },
-          "tiles_last_update_entity": {
-            "name": "{entity_name} Ostatnia aktualizacja kafelków"
-          },
-          "zone_state_entity": {
-            "name": "{entity_name} Stan alarmu"
-          },
-          "opentherm_modulation_entity": {
-            "name": "{entity_name} Modulacja"
-          },
-          "opentherm_alarm_code_entity": {
-            "name": "{entity_name} Kod alarmu"
-          },
-          "opentherm_communication_entity": {
-            "name": "{entity_name} Komunikacja"
-          },
-          "opentherm_heating_curve_entity": {
-            "name": "{entity_name} Krzywa grzewcza"
-          },
-          "opentherm_active_heating_entity": {
-            "name": "{entity_name} Aktywne ogrzewanie"
-          },
-          "opentherm_active_dhw_entity": {
-            "name": "{entity_name} Aktywna ciepła woda użytkowa"
-          }
+            "temperature_entity": {
+                "name": "Temperatura"
+            },
+            "battery_entity": {
+                "name": "Bateria"
+            },
+            "humidity_entity": {
+                "name": "Wilgotność"
+            },
+            "actuator_entity": {
+                "name": "Siłownik {actuator_number}"
+            },
+            "underfloor_entity": {
+                "name": "Podłogówka"
+            },
+            "window_sensor_entity": {
+                "name": "Okno {window_number}"
+            },
+            "ext_temperature_entity": {
+                "name": "Temperatura zewnętrzna"
+            },
+            "signal_strength_entity": {
+                "name": "Siła sygnału"
+            },
+            "tiles_last_update_entity": {
+                "name": "Ostatnia aktualizacja"
+            },
+            "zone_state_entity": {
+                "name": "Stan alarmu"
+            },
+            "opentherm_modulation_entity": {
+                "name": "Modulacja"
+            },
+            "opentherm_alarm_code_entity": {
+                "name": "Kod alarmu"
+            },
+            "opentherm_communication_entity": {
+                "name": "Komunikacja"
+            },
+            "opentherm_heating_curve_entity": {
+                "name": "Krzywa grzewcza"
+            },
+            "opentherm_active_heating_entity": {
+                "name": "Aktywne ogrzewanie"
+            },
+            "opentherm_active_dhw_entity": {
+                "name": "Aktywna ciepła woda użytkowa"
+            }
         }
-      },
+    },
     "title": "Tech Sterowniki"
 }

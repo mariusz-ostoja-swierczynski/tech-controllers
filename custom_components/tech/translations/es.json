@@ -31,10 +31,10 @@
     "entity": {
         "sensor": {
             "temperature_entity": {
-                "name": "Temperatura de {entity_name}"
+                "name": "Temperatura de"
             },
             "battery_entity": {
-                "name": "Batería de {entity_name}"
+                "name": "Batería de"
             },
             "humidity_entity": {
                 "name": "Humedad"
@@ -52,31 +52,31 @@
                 "name": "Temperatura externa"
             },
             "signal_strength_entity": {
-                "name": "Intensidad de señal de {entity_name}"
+                "name": "Intensidad de señal de"
             },
             "tiles_last_update_entity": {
-                "name": "Última actualización de mosaicos de {entity_name}"
+                "name": "Última actualización"
             },
             "zone_state_entity": {
-                "name": "{entity_name} Estado de alarma"
+                "name": "Estado de alarma"
             },
             "opentherm_modulation_entity": {
-                "name": "Modulación de {entity_name}"
+                "name": "Modulación de"
             },
             "opentherm_alarm_code_entity": {
-                "name": "Código de alarma de {entity_name}"
+                "name": "Código de alarma de"
             },
             "opentherm_communication_entity": {
-                "name": "Comunicación de {entity_name}"
+                "name": "Comunicación de"
             },
             "opentherm_heating_curve_entity": {
-                "name": "Curva de calefacción de {entity_name}"
+                "name": "Curva de calefacción de"
             },
             "opentherm_active_heating_entity": {
-                "name": "Calefacción activa de {entity_name}"
+                "name": "Calefacción activa de"
             },
             "opentherm_active_dhw_entity": {
-                "name": "ACS activa de {entity_name}"
+                "name": "ACS activa de"
             }
         }
     },

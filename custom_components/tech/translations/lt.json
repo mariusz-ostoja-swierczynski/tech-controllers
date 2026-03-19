@@ -31,10 +31,10 @@
     "entity": {
         "sensor": {
             "temperature_entity": {
-                "name": "{entity_name} Temperatūra"
+                "name": "Temperatūra"
             },
             "battery_entity": {
-                "name": "{entity_name} Baterija"
+                "name": "Baterija"
             },
             "humidity_entity": {
                 "name": "Drėgmė"
@@ -52,31 +52,31 @@
                 "name": "Lauko temperatūra"
             },
             "signal_strength_entity": {
-                "name": "{entity_name} Signalo stiprumas"
+                "name": "Signalo stiprumas"
             },
             "tiles_last_update_entity": {
-                "name": "{entity_name} Paskutinis plytelių atnaujinimas"
+                "name": "Paskutinis atnaujinimas"
             },
             "zone_state_entity": {
-                "name": "{entity_name} Pavojaus būsena"
+                "name": "Pavojaus būsena"
             },
             "opentherm_modulation_entity": {
-                "name": "{entity_name} Moduliacija"
+                "name": "Moduliacija"
             },
             "opentherm_alarm_code_entity": {
-                "name": "{entity_name} Aliarmo kodas"
+                "name": "Aliarmo kodas"
             },
             "opentherm_communication_entity": {
-                "name": "{entity_name} Ryšys"
+                "name": "Ryšys"
             },
             "opentherm_heating_curve_entity": {
-                "name": "{entity_name} Šildymo kreivė"
+                "name": "Šildymo kreivė"
             },
             "opentherm_active_heating_entity": {
-                "name": "{entity_name} Aktyvus šildymas"
+                "name": "Aktyvus šildymas"
             },
             "opentherm_active_dhw_entity": {
-                "name": "{entity_name} Aktyvus karštas vanduo"
+                "name": "Aktyvus karštas vanduo"
             }
         }
     },

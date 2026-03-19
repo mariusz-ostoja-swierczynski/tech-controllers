@@ -30,55 +30,55 @@
     },
     "entity": {
         "sensor": {
-          "temperature_entity": {
-            "name": "{entity_name} Teplota"
-          },
-          "battery_entity": {
-            "name": "{entity_name} Batéria"
-          },
-          "humidity_entity": {
-            "name": "Vlhkosť"
-          },
-          "actuator_entity": {
-            "name": "Aktuátor {actuator_number}"
-          },
-          "underfloor_entity": {
-            "name": "Podlahové kúrenie"
-          },
-          "window_sensor_entity": {
-            "name": "Okno {window_number}"
-          },
-          "ext_temperature_entity": {
-            "name": "Vonkajšia teplota"
-          },
-          "signal_strength_entity": {
-            "name": "{entity_name} Intenzita signálu"
-          },
-          "tiles_last_update_entity": {
-            "name": "{entity_name} Posledná aktualizácia dlaždíc"
-          },
-          "zone_state_entity": {
-            "name": "{entity_name} Stav alarmu"
-          },
-          "opentherm_modulation_entity": {
-            "name": "{entity_name} Modulácia"
-          },
-          "opentherm_alarm_code_entity": {
-            "name": "{entity_name} Kód alarmu"
-          },
-          "opentherm_communication_entity": {
-            "name": "{entity_name} Komunikácia"
-          },
-          "opentherm_heating_curve_entity": {
-            "name": "{entity_name} Vykurovacia krivka"
-          },
-          "opentherm_active_heating_entity": {
-            "name": "{entity_name} Aktívne vykurovanie"
-          },
-          "opentherm_active_dhw_entity": {
-            "name": "{entity_name} Aktívna teplá úžitková voda"
-          }
+            "temperature_entity": {
+                "name": "Teplota"
+            },
+            "battery_entity": {
+                "name": "Batéria"
+            },
+            "humidity_entity": {
+                "name": "Vlhkosť"
+            },
+            "actuator_entity": {
+                "name": "Aktuátor {actuator_number}"
+            },
+            "underfloor_entity": {
+                "name": "Podlahové kúrenie"
+            },
+            "window_sensor_entity": {
+                "name": "Okno {window_number}"
+            },
+            "ext_temperature_entity": {
+                "name": "Vonkajšia teplota"
+            },
+            "signal_strength_entity": {
+                "name": "Intenzita signálu"
+            },
+            "tiles_last_update_entity": {
+                "name": "Posledná aktualizácia"
+            },
+            "zone_state_entity": {
+                "name": "Stav alarmu"
+            },
+            "opentherm_modulation_entity": {
+                "name": "Modulácia"
+            },
+            "opentherm_alarm_code_entity": {
+                "name": "Kód alarmu"
+            },
+            "opentherm_communication_entity": {
+                "name": "Komunikácia"
+            },
+            "opentherm_heating_curve_entity": {
+                "name": "Vykurovacia krivka"
+            },
+            "opentherm_active_heating_entity": {
+                "name": "Aktívne vykurovanie"
+            },
+            "opentherm_active_dhw_entity": {
+                "name": "Aktívna teplá úžitková voda"
+            }
         }
-      },
+    },
     "title": "Tech Controllers"
 }
