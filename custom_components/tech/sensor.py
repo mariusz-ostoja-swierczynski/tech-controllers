@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
-from datetime import datetime
+from datetime import UTC, datetime
 import logging
 import re
 from typing import Any, cast
@@ -30,6 +30,7 @@ from homeassistant.const import (
     STATE_ON,
     EntityCategory,
     UnitOfTemperature,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
@@ -120,6 +121,15 @@ def _parse_api_timestamp(value: Any) -> datetime | None:
         return None
 
     return parsed if parsed.tzinfo is not None else None
+
+
+def _seconds_since_timestamp(value: datetime | None) -> int | None:
+    """Return elapsed whole seconds since ``value``."""
+    if value is None:
+        return None
+
+    elapsed = datetime.now(UTC) - value.astimezone(UTC)
+    return max(int(elapsed.total_seconds()), 0)
 
 
 def _get_controller_device_name(config_entry: ConfigEntry) -> str:
@@ -668,20 +678,21 @@ _TILE_ENTITY_BUILDERS: dict[int, TileBuilder] = {
 class TechTilesLastUpdateSensor(CoordinatorEntity, SensorEntity):
     """Diagnostic sensor exposing the latest module tile refresh timestamp."""
 
-    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_device_class = SensorDeviceClass.DURATION
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_has_entity_name = True
     _attr_translation_key = "tiles_last_update_entity"
     _attr_icon = "mdi:clock-check-outline"
+    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(self, coordinator: TechCoordinator, config_entry: ConfigEntry) -> None:
         """Initialize the tiles-last-update diagnostic sensor."""
         super().__init__(coordinator)
         self._config_entry = config_entry
         self._udid = config_entry.data[CONTROLLER][UDID]
-        self._attr_native_value = _parse_api_timestamp(
-            coordinator.data.get("tiles_last_update")
-        )
+        self._last_update_at = _parse_api_timestamp(coordinator.data.get("tiles_last_update"))
+        self._attr_native_value = _seconds_since_timestamp(self._last_update_at)
 
     @property
     def unique_id(self) -> str:
@@ -722,10 +733,13 @@ class TechTilesLastUpdateSensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return diagnostic metadata tied to the same refresh cycle."""
+        attributes: dict[str, Any] = {}
+        if self._last_update_at is not None:
+            attributes["last_update_at"] = self._last_update_at.isoformat()
         transaction_time = self.coordinator.data.get("transaction_time")
-        if transaction_time is None:
-            return {}
-        return {"transaction_time": transaction_time}
+        if transaction_time is not None:
+            attributes["transaction_time"] = transaction_time
+        return attributes
 
     @property
     def device_info(self) -> DeviceInfo | None:
@@ -735,9 +749,10 @@ class TechTilesLastUpdateSensor(CoordinatorEntity, SensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Refresh the entity from coordinator data."""
-        self._attr_native_value = _parse_api_timestamp(
+        self._last_update_at = _parse_api_timestamp(
             self.coordinator.data.get("tiles_last_update")
         )
+        self._attr_native_value = _seconds_since_timestamp(self._last_update_at)
         self.async_write_ha_state()
 
 
@@ -2034,6 +2049,8 @@ class TileMixingValveSensor(TileSensor, SensorEntity):
 
 
 class _SystemContainerSignalSensor(TileSensor, SensorEntity):
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
     def __init__(self, device, coordinator, config_entry) -> None:
         self._container_id = device.get(CONF_PARAMS, {}).get("containerId")
         self._signal_raw: int | None = None
@@ -2094,7 +2111,9 @@ class _SystemContainerSignalSensor(TileSensor, SensorEntity):
             container_data.get("signal") if isinstance(container_data, dict) else None
         )
         self._signal_raw = signal if isinstance(signal, int) else None
-        return _format_system_container_signal(signal)
+        if not isinstance(signal, int):
+            return None
+        return signal if signal >= 0 else 0
 
     def update_properties(self, device):
         container, container_data = self._payloads()
@@ -2106,6 +2125,7 @@ class _SystemContainerSignalSensor(TileSensor, SensorEntity):
         if isinstance(container_data, dict):
             if self._signal_raw is not None:
                 attrs["signal_raw"] = self._signal_raw
+                attrs["signal_display"] = _format_system_container_signal(self._signal_raw)
                 signal_state = _SYSTEM_CONTAINER_SIGNAL_STATE_BY_VALUE.get(
                     self._signal_raw
                 )
@@ -2326,6 +2346,28 @@ class TileOpenThermSensor(TileSensor, SensorEntity):
     _attr_device_class = SensorDeviceClass.TEMPERATURE
     _attr_state_class = SensorStateClass.MEASUREMENT
 
+    @property
+    def name(self) -> str | UndefinedType | None:
+        """Return the entity name, keeping the hub prefix for OpenTherm sensors."""
+        if self._txt_id is not None:
+            return self._attr_name
+
+        translation_key = self._description.get("translation_key")
+        if translation_key is None or self.platform_data is None:
+            return self._attr_name
+
+        translated_name = self.platform_data.platform_translations.get(
+            f"component.sensor.entity.tech.{translation_key}.name"
+        )
+        if translated_name is None:
+            return self._attr_name
+
+        return (
+            f"{self._config_entry.title} {translated_name}"
+            if self._config_entry.data[INCLUDE_HUB_IN_NAME]
+            else translated_name
+        )
+
     def __init__(
         self,
         device,
@@ -2382,7 +2424,12 @@ class TileOpenThermSensor(TileSensor, SensorEntity):
         if preferred_name in (None, UndefinedType):
             return
 
-        if self.registry_entry.original_name not in (None, self.device_name):
+        current_original_name = self.registry_entry.original_name
+        if current_original_name not in (
+            None,
+            self.device_name,
+            preferred_name.removeprefix(f"{self._config_entry.title} "),
+        ):
             return
 
         entity_registry = er.async_get(self.hass)
