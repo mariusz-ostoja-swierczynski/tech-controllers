@@ -54,8 +54,29 @@
             "signal_strength_entity": {
                 "name": "{entity_name} Signaali tugevus"
             },
+            "tiles_last_update_entity": {
+                "name": "{entity_name} Plaatide viimane uuendus"
+            },
             "zone_state_entity": {
                 "name": "{entity_name} Häire olek"
+            },
+            "opentherm_modulation_entity": {
+                "name": "{entity_name} Modulatsioon"
+            },
+            "opentherm_alarm_code_entity": {
+                "name": "{entity_name} Häirekood"
+            },
+            "opentherm_communication_entity": {
+                "name": "{entity_name} Side"
+            },
+            "opentherm_heating_curve_entity": {
+                "name": "{entity_name} Küttekõver"
+            },
+            "opentherm_active_heating_entity": {
+                "name": "{entity_name} Aktiivne küte"
+            },
+            "opentherm_active_dhw_entity": {
+                "name": "{entity_name} Aktiivne soe tarbevesi"
             }
         }
     },

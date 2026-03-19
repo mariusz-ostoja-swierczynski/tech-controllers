@@ -54,8 +54,29 @@
             "signal_strength_entity": {
                 "name": "{entity_name} Signalstärke"
             },
+            "tiles_last_update_entity": {
+                "name": "{entity_name} Letzte Aktualisierung der Kacheln"
+            },
             "zone_state_entity": {
                 "name": "{entity_name} Alarmzustand"
+            },
+            "opentherm_modulation_entity": {
+                "name": "{entity_name} Modulation"
+            },
+            "opentherm_alarm_code_entity": {
+                "name": "{entity_name} Alarmcode"
+            },
+            "opentherm_communication_entity": {
+                "name": "{entity_name} Kommunikation"
+            },
+            "opentherm_heating_curve_entity": {
+                "name": "{entity_name} Heizkurve"
+            },
+            "opentherm_active_heating_entity": {
+                "name": "{entity_name} Heizung aktiv"
+            },
+            "opentherm_active_dhw_entity": {
+                "name": "{entity_name} Warmwasser aktiv"
             }
         }
     },

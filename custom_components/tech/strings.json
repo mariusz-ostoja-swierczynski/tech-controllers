@@ -84,8 +84,29 @@
       "signal_strength_entity": {
         "name": "{entity_name} signal strength"
       },
+      "tiles_last_update_entity": {
+        "name": "{entity_name} tiles last update"
+      },
       "zone_state_entity": {
         "name": "{entity_name} alarm state"
+      },
+      "opentherm_modulation_entity": {
+        "name": "{entity_name} modulation"
+      },
+      "opentherm_alarm_code_entity": {
+        "name": "{entity_name} alarm code"
+      },
+      "opentherm_communication_entity": {
+        "name": "{entity_name} communication"
+      },
+      "opentherm_heating_curve_entity": {
+        "name": "{entity_name} heating curve"
+      },
+      "opentherm_active_heating_entity": {
+        "name": "{entity_name} active heating"
+      },
+      "opentherm_active_dhw_entity": {
+        "name": "{entity_name} active DHW"
       }
     }
   }

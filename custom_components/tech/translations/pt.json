@@ -42,6 +42,9 @@
             "actuator_entity": {
                 "name": "Atuador {actuator_number}"
             },
+            "underfloor_entity": {
+                "name": "Piso radiante"
+            },
             "window_sensor_entity": {
                 "name": "Janela {window_number}"
             },
@@ -51,8 +54,29 @@
             "signal_strength_entity": {
                 "name": "Força do sinal de {entity_name}"
             },
+            "tiles_last_update_entity": {
+                "name": "Última atualização dos mosaicos de {entity_name}"
+            },
             "zone_state_entity": {
                 "name": "Estado de alarme de {entity_name}"
+            },
+            "opentherm_modulation_entity": {
+                "name": "Modulação de {entity_name}"
+            },
+            "opentherm_alarm_code_entity": {
+                "name": "Código de alarme de {entity_name}"
+            },
+            "opentherm_communication_entity": {
+                "name": "Comunicação de {entity_name}"
+            },
+            "opentherm_heating_curve_entity": {
+                "name": "Curva de aquecimento de {entity_name}"
+            },
+            "opentherm_active_heating_entity": {
+                "name": "Aquecimento ativo de {entity_name}"
+            },
+            "opentherm_active_dhw_entity": {
+                "name": "Água quente sanitária ativa de {entity_name}"
             }
         }
     },

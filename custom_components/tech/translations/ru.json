@@ -49,13 +49,34 @@
                 "name": "Окно {window_number}"
             },
             "ext_temperature_entity": {
-                "name": "Внешняя температура"
+                "name": "Наружная температура"
             },
             "signal_strength_entity": {
                 "name": "{entity_name} Уровень сигнала"
             },
+            "tiles_last_update_entity": {
+                "name": "{entity_name} Последнее обновление плиток"
+            },
             "zone_state_entity": {
                 "name": "{entity_name} Состояние тревоги"
+            },
+            "opentherm_modulation_entity": {
+                "name": "{entity_name} Модуляция"
+            },
+            "opentherm_alarm_code_entity": {
+                "name": "{entity_name} Код тревоги"
+            },
+            "opentherm_communication_entity": {
+                "name": "{entity_name} Связь"
+            },
+            "opentherm_heating_curve_entity": {
+                "name": "{entity_name} Кривая отопления"
+            },
+            "opentherm_active_heating_entity": {
+                "name": "{entity_name} Активное отопление"
+            },
+            "opentherm_active_dhw_entity": {
+                "name": "{entity_name} Активная горячая вода"
             }
         }
     },

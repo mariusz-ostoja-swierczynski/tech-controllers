@@ -52,10 +52,31 @@
                 "name": "Temperatura esterna"
             },
             "signal_strength_entity": {
-                "name": "{entity_name} Intensità del segnale"
+                "name": "Potenza segnale di {entity_name}"
+            },
+            "tiles_last_update_entity": {
+                "name": "{entity_name} Ultimo aggiornamento dei riquadri"
             },
             "zone_state_entity": {
                 "name": "{entity_name} Stato di allarme"
+            },
+            "opentherm_modulation_entity": {
+                "name": "Modulazione di {entity_name}"
+            },
+            "opentherm_alarm_code_entity": {
+                "name": "{entity_name} Codice di allarme"
+            },
+            "opentherm_communication_entity": {
+                "name": "{entity_name} Comunicazione"
+            },
+            "opentherm_heating_curve_entity": {
+                "name": "{entity_name} Curva di riscaldamento"
+            },
+            "opentherm_active_heating_entity": {
+                "name": "{entity_name} Riscaldamento attivo"
+            },
+            "opentherm_active_dhw_entity": {
+                "name": "{entity_name} Acqua calda sanitaria attiva"
             }
         }
     },

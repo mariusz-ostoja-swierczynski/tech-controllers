@@ -49,13 +49,34 @@
                 "name": "Langas {window_number}"
             },
             "ext_temperature_entity": {
-                "name": "Išorinė temperatūra"
+                "name": "Lauko temperatūra"
             },
             "signal_strength_entity": {
-                "name": "{entity_name} Signalas"
+                "name": "{entity_name} Signalo stiprumas"
+            },
+            "tiles_last_update_entity": {
+                "name": "{entity_name} Paskutinis plytelių atnaujinimas"
             },
             "zone_state_entity": {
-                "name": "{entity_name} Signalizacijos būsena"
+                "name": "{entity_name} Pavojaus būsena"
+            },
+            "opentherm_modulation_entity": {
+                "name": "{entity_name} Moduliacija"
+            },
+            "opentherm_alarm_code_entity": {
+                "name": "{entity_name} Aliarmo kodas"
+            },
+            "opentherm_communication_entity": {
+                "name": "{entity_name} Ryšys"
+            },
+            "opentherm_heating_curve_entity": {
+                "name": "{entity_name} Šildymo kreivė"
+            },
+            "opentherm_active_heating_entity": {
+                "name": "{entity_name} Aktyvus šildymas"
+            },
+            "opentherm_active_dhw_entity": {
+                "name": "{entity_name} Aktyvus karštas vanduo"
             }
         }
     },

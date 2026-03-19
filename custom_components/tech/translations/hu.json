@@ -52,10 +52,31 @@
                 "name": "Külső hőmérséklet"
             },
             "signal_strength_entity": {
-                "name": "{entity_name} Jel erősség"
+                "name": "{entity_name} Jel erőssége"
+            },
+            "tiles_last_update_entity": {
+                "name": "{entity_name} Csempék utolsó frissítése"
             },
             "zone_state_entity": {
                 "name": "{entity_name} Riasztási állapot"
+            },
+            "opentherm_modulation_entity": {
+                "name": "{entity_name} Moduláció"
+            },
+            "opentherm_alarm_code_entity": {
+                "name": "{entity_name} Riasztási kód"
+            },
+            "opentherm_communication_entity": {
+                "name": "{entity_name} Kommunikáció"
+            },
+            "opentherm_heating_curve_entity": {
+                "name": "{entity_name} Fűtési görbe"
+            },
+            "opentherm_active_heating_entity": {
+                "name": "{entity_name} Aktív fűtés"
+            },
+            "opentherm_active_dhw_entity": {
+                "name": "{entity_name} Aktív használati melegvíz"
             }
         }
     },

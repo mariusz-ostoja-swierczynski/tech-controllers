@@ -38,6 +38,72 @@ DEFAULT_MAX_TEMP = 35
 SUPPORT_HVAC = [HVACMode.HEAT, HVACMode.OFF]
 
 
+def _format_schedule_time(value: Any) -> str | None:
+    if not isinstance(value, int) or value < 0 or value >= 1440:
+        return None
+    hours, minutes = divmod(value, 60)
+    return f"{hours:02d}:{minutes:02d}"
+
+
+def _serialize_schedule_period(
+    schedule: dict[str, Any], prefix: str
+) -> dict[str, Any] | None:
+    result: dict[str, Any] = {}
+    days = schedule.get(f"{prefix}Days")
+    if isinstance(days, list):
+        result["days"] = [
+            index for index, enabled in enumerate(days) if str(enabled) == "1"
+        ]
+
+    setback_temp = schedule.get(f"{prefix}SetbackTemp")
+    if isinstance(setback_temp, (int, float)):
+        result["setback_temperature"] = setback_temp / 10
+
+    intervals = []
+    for interval in schedule.get(f"{prefix}Intervals", []):
+        if not isinstance(interval, dict):
+            continue
+        start = _format_schedule_time(interval.get("start"))
+        stop = _format_schedule_time(interval.get("stop"))
+        temp = interval.get("temp")
+        if start is None and stop is None and not isinstance(temp, (int, float)):
+            continue
+        serialized_interval: dict[str, Any] = {}
+        if start is not None:
+            serialized_interval["start"] = start
+        if stop is not None:
+            serialized_interval["stop"] = stop
+        if isinstance(temp, (int, float)):
+            serialized_interval["temperature"] = temp / 10
+        if serialized_interval:
+            intervals.append(serialized_interval)
+
+    if intervals:
+        result["intervals"] = intervals
+
+    return result or None
+
+
+def _serialize_schedule(schedule: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not isinstance(schedule, dict):
+        return None
+
+    result: dict[str, Any] = {}
+    if schedule.get("index") is not None:
+        result["index"] = schedule["index"]
+    if schedule.get("name") is not None:
+        result["name"] = schedule["name"]
+
+    period_0 = _serialize_schedule_period(schedule, "p0")
+    period_1 = _serialize_schedule_period(schedule, "p1")
+    if period_0 is not None:
+        result["period_0"] = period_0
+    if period_1 is not None:
+        result["period_1"] = period_1
+
+    return result or None
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -100,6 +166,11 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         )
         self._temperature = None
         self._target_temperature = None
+        self._zone_mode = None
+        self._const_temp_time = None
+        self._schedule_index = None
+        self._zone_schedule = None
+        self._active_global_schedule = None
         self.update_properties(device)
         # Remove the line below after HA 2025.1
         self._enable_turn_on_off_backwards_compatibility = False
@@ -150,6 +221,15 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         else:
             self._humidity = None
 
+        zone_mode = device.get("mode", {})
+        self._zone_mode = zone_mode.get("mode")
+        self._const_temp_time = zone_mode.get("constTempTime")
+        self._schedule_index = zone_mode.get("scheduleIndex")
+        self._zone_schedule = _serialize_schedule(device.get("schedule"))
+        self._active_global_schedule = _serialize_schedule(
+            self._coordinator.data.get("global_schedules", {}).get(self._schedule_index)
+        )
+
         # Update HVAC state
         state = device[CONF_ZONE]["flags"]["relayState"]
         hvac_mode = device[CONF_ZONE]["flags"]["algorithm"]
@@ -173,7 +253,13 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
     @callback
     def _handle_coordinator_update(self, *args: Any) -> None:
         """Handle updated data from the coordinator."""
-        self.update_properties(self._coordinator.data["zones"][self._id])
+        device = self._coordinator.data["zones"].get(self._id)
+        if device is None:
+            self._attr_available = False
+            self.async_write_ha_state()
+            return
+        self._attr_available = True
+        self.update_properties(device)
         self.async_write_ha_state()
 
     @property
@@ -248,6 +334,25 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
     def target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
         return self._target_temperature
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional schedule-related state attributes."""
+        attributes: dict[str, Any] = {}
+        if self._zone_mode is not None:
+            attributes["zone_mode"] = self._zone_mode
+        if self._const_temp_time is not None:
+            attributes["const_temp_time"] = self._const_temp_time
+        if self._schedule_index is not None:
+            attributes["schedule_index"] = self._schedule_index
+        if self._active_global_schedule is not None:
+            attributes["active_schedule_source"] = "global"
+            attributes["active_schedule"] = self._active_global_schedule
+        elif self._zone_schedule is not None:
+            attributes["active_schedule_source"] = "zone"
+        if self._zone_schedule is not None:
+            attributes["zone_schedule"] = self._zone_schedule
+        return attributes
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set a new target temperature on the Tech module.

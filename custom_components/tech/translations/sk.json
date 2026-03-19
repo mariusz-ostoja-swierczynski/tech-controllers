@@ -54,8 +54,29 @@
           "signal_strength_entity": {
             "name": "{entity_name} Intenzita signálu"
           },
+          "tiles_last_update_entity": {
+            "name": "{entity_name} Posledná aktualizácia dlaždíc"
+          },
           "zone_state_entity": {
             "name": "{entity_name} Stav alarmu"
+          },
+          "opentherm_modulation_entity": {
+            "name": "{entity_name} Modulácia"
+          },
+          "opentherm_alarm_code_entity": {
+            "name": "{entity_name} Kód alarmu"
+          },
+          "opentherm_communication_entity": {
+            "name": "{entity_name} Komunikácia"
+          },
+          "opentherm_heating_curve_entity": {
+            "name": "{entity_name} Vykurovacia krivka"
+          },
+          "opentherm_active_heating_entity": {
+            "name": "{entity_name} Aktívne vykurovanie"
+          },
+          "opentherm_active_dhw_entity": {
+            "name": "{entity_name} Aktívna teplá úžitková voda"
           }
         }
       },

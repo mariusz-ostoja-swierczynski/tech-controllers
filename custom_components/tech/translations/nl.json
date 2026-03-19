@@ -49,13 +49,34 @@
                 "name": "Raam {window_number}"
             },
             "ext_temperature_entity": {
-                "name": "Externe temperatuur"
+                "name": "Buitentemperatuur"
             },
             "signal_strength_entity": {
                 "name": "{entity_name} Signaalsterkte"
             },
+            "tiles_last_update_entity": {
+                "name": "{entity_name} Laatste tegelupdate"
+            },
             "zone_state_entity": {
                 "name": "{entity_name} Alarmstatus"
+            },
+            "opentherm_modulation_entity": {
+                "name": "{entity_name} Modulatie"
+            },
+            "opentherm_alarm_code_entity": {
+                "name": "{entity_name} Alarmcode"
+            },
+            "opentherm_communication_entity": {
+                "name": "{entity_name} Communicatie"
+            },
+            "opentherm_heating_curve_entity": {
+                "name": "{entity_name} Stooklijn"
+            },
+            "opentherm_active_heating_entity": {
+                "name": "{entity_name} Verwarming actief"
+            },
+            "opentherm_active_dhw_entity": {
+                "name": "{entity_name} Warm water actief"
             }
         }
     },
