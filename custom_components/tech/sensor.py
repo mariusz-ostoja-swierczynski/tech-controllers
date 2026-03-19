@@ -2360,27 +2360,36 @@ class TileOpenThermSensor(TileSensor, SensorEntity):
             if self._config_entry.data[INCLUDE_HUB_IN_NAME]
             else ""
         ) + assets.get_text_by_type(device[CONF_TYPE])
-        self._name = base_name
         translation_key = open_therm_sensor.get("translation_key")
         if self._txt_id is not None:
-            self._name = (
+            self._attr_name = (
                 self._config_entry.title + " "
                 if self._config_entry.data[INCLUDE_HUB_IN_NAME]
                 else ""
             ) + assets.get_text(self._txt_id)
         elif translation_key is not None:
             self._attr_translation_key = translation_key
-            self._name = None
+        else:
+            self._attr_name = base_name
 
-    @property
-    def name(self) -> str | UndefinedType | None:
-        """Return the name of the device."""
-        if (
-            self._txt_id is None
-            and self._description.get("translation_key") is not None
-        ):
-            return None
-        return self._name
+    async def async_added_to_hass(self) -> None:
+        """Update stale generic registry names for OpenTherm entities."""
+        await super().async_added_to_hass()
+        if self.registry_entry is None:
+            return
+
+        preferred_name = self.name
+        if preferred_name in (None, UndefinedType):
+            return
+
+        if self.registry_entry.original_name not in (None, self.device_name):
+            return
+
+        entity_registry = er.async_get(self.hass)
+        entity_registry.async_update_entity(
+            self.entity_id,
+            original_name=preferred_name,
+        )
 
     @property
     def unique_id(self) -> str:
