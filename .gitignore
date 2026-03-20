@@ -34,18 +34,3 @@ devenv.local.nix
 .AppleDouble
 .LSOverride
 
-## AI
-.claude
-.cursor
-.windsurf
-.agents
-.skills
-.workflows
-cypilot
-.codex
-AGENTS.md
-CLAUDE.md
-.github/agents
-.github/prompts
-.github/copilot-instructions.md
-
