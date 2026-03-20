@@ -40,25 +40,26 @@
 
   scripts.develop = {
     exec = ''
-      # Create config dir if not present
+      source .devenv/state/venv/bin/activate
+      export PYTHONPATH="$PYTHONPATH:$PWD/custom_components"
+      export VIRTUAL_ENV="$PWD/.devenv/state/venv"
+      export PATH="$VIRTUAL_ENV/bin:$PATH"
+      export UV_PYTHON="$VIRTUAL_ENV/bin/python"
+
+      # Remove the externally-managed marker that Nix injects,
+      # so uv can install into this venv freely
+      find "$VIRTUAL_ENV" -name "EXTERNALLY-MANAGED" -delete
+
       if [[ ! -d "$PWD/config" ]]; then
           mkdir -p "$PWD/config"
           ln -s "$PWD/custom_components/" "$PWD/config/custom_components"
-          hass --config "$PWD/config" --script ensure_config
+          "$VIRTUAL_ENV/bin/hass" --config "$PWD/config" --script ensure_config
       fi
-
       if [ ! -L "$PWD/config/custom_components" ]; then
           ln -s "$PWD/custom_components/" "$PWD/config/custom_components"
       fi
 
-      # Set the path to custom_components
-      ## This let's us have the structure we want <root>/custom_components/integration_blueprint
-      ## while at the same time have Home Assistant configuration inside <root>/config
-      ## without resulting to symlinks.
-      export PYTHONPATH="$PYTHONPATH:$PWD/custom_components"
-
-      # Start Home Assistant
-      hass --config "$PWD/config" --debug
+      exec "$VIRTUAL_ENV/bin/hass" --config "$PWD/config" --debug
     '';
     description = "Start Home Assistant";
   };
