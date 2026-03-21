@@ -46,10 +46,6 @@
       export PATH="$VIRTUAL_ENV/bin:$PATH"
       export UV_PYTHON="$VIRTUAL_ENV/bin/python"
 
-      # Remove the externally-managed marker that Nix injects,
-      # so uv can install into this venv freely
-      find "$VIRTUAL_ENV" -name "EXTERNALLY-MANAGED" -delete
-
       if [[ ! -d "$PWD/config" ]]; then
           mkdir -p "$PWD/config"
           ln -s "$PWD/custom_components/" "$PWD/config/custom_components"
@@ -83,6 +79,11 @@
   enterShell = ''
     echo Entering development environment for tech-controllers...
     export PYTHONPATH="$PYTHONPATH:$PWD/custom_components"
+
+    # Remove Nix's externally-managed marker so uv can install into the venv freely
+    find ".devenv/state/venv" -name "EXTERNALLY-MANAGED" -delete 2>/dev/null || true
+
+    export UV_PYTHON="$VIRTUAL_ENV/bin/python"
     echo $PYTHONPATH
     echo
     echo 🦾 Available scripts:
@@ -97,8 +98,8 @@
   tasks."app:setup" = {
     exec = ''
       echo '🛠️ Running setup'
-      # Sync with pyproject.toml via pip
-      uv sync --group test_api
+      uv sync --group test_api --python "$VIRTUAL_ENV/bin/python"
+      find ".devenv/state/venv" -name "EXTERNALLY-MANAGED" -delete 2>/dev/null || true
     '';
     after = ["devenv:enterShell"];
   };
