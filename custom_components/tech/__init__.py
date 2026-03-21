@@ -1,21 +1,69 @@
 """The Tech Controllers integration."""
 
 import logging
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_TOKEN
+from homeassistant.const import CONF_NAME, CONF_TOKEN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
 from . import assets
-from .const import DOMAIN, PLATFORMS, USER_ID
+from .const import CONTROLLER, DOMAIN, PLATFORMS, UDID, USER_ID, VER
 from .coordinator import TechCoordinator
+from .tech import TechError
 
 _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+
+async def _async_refresh_controller_metadata(
+    hass: HomeAssistant, entry: ConfigEntry, coordinator: TechCoordinator
+) -> None:
+    """Sync the stored controller metadata with the latest modules list."""
+    controller = entry.data.get(CONTROLLER, {})
+    module_udid = controller.get(UDID)
+    if not isinstance(module_udid, str):
+        return
+
+    try:
+        modules = await coordinator.api.list_modules()
+    except TechError as err:
+        _LOGGER.debug("Unable to refresh controller metadata during setup: %s", err)
+        return
+
+    latest_controller = next(
+        (
+            module
+            for module in modules
+            if isinstance(module, dict) and module.get(UDID) == module_udid
+        ),
+        None,
+    )
+    if latest_controller is None:
+        return
+
+    latest_name = latest_controller.get(CONF_NAME)
+    latest_version = latest_controller.get(VER)
+    updated_data: dict[str, Any] = dict(entry.data)
+    updated_data[CONTROLLER] = latest_controller
+    if isinstance(latest_name, str) and isinstance(latest_version, str):
+        updated_data[VER] = f"{latest_version}: {latest_name}"
+
+    if (
+        updated_data == dict(entry.data)
+        and (not isinstance(latest_name, str) or latest_name == entry.title)
+    ):
+        return
+
+    hass.config_entries.async_update_entry(
+        entry,
+        data=updated_data,
+        title=latest_name if isinstance(latest_name, str) else entry.title,
+    )
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # pylint: disable=unused-argument
@@ -70,6 +118,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = TechCoordinator(hass, websession, user_id, token)
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
+    await _async_refresh_controller_metadata(hass, entry, coordinator)
     await coordinator.async_config_entry_first_refresh()
 
     await assets.load_subtitles(language_code, coordinator.api)

@@ -244,13 +244,24 @@ class Tech:
         now = time.time()
 
         cache = self.modules.setdefault(
-            module_udid, {"last_update": None, "zones": {}, "tiles": {}}
+            module_udid,
+            {
+                "last_update": None,
+                "zones": {},
+                "tiles": {},
+                "global_schedules": {},
+                "controller_parameters": {},
+                "system": {},
+                "transaction_time": None,
+                "tiles_last_update": None,
+            },
         )
 
         _LOGGER.debug("Updating module zones & tiles ... %s", module_udid)
         result = await self.get_module_data(module_udid)
 
-        raw_zones = result.get("zones", {}).get("elements", [])
+        zones_payload = result.get("zones", {})
+        raw_zones = zones_payload.get("elements", [])
         visible_zones = [
             zone
             for zone in raw_zones
@@ -264,7 +275,19 @@ class Tech:
             _LOGGER.debug(
                 "Updating %s zones for controller: %s", len(visible_zones), module_udid
             )
-            cache["zones"].update({zone["zone"]["id"]: zone for zone in visible_zones})
+        cache["zones"] = {zone["zone"]["id"]: zone for zone in visible_zones}
+        cache["global_schedules"] = {
+            schedule["index"]: schedule
+            for schedule in zones_payload.get("globalSchedules", {}).get("elements", [])
+            if isinstance(schedule, dict) and schedule.get("index") is not None
+        }
+        cache["controller_parameters"] = zones_payload.get("controllerParameters", {})
+        cache["system"] = (
+            zones_payload.get("system", {})
+            if isinstance(zones_payload.get("system"), dict)
+            else {}
+        )
+        cache["transaction_time"] = zones_payload.get("transaction_time")
 
         raw_tiles = result.get("tiles", [])
         visible_tiles = [tile for tile in raw_tiles if tile and tile.get("visibility")]
@@ -273,7 +296,8 @@ class Tech:
             _LOGGER.debug(
                 "Updating %s tiles for controller: %s", len(visible_tiles), module_udid
             )
-            cache["tiles"].update({tile["id"]: tile for tile in visible_tiles})
+        cache["tiles"] = {tile["id"]: tile for tile in visible_tiles}
+        cache["tiles_last_update"] = result.get("tilesLastUpdate")
 
         cache["last_update"] = now
         return cache

@@ -57,7 +57,10 @@ TYPE_VALVE = 23
 TYPE_MIXING_VALVE = 24
 TYPE_FUEL_SUPPLY = 31
 TYPE_TEXT = 40
+TYPE_CONTAINER = 60
+TYPE_SYSTEM_CONTAINER = 61
 TYPE_SW_VERSION = 50
+TYPE_PERIPHERAL_SW_VERSION = 51
 TYPE_OPEN_THERM = 252
 
 # map iconId -> icon name
@@ -98,6 +101,30 @@ OPENTHERM_CURRENT_TEMP = {"txt_id": 127, "state_key": "currentTemp"}
 OPENTHERM_CURRENT_TEMP_DHW = {"txt_id": 128, "state_key": "currentTempDHW"}
 OPENTHERM_SET_TEMP = {"txt_id": 1058, "state_key": "setCurrentTemp"}
 OPENTHERM_SET_TEMP_DHW = {"txt_id": 1059, "state_key": "setTempDHW"}
+OPENTHERM_MODULATION = {
+    "translation_key": "opentherm_modulation_entity",
+    "state_key": "modulationPercentage",
+}
+OPENTHERM_ALARM_CODE = {
+    "translation_key": "opentherm_alarm_code_entity",
+    "state_key": "alarmCode",
+}
+OPENTHERM_COMMUNICATION = {
+    "translation_key": "opentherm_communication_entity",
+    "state_key": "communication",
+}
+OPENTHERM_HEATING_CURVE = {
+    "translation_key": "opentherm_heating_curve_entity",
+    "state_key": "heatingCurve",
+}
+OPENTHERM_ACTIVE_HEATING = {
+    "translation_key": "opentherm_active_heating_entity",
+    "state_key": "activeHeating",
+}
+OPENTHERM_ACTIVE_DHW = {
+    "translation_key": "opentherm_active_dhw_entity",
+    "state_key": "activeDHW",
+}
 
 TECH_SUPPORTED_LANGUAGES = [
     "en",

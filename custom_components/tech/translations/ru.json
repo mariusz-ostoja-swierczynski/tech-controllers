@@ -31,10 +31,10 @@
     "entity": {
         "sensor": {
             "temperature_entity": {
-                "name": "{entity_name} Температура"
+                "name": "Температура"
             },
             "battery_entity": {
-                "name": "{entity_name} Заряд батареи"
+                "name": "Заряд батареи"
             },
             "humidity_entity": {
                 "name": "Влажность"
@@ -49,13 +49,34 @@
                 "name": "Окно {window_number}"
             },
             "ext_temperature_entity": {
-                "name": "Внешняя температура"
+                "name": "Наружная температура"
             },
             "signal_strength_entity": {
-                "name": "{entity_name} Уровень сигнала"
+                "name": "Уровень сигнала"
+            },
+            "tiles_last_update_entity": {
+                "name": "Последнее обновление"
             },
             "zone_state_entity": {
-                "name": "{entity_name} Состояние тревоги"
+                "name": "Состояние тревоги"
+            },
+            "opentherm_modulation_entity": {
+                "name": "Модуляция"
+            },
+            "opentherm_alarm_code_entity": {
+                "name": "Код тревоги"
+            },
+            "opentherm_communication_entity": {
+                "name": "Связь"
+            },
+            "opentherm_heating_curve_entity": {
+                "name": "Кривая отопления"
+            },
+            "opentherm_active_heating_entity": {
+                "name": "Активное отопление"
+            },
+            "opentherm_active_dhw_entity": {
+                "name": "Активная горячая вода"
             }
         }
     },

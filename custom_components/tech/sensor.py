@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
+from datetime import datetime, timedelta
 import logging
+import re
 from typing import Any, cast
 
 from homeassistant.components.binary_sensor import (
@@ -28,13 +30,17 @@ from homeassistant.const import (
     STATE_ON,
     EntityCategory,
     UnitOfTemperature,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.icon import icon_for_signal_level
 from homeassistant.helpers.typing import UndefinedType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util, slugify
 
 from . import assets
 from .const import (
@@ -53,8 +59,14 @@ from .const import (
     MANUFACTURER,
     MODE,
     NO_COMMUNICATION,
+    OPENTHERM_ACTIVE_DHW,
+    OPENTHERM_ACTIVE_HEATING,
+    OPENTHERM_ALARM_CODE,
+    OPENTHERM_COMMUNICATION,
     OPENTHERM_CURRENT_TEMP,
     OPENTHERM_CURRENT_TEMP_DHW,
+    OPENTHERM_HEATING_CURVE,
+    OPENTHERM_MODULATION,
     OPENTHERM_SET_TEMP,
     OPENTHERM_SET_TEMP_DHW,
     SENSOR_DAMAGED,
@@ -67,6 +79,9 @@ from .const import (
     TYPE_FUEL_SUPPLY,
     TYPE_MIXING_VALVE,
     TYPE_OPEN_THERM,
+    TYPE_PERIPHERAL_SW_VERSION,
+    TYPE_SW_VERSION,
+    TYPE_SYSTEM_CONTAINER,
     TYPE_TEMPERATURE,
     TYPE_TEMPERATURE_CH,
     TYPE_TEXT,
@@ -88,6 +103,54 @@ from .coordinator import TechCoordinator
 from .entity import TileEntity
 
 _LOGGER = logging.getLogger(__name__)
+
+_API_SHORT_TZ_SUFFIX = re.compile(r"([+-]\d{2})$")
+
+
+def _parse_api_timestamp(value: Any) -> datetime | None:
+    """Parse timestamps returned by the Tech API."""
+    if not isinstance(value, str) or not value:
+        return None
+
+    normalized = value.strip()
+    if _API_SHORT_TZ_SUFFIX.search(normalized) is not None:
+        normalized = f"{normalized}:00"
+
+    parsed = dt_util.parse_datetime(normalized)
+    if parsed is None or parsed.tzinfo is None:
+        return None
+
+    return dt_util.as_utc(parsed)
+
+
+def _seconds_since_timestamp(value: datetime | None) -> int | None:
+    """Return elapsed whole seconds since ``value``."""
+    if value is None:
+        return None
+
+    elapsed = dt_util.utcnow() - dt_util.as_utc(value)
+    return max(int(elapsed.total_seconds()), 0)
+
+
+def _get_controller_device_name(config_entry: ConfigEntry) -> str:
+    """Return the display name for the shared controller device."""
+    return f"{config_entry.title} Controller"
+
+
+def _get_controller_device_info(config_entry: ConfigEntry) -> DeviceInfo:
+    """Return shared ``DeviceInfo`` for controller-level entities."""
+    controller = config_entry.data[CONTROLLER]
+    return {
+        ATTR_IDENTIFIERS: {(DOMAIN, f"{controller[UDID]}_controller")},
+        CONF_NAME: _get_controller_device_name(config_entry),
+        CONF_MODEL: controller.get(VER),
+        ATTR_MANUFACTURER: MANUFACTURER,
+    }
+
+
+def _get_controller_last_update_entity_id(config_entry: ConfigEntry) -> str:
+    """Return the preferred entity_id for the controller last-update sensor."""
+    return f"sensor.{slugify(_get_controller_device_name(config_entry))}_last_update"
 
 
 async def async_setup_entry(
@@ -122,7 +185,11 @@ async def async_setup_entry(
         for entity in _build_tile_entities(tile, coordinator, config_entry)
     ]
 
-    async_add_entities([*tile_entities, *zone_entities], True)
+    diagnostic_entities: list[CoordinatorEntity] = [
+        TechTilesLastUpdateSensor(coordinator, config_entry)
+    ]
+
+    async_add_entities([*tile_entities, *zone_entities, *diagnostic_entities], True)
 
 
 def _iter_mapping(mapping: dict[Any, Any] | Iterable[Any]) -> Iterable[Any]:
@@ -132,6 +199,11 @@ def _iter_mapping(mapping: dict[Any, Any] | Iterable[Any]) -> Iterable[Any]:
     if isinstance(mapping, dict):
         return mapping.values()
     return mapping
+
+
+def _has_value(value: Any) -> bool:
+    """Return whether a payload field contains a meaningful value."""
+    return value not in (None, "null")
 
 
 def _build_zone_entities(
@@ -200,10 +272,6 @@ def _build_temperature_tile(
 ) -> list[CoordinatorEntity]:
     """Create entities for a temperature tile and its optional sensors."""
     params = tile.get(CONF_PARAMS, {})
-
-    def _has_value(value: Any) -> bool:
-        return value not in (None, "null")
-
     create_device = any(
         _has_value(params.get(key)) for key in (SIGNAL_STRENGTH, BATTERY_LEVEL)
     )
@@ -249,24 +317,337 @@ def _build_valve_tile(
     return entities
 
 
+_SYSTEM_CONTAINER_ROLE_BY_TYPE = {
+    0: "master",
+    1: "slave_1",
+    2: "slave_2",
+    3: "slave_3",
+    4: "slave_4",
+    5: "slave_5",
+}
+
+_SYSTEM_CONTAINER_CONFIGURATION_SLOT_BY_INDEX = {
+    0: "master",
+    1: "module_1",
+    2: "module_2",
+    3: "module_3",
+    4: "module_4",
+    5: "module_5",
+}
+
+_SYSTEM_CONTAINER_CONFIGURATION_UI_LABEL_BY_INDEX = {
+    0: "M",
+    1: "1",
+    2: "2",
+    3: "3",
+    4: "4",
+    5: "5",
+}
+
+_SYSTEM_CONTAINER_SIGNAL_STATE_BY_VALUE = {
+    -3: "communication_loss",
+    -2: "wired",
+    -1: "waiting",
+}
+
+_SYSTEM_CONTAINER_CONNECTION_LABEL_TXT_ID = 8309
+_SYSTEM_CONTAINER_OPERATING_MODE_LABEL_TXT_ID = 814
+_SYSTEM_CONTAINER_PUMP_LABEL_TXT_ID = 3089
+_SYSTEM_CONTAINER_FREE_CONTACT_LABEL_TXT_ID = 1736
+_SYSTEM_CONTAINER_HEATING_LABEL_TXT_ID = 1816
+_SYSTEM_CONTAINER_COOLING_LABEL_TXT_ID = 1815
+_SYSTEM_CONTAINER_ACTIVE_LABEL_TXT_ID = 5829
+_SYSTEM_CONTAINER_INACTIVE_LABEL_TXT_ID = 5830
+_SYSTEM_CONTAINER_WAITING_LABEL_TXT_ID = 2310
+
+
+def _get_system_container_payload(
+    coordinator: TechCoordinator, container_id: int
+) -> dict[str, Any] | None:
+    system = coordinator.data.get("system", {})
+    containers = system.get("containers", []) if isinstance(system, dict) else []
+    for container in containers:
+        if isinstance(container, dict) and container.get("containerId") == container_id:
+            return container
+    return None
+
+
+def _get_system_container_data_payload(
+    coordinator: TechCoordinator, container_id: int
+) -> dict[str, Any] | None:
+    system = coordinator.data.get("system", {})
+    containers_data = (
+        system.get("containersData", []) if isinstance(system, dict) else []
+    )
+    for container_data in containers_data:
+        if (
+            isinstance(container_data, dict)
+            and container_data.get("parentId") == container_id
+        ):
+            return container_data
+    return None
+
+
+def _get_system_container_name(
+    container: dict[str, Any] | None, config_entry: ConfigEntry
+) -> str:
+    if isinstance(container, dict):
+        text_id = container.get("textId")
+        if isinstance(text_id, int) and text_id != 0:
+            return assets.get_text(text_id)
+        container_name = container.get("containerName")
+        if isinstance(container_name, str) and container_name:
+            return container_name
+    return config_entry.title
+
+
+def _normalize_container_flags(flags: Any) -> dict[str, bool]:
+    if not isinstance(flags, dict):
+        return {}
+    return {str(key): bool(value) for key, value in flags.items()}
+
+
+def _map_container_flags_to_configuration(flags: dict[str, bool]) -> dict[str, bool]:
+    mapped_flags: dict[str, bool] = {}
+    for key, enabled in flags.items():
+        try:
+            mapped_key = _SYSTEM_CONTAINER_CONFIGURATION_SLOT_BY_INDEX.get(
+                int(key), key
+            )
+        except (TypeError, ValueError):
+            mapped_key = key
+        mapped_flags[mapped_key] = enabled
+    return mapped_flags
+
+
+def _map_container_flags_to_ui_labels(flags: dict[str, bool]) -> dict[str, bool]:
+    mapped_flags: dict[str, bool] = {}
+    for key, enabled in flags.items():
+        try:
+            mapped_key = _SYSTEM_CONTAINER_CONFIGURATION_UI_LABEL_BY_INDEX.get(
+                int(key), key
+            )
+        except (TypeError, ValueError):
+            mapped_key = key
+        mapped_flags[mapped_key] = enabled
+    return mapped_flags
+
+
+def _active_container_flags(flags: dict[str, bool]) -> list[str]:
+    active_flags: list[str] = []
+    for key, enabled in flags.items():
+        if not enabled:
+            continue
+        try:
+            active_flags.append(
+                _SYSTEM_CONTAINER_CONFIGURATION_SLOT_BY_INDEX.get(int(key), key)
+            )
+        except (TypeError, ValueError):
+            active_flags.append(key)
+    return active_flags
+
+
+def _format_system_container_signal(signal: Any) -> Any:
+    if not isinstance(signal, int):
+        return None
+    if signal == -1:
+        return assets.get_text(_SYSTEM_CONTAINER_WAITING_LABEL_TXT_ID)
+    return _SYSTEM_CONTAINER_SIGNAL_STATE_BY_VALUE.get(signal, signal)
+
+
+def _get_system_container_entity_name(
+    container: dict[str, Any] | None, config_entry: ConfigEntry, label_txt_id: int
+) -> str:
+    container_name = _get_system_container_name(container, config_entry)
+    if config_entry.data[INCLUDE_HUB_IN_NAME]:
+        container_name = f"{config_entry.title} {container_name}"
+    return f"{container_name} {assets.get_text(label_txt_id)}"
+
+
+def _build_system_container_common_attrs(
+    container_id: int | None,
+    container: dict[str, Any] | None,
+    container_data: dict[str, Any] | None,
+) -> dict[str, Any]:
+    attrs: dict[str, Any] = {}
+    if isinstance(container_id, int):
+        attrs["container_id"] = container_id
+    if isinstance(container, dict):
+        for source_key, target_key in (
+            ("containerName", "container_name"),
+            ("parentId", "container_parent_id"),
+            ("processorId", "processor_id"),
+            ("version", "version"),
+            ("textId", "text_id"),
+            ("iconId", "icon_id"),
+            ("wikiId", "wiki_id"),
+        ):
+            value = container.get(source_key)
+            if value is not None:
+                attrs[target_key] = value
+    if isinstance(container_data, dict):
+        parameter_id = container_data.get("parameterId")
+        if parameter_id is not None:
+            attrs["parameter_id"] = parameter_id
+        container_type = container_data.get("type")
+        if isinstance(container_type, int):
+            attrs["connection_role"] = _SYSTEM_CONTAINER_ROLE_BY_TYPE.get(
+                container_type, container_type
+            )
+    return attrs
+
+
+def _format_system_container_bool_state(value: Any) -> str | None:
+    if value is None:
+        return None
+    return assets.get_text(
+        _SYSTEM_CONTAINER_ACTIVE_LABEL_TXT_ID
+        if bool(value)
+        else _SYSTEM_CONTAINER_INACTIVE_LABEL_TXT_ID
+    )
+
+
+def _format_system_container_operating_mode(value: Any) -> str | None:
+    if value is None:
+        return None
+    return assets.get_text(
+        _SYSTEM_CONTAINER_HEATING_LABEL_TXT_ID
+        if bool(value)
+        else _SYSTEM_CONTAINER_COOLING_LABEL_TXT_ID
+    )
+
+
+OPEN_THERM_SENSOR_DESCRIPTIONS: tuple[dict[str, Any], ...] = (
+    {
+        **OPENTHERM_CURRENT_TEMP,
+        "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "divisor": 10,
+    },
+    {
+        **OPENTHERM_SET_TEMP,
+        "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "divisor": 10,
+    },
+    {
+        **OPENTHERM_CURRENT_TEMP_DHW,
+        "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "divisor": 10,
+    },
+    {
+        **OPENTHERM_SET_TEMP_DHW,
+        "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "divisor": 10,
+    },
+    {
+        **OPENTHERM_MODULATION,
+        "native_unit_of_measurement": PERCENTAGE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "icon": "mdi:percent",
+    },
+    {
+        **OPENTHERM_ALARM_CODE,
+        "icon": "mdi:alert-circle-outline",
+    },
+)
+
+
+OPEN_THERM_FLAG_SENSOR_DESCRIPTIONS: tuple[dict[str, Any], ...] = (
+    {
+        **OPENTHERM_COMMUNICATION,
+        "icon": "mdi:lan-connect",
+        "source": "flags",
+        "state_map": "on_off",
+    },
+    {
+        **OPENTHERM_HEATING_CURVE,
+        "icon": "mdi:chart-line",
+        "source": "flags",
+        "state_map": "on_off",
+    },
+    {
+        **OPENTHERM_ACTIVE_HEATING,
+        "icon": "mdi:radiator",
+        "source": "flags",
+        "state_map": "on_off",
+    },
+    {
+        **OPENTHERM_ACTIVE_DHW,
+        "icon": "mdi:water-boiler",
+        "source": "flags",
+        "state_map": "on_off",
+    },
+)
+
+
 def _build_open_therm_tile(
     tile: dict[str, Any],
     coordinator: TechCoordinator,
     config_entry: ConfigEntry,
 ) -> list[CoordinatorEntity]:
     """Create OpenTherm entities for a tile payload."""
+    params = tile.get(CONF_PARAMS, {})
+    flags = params.get("flags", {}) if isinstance(params.get("flags"), dict) else {}
     entities: list[CoordinatorEntity] = []
-    for description in (
-        OPENTHERM_CURRENT_TEMP,
-        OPENTHERM_SET_TEMP,
-        OPENTHERM_CURRENT_TEMP_DHW,
-        OPENTHERM_SET_TEMP_DHW,
-    ):
-        if tile[CONF_PARAMS].get(description["state_key"]) is not None:
+    for description in OPEN_THERM_SENSOR_DESCRIPTIONS:
+        if params.get(description["state_key"]) is not None:
+            entities.append(
+                TileOpenThermSensor(tile, coordinator, config_entry, description)
+            )
+
+    for description in OPEN_THERM_FLAG_SENSOR_DESCRIPTIONS:
+        if flags.get(description["state_key"]) is not None:
             entities.append(
                 TileOpenThermSensor(tile, coordinator, config_entry, description)
             )
     return entities
+
+
+def _build_system_container_tile(
+    tile: dict[str, Any],
+    coordinator: TechCoordinator,
+    config_entry: ConfigEntry,
+) -> list[CoordinatorEntity]:
+    container_id = tile.get(CONF_PARAMS, {}).get("containerId")
+    if not isinstance(container_id, int):
+        return []
+    container = _get_system_container_payload(coordinator, container_id)
+    container_data = _get_system_container_data_payload(coordinator, container_id)
+    if not isinstance(container, dict) or not container.get("visibility"):
+        return []
+    if not isinstance(container_data, dict):
+        return []
+    entities: list[CoordinatorEntity] = [
+        _SystemContainerSignalSensor(tile, coordinator, config_entry)
+    ]
+    if container_data.get("pumpsState") is not None:
+        entities.append(_SystemContainerPumpSensor(tile, coordinator, config_entry))
+    if container_data.get("freeContactState") is not None:
+        entities.append(
+            _SystemContainerFreeContactSensor(tile, coordinator, config_entry)
+        )
+    if container_data.get("hcState") is not None:
+        entities.append(
+            _SystemContainerOperatingModeSensor(tile, coordinator, config_entry)
+        )
+    return entities
+
+
+def _build_sw_version_tile(
+    tile: dict[str, Any],
+    coordinator: TechCoordinator,
+    config_entry: ConfigEntry,
+) -> list[CoordinatorEntity]:
+    if not isinstance(tile.get(CONF_PARAMS, {}).get("version"), str):
+        return []
+    return [TileSoftwareVersionSensor(tile, coordinator, config_entry)]
 
 
 _TILE_ENTITY_BUILDERS: dict[int, TileBuilder] = {
@@ -287,8 +668,112 @@ _TILE_ENTITY_BUILDERS: dict[int, TileBuilder] = {
     TYPE_TEXT: lambda tile, coordinator, config_entry: [
         TileTextSensor(tile, coordinator, config_entry)
     ],
+    TYPE_SW_VERSION: _build_sw_version_tile,
+    TYPE_PERIPHERAL_SW_VERSION: _build_sw_version_tile,
     TYPE_OPEN_THERM: _build_open_therm_tile,
+    TYPE_SYSTEM_CONTAINER: _build_system_container_tile,
 }
+
+
+class TechTilesLastUpdateSensor(CoordinatorEntity, SensorEntity):
+    """Diagnostic sensor exposing the latest module tile refresh timestamp."""
+
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_has_entity_name = True
+    _attr_translation_key = "tiles_last_update_entity"
+    _attr_icon = "mdi:clock-check-outline"
+    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, coordinator: TechCoordinator, config_entry: ConfigEntry) -> None:
+        """Initialize the tiles-last-update diagnostic sensor."""
+        super().__init__(coordinator)
+        self._config_entry = config_entry
+        self._udid = config_entry.data[CONTROLLER][UDID]
+        self._last_update_at = _parse_api_timestamp(coordinator.data.get("tiles_last_update"))
+        self._attr_native_value = _seconds_since_timestamp(self._last_update_at)
+        self._unsub_elapsed_refresh = None
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._udid}_tiles_last_update"
+
+    async def async_added_to_hass(self) -> None:
+        """Migrate old autogenerated entity IDs to a controller-based name."""
+        await super().async_added_to_hass()
+        self._unsub_elapsed_refresh = async_track_time_interval(
+            self.hass,
+            self._async_refresh_elapsed_state,
+            timedelta(seconds=15),
+        )
+        if self.registry_entry is None:
+            return
+
+        old_default_entity_id = f"sensor.tech_{self._udid}_tiles_last_update"
+        if self.registry_entry.entity_id != old_default_entity_id:
+            return
+
+        entity_registry = er.async_get(self.hass)
+        preferred_entity_id = _get_controller_last_update_entity_id(self._config_entry)
+        if preferred_entity_id == self.registry_entry.entity_id:
+            return
+
+        try:
+            entity_registry.async_update_entity(
+                self.registry_entry.entity_id,
+                new_entity_id=preferred_entity_id,
+            )
+        except ValueError:
+            _LOGGER.debug(
+                "Unable to migrate tiles-last-update entity_id to %s",
+                preferred_entity_id,
+            )
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return diagnostic metadata tied to the same refresh cycle."""
+        attributes: dict[str, Any] = {}
+        if self._last_update_at is not None:
+            attributes["last_update_at"] = self._last_update_at.isoformat()
+            attributes["seconds_since_update"] = _seconds_since_timestamp(
+                self._last_update_at
+            )
+        transaction_time = self.coordinator.data.get("transaction_time")
+        if transaction_time is not None:
+            attributes["transaction_time"] = transaction_time
+        return attributes
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Cancel scheduled elapsed-time refreshes."""
+        if self._unsub_elapsed_refresh is not None:
+            self._unsub_elapsed_refresh()
+            self._unsub_elapsed_refresh = None
+        await super().async_will_remove_from_hass()
+
+    @callback
+    def _async_refresh_elapsed_state(self, _now: datetime) -> None:
+        """Refresh elapsed-time state between coordinator updates."""
+        native_value = _seconds_since_timestamp(self._last_update_at)
+        if native_value == self._attr_native_value:
+            return
+        self._attr_native_value = native_value
+        self.async_write_ha_state()
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Return Home Assistant ``DeviceInfo`` for the shared controller."""
+        return _get_controller_device_info(self._config_entry)
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Refresh the entity from coordinator data."""
+        self._last_update_at = _parse_api_timestamp(
+            self.coordinator.data.get("tiles_last_update")
+        )
+        self._attr_native_value = _seconds_since_timestamp(self._last_update_at)
+        self.async_write_ha_state()
 
 
 class TechBatterySensor(CoordinatorEntity, SensorEntity):
@@ -330,7 +815,13 @@ class TechBatterySensor(CoordinatorEntity, SensorEntity):
     @callback
     def _handle_coordinator_update(self, *args: Any) -> None:
         """Handle updated data from the coordinator."""
-        self.update_properties(self._coordinator.data["zones"][self._id])
+        device = self._coordinator.data["zones"].get(self._id)
+        if device is None:
+            self._attr_available = False
+            self.async_write_ha_state()
+            return
+        self._attr_available = True
+        self.update_properties(device)
         self.async_write_ha_state()
 
     @property
@@ -407,7 +898,13 @@ class TechTemperatureSensor(CoordinatorEntity, SensorEntity):
     @callback
     def _handle_coordinator_update(self, *args: Any) -> None:
         """Handle updated data from the coordinator."""
-        self.update_properties(self._coordinator.data["zones"][self._id])
+        device = self._coordinator.data["zones"].get(self._id)
+        if device is None:
+            self._attr_available = False
+            self.async_write_ha_state()
+            return
+        self._attr_available = True
+        self.update_properties(device)
         self.async_write_ha_state()
 
     @property
@@ -487,11 +984,7 @@ class TechOutsideTempTile(CoordinatorEntity, SensorEntity):
         else:
             # Set native value to None if device params value is None
             self._attr_native_value = None
-
-    @callback
-    def _handle_coordinator_update(self, *args: Any) -> None:
-        """Handle updated data from the coordinator."""
-        self.update_properties(self._coordinator.data["tiles"][self._id])
+        self.update_properties(device)
         self.async_write_ha_state()
 
     @property
@@ -568,7 +1061,13 @@ class TechHumiditySensor(CoordinatorEntity, SensorEntity):
     @callback
     def _handle_coordinator_update(self, *args: Any) -> None:
         """Handle updated data from the coordinator."""
-        self.update_properties(self._coordinator.data["zones"][self._id])
+        device = self._coordinator.data["zones"].get(self._id)
+        if device is None:
+            self._attr_available = False
+            self.async_write_ha_state()
+            return
+        self._attr_available = True
+        self.update_properties(device)
         self.async_write_ha_state()
 
     @property
@@ -627,7 +1126,6 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
             + config_entry.data[CONTROLLER][VER]
         )
         self._manufacturer = MANUFACTURER
-        self._attr_translation_placeholders = {"entity_name": ""}
         self.update_properties(device)
 
     def update_properties(self, device):
@@ -654,7 +1152,13 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        self.update_properties(self._coordinator.data["zones"][self._id])
+        device = self._coordinator.data["zones"].get(self._id)
+        if device is None:
+            self._attr_available = False
+            self.async_write_ha_state()
+            return
+        self._attr_available = True
+        self.update_properties(device)
         self.async_write_ha_state()
 
     @property
@@ -811,7 +1315,7 @@ class ZoneActuatorSensor(ZoneSensor):
 
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_icon = assets.get_icon_by_type(TYPE_VALVE)
+    _attr_icon = "mdi:valve"
 
     def __init__(self, device, coordinator, config_entry, actuator_index) -> None:
         """Initialize the sensor.
@@ -1131,9 +1635,6 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
         self.manufacturer = MANUFACTURER
         self.model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
         self._attr_translation_key = "temperature_entity"
-        self._attr_translation_placeholders = (
-            {"entity_name": ""} if create_device else {"entity_name": f"{self._name}"}
-        )
         self._create_device = create_device
 
     @property
@@ -1182,9 +1683,6 @@ class TileTemperatureBatterySensor(TileSensor, SensorEntity):
         self.manufacturer = MANUFACTURER
         self.model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
         self._attr_translation_key = "battery_entity"
-        self._attr_translation_placeholders = (
-            {"entity_name": ""} if create_device else {"entity_name": f"{self._name}"}
-        )
         self._create_device = create_device
 
     @property
@@ -1233,9 +1731,6 @@ class TileTemperatureSignalSensor(TileSensor, SensorEntity):
         self.manufacturer = MANUFACTURER
         self.model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
         self._attr_translation_key = "signal_strength_entity"
-        self._attr_translation_placeholders = (
-            {"entity_name": ""} if create_device else {"entity_name": f"{self._name}"}
-        )
         self._create_device = create_device
 
     @property
@@ -1346,6 +1841,58 @@ class TileTextSensor(TileSensor, SensorEntity):
     def get_state(self, device) -> Any:
         """Get the state of the device."""
         return assets.get_text(device[CONF_PARAMS]["statusId"])
+
+
+class TileSoftwareVersionSensor(TileSensor, SensorEntity):
+    """Representation of a software version tile sensor."""
+
+    def __init__(self, device, coordinator, config_entry) -> None:
+        """Initialize the sensor."""
+        self._attrs: dict[str, Any] = {}
+        TileSensor.__init__(self, device, coordinator, config_entry)
+        icon_id = device[CONF_PARAMS].get("iconId")
+        if isinstance(icon_id, int):
+            self._attr_icon = assets.get_icon(icon_id)
+        self.update_properties(device)
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_sw_version"
+
+    @property
+    def name(self) -> str | UndefinedType | None:
+        """Return the name of the sensor."""
+        return self._name
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional metadata for the version tile."""
+        return dict(self._attrs)
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Return Home Assistant ``DeviceInfo`` for the shared controller."""
+        return _get_controller_device_info(self._config_entry)
+
+    def get_state(self, device) -> Any:
+        """Get the state of the device."""
+        return device.get(CONF_PARAMS, {}).get("version")
+
+    def update_properties(self, device):
+        """Update the properties of the device based on the provided device information."""
+        self._state = self.get_state(device)
+        params = device.get(CONF_PARAMS, {})
+        attrs: dict[str, Any] = {}
+        for source_key, target_key in (
+            ("controllerName", "controller_name"),
+            ("mainControllerId", "main_controller_id"),
+            ("companyId", "company_id"),
+        ):
+            value = params.get(source_key)
+            if value is not None:
+                attrs[target_key] = value
+        self._attrs = attrs
 
 
 class TileWidgetSensor(TileSensor, SensorEntity):
@@ -1511,13 +2058,326 @@ class TileMixingValveSensor(TileSensor, SensorEntity):
         return device[CONF_PARAMS]["openingPercentage"]
 
 
+class _SystemContainerSignalSensor(TileSensor, SensorEntity):
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, device, coordinator, config_entry) -> None:
+        self._container_id = device.get(CONF_PARAMS, {}).get("containerId")
+        self._signal_raw: int | None = None
+        self._attrs: dict[str, Any] = {}
+        TileSensor.__init__(self, device, coordinator, config_entry)
+        container = _get_system_container_payload(self.coordinator, self._container_id)
+        self._name = _get_system_container_entity_name(
+            container,
+            self._config_entry,
+            _SYSTEM_CONTAINER_CONNECTION_LABEL_TXT_ID,
+        )
+        self.update_properties(device)
+
+    def _payloads(self) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+        container = None
+        container_data = None
+        if isinstance(self._container_id, int):
+            container = _get_system_container_payload(
+                self.coordinator, self._container_id
+            )
+            container_data = _get_system_container_data_payload(
+                self.coordinator, self._container_id
+            )
+        return container, container_data
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._unique_id}_tile_system_container_signal"
+
+    @property
+    def name(self) -> str | UndefinedType | None:
+        return self._name
+
+    @property
+    def icon(self) -> str | None:
+        if isinstance(self._signal_raw, int) and self._signal_raw >= 0:
+            return icon_for_signal_level(self._signal_raw)
+        if self._signal_raw == -3:
+            return "mdi:lan-disconnect"
+        if self._signal_raw == -2:
+            return "mdi:lan-connect"
+        if self._signal_raw == -1:
+            return "mdi:timer-sand"
+        return "mdi:signal"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return dict(self._attrs)
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        return _get_controller_device_info(self._config_entry)
+
+    def get_state(self, device) -> Any:
+        del device
+        _, container_data = self._payloads()
+        signal = (
+            container_data.get("signal") if isinstance(container_data, dict) else None
+        )
+        self._signal_raw = signal if isinstance(signal, int) else None
+        if not isinstance(signal, int):
+            return None
+        return signal if signal >= 0 else 0
+
+    def update_properties(self, device):
+        container, container_data = self._payloads()
+        self._state = self.get_state(device)
+
+        attrs = _build_system_container_common_attrs(
+            self._container_id, container, container_data
+        )
+        if isinstance(container_data, dict):
+            if self._signal_raw is not None:
+                attrs["signal_raw"] = self._signal_raw
+                attrs["signal_display"] = _format_system_container_signal(self._signal_raw)
+                signal_state = _SYSTEM_CONTAINER_SIGNAL_STATE_BY_VALUE.get(
+                    self._signal_raw
+                )
+                if signal_state is not None:
+                    attrs["signal_state"] = signal_state
+        self._attrs = attrs
+
+    @callback
+    def _handle_coordinator_update(self, *args: Any) -> None:
+        device = self.coordinator.data["tiles"].get(self._id)
+        container, container_data = self._payloads()
+        if (
+            device is None
+            or not isinstance(container, dict)
+            or not container.get("visibility")
+            or not isinstance(container_data, dict)
+        ):
+            self._attr_available = False
+            self.async_write_ha_state()
+            return
+        self._attr_available = True
+        self.update_properties(device)
+        self.async_write_ha_state()
+
+
+class _SystemContainerStatusSensor(TileSensor, SensorEntity):
+    def __init__(self, device, coordinator, config_entry, label_txt_id: int) -> None:
+        self._container_id = device.get(CONF_PARAMS, {}).get("containerId")
+        self._attrs: dict[str, Any] = {}
+        self._label_txt_id = label_txt_id
+        TileSensor.__init__(self, device, coordinator, config_entry)
+        container = _get_system_container_payload(self.coordinator, self._container_id)
+        self._name = _get_system_container_entity_name(
+            container, self._config_entry, self._label_txt_id
+        )
+        self.update_properties(device)
+
+    def _payloads(self) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+        container = None
+        container_data = None
+        if isinstance(self._container_id, int):
+            container = _get_system_container_payload(
+                self.coordinator, self._container_id
+            )
+            container_data = _get_system_container_data_payload(
+                self.coordinator, self._container_id
+            )
+        return container, container_data
+
+    @property
+    def name(self) -> str | UndefinedType | None:
+        return self._name
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return dict(self._attrs)
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        return _get_controller_device_info(self._config_entry)
+
+    def _update_common_attrs(
+        self,
+        container: dict[str, Any] | None,
+        container_data: dict[str, Any] | None,
+        *,
+        connection_key: str,
+        connection_attr_key: str,
+        connected_roles_attr_key: str,
+        configuration_attr_key: str,
+        configuration_ui_attr_key: str,
+    ) -> None:
+        attrs = _build_system_container_common_attrs(
+            self._container_id, container, container_data
+        )
+        if isinstance(container_data, dict):
+            flags = _normalize_container_flags(container_data.get(connection_key))
+            if flags:
+                attrs[connection_attr_key] = flags
+                attrs[connected_roles_attr_key] = _active_container_flags(flags)
+                attrs[configuration_attr_key] = _map_container_flags_to_configuration(
+                    flags
+                )
+                attrs[configuration_ui_attr_key] = _map_container_flags_to_ui_labels(
+                    flags
+                )
+        self._attrs = attrs
+
+    @callback
+    def _handle_coordinator_update(self, *args: Any) -> None:
+        device = self.coordinator.data["tiles"].get(self._id)
+        container, container_data = self._payloads()
+        if (
+            device is None
+            or not isinstance(container, dict)
+            or not container.get("visibility")
+            or not isinstance(container_data, dict)
+        ):
+            self._attr_available = False
+            self.async_write_ha_state()
+            return
+        self._attr_available = True
+        self.update_properties(device)
+        self.async_write_ha_state()
+
+
+class _SystemContainerPumpSensor(_SystemContainerStatusSensor):
+    def __init__(self, device, coordinator, config_entry) -> None:
+        self._attr_icon = "mdi:pump"
+        super().__init__(
+            device, coordinator, config_entry, _SYSTEM_CONTAINER_PUMP_LABEL_TXT_ID
+        )
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._unique_id}_tile_system_container_pump"
+
+    def get_state(self, device) -> Any:
+        del device
+        _, container_data = self._payloads()
+        return _format_system_container_bool_state(
+            container_data.get("pumpsState")
+            if isinstance(container_data, dict)
+            else None
+        )
+
+    def update_properties(self, device):
+        container, container_data = self._payloads()
+        self._state = self.get_state(device)
+        self._update_common_attrs(
+            container,
+            container_data,
+            connection_key="pumpsConnection",
+            connection_attr_key="pumps_connection",
+            connected_roles_attr_key="pumps_connected_roles",
+            configuration_attr_key="pumps_configuration",
+            configuration_ui_attr_key="pumps_configuration_ui",
+        )
+
+
+class _SystemContainerFreeContactSensor(_SystemContainerStatusSensor):
+    def __init__(self, device, coordinator, config_entry) -> None:
+        self._attr_icon = "mdi:electric-switch"
+        super().__init__(
+            device,
+            coordinator,
+            config_entry,
+            _SYSTEM_CONTAINER_FREE_CONTACT_LABEL_TXT_ID,
+        )
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._unique_id}_tile_system_container_free_contact"
+
+    def get_state(self, device) -> Any:
+        del device
+        _, container_data = self._payloads()
+        return _format_system_container_bool_state(
+            container_data.get("freeContactState")
+            if isinstance(container_data, dict)
+            else None
+        )
+
+    def update_properties(self, device):
+        container, container_data = self._payloads()
+        self._state = self.get_state(device)
+        self._update_common_attrs(
+            container,
+            container_data,
+            connection_key="freeContactConnection",
+            connection_attr_key="free_contact_connection",
+            connected_roles_attr_key="free_contact_connected_roles",
+            configuration_attr_key="free_contact_configuration",
+            configuration_ui_attr_key="free_contact_configuration_ui",
+        )
+
+
+class _SystemContainerOperatingModeSensor(_SystemContainerStatusSensor):
+    def __init__(self, device, coordinator, config_entry) -> None:
+        self._attr_icon = "mdi:hvac"
+        super().__init__(
+            device,
+            coordinator,
+            config_entry,
+            _SYSTEM_CONTAINER_OPERATING_MODE_LABEL_TXT_ID,
+        )
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._unique_id}_tile_system_container_operating_mode"
+
+    def get_state(self, device) -> Any:
+        del device
+        _, container_data = self._payloads()
+        return _format_system_container_operating_mode(
+            container_data.get("hcState") if isinstance(container_data, dict) else None
+        )
+
+    def update_properties(self, device):
+        container, container_data = self._payloads()
+        self._state = self.get_state(device)
+        self._update_common_attrs(
+            container,
+            container_data,
+            connection_key="hcConnection",
+            connection_attr_key="operation_algorithm_connection",
+            connected_roles_attr_key="operation_algorithm_connected_roles",
+            configuration_attr_key="operation_algorithm_configuration",
+            configuration_ui_attr_key="operation_algorithm_configuration_ui",
+        )
+
+
 class TileOpenThermSensor(TileSensor, SensorEntity):
     """Representation of config_OpenTherm Sensor."""
 
-    _attr_has_entity_name = True
+    _attr_has_entity_name = False
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
     _attr_device_class = SensorDeviceClass.TEMPERATURE
     _attr_state_class = SensorStateClass.MEASUREMENT
+
+    @property
+    def name(self) -> str | UndefinedType | None:
+        """Return the entity name, keeping the hub prefix for OpenTherm sensors."""
+        attr_name = getattr(self, "_attr_name", None)
+        if self._txt_id is not None:
+            return attr_name
+
+        translation_key = self._description.get("translation_key")
+        if translation_key is None or self.platform_data is None:
+            return attr_name or self.device_name
+
+        translated_name = self.platform_data.platform_translations.get(
+            self._name_translation_key
+        )
+        if translated_name is None:
+            return attr_name or self.device_name
+
+        return (
+            f"{self._config_entry.title} {translated_name}"
+            if self._config_entry.data[INCLUDE_HUB_IN_NAME]
+            else translated_name
+        )
 
     def __init__(
         self,
@@ -1528,14 +2388,17 @@ class TileOpenThermSensor(TileSensor, SensorEntity):
     ) -> None:
         """Initialize the sensor."""
 
-        # It is needed to store following variables before TileSensor.__init__
-        self._txt_id = open_therm_sensor["txt_id"]
+        self._description = open_therm_sensor
+        self._txt_id = open_therm_sensor.get("txt_id")
         self._state_key = open_therm_sensor["state_key"]
 
         TileSensor.__init__(self, device, coordinator, config_entry)
-        self.native_unit_of_measurement = UnitOfTemperature.CELSIUS
-        self.device_class = SensorDeviceClass.TEMPERATURE
-        self.state_class = SensorStateClass.MEASUREMENT
+        self._attr_native_unit_of_measurement = open_therm_sensor.get(
+            "native_unit_of_measurement"
+        )
+        self._attr_device_class = open_therm_sensor.get("device_class")
+        self._attr_state_class = open_therm_sensor.get("state_class")
+        self._attr_icon = open_therm_sensor.get("icon")
         self.manufacturer = MANUFACTURER
         self.device_name = (
             f"{self._config_entry.title} {assets.get_text_by_type(device[CONF_TYPE])}"
@@ -1545,16 +2408,46 @@ class TileOpenThermSensor(TileSensor, SensorEntity):
             + ": "
             + config_entry.data[CONTROLLER][VER]
         )
-        self._name = (
+        base_name = (
             self._config_entry.title + " "
             if self._config_entry.data[INCLUDE_HUB_IN_NAME]
             else ""
-        ) + assets.get_text(self._txt_id)
+        ) + assets.get_text_by_type(device[CONF_TYPE])
+        translation_key = open_therm_sensor.get("translation_key")
+        if self._txt_id is not None:
+            self._attr_name = (
+                self._config_entry.title + " "
+                if self._config_entry.data[INCLUDE_HUB_IN_NAME]
+                else ""
+            ) + assets.get_text(self._txt_id)
+        elif translation_key is not None:
+            self._attr_translation_key = translation_key
+        else:
+            self._attr_name = base_name
 
-    @property
-    def name(self) -> str | UndefinedType | None:
-        """Return the name of the device."""
-        return self._name
+    async def async_added_to_hass(self) -> None:
+        """Update stale generic registry names for OpenTherm entities."""
+        await super().async_added_to_hass()
+        if self.registry_entry is None:
+            return
+
+        preferred_name = self.name
+        if preferred_name in (None, UndefinedType):
+            return
+
+        current_original_name = self.registry_entry.original_name
+        if current_original_name not in (
+            None,
+            self.device_name,
+            preferred_name.removeprefix(f"{self._config_entry.title} "),
+        ):
+            return
+
+        entity_registry = er.async_get(self.hass)
+        entity_registry.async_update_entity(
+            self.entity_id,
+            original_name=preferred_name,
+        )
 
     @property
     def unique_id(self) -> str:
@@ -1563,7 +2456,25 @@ class TileOpenThermSensor(TileSensor, SensorEntity):
 
     def get_state(self, device) -> Any:
         """Get the state of the device."""
-        return device[CONF_PARAMS][self._state_key] / 10
+        state_source = device.get(CONF_PARAMS, {})
+        if self._description.get("source") == "flags":
+            state_source = state_source.get("flags", {})
+
+        if not isinstance(state_source, dict):
+            return None
+
+        state = state_source.get(self._state_key)
+        if state is None:
+            return None
+
+        if self._description.get("state_map") == "on_off":
+            return STATE_ON if bool(state) else STATE_OFF
+
+        divisor = self._description.get("divisor")
+        if divisor is not None:
+            return state / divisor
+
+        return state
 
     @property
     def device_info(self) -> DeviceInfo | None:

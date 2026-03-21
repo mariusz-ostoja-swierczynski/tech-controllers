@@ -31,10 +31,10 @@
     "entity": {
         "sensor": {
             "temperature_entity": {
-                "name": "{entity_name} Temperatuur"
+                "name": "Temperatuur"
             },
             "battery_entity": {
-                "name": "{entity_name} Aku"
+                "name": "Aku"
             },
             "humidity_entity": {
                 "name": "Niiskus"
@@ -52,10 +52,31 @@
                 "name": "Väline temperatuur"
             },
             "signal_strength_entity": {
-                "name": "{entity_name} Signaali tugevus"
+                "name": "Signaali tugevus"
+            },
+            "tiles_last_update_entity": {
+                "name": "Viimane uuendus"
             },
             "zone_state_entity": {
-                "name": "{entity_name} Häire olek"
+                "name": "Häire olek"
+            },
+            "opentherm_modulation_entity": {
+                "name": "Modulatsioon"
+            },
+            "opentherm_alarm_code_entity": {
+                "name": "Häirekood"
+            },
+            "opentherm_communication_entity": {
+                "name": "Side"
+            },
+            "opentherm_heating_curve_entity": {
+                "name": "Küttekõver"
+            },
+            "opentherm_active_heating_entity": {
+                "name": "Aktiivne küte"
+            },
+            "opentherm_active_dhw_entity": {
+                "name": "Aktiivne soe tarbevesi"
             }
         }
     },

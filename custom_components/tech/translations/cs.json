@@ -31,10 +31,10 @@
     "entity": {
         "sensor": {
             "temperature_entity": {
-                "name": "{entity_name} Teplota"
+                "name": "Teplota"
             },
             "battery_entity": {
-                "name": "{entity_name} Baterie"
+                "name": "Baterie"
             },
             "humidity_entity": {
                 "name": "Vlhkost"
@@ -52,10 +52,31 @@
                 "name": "Externí teplota"
             },
             "signal_strength_entity": {
-                "name": "{entity_name} Síla signálu"
+                "name": "Síla signálu"
+            },
+            "tiles_last_update_entity": {
+                "name": "Poslední aktualizace"
             },
             "zone_state_entity": {
-                "name": "{entity_name} Stav alarmu"
+                "name": "Stav alarmu"
+            },
+            "opentherm_modulation_entity": {
+                "name": "Modulace"
+            },
+            "opentherm_alarm_code_entity": {
+                "name": "Kód alarmu"
+            },
+            "opentherm_communication_entity": {
+                "name": "Komunikace"
+            },
+            "opentherm_heating_curve_entity": {
+                "name": "Topná křivka"
+            },
+            "opentherm_active_heating_entity": {
+                "name": "Aktivní vytápění"
+            },
+            "opentherm_active_dhw_entity": {
+                "name": "Aktivní TUV"
             }
         }
     },

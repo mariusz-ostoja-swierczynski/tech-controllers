@@ -32,8 +32,7 @@ def redact(entry_data: dict[str, Any], keys: Iterable[str]) -> str:
     """
     keys_set = set(keys)
     sanitized_data = {
-        k: _REDACTED_VALUE if k in keys_set else v
-        for k, v in entry_data.items()
+        k: _REDACTED_VALUE if k in keys_set else v for k, v in entry_data.items()
     }
     return str(sanitized_data)
 

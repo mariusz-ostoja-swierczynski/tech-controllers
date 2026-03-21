@@ -79,5 +79,11 @@ class TileEntity(
     @callback
     def _handle_coordinator_update(self, *args: Any) -> None:
         """Handle updated data from the coordinator."""
-        self.update_properties(self.coordinator.data["tiles"][self._id])
+        device = self.coordinator.data["tiles"].get(self._id)
+        if device is None:
+            self._attr_available = False
+            self.async_write_ha_state()
+            return
+        self._attr_available = True
+        self.update_properties(device)
         self.async_write_ha_state()

@@ -31,10 +31,10 @@
     "entity": {
         "sensor": {
             "temperature_entity": {
-                "name": "{entity_name} Temperatur"
+                "name": "Temperatur"
             },
             "battery_entity": {
-                "name": "{entity_name} Batterie"
+                "name": "Batterie"
             },
             "humidity_entity": {
                 "name": "Luftfeuchtigkeit"
@@ -52,10 +52,31 @@
                 "name": "Externe Temperatur"
             },
             "signal_strength_entity": {
-                "name": "{entity_name} Signalstärke"
+                "name": "Signalstärke"
+            },
+            "tiles_last_update_entity": {
+                "name": "Letzte Aktualisierung"
             },
             "zone_state_entity": {
-                "name": "{entity_name} Alarmzustand"
+                "name": "Alarmzustand"
+            },
+            "opentherm_modulation_entity": {
+                "name": "Modulation"
+            },
+            "opentherm_alarm_code_entity": {
+                "name": "Alarmcode"
+            },
+            "opentherm_communication_entity": {
+                "name": "Kommunikation"
+            },
+            "opentherm_heating_curve_entity": {
+                "name": "Heizkurve"
+            },
+            "opentherm_active_heating_entity": {
+                "name": "Heizung aktiv"
+            },
+            "opentherm_active_dhw_entity": {
+                "name": "Warmwasser aktiv"
             }
         }
     },

@@ -31,10 +31,10 @@
     "entity": {
         "sensor": {
             "temperature_entity": {
-                "name": "{entity_name} Temperatuur"
+                "name": "Temperatuur"
             },
             "battery_entity": {
-                "name": "{entity_name} Batterij"
+                "name": "Batterij"
             },
             "humidity_entity": {
                 "name": "Luchtvochtigheid"
@@ -49,13 +49,34 @@
                 "name": "Raam {window_number}"
             },
             "ext_temperature_entity": {
-                "name": "Externe temperatuur"
+                "name": "Buitentemperatuur"
             },
             "signal_strength_entity": {
-                "name": "{entity_name} Signaalsterkte"
+                "name": "Signaalsterkte"
+            },
+            "tiles_last_update_entity": {
+                "name": "Laatste update"
             },
             "zone_state_entity": {
-                "name": "{entity_name} Alarmstatus"
+                "name": "Alarmstatus"
+            },
+            "opentherm_modulation_entity": {
+                "name": "Modulatie"
+            },
+            "opentherm_alarm_code_entity": {
+                "name": "Alarmcode"
+            },
+            "opentherm_communication_entity": {
+                "name": "Communicatie"
+            },
+            "opentherm_heating_curve_entity": {
+                "name": "Stooklijn"
+            },
+            "opentherm_active_heating_entity": {
+                "name": "Verwarming actief"
+            },
+            "opentherm_active_dhw_entity": {
+                "name": "Warm water actief"
             }
         }
     },
