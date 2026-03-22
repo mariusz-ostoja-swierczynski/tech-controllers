@@ -1,7 +1,6 @@
 """Support for Tech HVAC number controls."""
 
 import logging
-from typing import Any
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
@@ -17,24 +16,19 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import assets
 from .const import (
     CONTROLLER,
     DEFAULT_SPEED_VALUES,
     DOMAIN,
-    FILTER_ALARM_IDO_ID,
     FILTER_ALARM_MAX_DAYS,
     FILTER_ALARM_MIN_DAYS,
-    HUMIDITY_SENSOR_TXT_IDS,
     INCLUDE_HUB_IN_NAME,
     MANUFACTURER,
-    PARTY_MODE_IDO_ID,
     PARTY_MODE_MAX_MINUTES,
     PARTY_MODE_MIN_MINUTES,
     RECUPERATION_EXHAUST_FLOW,
     RECUPERATION_SUPPLY_FLOW,
     RECUPERATION_SUPPLY_FLOW_ALT,
-    SPEED_CONFIG_KEYS,
     SPEED_RANGES,
     TYPE_TEMPERATURE_CH,
     UDID,

@@ -1,7 +1,7 @@
 """Support for Tech HVAC button controls."""
 
+from datetime import datetime
 import logging
-from typing import Any
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
@@ -110,7 +110,6 @@ class FilterResetButton(CoordinatorEntity, ButtonEntity):
         _LOGGER.debug("Resetting filter timer")
 
         # Store the current date as filter reset date
-        from datetime import datetime
         current_date = datetime.now().isoformat()
 
         # Store in coordinator for immediate use by filter usage sensor

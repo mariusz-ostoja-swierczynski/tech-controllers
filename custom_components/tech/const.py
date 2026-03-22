@@ -184,6 +184,9 @@ FAN_MODE_OPTIONS = {
 }
 FAN_MODE_OPTIONS_REVERSE = {v: k for k, v in FAN_MODE_OPTIONS.items()}
 
+# Virtual tile ID for recuperation entities without a real tile
+VIRTUAL_TILE_ID = 9999
+
 # Filter management settings (values from Tech Defro DRX recuperation system)
 # These are the allowed range for filter replacement reminder in the device settings
 FILTER_ALARM_IDO_ID = 2080

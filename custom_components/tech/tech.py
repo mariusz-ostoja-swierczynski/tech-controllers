@@ -43,7 +43,6 @@ class Tech:
         self.headers = {
             "Accept": "application/json",
             "Accept-Encoding": "gzip",
-            "User-Agent": "Mozilla/5.0",
         }
         self.base_url = base_url
         self.session = session
@@ -397,7 +396,7 @@ class Tech:
         JSON object with the result.
 
         """
-        from .const import RECUPERATION_SPEED_ENDPOINTS, DEFAULT_SPEED_VALUES
+        from .const import DEFAULT_SPEED_VALUES, RECUPERATION_SPEED_ENDPOINTS
 
         _LOGGER.debug("Setting recuperation speed: speed_level=%s", speed_level)
         if self.authenticated:
@@ -439,7 +438,11 @@ class Tech:
         JSON object with the result.
 
         """
-        from .const import PARTY_MODE_IDO_ID, PARTY_MODE_MIN_MINUTES, PARTY_MODE_MAX_MINUTES
+        from .const import (
+            PARTY_MODE_IDO_ID,
+            PARTY_MODE_MAX_MINUTES,
+            PARTY_MODE_MIN_MINUTES,
+        )
 
         _LOGGER.debug("Setting party mode: duration=%s minutes", duration_minutes)
         if self.authenticated:
@@ -495,7 +498,11 @@ class Tech:
         JSON object with the result.
 
         """
-        from .const import FILTER_ALARM_IDO_ID, FILTER_ALARM_MIN_DAYS, FILTER_ALARM_MAX_DAYS
+        from .const import (
+            FILTER_ALARM_IDO_ID,
+            FILTER_ALARM_MAX_DAYS,
+            FILTER_ALARM_MIN_DAYS,
+        )
 
         _LOGGER.debug("Setting filter alarm: days=%s", days)
         if self.authenticated:
@@ -568,7 +575,11 @@ class Tech:
         JSON object with the result.
 
         """
-        from .const import VENTILATION_ROOM_IDO_ID, VENTILATION_MIN_PERCENT, VENTILATION_MAX_PERCENT
+        from .const import (
+            VENTILATION_MAX_PERCENT,
+            VENTILATION_MIN_PERCENT,
+            VENTILATION_ROOM_IDO_ID,
+        )
 
         _LOGGER.debug("Setting room ventilation parameter: percent=%s", percent)
         if self.authenticated:
@@ -596,7 +607,11 @@ class Tech:
         JSON object with the result.
 
         """
-        from .const import VENTILATION_BATHROOM_IDO_ID, VENTILATION_MIN_PERCENT, VENTILATION_MAX_PERCENT
+        from .const import (
+            VENTILATION_BATHROOM_IDO_ID,
+            VENTILATION_MAX_PERCENT,
+            VENTILATION_MIN_PERCENT,
+        )
 
         _LOGGER.debug("Setting bathroom ventilation parameter: percent=%s", percent)
         if self.authenticated:
@@ -624,7 +639,7 @@ class Tech:
         JSON object with the result.
 
         """
-        from .const import CO2_THRESHOLD_IDO_ID, CO2_MIN_PPM, CO2_MAX_PPM
+        from .const import CO2_MAX_PPM, CO2_MIN_PPM, CO2_THRESHOLD_IDO_ID
 
         _LOGGER.debug("Setting CO2 threshold: ppm=%s", ppm)
         if self.authenticated:
@@ -652,7 +667,11 @@ class Tech:
         JSON object with the result.
 
         """
-        from .const import HYSTERESIS_IDO_ID, HYSTERESIS_MIN_PERCENT, HYSTERESIS_MAX_PERCENT
+        from .const import (
+            HYSTERESIS_IDO_ID,
+            HYSTERESIS_MAX_PERCENT,
+            HYSTERESIS_MIN_PERCENT,
+        )
 
         _LOGGER.debug("Setting hysteresis: percent=%s", percent)
         if self.authenticated:

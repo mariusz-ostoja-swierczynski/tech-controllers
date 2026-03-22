@@ -1,7 +1,6 @@
 """Support for Tech HVAC select controls."""
 
 import logging
-from typing import Any
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
@@ -11,22 +10,14 @@ from homeassistant.const import (
     CONF_MODEL,
     CONF_NAME,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.core import callback
 
-from . import assets
 from .const import (
     CONTROLLER,
     DOMAIN,
-    FAN_MODE_IDO_ID,
-    FAN_MODE_OPTIONS,
-    FAN_MODE_OPTIONS_REVERSE,
-    GEAR_CONTROL_IDO_ID,
-    GEAR_OPTIONS,
-    GEAR_OPTIONS_REVERSE,
     INCLUDE_HUB_IN_NAME,
     MANUFACTURER,
     RECUPERATION_EXHAUST_FLOW,
@@ -227,7 +218,7 @@ class RecuperationGearSelect(CoordinatorEntity, SelectEntity):
         """Return the current selected gear."""
         # First try to get from tiles data (faster)
         if self._coordinator.data and "tiles" in self._coordinator.data:
-            for tile_id, tile_data in self._coordinator.data["tiles"].items():
+            for _tile_id, tile_data in self._coordinator.data["tiles"].items():
                 # Look for recuperation fan tile or similar
                 if tile_data.get("type") in [22, 122]:  # TYPE_FAN or TYPE_RECUPERATION
                     current_gear = tile_data.get("params", {}).get("gear", 0)

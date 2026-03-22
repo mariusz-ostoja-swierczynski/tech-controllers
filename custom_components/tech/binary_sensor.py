@@ -1,5 +1,6 @@
 """Platform for binary sensor integration."""
 
+from datetime import datetime
 import logging
 
 from homeassistant.components import binary_sensor
@@ -197,7 +198,6 @@ class FilterReplacementSensor(CoordinatorEntity, binary_sensor.BinarySensorEntit
         """Return True if filter replacement is needed."""
         # Calculate if filter replacement is needed based on usage days
         if hasattr(self._coordinator, '_filter_reset_date') and self._coordinator._filter_reset_date:
-            from datetime import datetime
             reset_date = datetime.fromisoformat(self._coordinator._filter_reset_date)
             current_date = datetime.now()
             days_since_reset = (current_date - reset_date).days
@@ -264,7 +264,7 @@ class RecuperationSystemStatusSensor(CoordinatorEntity, binary_sensor.BinarySens
         """Return True if recuperation system is running."""
         # Check if any flow sensors show activity
         if self._coordinator.data and "tiles" in self._coordinator.data:
-            for tile_id, tile_data in self._coordinator.data["tiles"].items():
+            for _tile_id, tile_data in self._coordinator.data["tiles"].items():
                 if tile_data.get("type") == TYPE_TEMPERATURE_CH:
                     # Check flow sensors for activity
                     widget1_data = tile_data.get("params", {}).get("widget1", {})
@@ -276,7 +276,7 @@ class RecuperationSystemStatusSensor(CoordinatorEntity, binary_sensor.BinarySens
                         for flow_sensor in [RECUPERATION_EXHAUST_FLOW, RECUPERATION_SUPPLY_FLOW, RECUPERATION_SUPPLY_FLOW_ALT]:
                             if flow_sensor["txt_id"] == widget_txt_id:
                                 flow_value = widget_data.get("value", 0)
-                                if flow_value and flow_value > 0:
+                                if flow_value > 0:
                                     return True
         return False
 

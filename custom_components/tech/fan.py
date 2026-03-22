@@ -35,6 +35,7 @@ from .const import (
     TYPE_TEMPERATURE_CH,
     UDID,
     VER,
+    VIRTUAL_TILE_ID,
 )
 from .coordinator import TechCoordinator
 from .entity import TileEntity
@@ -109,7 +110,7 @@ async def async_setup_entry(
     if has_recuperation_flow:
         # Create a virtual tile for recuperation control
         virtual_tile = {
-            "id": 9999,  # Virtual ID
+            "id": VIRTUAL_TILE_ID,
             "type": TYPE_RECUPERATION,
             "params": {"description": "Recuperation Control"}
         }
@@ -182,7 +183,7 @@ class TileFanEntity(TileEntity, CoordinatorEntity, FanEntity):
         if percentage == 0:
             await self.async_turn_off()
         else:
-            speed_level = int(round(percentage_to_ranged_value(SPEED_RANGE, percentage)))
+            speed_level = max(0, min(3, int(round(percentage_to_ranged_value(SPEED_RANGE, percentage)))))
             # For now, use None for configured_values (will use defaults)
             await self._coordinator.api.set_recuperation_speed(self._udid, speed_level, None)
             await self._coordinator.async_request_refresh()
@@ -355,6 +356,18 @@ class TileRecuperationFanEntity(TileFanEntity):
         """Return a unique ID."""
         return f"{self._unique_id}_tile_recuperation"
 
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Returns device information grouped with other recuperation entities."""
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, f"{self._udid}_recuperation")
+            },
+            CONF_NAME: f"{self._config_entry.title} Recuperation",
+            CONF_MODEL: self._config_entry.data[CONTROLLER][CONF_NAME] + ": " + self._config_entry.data[CONTROLLER][VER],
+            ATTR_MANUFACTURER: MANUFACTURER,
+        }
+
 
 class VirtualRecuperationFanEntity(TileFanEntity):
     """Virtual recuperation fan entity for systems without direct fan tiles."""
@@ -383,6 +396,18 @@ class VirtualRecuperationFanEntity(TileFanEntity):
         return f"{self._udid}_virtual_recuperation"
 
     @property
+    def device_info(self) -> DeviceInfo | None:
+        """Returns device information grouped with other recuperation entities."""
+        return {
+            ATTR_IDENTIFIERS: {
+                (DOMAIN, f"{self._udid}_recuperation")
+            },
+            CONF_NAME: f"{self._config_entry.title} Recuperation",
+            CONF_MODEL: self._config_entry.data[CONTROLLER][CONF_NAME] + ": " + self._config_entry.data[CONTROLLER][VER],
+            ATTR_MANUFACTURER: MANUFACTURER,
+        }
+
+    @property
     def is_on(self) -> bool:
         """Return true if the recuperation is on."""
         # Check flow values to determine if recuperation is running
@@ -393,7 +418,7 @@ class VirtualRecuperationFanEntity(TileFanEntity):
                 RECUPERATION_SUPPLY_FLOW_ALT,
             )
 
-            for tile_id, tile_data in self._coordinator.data["tiles"].items():
+            for _tile_id, tile_data in self._coordinator.data["tiles"].items():
                 if tile_data.get("type") == TYPE_TEMPERATURE_CH:
                     widget1_txt_id = tile_data.get("params", {}).get("widget1", {}).get("txtId", 0)
                     widget2_txt_id = tile_data.get("params", {}).get("widget2", {}).get("txtId", 0)
@@ -421,7 +446,7 @@ class VirtualRecuperationFanEntity(TileFanEntity):
                 RECUPERATION_SUPPLY_FLOW_ALT,
             )
 
-            for tile_id, tile_data in self._coordinator.data["tiles"].items():
+            for _tile_id, tile_data in self._coordinator.data["tiles"].items():
                 if tile_data.get("type") == TYPE_TEMPERATURE_CH:
                     widget1_txt_id = tile_data.get("params", {}).get("widget1", {}).get("txtId", 0)
                     widget2_txt_id = tile_data.get("params", {}).get("widget2", {}).get("txtId", 0)
