@@ -26,9 +26,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install requirements
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements_test_api.txt
+          python -m pip install --upgrade "pip>=25.1" 
+          pip install -e .
+          pip install --group test_api
       - name: Run tests
         uses: pavelzw/pytest-action@v2
         with:

@@ -40,25 +40,22 @@
 
   scripts.develop = {
     exec = ''
-      # Create config dir if not present
+      source .devenv/state/venv/bin/activate
+      export PYTHONPATH="$PYTHONPATH:$PWD/custom_components"
+      export VIRTUAL_ENV="$PWD/.devenv/state/venv"
+      export PATH="$VIRTUAL_ENV/bin:$PATH"
+      export UV_PYTHON="$VIRTUAL_ENV/bin/python"
+
       if [[ ! -d "$PWD/config" ]]; then
           mkdir -p "$PWD/config"
           ln -s "$PWD/custom_components/" "$PWD/config/custom_components"
-          hass --config "$PWD/config" --script ensure_config
+          "$VIRTUAL_ENV/bin/hass" --config "$PWD/config" --script ensure_config
       fi
-
       if [ ! -L "$PWD/config/custom_components" ]; then
           ln -s "$PWD/custom_components/" "$PWD/config/custom_components"
       fi
 
-      # Set the path to custom_components
-      ## This let's us have the structure we want <root>/custom_components/integration_blueprint
-      ## while at the same time have Home Assistant configuration inside <root>/config
-      ## without resulting to symlinks.
-      export PYTHONPATH="$PYTHONPATH:$PWD/custom_components"
-
-      # Start Home Assistant
-      hass --config "$PWD/config" --debug
+      exec "$VIRTUAL_ENV/bin/hass" --config "$PWD/config" --debug
     '';
     description = "Start Home Assistant";
   };
@@ -82,6 +79,11 @@
   enterShell = ''
     echo Entering development environment for tech-controllers...
     export PYTHONPATH="$PYTHONPATH:$PWD/custom_components"
+
+    # Remove Nix's externally-managed marker so uv can install into the venv freely
+    find ".devenv/state/venv" -name "EXTERNALLY-MANAGED" -delete 2>/dev/null || true
+
+    export UV_PYTHON="$VIRTUAL_ENV/bin/python"
     echo $PYTHONPATH
     echo
     echo 🦾 Available scripts:
@@ -96,8 +98,8 @@
   tasks."app:setup" = {
     exec = ''
       echo '🛠️ Running setup'
-      # Sync with pyproject.toml via pip
-      uv sync --group test_api
+      uv sync --group test_api --python "$VIRTUAL_ENV/bin/python"
+      find ".devenv/state/venv" -name "EXTERNALLY-MANAGED" -delete 2>/dev/null || true
     '';
     after = ["devenv:enterShell"];
   };
