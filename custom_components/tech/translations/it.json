@@ -57,6 +57,26 @@
             "zone_state_entity": {
                 "name": "{entity_name} Stato di allarme"
             }
+        },
+        "select": {
+            "recuperation_fan_mode": {
+                "name": "Modalità ventilatore (temporizzato)",
+                "state": {
+                    "stop": "Ferma ventilatore",
+                    "speed_1": "Velocità 1",
+                    "speed_2": "Velocità 2",
+                    "speed_3": "Velocità 3"
+                }
+            },
+            "recuperation_gear": {
+                "name": "Velocità del recuperatore",
+                "state": {
+                    "stop": "Stop",
+                    "speed_1": "Velocità 1",
+                    "speed_2": "Velocità 2",
+                    "speed_3": "Velocità 3"
+                }
+            }
         }
     },
     "title": "Controller Tech"

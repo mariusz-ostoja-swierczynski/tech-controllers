@@ -68,9 +68,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     websession = async_get_clientsession(hass)
 
     coordinator = TechCoordinator(hass, websession, user_id, token)
+    coordinator.config_entry = entry
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
     await coordinator.async_config_entry_first_refresh()
+
+    await coordinator.async_load_filter_reset_date()
 
     await assets.load_subtitles(language_code, coordinator.api)
 

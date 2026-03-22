@@ -57,6 +57,26 @@
           "zone_state_entity": {
             "name": "{entity_name} Alarm state"
           }
+        },
+        "select": {
+          "recuperation_fan_mode": {
+            "name": "Fan Mode (Timed)",
+            "state": {
+              "stop": "Stop fan",
+              "speed_1": "Speed 1",
+              "speed_2": "Speed 2",
+              "speed_3": "Speed 3"
+            }
+          },
+          "recuperation_gear": {
+            "name": "Recuperation Gear",
+            "state": {
+              "stop": "Stop",
+              "speed_1": "Speed 1",
+              "speed_2": "Speed 2",
+              "speed_3": "Speed 3"
+            }
+          }
         }
       },
     "title": "Tech Controllers"

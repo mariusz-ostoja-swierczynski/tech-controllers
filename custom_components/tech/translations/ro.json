@@ -57,6 +57,26 @@
             "zone_state_entity": {
                 "name": "{entity_name} Stare de alarmă"
             }
+        },
+        "select": {
+            "recuperation_fan_mode": {
+                "name": "Mod ventilator (temporizat)",
+                "state": {
+                    "stop": "Oprire ventilator",
+                    "speed_1": "Viteză 1",
+                    "speed_2": "Viteză 2",
+                    "speed_3": "Viteză 3"
+                }
+            },
+            "recuperation_gear": {
+                "name": "Treapta recuperatorului",
+                "state": {
+                    "stop": "Oprire",
+                    "speed_1": "Viteză 1",
+                    "speed_2": "Viteză 2",
+                    "speed_3": "Viteză 3"
+                }
+            }
         }
     },
     "title": "Controlere Tech"

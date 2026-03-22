@@ -42,6 +42,9 @@
             "actuator_entity": {
                 "name": "Atuador {actuator_number}"
             },
+            "underfloor_entity": {
+                "name": "Piso radiante"
+            },
             "window_sensor_entity": {
                 "name": "Janela {window_number}"
             },
@@ -53,6 +56,26 @@
             },
             "zone_state_entity": {
                 "name": "Estado de alarme de {entity_name}"
+            }
+        },
+        "select": {
+            "recuperation_fan_mode": {
+                "name": "Modo do ventilador (temporizado)",
+                "state": {
+                    "stop": "Parar ventilador",
+                    "speed_1": "Velocidade 1",
+                    "speed_2": "Velocidade 2",
+                    "speed_3": "Velocidade 3"
+                }
+            },
+            "recuperation_gear": {
+                "name": "Velocidade do recuperador",
+                "state": {
+                    "stop": "Parar",
+                    "speed_1": "Velocidade 1",
+                    "speed_2": "Velocidade 2",
+                    "speed_3": "Velocidade 3"
+                }
             }
         }
     },

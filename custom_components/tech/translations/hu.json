@@ -57,6 +57,26 @@
             "zone_state_entity": {
                 "name": "{entity_name} Riasztási állapot"
             }
+        },
+        "select": {
+            "recuperation_fan_mode": {
+                "name": "Ventilátor mód (időzített)",
+                "state": {
+                    "stop": "Ventilátor leállítása",
+                    "speed_1": "Sebesség 1",
+                    "speed_2": "Sebesség 2",
+                    "speed_3": "Sebesség 3"
+                }
+            },
+            "recuperation_gear": {
+                "name": "Rekuperátor fokozat",
+                "state": {
+                    "stop": "Leállítás",
+                    "speed_1": "Sebesség 1",
+                    "speed_2": "Sebesség 2",
+                    "speed_3": "Sebesség 3"
+                }
+            }
         }
     },
     "title": "Tech Controllers"

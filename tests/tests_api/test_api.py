@@ -725,3 +725,614 @@ class TestTechAPI:
 
             # Verify that the method returns the response
             assert result == mock_set_const_temp_response
+
+    # ==================== Tests for recuperation/fan control methods ====================
+
+    @pytest.mark.asyncio
+    async def test_set_fan_gear_mock(self, client_session: aiohttp.ClientSession):
+        """Test that set_fan_gear() sends correct data."""
+        module_udid = "123456789"
+        tile_id = 100
+        gear = 2
+
+        with patch.object(Tech, "post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = {"status": "success"}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            result = await instance.set_fan_gear(module_udid, tile_id, gear)
+
+            assert mock_post.called
+            assert f"menu/MI/ido/{tile_id}" in mock_post.call_args[0][0]
+            assert json.loads(mock_post.call_args[0][1]) == {"gear": gear}
+            assert result == {"status": "success"}
+
+    @pytest.mark.asyncio
+    async def test_set_fan_gear_auth_failure(self, client_session: aiohttp.ClientSession):
+        """Test that set_fan_gear() raises exception when not authenticated."""
+        instance = Tech(client_session)
+        instance.authenticated = False
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_fan_gear("module", 100, 2)
+        assert exception_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_set_recuperation_speed_mock(self, client_session: aiohttp.ClientSession):
+        """Test that set_recuperation_speed() sends correct data for speed levels 1-3."""
+        module_udid = "123456789"
+
+        with patch.object(Tech, "post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = {"status": "success"}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            # Test speed level 1
+            result = await instance.set_recuperation_speed(module_udid, 1)
+            assert mock_post.called
+            assert "menu/MI/ido/1737" in mock_post.call_args[0][0]
+            assert json.loads(mock_post.call_args[0][1]) == {"value": 120}
+
+            # Test speed level 2
+            await instance.set_recuperation_speed(module_udid, 2)
+            assert "menu/MI/ido/1748" in mock_post.call_args[0][0]
+            assert json.loads(mock_post.call_args[0][1]) == {"value": 280}
+
+            # Test speed level 3
+            await instance.set_recuperation_speed(module_udid, 3)
+            assert "menu/MI/ido/1739" in mock_post.call_args[0][0]
+            assert json.loads(mock_post.call_args[0][1]) == {"value": 390}
+
+    @pytest.mark.asyncio
+    async def test_set_recuperation_speed_off(self, client_session: aiohttp.ClientSession):
+        """Test that set_recuperation_speed(0) turns off the recuperation."""
+        module_udid = "123456789"
+
+        with patch.object(Tech, "post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = {"status": "success"}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            await instance.set_recuperation_speed(module_udid, 0)
+            assert json.loads(mock_post.call_args[0][1]) == {"value": 0}
+
+    @pytest.mark.asyncio
+    async def test_set_recuperation_speed_invalid(self, client_session: aiohttp.ClientSession):
+        """Test that set_recuperation_speed() raises error for invalid speed level."""
+        instance = Tech(client_session)
+        instance.authenticated = True
+        instance.user_id = "user123"
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_recuperation_speed("module", 5)
+        assert exception_info.value.status_code == 400
+        assert "Invalid speed level" in exception_info.value.status
+
+    @pytest.mark.asyncio
+    async def test_set_recuperation_speed_with_configured_values(
+        self, client_session: aiohttp.ClientSession
+    ):
+        """Test set_recuperation_speed() with custom configured values."""
+        module_udid = "123456789"
+        configured_values = {1: 100, 2: 200, 3: 300}
+
+        with patch.object(Tech, "post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = {"status": "success"}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            await instance.set_recuperation_speed(module_udid, 2, configured_values)
+            assert json.loads(mock_post.call_args[0][1]) == {"value": 200}
+
+    @pytest.mark.asyncio
+    async def test_set_party_mode_mock(self, client_session: aiohttp.ClientSession):
+        """Test that set_party_mode() sends correct data."""
+        module_udid = "123456789"
+        duration = 60
+
+        with patch.object(Tech, "post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = {"status": "success"}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            result = await instance.set_party_mode(module_udid, duration)
+
+            assert mock_post.called
+            assert "menu/MU/ido/1447" in mock_post.call_args[0][0]
+            assert json.loads(mock_post.call_args[0][1]) == {"value": duration}
+            assert result == {"status": "success"}
+
+    @pytest.mark.asyncio
+    async def test_set_party_mode_invalid_duration(self, client_session: aiohttp.ClientSession):
+        """Test that set_party_mode() raises error for invalid duration."""
+        instance = Tech(client_session)
+        instance.authenticated = True
+        instance.user_id = "user123"
+
+        # Too short
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_party_mode("module", 10)
+        assert exception_info.value.status_code == 400
+
+        # Too long
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_party_mode("module", 800)
+        assert exception_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_set_fan_mode_mock(self, client_session: aiohttp.ClientSession):
+        """Test that set_fan_mode() sends correct data."""
+        module_udid = "123456789"
+
+        with patch.object(Tech, "post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = {"status": "success"}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            for mode in range(4):
+                await instance.set_fan_mode(module_udid, mode)
+                assert "menu/MU/ido/1966" in mock_post.call_args[0][0]
+                assert json.loads(mock_post.call_args[0][1]) == {"value": mode}
+
+    @pytest.mark.asyncio
+    async def test_set_fan_mode_invalid(self, client_session: aiohttp.ClientSession):
+        """Test that set_fan_mode() raises error for invalid mode."""
+        instance = Tech(client_session)
+        instance.authenticated = True
+        instance.user_id = "user123"
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_fan_mode("module", 5)
+        assert exception_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_set_filter_alarm_mock(self, client_session: aiohttp.ClientSession):
+        """Test that set_filter_alarm() sends correct data."""
+        module_udid = "123456789"
+        days = 90
+
+        with patch.object(Tech, "post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = {"status": "success"}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            result = await instance.set_filter_alarm(module_udid, days)
+
+            assert mock_post.called
+            assert "menu/MI/ido/2080" in mock_post.call_args[0][0]
+            assert json.loads(mock_post.call_args[0][1]) == {"value": days}
+            assert result == {"status": "success"}
+
+    @pytest.mark.asyncio
+    async def test_set_filter_alarm_invalid_days(self, client_session: aiohttp.ClientSession):
+        """Test that set_filter_alarm() raises error for invalid days."""
+        instance = Tech(client_session)
+        instance.authenticated = True
+        instance.user_id = "user123"
+
+        # Too few days
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_filter_alarm("module", 20)
+        assert exception_info.value.status_code == 400
+
+        # Too many days
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_filter_alarm("module", 150)
+        assert exception_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_get_filter_usage_mock(self, client_session: aiohttp.ClientSession):
+        """Test that get_filter_usage() returns filter usage data."""
+        module_udid = "123456789"
+
+        with patch.object(Tech, "get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = {"value": 45}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            result = await instance.get_filter_usage(module_udid)
+
+            assert mock_get.called
+            assert "menu/MI/ido/2081" in mock_get.call_args[0][0]
+            assert result == {"value": 45}
+
+    @pytest.mark.asyncio
+    async def test_get_filter_usage_auth_failure(self, client_session: aiohttp.ClientSession):
+        """Test that get_filter_usage() raises exception when not authenticated."""
+        instance = Tech(client_session)
+        instance.authenticated = False
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.get_filter_usage("module")
+        assert exception_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_update_filter_data_mock(self, client_session: aiohttp.ClientSession):
+        """Test that update_filter_data() sends correct request."""
+        module_udid = "123456789"
+
+        with patch.object(Tech, "post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = {"status": "success"}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            result = await instance.update_filter_data(module_udid)
+
+            assert mock_post.called
+            assert "update/data/parents" in mock_post.call_args[0][0]
+            assert result == {"status": "success"}
+
+    @pytest.mark.asyncio
+    async def test_set_ventilation_room_parameter_mock(
+        self, client_session: aiohttp.ClientSession
+    ):
+        """Test that set_ventilation_room_parameter() sends correct data."""
+        module_udid = "123456789"
+        percent = 50
+
+        with patch.object(Tech, "post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = {"status": "success"}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            result = await instance.set_ventilation_room_parameter(module_udid, percent)
+
+            assert mock_post.called
+            assert "menu/MI/ido/2170" in mock_post.call_args[0][0]
+            assert json.loads(mock_post.call_args[0][1]) == {"value": percent}
+            assert result == {"status": "success"}
+
+    @pytest.mark.asyncio
+    async def test_set_ventilation_room_parameter_invalid(
+        self, client_session: aiohttp.ClientSession
+    ):
+        """Test that set_ventilation_room_parameter() raises error for invalid percent."""
+        instance = Tech(client_session)
+        instance.authenticated = True
+        instance.user_id = "user123"
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_ventilation_room_parameter("module", 5)
+        assert exception_info.value.status_code == 400
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_ventilation_room_parameter("module", 95)
+        assert exception_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_set_ventilation_bathroom_parameter_mock(
+        self, client_session: aiohttp.ClientSession
+    ):
+        """Test that set_ventilation_bathroom_parameter() sends correct data."""
+        module_udid = "123456789"
+        percent = 70
+
+        with patch.object(Tech, "post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = {"status": "success"}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            result = await instance.set_ventilation_bathroom_parameter(module_udid, percent)
+
+            assert mock_post.called
+            assert "menu/MI/ido/2171" in mock_post.call_args[0][0]
+            assert json.loads(mock_post.call_args[0][1]) == {"value": percent}
+            assert result == {"status": "success"}
+
+    @pytest.mark.asyncio
+    async def test_set_co2_threshold_mock(self, client_session: aiohttp.ClientSession):
+        """Test that set_co2_threshold() sends correct data."""
+        module_udid = "123456789"
+        ppm = 800
+
+        with patch.object(Tech, "post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = {"status": "success"}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            result = await instance.set_co2_threshold(module_udid, ppm)
+
+            assert mock_post.called
+            assert "menu/MI/ido/2115" in mock_post.call_args[0][0]
+            assert json.loads(mock_post.call_args[0][1]) == {"value": ppm}
+            assert result == {"status": "success"}
+
+    @pytest.mark.asyncio
+    async def test_set_co2_threshold_invalid(self, client_session: aiohttp.ClientSession):
+        """Test that set_co2_threshold() raises error for invalid ppm."""
+        instance = Tech(client_session)
+        instance.authenticated = True
+        instance.user_id = "user123"
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_co2_threshold("module", 300)
+        assert exception_info.value.status_code == 400
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_co2_threshold("module", 2500)
+        assert exception_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_set_hysteresis_mock(self, client_session: aiohttp.ClientSession):
+        """Test that set_hysteresis() sends correct data."""
+        module_udid = "123456789"
+        percent = 7
+
+        with patch.object(Tech, "post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = {"status": "success"}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            result = await instance.set_hysteresis(module_udid, percent)
+
+            assert mock_post.called
+            assert "menu/MI/ido/2239" in mock_post.call_args[0][0]
+            assert json.loads(mock_post.call_args[0][1]) == {"value": percent}
+            assert result == {"status": "success"}
+
+    @pytest.mark.asyncio
+    async def test_set_hysteresis_invalid(self, client_session: aiohttp.ClientSession):
+        """Test that set_hysteresis() raises error for invalid percent."""
+        instance = Tech(client_session)
+        instance.authenticated = True
+        instance.user_id = "user123"
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_hysteresis("module", 3)
+        assert exception_info.value.status_code == 400
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_hysteresis("module", 15)
+        assert exception_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_set_flow_balancing_mock(self, client_session: aiohttp.ClientSession):
+        """Test that set_flow_balancing() sends correct data."""
+        module_udid = "123456789"
+
+        with patch.object(Tech, "post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = {"status": "success"}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            # Test enabling
+            await instance.set_flow_balancing(module_udid, True)
+            assert "menu/MI/ido/1733" in mock_post.call_args[0][0]
+            assert json.loads(mock_post.call_args[0][1]) == {"value": 1}
+
+            # Test disabling
+            await instance.set_flow_balancing(module_udid, False)
+            assert json.loads(mock_post.call_args[0][1]) == {"value": 0}
+
+    @pytest.mark.asyncio
+    async def test_get_current_gear_mock(self, client_session: aiohttp.ClientSession):
+        """Test that get_current_gear() returns current gear value."""
+        module_udid = "123456789"
+
+        with patch.object(Tech, "get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = {"value": 2}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            result = await instance.get_current_gear(module_udid)
+
+            assert mock_get.called
+            assert "menu/MU/ido/1833" in mock_get.call_args[0][0]
+            assert result == 2
+
+    @pytest.mark.asyncio
+    async def test_get_current_gear_default(self, client_session: aiohttp.ClientSession):
+        """Test that get_current_gear() returns 0 when no value in response."""
+        module_udid = "123456789"
+
+        with patch.object(Tech, "get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = {}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            result = await instance.get_current_gear(module_udid)
+            assert result == 0
+
+    @pytest.mark.asyncio
+    async def test_get_current_gear_auth_failure(self, client_session: aiohttp.ClientSession):
+        """Test that get_current_gear() raises exception when not authenticated."""
+        instance = Tech(client_session)
+        instance.authenticated = False
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.get_current_gear("module")
+        assert exception_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_set_gear_direct_mock(self, client_session: aiohttp.ClientSession):
+        """Test that set_gear_direct() sends correct data."""
+        module_udid = "123456789"
+
+        with patch.object(Tech, "post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = {"status": "success"}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            for gear in range(4):
+                await instance.set_gear_direct(module_udid, gear)
+                assert "menu/MU/ido/1833" in mock_post.call_args[0][0]
+                assert json.loads(mock_post.call_args[0][1]) == {"value": gear}
+
+    @pytest.mark.asyncio
+    async def test_set_gear_direct_invalid(self, client_session: aiohttp.ClientSession):
+        """Test that set_gear_direct() raises error for invalid gear value."""
+        instance = Tech(client_session)
+        instance.authenticated = True
+        instance.user_id = "user123"
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_gear_direct("module", 5)
+        assert exception_info.value.status_code == 400
+        assert "Invalid gear value" in exception_info.value.status
+
+    @pytest.mark.asyncio
+    async def test_set_gear_direct_auth_failure(self, client_session: aiohttp.ClientSession):
+        """Test that set_gear_direct() raises exception when not authenticated."""
+        instance = Tech(client_session)
+        instance.authenticated = False
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_gear_direct("module", 2)
+        assert exception_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_get_translations_unsupported_language(
+        self,
+        client_session: aiohttp.ClientSession,
+        valid_credentials: dict,
+    ):
+        """Test that get_translations() falls back to 'en' for unsupported language."""
+        tech: Tech = Tech(client_session)
+
+        authenticated = await tech.authenticate(
+            valid_credentials["username"], valid_credentials["password"]
+        )
+        assert authenticated
+
+        # Request unsupported language - should fall back to 'en'
+        lang = await tech.get_translations("xyz")
+        assert isinstance(lang, dict)
+        assert lang["status"] == "success"
+
+    # ==================== Auth failure tests for remaining methods ====================
+
+    @pytest.mark.asyncio
+    async def test_set_recuperation_speed_auth_failure(
+        self, client_session: aiohttp.ClientSession
+    ):
+        """Test that set_recuperation_speed() raises exception when not authenticated."""
+        instance = Tech(client_session)
+        instance.authenticated = False
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_recuperation_speed("module", 1)
+        assert exception_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_set_party_mode_auth_failure(self, client_session: aiohttp.ClientSession):
+        """Test that set_party_mode() raises exception when not authenticated."""
+        instance = Tech(client_session)
+        instance.authenticated = False
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_party_mode("module", 60)
+        assert exception_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_set_fan_mode_auth_failure(self, client_session: aiohttp.ClientSession):
+        """Test that set_fan_mode() raises exception when not authenticated."""
+        instance = Tech(client_session)
+        instance.authenticated = False
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_fan_mode("module", 1)
+        assert exception_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_set_filter_alarm_auth_failure(self, client_session: aiohttp.ClientSession):
+        """Test that set_filter_alarm() raises exception when not authenticated."""
+        instance = Tech(client_session)
+        instance.authenticated = False
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_filter_alarm("module", 90)
+        assert exception_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_update_filter_data_auth_failure(self, client_session: aiohttp.ClientSession):
+        """Test that update_filter_data() raises exception when not authenticated."""
+        instance = Tech(client_session)
+        instance.authenticated = False
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.update_filter_data("module")
+        assert exception_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_set_ventilation_room_parameter_auth_failure(
+        self, client_session: aiohttp.ClientSession
+    ):
+        """Test that set_ventilation_room_parameter() raises exception when not authenticated."""
+        instance = Tech(client_session)
+        instance.authenticated = False
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_ventilation_room_parameter("module", 50)
+        assert exception_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_set_ventilation_bathroom_parameter_auth_failure(
+        self, client_session: aiohttp.ClientSession
+    ):
+        """Test that set_ventilation_bathroom_parameter() raises exception when not authenticated."""
+        instance = Tech(client_session)
+        instance.authenticated = False
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_ventilation_bathroom_parameter("module", 50)
+        assert exception_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_set_ventilation_bathroom_parameter_invalid(
+        self, client_session: aiohttp.ClientSession
+    ):
+        """Test that set_ventilation_bathroom_parameter() raises error for invalid percent."""
+        instance = Tech(client_session)
+        instance.authenticated = True
+        instance.user_id = "user123"
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_ventilation_bathroom_parameter("module", 5)
+        assert exception_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_set_co2_threshold_auth_failure(self, client_session: aiohttp.ClientSession):
+        """Test that set_co2_threshold() raises exception when not authenticated."""
+        instance = Tech(client_session)
+        instance.authenticated = False
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_co2_threshold("module", 800)
+        assert exception_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_set_hysteresis_auth_failure(self, client_session: aiohttp.ClientSession):
+        """Test that set_hysteresis() raises exception when not authenticated."""
+        instance = Tech(client_session)
+        instance.authenticated = False
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_hysteresis("module", 7)
+        assert exception_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_set_flow_balancing_auth_failure(self, client_session: aiohttp.ClientSession):
+        """Test that set_flow_balancing() raises exception when not authenticated."""
+        instance = Tech(client_session)
+        instance.authenticated = False
+
+        with pytest.raises(TechError) as exception_info:
+            await instance.set_flow_balancing("module", True)
+        assert exception_info.value.status_code == 401

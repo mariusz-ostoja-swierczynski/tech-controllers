@@ -57,6 +57,26 @@
           "zone_state_entity": {
             "name": "{entity_name} Stan alarmu"
           }
+        },
+        "select": {
+          "recuperation_fan_mode": {
+            "name": "Tryb wentylatora (czasowy)",
+            "state": {
+              "stop": "Zatrzymaj wentylator",
+              "speed_1": "1 bieg",
+              "speed_2": "2 bieg",
+              "speed_3": "3 bieg"
+            }
+          },
+          "recuperation_gear": {
+            "name": "Bieg rekuperatora",
+            "state": {
+              "stop": "Zatrzymaj",
+              "speed_1": "1 bieg",
+              "speed_2": "2 bieg",
+              "speed_3": "3 bieg"
+            }
+          }
         }
       },
     "title": "Tech Sterowniki"
