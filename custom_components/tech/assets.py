@@ -6,7 +6,7 @@ from collections.abc import Iterable
 import logging
 from typing import Any
 
-from .const import DEFAULT_ICON, ICON_BY_ID, ICON_BY_TYPE, TXT_ID_BY_TYPE
+from .const import DEFAULT_ICON, ICON_BY_ID, ICON_BY_TYPE, MENU_ITEM_TYPE_GROUP, TXT_ID_BY_TYPE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -82,3 +82,56 @@ def get_icon(icon_id: int) -> str:
 def get_icon_by_type(icon_type: int) -> str:
     """Return the default icon assigned to the provided tile type."""
     return ICON_BY_TYPE.get(icon_type, DEFAULT_ICON)
+
+
+def build_menu_group_names(
+    menus: dict[str, dict[str, Any]],
+) -> dict[tuple[str, int], str]:
+    """Build a mapping of ``(menu_type, group_id)`` to translated group name.
+
+    Args:
+        menus: Flat mapping of menu key to menu item payload (as returned by
+            :meth:`Tech.get_module_menus`).
+
+    Returns:
+        Dictionary keyed by ``(menu_type, group_id)`` with the resolved group
+        label as value.
+
+    """
+    groups: dict[tuple[str, int], str] = {}
+    for item in menus.values():
+        if item.get("type") != MENU_ITEM_TYPE_GROUP:
+            continue
+        txt_id = item.get("txtId", 0)
+        name = get_text(txt_id) if txt_id else ""
+        groups[(item["menuType"], item["id"])] = name
+    return groups
+
+
+def menu_entity_name(
+    item: dict[str, Any],
+    group_names: dict[tuple[str, int], str],
+    prefix: str = "",
+) -> str:
+    """Return a human-readable entity name for a menu item.
+
+    When the item belongs to a non-root parent group the group label is
+    prepended so that ambiguous names like *On* gain context.
+
+    Args:
+        item: Menu item payload from the API.
+        group_names: Lookup returned by :func:`build_menu_group_names`.
+        prefix: Optional hub name prefix.
+
+    Returns:
+        Formatted entity name string.
+
+    """
+    txt_id = item.get("txtId", 0)
+    label = get_text(txt_id) if txt_id else f"Menu {item['id']}"
+    parent_id = item.get("parentId", 0)
+    if parent_id != 0:
+        parent_label = group_names.get((item["menuType"], parent_id), "")
+        if parent_label:
+            label = f"{parent_label} - {label}"
+    return prefix + label
