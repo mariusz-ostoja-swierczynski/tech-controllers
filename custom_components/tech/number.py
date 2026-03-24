@@ -52,7 +52,9 @@ async def async_setup_entry(
     controller_udid = controller[UDID]
 
     menus = await coordinator.api.get_module_menus(controller_udid)
+    zones = await coordinator.api.get_module_zones(controller_udid)
     group_names = assets.build_menu_group_names(menus)
+    zone_assignments = assets.build_menu_zone_assignments(menus, zones)
 
     entities: list[MenuNumberEntity] = []
     for key, item in menus.items():
@@ -62,7 +64,10 @@ async def async_setup_entry(
         if not item.get("access", False):
             continue
         entities.append(
-            MenuNumberEntity(item, key, coordinator, config_entry, group_names)
+            MenuNumberEntity(
+                item, key, coordinator, config_entry, group_names,
+                zone_id=zone_assignments.get(key),
+            )
         )
 
     async_add_entities(entities, True)
@@ -81,6 +86,7 @@ class MenuNumberEntity(CoordinatorEntity, NumberEntity):
         coordinator: TechCoordinator,
         config_entry: ConfigEntry,
         group_names: dict[tuple[str, int], str],
+        zone_id: int | None = None,
     ) -> None:
         """Initialise a menu number entity.
 
@@ -90,6 +96,7 @@ class MenuNumberEntity(CoordinatorEntity, NumberEntity):
             coordinator: Shared Tech data coordinator instance.
             config_entry: Config entry that owns the coordinator.
             group_names: Mapping of ``(menu_type, group_id)`` to group label.
+            zone_id: Optional zone ID to associate this entity with a zone device.
 
         """
         super().__init__(coordinator)
@@ -101,6 +108,7 @@ class MenuNumberEntity(CoordinatorEntity, NumberEntity):
         self._menu_type = item["menuType"]
         self._unique_id = f"{self._udid}_menu_{menu_key}"
         self.manufacturer = MANUFACTURER
+        self._zone_id = zone_id
 
         params = item.get("params", {})
         self._format = params.get("format", 1)
@@ -131,11 +139,16 @@ class MenuNumberEntity(CoordinatorEntity, NumberEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
-        """Return Home Assistant ``DeviceInfo`` describing the controller."""
+        """Return device info for the zone or controller this entity belongs to."""
+        if self._zone_id is not None:
+            return {
+                ATTR_IDENTIFIERS: {(DOMAIN, f"{self._udid}_{self._zone_id}")},
+                ATTR_MANUFACTURER: self.manufacturer,
+            }
         return {
-            ATTR_IDENTIFIERS: {(DOMAIN, self._udid)},  # Unique identifiers for the device
-            CONF_NAME: self._config_entry.title,  # Name of the device
-            ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+            ATTR_IDENTIFIERS: {(DOMAIN, self._udid)},
+            CONF_NAME: self._config_entry.title,
+            ATTR_MANUFACTURER: self.manufacturer,
         }
 
     def _update_from_item(self, item: dict[str, Any]) -> None:
