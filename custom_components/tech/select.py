@@ -103,6 +103,8 @@ class MenuSelectEntity(CoordinatorEntity, SelectEntity):
         prefix = (config_entry.title + " ") if config_entry.data[INCLUDE_HUB_IN_NAME] else ""
         self._name = assets.menu_entity_name(item, group_names, prefix)
 
+        self._disabled = item.get("parentId", 0) != 0
+
         self._value_to_label: dict[int, str] = {}
         self._label_to_value: dict[str, int] = {}
         self._update_from_item(item)
@@ -116,6 +118,11 @@ class MenuSelectEntity(CoordinatorEntity, SelectEntity):
     def name(self) -> str:
         """Return the display name of this entity."""
         return self._name
+
+    @property
+    def entity_registry_enabled_default(self) -> bool:
+        """Return whether the entity should be enabled by default."""
+        return not self._disabled
 
     @property
     def device_info(self) -> DeviceInfo | None:
