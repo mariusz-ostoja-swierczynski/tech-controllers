@@ -57,6 +57,7 @@ from .const import (
     OPENTHERM_CURRENT_TEMP_DHW,
     OPENTHERM_SET_TEMP,
     OPENTHERM_SET_TEMP_DHW,
+    OPENTHERM_MODULATION,
     SENSOR_DAMAGED,
     SENSOR_TYPE,
     SERVICE_ERROR,
@@ -256,6 +257,7 @@ def _build_open_therm_tile(
 ) -> list[CoordinatorEntity]:
     """Create OpenTherm entities for a tile payload."""
     entities: list[CoordinatorEntity] = []
+    # Create temperature entities
     for description in (
         OPENTHERM_CURRENT_TEMP,
         OPENTHERM_SET_TEMP,
@@ -264,8 +266,17 @@ def _build_open_therm_tile(
     ):
         if tile[CONF_PARAMS].get(description["state_key"]) is not None:
             entities.append(
-                TileOpenThermSensor(tile, coordinator, config_entry, description)
+                TileOpenThermTemperatureSensor(tile, coordinator, config_entry, description)
             )
+    # Create percentage entities
+    for description in (
+        OPENTHERM_MODULATION,
+    ):
+        if tile[CONF_PARAMS].get(description["state_key"]) is not None:
+            entities.append(
+                TileOpenThermPercentageSensor(tile, coordinator, config_entry, description)
+            )
+    # Return the list of discovered entities
     return entities
 
 
@@ -1511,13 +1522,10 @@ class TileMixingValveSensor(TileSensor, SensorEntity):
         return device[CONF_PARAMS]["openingPercentage"]
 
 
-class TileOpenThermSensor(TileSensor, SensorEntity):
-    """Representation of config_OpenTherm Sensor."""
+class TileGenericOpenThermSensor(TileSensor, SensorEntity):
+    """Representation of a generic OpenTherm Sensor."""
 
     _attr_has_entity_name = True
-    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-    _attr_device_class = SensorDeviceClass.TEMPERATURE
-    _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
         self,
@@ -1533,10 +1541,11 @@ class TileOpenThermSensor(TileSensor, SensorEntity):
         self._state_key = open_therm_sensor["state_key"]
 
         TileSensor.__init__(self, device, coordinator, config_entry)
-        self.native_unit_of_measurement = UnitOfTemperature.CELSIUS
-        self.device_class = SensorDeviceClass.TEMPERATURE
-        self.state_class = SensorStateClass.MEASUREMENT
+        self.native_unit_of_measurement = self._attr_native_unit_of_measurement
+        self.device_class = self._attr_device_class
+        self.state_class = self._attr_state_class
         self.manufacturer = MANUFACTURER
+
         self.device_name = (
             f"{self._config_entry.title} {assets.get_text_by_type(device[CONF_TYPE])}"
         )
@@ -1551,6 +1560,8 @@ class TileOpenThermSensor(TileSensor, SensorEntity):
             else ""
         ) + assets.get_text(self._txt_id)
 
+        self.attrs = dict()
+
     @property
     def name(self) -> str | UndefinedType | None:
         """Return the name of the device."""
@@ -1560,10 +1571,6 @@ class TileOpenThermSensor(TileSensor, SensorEntity):
     def unique_id(self) -> str:
         """Return a unique ID."""
         return f"{self._unique_id}_tile_opentherm_{self._state_key}"
-
-    def get_state(self, device) -> Any:
-        """Get the state of the device."""
-        return device[CONF_PARAMS][self._state_key] / 10
 
     @property
     def device_info(self) -> DeviceInfo | None:
@@ -1576,3 +1583,61 @@ class TileOpenThermSensor(TileSensor, SensorEntity):
             CONF_MODEL: self.model,  # Model of the device
             ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
         }
+
+
+class TileOpenThermTemperatureSensor(TileGenericOpenThermSensor):
+    """Representation of OpenTherm Temperature Sensor."""
+
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def get_state(self, device) -> Any:
+        """Get the state of the device."""
+        return device[CONF_PARAMS][self._state_key] / 10
+
+
+class TileOpenThermPercentageSensor(TileGenericOpenThermSensor):
+    """Representation of OpenTherm Percentage Sensor."""
+
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_device_class = SensorDeviceClass.POWER_FACTOR
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def get_state(self, device) -> Any:
+        """Get the state of the device."""
+        return device[CONF_PARAMS][self._state_key]
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the state attributes."""
+        attributes = {}
+        attributes.update(self.attrs)
+        return attributes
+
+    def update_properties(self, device):
+        """Update the properties of the device based on the provided device information.
+
+        Args:
+        device: dict, the device information containing description, zone, setTemperature, and currentTemperature
+
+        Returns:
+        None
+
+        """
+        self._state = self.get_state(device)
+
+        def set_attr(key: str, flag: bool = False):
+            try:
+                if flag:
+                    self.attrs[key] = "on" if device[CONF_PARAMS]["flags"][key] else "off"
+                else:
+                    self.attrs[key] = int(device[CONF_PARAMS][key])
+            except KeyError:
+                pass
+
+        set_attr("alarmCode",       flag=False)
+        set_attr("activeDHW",       flag=True)
+        set_attr("activeHeating",   flag=True)
+        set_attr("communication",   flag=True)
+        set_attr("heatingCurve",    flag=True)
