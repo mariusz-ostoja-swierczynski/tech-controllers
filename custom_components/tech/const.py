@@ -41,7 +41,15 @@ ZONE_STATE = "zoneState"
 
 DEFAULT_ICON = "mdi:eye"
 
-PLATFORMS = [Platform.BINARY_SENSOR, Platform.CLIMATE, Platform.SENSOR]
+PLATFORMS = [
+    Platform.BINARY_SENSOR,
+    Platform.BUTTON,
+    Platform.CLIMATE,
+    Platform.NUMBER,
+    Platform.SELECT,
+    Platform.SENSOR,
+    Platform.SWITCH,
+]
 
 SCAN_INTERVAL: Final = timedelta(seconds=60)
 API_TIMEOUT: Final = 60
@@ -99,6 +107,30 @@ OPENTHERM_CURRENT_TEMP_DHW = {"txt_id": 128, "state_key": "currentTempDHW"}
 OPENTHERM_SET_TEMP = {"txt_id": 1058, "state_key": "setCurrentTemp"}
 OPENTHERM_SET_TEMP_DHW = {"txt_id": 1059, "state_key": "setTempDHW"}
 OPENTHERM_MODULATION = {"txt_id": 428, "state_key": "modulationPercentage"}
+
+# Menu types
+MENU_TYPE_USER = "MU"
+MENU_TYPE_INSTALLER = "MI"
+MENU_TYPE_SERVICE = "MS"
+MENU_TYPE_MANUFACTURER = "MP"
+MENU_TYPES = [MENU_TYPE_USER, MENU_TYPE_INSTALLER]
+
+# Menu item types
+MENU_ITEM_TYPE_GROUP = 0
+MENU_ITEM_TYPE_VALUE = {1, 2, 3, 4, 5}
+MENU_ITEM_TYPE_CODE = 6
+MENU_ITEM_TYPE_TIME_MODE = 7
+MENU_ITEM_TYPE_ON_OFF = 10
+MENU_ITEM_TYPE_CHOICE = {11, 111, 112}
+MENU_ITEM_TYPE_DIALOGUE = 20
+MENU_ITEM_TYPE_UNIVERSAL_VALUE = 106
+
+# Value format types for menu items
+VALUE_FORMAT_NORMAL = 1
+VALUE_FORMAT_TENTH = 2
+VALUE_FORMAT_MIN_SEC = 3
+VALUE_FORMAT_HOUR_MIN = 4
+VALUE_FORMAT_H_MIN_DAY = 5
 
 TECH_SUPPORTED_LANGUAGES = [
     "en",
