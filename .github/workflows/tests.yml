@@ -10,14 +10,13 @@ jobs:
   build:
     name: Run tests
     runs-on: ubuntu-latest
+    env:
+      TZ: "Europe/Berlin"
     strategy:
       matrix:
-        python-version: ["3.13"]
+        python-version: ["3.14"]
 
     steps:
-      - uses: MathRobin/timezone-action@v1.1
-        with:
-          timezoneLinux: "Europe/Berlin"
       - name: Checkout repository
         uses: actions/checkout@v6
       - name: Setup Python ${{ matrix.python-version }}
@@ -26,7 +25,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install requirements
         run: |
-          python -m pip install --upgrade "pip>=25.1" 
+          python -m pip install --upgrade "pip>=25.1"
           pip install -e .
           pip install --group test_api
       - name: Run tests
