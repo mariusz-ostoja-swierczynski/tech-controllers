@@ -60,7 +60,11 @@ async def async_setup_entry(
             continue
         entities.append(
             MenuSwitchEntity(
-                item, key, coordinator, config_entry, group_names,
+                item,
+                key,
+                coordinator,
+                config_entry,
+                group_names,
                 zone_id=zone_assignments.get(key),
             )
         )
@@ -105,7 +109,9 @@ class MenuSwitchEntity(CoordinatorEntity, SwitchEntity):
         self.manufacturer = MANUFACTURER
         self._zone_id = zone_id
 
-        prefix = (config_entry.title + " ") if config_entry.data[INCLUDE_HUB_IN_NAME] else ""
+        prefix = (
+            (config_entry.title + " ") if config_entry.data[INCLUDE_HUB_IN_NAME] else ""
+        )
         self._name = assets.menu_entity_name(item, group_names, prefix)
 
         self._disabled = item.get("parentId", 0) != 0

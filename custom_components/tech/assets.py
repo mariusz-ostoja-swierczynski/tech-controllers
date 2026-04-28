@@ -6,7 +6,13 @@ from collections.abc import Iterable
 import logging
 from typing import Any
 
-from .const import DEFAULT_ICON, ICON_BY_ID, ICON_BY_TYPE, MENU_ITEM_TYPE_GROUP, TXT_ID_BY_TYPE
+from .const import (
+    DEFAULT_ICON,
+    ICON_BY_ID,
+    ICON_BY_TYPE,
+    MENU_ITEM_TYPE_GROUP,
+    TXT_ID_BY_TYPE,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,8 +38,7 @@ def redact(entry_data: dict[str, Any], keys: Iterable[str]) -> str:
     """
     keys_set = set(keys)
     sanitized_data = {
-        k: _REDACTED_VALUE if k in keys_set else v
-        for k, v in entry_data.items()
+        k: _REDACTED_VALUE if k in keys_set else v for k, v in entry_data.items()
     }
     return str(sanitized_data)
 
@@ -145,7 +150,9 @@ def build_menu_zone_assignments(
     # group-children count equals the number of zones.
     zone_count = len(zones)
     zones_group = None
-    for group in children_by_parent.get(("MI", 0), []) + children_by_parent.get(("MU", 0), []):
+    for group in children_by_parent.get(("MI", 0), []) + children_by_parent.get(
+        ("MU", 0), []
+    ):
         mt = group["menuType"]
         direct_children = children_by_parent.get((mt, group["id"]), [])
         if len(direct_children) == zone_count:
@@ -163,13 +170,15 @@ def build_menu_zone_assignments(
 
     # Sort zones by index for positional matching
     sorted_zone_ids = [
-        zid
-        for zid, zdata in sorted(zones.items(), key=lambda x: x[1]["zone"]["index"])
+        zid for zid, zdata in sorted(zones.items(), key=lambda x: x[1]["zone"]["index"])
     ]
 
     if len(zone_subgroups) != len(sorted_zone_ids):
-        _LOGGER.debug("Zone subgroup count mismatch: %d groups vs %d zones",
-                       len(zone_subgroups), len(sorted_zone_ids))
+        _LOGGER.debug(
+            "Zone subgroup count mismatch: %d groups vs %d zones",
+            len(zone_subgroups),
+            len(sorted_zone_ids),
+        )
         return {}
 
     # Map zone subgroup id -> zone_id
@@ -195,7 +204,9 @@ def build_menu_zone_assignments(
                 if child_item.get("type") == MENU_ITEM_TYPE_GROUP:
                     queue.append(child_item["id"])
 
-    _LOGGER.debug("Assigned %d menu items to %d zones", len(assignments), len(subgroup_to_zone))
+    _LOGGER.debug(
+        "Assigned %d menu items to %d zones", len(assignments), len(subgroup_to_zone)
+    )
     return assignments
 
 

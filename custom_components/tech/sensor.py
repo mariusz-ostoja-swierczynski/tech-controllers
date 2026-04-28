@@ -55,9 +55,9 @@ from .const import (
     NO_COMMUNICATION,
     OPENTHERM_CURRENT_TEMP,
     OPENTHERM_CURRENT_TEMP_DHW,
+    OPENTHERM_MODULATION,
     OPENTHERM_SET_TEMP,
     OPENTHERM_SET_TEMP_DHW,
-    OPENTHERM_MODULATION,
     SENSOR_DAMAGED,
     SENSOR_TYPE,
     SERVICE_ERROR,
@@ -266,15 +266,17 @@ def _build_open_therm_tile(
     ):
         if tile[CONF_PARAMS].get(description["state_key"]) is not None:
             entities.append(
-                TileOpenThermTemperatureSensor(tile, coordinator, config_entry, description)
+                TileOpenThermTemperatureSensor(
+                    tile, coordinator, config_entry, description
+                )
             )
     # Create percentage entities
-    for description in (
-        OPENTHERM_MODULATION,
-    ):
+    for description in (OPENTHERM_MODULATION,):
         if tile[CONF_PARAMS].get(description["state_key"]) is not None:
             entities.append(
-                TileOpenThermPercentageSensor(tile, coordinator, config_entry, description)
+                TileOpenThermPercentageSensor(
+                    tile, coordinator, config_entry, description
+                )
             )
     # Return the list of discovered entities
     return entities
@@ -1560,7 +1562,7 @@ class TileGenericOpenThermSensor(TileSensor, SensorEntity):
             else ""
         ) + assets.get_text(self._txt_id)
 
-        self.attrs = dict()
+        self.attrs = {}
 
     @property
     def name(self) -> str | UndefinedType | None:
@@ -1630,14 +1632,16 @@ class TileOpenThermPercentageSensor(TileGenericOpenThermSensor):
         def set_attr(key: str, flag: bool = False):
             try:
                 if flag:
-                    self.attrs[key] = "on" if device[CONF_PARAMS]["flags"][key] else "off"
+                    self.attrs[key] = (
+                        "on" if device[CONF_PARAMS]["flags"][key] else "off"
+                    )
                 else:
                     self.attrs[key] = int(device[CONF_PARAMS][key])
             except KeyError:
                 pass
 
-        set_attr("alarmCode",       flag=False)
-        set_attr("activeDHW",       flag=True)
-        set_attr("activeHeating",   flag=True)
-        set_attr("communication",   flag=True)
-        set_attr("heatingCurve",    flag=True)
+        set_attr("alarmCode", flag=False)
+        set_attr("activeDHW", flag=True)
+        set_attr("activeHeating", flag=True)
+        set_attr("communication", flag=True)
+        set_attr("heatingCurve", flag=True)
