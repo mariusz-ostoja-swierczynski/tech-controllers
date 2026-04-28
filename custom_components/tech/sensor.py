@@ -961,6 +961,7 @@ class ZoneUnderfloorSensor(ZoneSensor):
 
         """
         self.attrs: dict[str, Any] = {}
+        self._name = f"{device[CONF_DESCRIPTION][CONF_NAME]} Underfloor"
         super().__init__(device, coordinator, config_entry)
         self.attrs[MODE] = device[UNDERFLOOR][MODE]
         self.attrs[CURRENT_STATE] = device[UNDERFLOOR][CURRENT_STATE]
@@ -1005,7 +1006,7 @@ class ZoneUnderfloorSensor(ZoneSensor):
 
         """
         # Set the name of the device
-        self._name = device[CONF_DESCRIPTION][CONF_NAME]
+        self._name = f"{device[CONF_DESCRIPTION][CONF_NAME]} Underfloor"
 
         # Check if the current temperature is available, and update the native value accordingly
         if device[UNDERFLOOR]["temperature"] is not None:
