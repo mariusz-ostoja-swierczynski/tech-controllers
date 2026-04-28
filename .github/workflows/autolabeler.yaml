@@ -14,14 +14,14 @@ on:
       - synchronize
       - reopened
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   autolabel:
     name: 'Autolabel PR'
     permissions:
       pull-requests: write
-      contents: read
     runs-on: 'ubuntu-latest'
     timeout-minutes: 3
     steps:
