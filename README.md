@@ -29,17 +29,22 @@ and community reported controllers.
 - Provides Climate entities representing zones
   - and their corresponding Temperature, Battery, Humidity sensors, Window sensors when available
 - Climate entities display data through Thermostat card
+- Limited support for Menu handling (thanks [lhruska](https://github.com/lhruska)!)
 - Provides sensors for eModul 'tiles'
 - Automatic naming and translations of tiles from eModul API
 - Supporting languages which are supported by eModul API
 
 **This integration will set up the following platforms.**
 
-Platform | Description
--- | --
-`binary_sensor` | Show info and status from Tech API.
-`sensor` | Show info and status from Tech API.
-`climate` | Thermostats.
+| Platform        | Description                         |
+| --------------- | ----------------------------------- |
+| `binary_sensor` | Show info and status from Tech API. |
+| `sensor`        | Show info and status from Tech API. |
+| `climate`       | Thermostats.                        |
+| `button`        | Button for dialogue menu items.     |
+| `switch`        | Switch for menu parameters.         |
+| `number`        | Number for menu parameters.         |
+| `select`        | Select for menu parameters.         |
 
 ![Tech Thermostat Cards](./images/ha-tech-1.png)
 
@@ -56,16 +61,16 @@ Platform | Description
 1. Unzip into `custom_components/` directory (folder), if directory doesnt exist, create it.
 1. Restart Home Assistant
 1. In the HA UI go to `Configuration` -> `Integrations` click `+` and search for `Tech Controllers`
-![Tech Controllers Setup 1](./images/ha-tech-add-integration-1.png)
+   ![Tech Controllers Setup 1](./images/ha-tech-add-integration-1.png)
 1. Enter your username (could be email) and password for your eModule account and click "Submit" button.
-![Tech Controllers Setup 2](./images/ha-tech-add-integration-2.png)
+   ![Tech Controllers Setup 2](./images/ha-tech-add-integration-2.png)
 1. In the next step select the controllers you want to import/integrate
-![Tech Controllers Setup 3](./images/ha-tech-add-integration-3.png)
+   ![Tech Controllers Setup 3](./images/ha-tech-add-integration-3.png)
 1. You should see "Success!" dialog with the name of the imported controller(s).
-![Tech Controllers Setup 3](./images/ha-tech-add-integration-4.png)
+   ![Tech Controllers Setup 3](./images/ha-tech-add-integration-4.png)
 
 1. Now you should have controllers and entities representing your home zones available in Home Assistant. Go to your UI Lovelace configuration and add Thermostat card with your Climate entities.
-![Tech Controllers Setup 4](./images/ha-tech-2.png)
+   ![Tech Controllers Setup 4](./images/ha-tech-2.png)
 
 ## :rocket: List of reported working TECH Controllers
 
@@ -98,9 +103,9 @@ The integration is in no way supported or endorsed by TECH Sterowniki sp. z o.o.
 
 ## 📝 Copyright & License
 
-Copyright (c) 2024, Released under the [MIT](LICENSE) license.
+Copyright (c) 2026, Released under the [MIT](LICENSE) license.
 
-***
+---
 
 [commits-shield]: https://img.shields.io/github/commit-activity/y/custom-components/blueprint.svg?style=for-the-badge
 [commits]: https://github.com/mariusz-ostoja-swierczynski/tech-controllers/commits/main
