@@ -287,9 +287,7 @@ class Tech:
         cache["last_update"] = now
         return cache
 
-    async def _fetch_menu_data(
-        self, module_udid: str
-    ) -> dict[str, dict[str, Any]]:
+    async def _fetch_menu_data(self, module_udid: str) -> dict[str, dict[str, Any]]:
         """Fetch menu items from all configured menu types.
 
         Args:
@@ -318,9 +316,7 @@ class Tech:
                 )
         return items
 
-    async def get_module_menus(
-        self, module_udid: str
-    ) -> dict[str, dict[str, Any]]:
+    async def get_module_menus(self, module_udid: str) -> dict[str, dict[str, Any]]:
         """Return the cached menu items dictionary for ``module_udid``.
 
         Args:
@@ -355,8 +351,7 @@ class Tech:
         _LOGGER.debug("Setting menu value for %s/%s: %s", menu_type, ido, data)
         if self.authenticated:
             path = (
-                f"users/{self.user_id}/modules/{module_udid}"
-                f"/menu/{menu_type}/ido/{ido}"
+                f"users/{self.user_id}/modules/{module_udid}/menu/{menu_type}/ido/{ido}"
             )
             result = await self.post(path, json.dumps(data))
             _LOGGER.debug(result)

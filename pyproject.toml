@@ -25,12 +25,12 @@ classifiers = [
 ]
 requires-python = ">=3.13.2"
 dependencies = [
-  "aiodns==3.6.1",
+  "aiodns==4.0.0",
   # Integrations may depend on hassio integration without listing it to
   # change behavior based on presence of supervisor. Deprecated with #127228
   # Lib can be removed with 2025.11
-  "aiohasupervisor==0.3.3",
-  "aiohttp==3.13.3",
+  "aiohasupervisor==0.4.3",
+  "aiohttp==3.13.5",
   "aiohttp_cors==0.8.1",
   "aiohttp-fast-zlib==0.3.0",
   "aiohttp-asyncmdnsresolver==0.1.1",
@@ -43,61 +43,61 @@ dependencies = [
   "audioop-lts==0.2.1",
   "awesomeversion==25.8.0",
   "bcrypt==5.0.0",
-  "certifi>=2021.5.30",
+  "certifi==2026.4.22",
   "ciso8601==2.3.3",
   "cronsim==2.7",
-  "fnv-hash-fast==1.6.0",
+  "fnv-hash-fast==2.0.0",
   # hass-nabucasa is imported by helpers which don't depend on the cloud
   # integration
-  "hass-nabucasa==1.7.0",
+  "hass-nabucasa==2.2.0",
   # When bumping httpx, please check the version pins of
   # httpcore, anyio, and h11 in gen_requirements_all
   "httpx==0.28.1",
   "home-assistant-bluetooth==1.13.1",
-  "homeassistant==2026.1.1",
+  "homeassistant==2026.4.4",
   "ifaddr==0.2.0",
   "Jinja2==3.1.6",
   "lru-dict==1.3.0",
   "PyJWT==2.10.1",
   # PyJWT has loose dependency. We want the latest one.
-  "cryptography==46.0.2",
-  "Pillow==12.0.0",
+  "cryptography==46.0.7",
+  "Pillow==12.2.0",
   "propcache==0.4.1",
-  "pyOpenSSL==25.3.0",
-  "orjson==3.11.3",
-  "packaging>=23.1",
+  "pyOpenSSL==26.0.0",
+  "orjson==3.11.7",
+  "packaging==26.2",
   "psutil-home-assistant==0.0.1",
   "python-slugify==8.0.4",
   "PyYAML==6.0.3",
-  "requests==2.32.5",
-  "securetar==2025.2.1",
+  "requests==2.33.1",
+  "securetar==2026.4.0",
   "SQLAlchemy==2.0.41",
   "standard-aifc==3.13.0",
   "standard-telnetlib==3.13.0",
-  "typing-extensions>=4.15.0,<5.0",
-  "ulid-transform==1.5.2",
-  "urllib3>=2.0",
-  "uv==0.9.17",
+  "typing-extensions==4.15.0",
+  "ulid-transform==2.2.0",
+  "urllib3==2.6.3",
+  "uv==0.11.6",
   "voluptuous==0.15.2",
   "voluptuous-serialize==2.7.0",
   "voluptuous-openapi==0.2.0",
-  "yarl==1.22.0",
+  "yarl==1.23.0",
   "webrtc-models==0.3.0",
   "zeroconf==0.148.0",
 ]
 
 [dependency-groups]
 test_api = [
-  "astroid==4.0.1",
+  "astroid==4.0.4",
   "coverage==7.10.6",
   "freezegun==1.5.2",
-  "librt==0.8.1",                                   # internal mypy dependency
+  "librt==0.9.0",                                   # internal mypy dependency
   "license-expression==30.4.3",
   "mock-open==1.4.0",
-  "mypy-dev==1.20.0a6",
-  "prek==0.2.28",
+  "mypy-dev==2.0.0a1",
+  "prek==0.3.11",
   "pydantic==2.12.2",
-  "pylint==4.0.1",
+  "pylint==4.0.5",
   "pylint-per-file-ignores==1.4.0",
   "pipdeptree==2.26.1",
   "pytest-asyncio==1.3.0",
@@ -106,7 +106,7 @@ test_api = [
   "pytest-freezer==0.4.9",
   "pytest-github-actions-annotate-failures==0.3.0",
   "pytest-socket==0.7.0",
-  "pytest-sugar==1.0.0",
+  "pytest-sugar==1.1.1",
   "pytest-timeout==2.4.0",
   "pytest-unordered==0.7.0",
   "pytest-picked==0.5.1",
@@ -121,16 +121,16 @@ test_api = [
 ]
 
 test = [
-  "astroid==4.0.1",
-  "coverage==7.10.6",
+  "astroid==4.0.4",
+  "coverage==7.12.0",
   "freezegun==1.5.2",
-  "librt==0.8.1",                                    # internal mypy dependency
+  "librt==0.9.0",                                    # internal mypy dependency
   "license-expression==30.4.3",
   "mock-open==1.4.0",
-  "mypy-dev==1.20.0a6",
-  "prek==0.2.28",
+  "mypy-dev==2.0.0a1",
+  "prek==0.3.11",
   "pydantic==2.12.2",
-  "pylint==4.0.1",
+  "pylint==4.0.5",
   "pylint-per-file-ignores==1.4.0",
   "pipdeptree==2.26.1",
   "pytest-asyncio==1.3.0",
@@ -139,7 +139,7 @@ test = [
   "pytest-freezer==0.4.9",
   "pytest-github-actions-annotate-failures==0.3.0",
   "pytest-socket==0.7.0",
-  "pytest-sugar==1.0.0",
+  "pytest-sugar==1.1.1",
   "pytest-timeout==2.4.0",
   "pytest-unordered==0.7.0",
   "pytest-picked==0.5.1",
@@ -151,7 +151,7 @@ test = [
   "respx==0.22.0",
   "syrupy==5.0.0",
   "tqdm==4.67.1",
-  "pytest-homeassistant-custom-component==0.13.306",
+  "pytest-homeassistant-custom-component==0.13.325",
 ]
 
 [tool.setuptools.packages.find]

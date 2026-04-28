@@ -1,6 +1,6 @@
 colorlog==6.10.1
-homeassistant==2025.12.1
-pip==25.3
-ruff==0.14.8
-pre_commit==4.5.0
+homeassistant==2026.4.4
+pip==26.1
+ruff==0.15.12
+pre_commit==4.6.0
 zlib-ng==1.0.0
