@@ -23,7 +23,7 @@
   # https://devenv.sh/languages/
   languages.python = {
     enable = true;
-    version = "3.13";
+    version = "3.14";
     uv.enable = true;
     uv.sync.enable = true;
   };
