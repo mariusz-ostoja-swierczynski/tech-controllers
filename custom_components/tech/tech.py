@@ -13,7 +13,7 @@ if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
 else:  # pragma: no cover
     ClientSession = Any
 
-from .const import TECH_SUPPORTED_LANGUAGES
+from .const import MENU_TYPES, TECH_SUPPORTED_LANGUAGES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -244,7 +244,7 @@ class Tech:
         now = time.time()
 
         cache = self.modules.setdefault(
-            module_udid, {"last_update": None, "zones": {}, "tiles": {}}
+            module_udid, {"last_update": None, "zones": {}, "tiles": {}, "menus": {}}
         )
 
         _LOGGER.debug("Updating module zones & tiles ... %s", module_udid)
@@ -275,8 +275,94 @@ class Tech:
             )
             cache["tiles"].update({tile["id"]: tile for tile in visible_tiles})
 
+        menu_items = await self._fetch_menu_data(module_udid)
+        if menu_items:
+            _LOGGER.debug(
+                "Updating %s menu items for controller: %s",
+                len(menu_items),
+                module_udid,
+            )
+            cache.setdefault("menus", {}).update(menu_items)
+
         cache["last_update"] = now
         return cache
+
+    async def _fetch_menu_data(
+        self, module_udid: str
+    ) -> dict[str, dict[str, Any]]:
+        """Fetch menu items from all configured menu types.
+
+        Args:
+            module_udid: Tech module identifier.
+
+        Returns:
+            Mapping of ``{menu_type}_{item_id}`` to menu item payload.
+
+        """
+        items: dict[str, dict[str, Any]] = {}
+        for menu_type in MENU_TYPES:
+            try:
+                path = f"users/{self.user_id}/modules/{module_udid}/menu/{menu_type}/"
+                result = await self.get(path)
+                elements = result.get("data", {}).get("elements", [])
+                for element in elements:
+                    item_id = element.get("id")
+                    if item_id is not None:
+                        key = f"{menu_type}_{item_id}"
+                        items[key] = element
+            except TechError:
+                _LOGGER.debug(
+                    "Menu type %s not available for module %s",
+                    menu_type,
+                    module_udid,
+                )
+        return items
+
+    async def get_module_menus(
+        self, module_udid: str
+    ) -> dict[str, dict[str, Any]]:
+        """Return the cached menu items dictionary for ``module_udid``.
+
+        Args:
+            module_udid: Tech module identifier.
+
+        Returns:
+            Mapping of menu item key to menu item payload.
+
+        """
+        module = await self.module_data(module_udid)
+        return module["menus"]
+
+    async def set_menu_value(
+        self,
+        module_udid: str,
+        menu_type: str,
+        ido: int,
+        data: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Update a menu parameter via the Tech API.
+
+        Args:
+            module_udid: Tech module identifier.
+            menu_type: Menu type (MU, MI, MS, MP).
+            ido: Parameter identifier.
+            data: Payload to send (varies by menu item type).
+
+        Returns:
+            Parsed JSON response from the API.
+
+        """
+        _LOGGER.debug("Setting menu value for %s/%s: %s", menu_type, ido, data)
+        if self.authenticated:
+            path = (
+                f"users/{self.user_id}/modules/{module_udid}"
+                f"/menu/{menu_type}/ido/{ido}"
+            )
+            result = await self.post(path, json.dumps(data))
+            _LOGGER.debug(result)
+        else:
+            raise TechError(401, "Unauthorized")
+        return result
 
     async def get_zone(self, module_udid, zone_id):
         """Return a single zone payload.
