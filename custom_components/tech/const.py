@@ -125,6 +125,16 @@ MENU_ITEM_TYPE_CHOICE = {11, 111, 112}
 MENU_ITEM_TYPE_DIALOGUE = 20
 MENU_ITEM_TYPE_UNIVERSAL_VALUE = 106
 
+# Menu depth filtering thresholds. Tech menus on multi-zone controllers
+# (notably L-12 with ~4100 MI items) are deeply nested and exposing every
+# leaf as a HA entity produces unusable amounts of registry noise (#187).
+# Items deeper than ``MENU_DEPTH_REGISTRATION_LIMIT`` are not registered as
+# entities at all; items at depth > ``MENU_DEPTH_DEFAULT_ENABLED_LIMIT``
+# are registered but disabled by default so users can opt into the deeper
+# parameters they care about (#189: OpenTherm options live at depth 1-3).
+MENU_DEPTH_REGISTRATION_LIMIT: Final = 3
+MENU_DEPTH_DEFAULT_ENABLED_LIMIT: Final = 1
+
 # Value format types for menu items
 VALUE_FORMAT_NORMAL = 1
 VALUE_FORMAT_TENTH = 2
