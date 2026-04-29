@@ -158,18 +158,32 @@ class MenuSwitchEntity(CoordinatorEntity, SwitchEntity):
         self._attr_is_on = params.get("value", 0) == 1
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the switch on."""
+        """Turn the switch on.
+
+        Update local state optimistically after the API call returns success
+        so HA reflects the change immediately. We deliberately do NOT request
+        an immediate coordinator refresh here -- the eModul API has a
+        ``duringChange: "t"`` window during which it still reports the old
+        value, so an immediate refresh would clobber the optimistic state.
+        The regular 60 s polling cadence reconciles eventually; if the
+        controller rejected the change the entity will revert by then.
+        """
         await self.coordinator.api.set_menu_value(
             self._udid, self._menu_type, self._item_id, {"value": 1}
         )
-        await self.coordinator.async_request_refresh()
+        self._attr_is_on = True
+        self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn the switch off."""
+        """Turn the switch off.
+
+        See :meth:`async_turn_on` for the optimistic-update rationale.
+        """
         await self.coordinator.api.set_menu_value(
             self._udid, self._menu_type, self._item_id, {"value": 0}
         )
-        await self.coordinator.async_request_refresh()
+        self._attr_is_on = False
+        self.async_write_ha_state()
 
     @callback
     def _handle_coordinator_update(self, *args: Any) -> None:
