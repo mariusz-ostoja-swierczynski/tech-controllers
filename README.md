@@ -85,6 +85,8 @@ and community reported controllers.
 - M-9r (v1.3.8)
 - ST-8s WIFI (v.1.0.5)
 - ST-16s WIFI (v.1.0.5)
+- ST-491 (v.2.1.9) -- RS-bridged boiler controllers; CH/DHW/room temperatures, valve, fuel feeder, fan, pumps, disinfection cycle and relays exposed
+- ST-505 -- same RS-bridged-boiler family as ST-491; supported via the shared TYPE_WIDGET tile parser
 - WiFi 8S (v.2.1.8)
 
 ## :pray: Thanks
