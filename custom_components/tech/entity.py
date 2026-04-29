@@ -4,13 +4,22 @@ from abc import abstractmethod
 import logging
 from typing import Any
 
-from homeassistant.const import CONF_DESCRIPTION, CONF_ID, CONF_PARAMS, CONF_TYPE
+from homeassistant.const import (
+    ATTR_IDENTIFIERS,
+    ATTR_MANUFACTURER,
+    CONF_DESCRIPTION,
+    CONF_ID,
+    CONF_NAME,
+    CONF_PARAMS,
+    CONF_TYPE,
+)
 from homeassistant.core import callback
 from homeassistant.helpers import entity
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import assets
-from .const import CONTROLLER, INCLUDE_HUB_IN_NAME, MANUFACTURER, UDID
+from .const import CONTROLLER, DOMAIN, INCLUDE_HUB_IN_NAME, MANUFACTURER, UDID, VER
 from .coordinator import TechCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,6 +59,25 @@ class TileEntity(
             self._name += assets.get_text(txt_id)
         else:
             self._name += assets.get_text_by_type(device[CONF_TYPE])
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Group all tile entities under the controller's device.
+
+        Subclasses that need to live on a separate device (e.g. wireless
+        temperature sensors that own their own battery/signal sub-entities)
+        override this; everything else falls back here so zone-less
+        controllers (ST-491, ST-505, ST-976...) still produce a single
+        device with grouped entities instead of orphaned, ungrouped entries.
+        """
+        controller = self._config_entry.data[CONTROLLER]
+        return {
+            ATTR_IDENTIFIERS: {(DOMAIN, self._udid)},
+            CONF_NAME: self._config_entry.title,
+            "model": controller.get(CONF_NAME, ""),
+            "sw_version": controller.get(VER, ""),
+            ATTR_MANUFACTURER: MANUFACTURER,
+        }
 
     @property
     def unique_id(self) -> str:
