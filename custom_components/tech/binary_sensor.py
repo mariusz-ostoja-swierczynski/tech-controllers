@@ -1,4 +1,25 @@
-"""Platform for binary sensor integration."""
+"""Binary sensor platform for the Tech Sterowniki integration.
+
+Three flavours of binary entity are emitted:
+
+* **Relays** -- TYPE_RELAY (=11) tiles ("Pompa CO", "Pompa CWU",
+  "Podajnik" etc.) and TYPE_ADDITIONAL_PUMP (=21) tiles, both backed by
+  :class:`RelaySensor`. The on/off state comes from the tile's
+  ``workingStatus`` boolean and is refreshed by the coordinator on the
+  60-second polling cadence (see :data:`const.SCAN_INTERVAL`).
+* **Fire/motion sensors** -- TYPE_FIRE_SENSOR (=2) tiles, also handled by
+  :class:`RelaySensor` but with the MOTION device class so the HA UI
+  shows the correct iconography.
+* **Contact widgets** -- TYPE_WIDGET (=6) sub-payloads with the
+  contact-shape marker (``unit==-1, type==0, txtId!=0``), backed by
+  :class:`TileWidgetContactSensor`. EU-i-3+ extension modules expose all
+  four of their voltage / potential-free inputs this way.
+
+Contact widgets share their parent tile with numeric widgets that go to
+:mod:`sensor`. Both modules use the same :func:`_is_contact_widget`
+predicate to decide which platform owns each widget; without that
+agreement the same widget could be emitted twice (or not at all).
+"""
 
 import logging
 
