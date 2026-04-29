@@ -183,7 +183,16 @@ class MenuNumberEntity(CoordinatorEntity, NumberEntity):
             self._attr_native_step = float(step)
 
     async def async_set_native_value(self, value: float) -> None:
-        """Set the menu parameter to the requested value."""
+        """Set the menu parameter to the requested value.
+
+        Update local state optimistically after the API call returns success
+        so HA reflects the change immediately. We deliberately do NOT request
+        an immediate coordinator refresh here -- the eModul API has a
+        ``duringChange: "t"`` window during which it still reports the old
+        value, so an immediate refresh would clobber the optimistic state.
+        The regular 60 s polling cadence reconciles eventually; if the
+        controller rejected the change the entity will revert by then.
+        """
         if self._format == VALUE_FORMAT_TENTH:
             api_value = int(value * 10)
         else:
@@ -192,7 +201,8 @@ class MenuNumberEntity(CoordinatorEntity, NumberEntity):
         await self.coordinator.api.set_menu_value(
             self._udid, self._menu_type, self._item_id, {"value": api_value}
         )
-        await self.coordinator.async_request_refresh()
+        self._attr_native_value = value
+        self.async_write_ha_state()
 
     @callback
     def _handle_coordinator_update(self, *args: Any) -> None:

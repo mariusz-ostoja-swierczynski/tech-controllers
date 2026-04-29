@@ -200,7 +200,16 @@ class MenuSelectEntity(CoordinatorEntity, SelectEntity):
             self._attr_current_option = None
 
     async def async_select_option(self, option: str) -> None:
-        """Change the selected option."""
+        """Change the selected option.
+
+        Update local state optimistically after the API call returns success
+        so HA reflects the change immediately. We deliberately do NOT request
+        an immediate coordinator refresh here -- the eModul API has a
+        ``duringChange: "t"`` window during which it still reports the old
+        value, so an immediate refresh would clobber the optimistic state.
+        The regular 60 s polling cadence reconciles eventually; if the
+        controller rejected the change the entity will revert by then.
+        """
         value = self._label_to_value.get(option)
         if value is None:
             _LOGGER.warning("Unknown option %s for menu item %s", option, self._item_id)
@@ -209,7 +218,8 @@ class MenuSelectEntity(CoordinatorEntity, SelectEntity):
         await self.coordinator.api.set_menu_value(
             self._udid, self._menu_type, self._item_id, {"value": value}
         )
-        await self.coordinator.async_request_refresh()
+        self._attr_current_option = option
+        self.async_write_ha_state()
 
     @callback
     def _handle_coordinator_update(self, *args: Any) -> None:
