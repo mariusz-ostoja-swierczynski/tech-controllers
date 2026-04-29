@@ -20,7 +20,6 @@ from . import assets
 from .const import (
     CONTROLLER,
     DOMAIN,
-    INCLUDE_HUB_IN_NAME,
     MANUFACTURER,
     MENU_ITEM_TYPE_UNIVERSAL_VALUE,
     MENU_ITEM_TYPE_VALUE,
@@ -119,10 +118,9 @@ class MenuNumberEntity(CoordinatorEntity, NumberEntity):
 
         self._attr_mode = NumberMode.BOX
 
-        prefix = (
-            (config_entry.title + " ") if config_entry.data[INCLUDE_HUB_IN_NAME] else ""
-        )
-        self._name = assets.menu_entity_name(item, group_names, prefix)
+        # ``_attr_has_entity_name = True`` lets HA prepend the device name; the
+        # entity name itself is the menu label only.
+        self._name = assets.menu_entity_name(item, group_names, "")
 
         self._disabled = item.get("parentId", 0) != 0
 
