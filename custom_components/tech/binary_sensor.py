@@ -19,15 +19,27 @@ from . import TechCoordinator, assets
 from .const import (
     CONTROLLER,
     DOMAIN,
+    INCLUDE_HUB_IN_NAME,
     TYPE_ADDITIONAL_PUMP,
     TYPE_FIRE_SENSOR,
     TYPE_RELAY,
+    TYPE_WIDGET,
     UDID,
+    VALUE,
     VISIBILITY,
 )
 from .entity import TileEntity
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _is_contact_widget(widget: dict) -> bool:
+    """Return ``True`` for widgets that should be exposed as binary contacts."""
+    return (
+        widget.get("unit") == -1
+        and widget.get(CONF_TYPE) == 0
+        and widget.get("txtId", 0) != 0
+    )
 
 
 async def async_setup_entry(
@@ -69,6 +81,15 @@ async def async_setup_entry(
             )
         if tile[CONF_TYPE] == TYPE_ADDITIONAL_PUMP:
             entities.append(RelaySensor(tile, coordinator, config_entry))
+        if tile[CONF_TYPE] == TYPE_WIDGET:
+            for widget_key in ("widget1", "widget2"):
+                widget = tile.get(CONF_PARAMS, {}).get(widget_key)
+                if widget and _is_contact_widget(widget):
+                    entities.append(
+                        TileWidgetContactSensor(
+                            tile, coordinator, config_entry, widget_key
+                        )
+                    )
 
     async_add_entities(entities, True)
 
@@ -124,3 +145,55 @@ class RelaySensor(TileBinarySensor):
     def get_state(self, device):
         """Return the on/off working status for the provided ``device`` payload."""
         return device[CONF_PARAMS]["workingStatus"]
+
+
+class TileWidgetContactSensor(TileBinarySensor):
+    """A widget-shaped contact (e.g. EU-i-3+ voltage / potential-free input).
+
+    Detected by ``unit == -1`` and ``type == 0`` on a TYPE_WIDGET tile widget.
+    Exposed as an opening device-class binary sensor; ``value == 1`` means open.
+    """
+
+    _attr_device_class = binary_sensor.BinarySensorDeviceClass.OPENING
+
+    def __init__(
+        self,
+        device,
+        coordinator: TechCoordinator,
+        config_entry,
+        widget_key: str,
+    ) -> None:
+        """Initialise the contact widget binary sensor.
+
+        Args:
+            device: Tile payload returned from the Tech API.
+            coordinator: Shared Tech data coordinator instance.
+            config_entry: Config entry providing controller metadata.
+            widget_key: ``"widget1"`` or ``"widget2"`` - which widget within the
+                tile this entity represents.
+
+        """
+        self._widget_key = widget_key
+        TileBinarySensor.__init__(self, device, coordinator, config_entry)
+        widget = device[CONF_PARAMS][widget_key]
+        # Contact widgets carry their label inside the widget payload, not the
+        # tile params, so override the name TileEntity computed from tile-level
+        # txtId.
+        prefix = (
+            f"{config_entry.title} "
+            if config_entry.data[INCLUDE_HUB_IN_NAME]
+            else ""
+        )
+        self._name = f"{prefix}{assets.get_text(widget['txtId'])}"
+        icon_id = device[CONF_PARAMS].get("iconId")
+        if icon_id:
+            self._attr_icon = assets.get_icon(icon_id)
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_widget_contact_{self._widget_key}"
+
+    def get_state(self, device):
+        """Return the contact state from the widget value."""
+        return device[CONF_PARAMS][self._widget_key][VALUE] == 1

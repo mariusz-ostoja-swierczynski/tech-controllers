@@ -57,16 +57,26 @@ API_TIMEOUT: Final = 60
 # tile type
 TYPE_TEMPERATURE = 1
 TYPE_FIRE_SENSOR = 2
-TYPE_TEMPERATURE_CH = 6
+TYPE_WIDGET = 6
 TYPE_RELAY = 11
 TYPE_ADDITIONAL_PUMP = 21
 TYPE_FAN = 22
 TYPE_VALVE = 23
 TYPE_MIXING_VALVE = 24
 TYPE_FUEL_SUPPLY = 31
+TYPE_DISINFECTION = 32
 TYPE_TEXT = 40
 TYPE_SW_VERSION = 50
 TYPE_OPEN_THERM = 252
+
+# widget subtype (params.widgetN.type) used by TYPE_WIDGET tiles
+WIDGET_DHW_PUMP = 1
+WIDGET_COLLECTOR_PUMP = 2
+WIDGET_TEMPERATURE_CH = 9
+
+# Divisor applied to widget value based on params.widgetN.unit.
+# 4 / 7 = tenths of a degree, 5 = hundredths, 6 = enum/state (no scaling).
+WIDGET_UNIT_DIVISORS = {0: 1, 4: 10, 5: 100, 6: 1, 7: 10}
 
 # map iconId -> icon name
 ICON_BY_ID = {
@@ -74,6 +84,7 @@ ICON_BY_ID = {
     17: "mdi:arrow-right-drop-circle-outline",  # pump
     50: "mdi:tune-vertical",  # state
     101: "mdi:cogs",  # feeder
+    167: "mdi:electric-switch",  # contact
 }
 
 # map type -> icon name
@@ -93,6 +104,7 @@ TXT_ID_BY_TYPE = {
     TYPE_VALVE: 991,
     TYPE_MIXING_VALVE: 5731,
     TYPE_FUEL_SUPPLY: 961,
+    TYPE_DISINFECTION: 246,
     TYPE_OPEN_THERM: 4633,
 }
 
