@@ -1,4 +1,28 @@
-"""Support for Tech HVAC system."""
+"""Sensor platform for the Tech Sterowniki integration.
+
+The platform creates two distinct families of entities:
+
+* **Zone sensors** -- battery, temperature, humidity, signal, alarm,
+  actuator and window descriptors derived from the ``zones.elements``
+  array of the /modules/{udid} response. Created only for controllers
+  that expose climate zones (e.g. L-12 underfloor).
+* **Tile sensors** -- numeric/text readings emitted from individual
+  tiles in the ``tiles`` array. Tile creation is dispatched through
+  :data:`_TILE_ENTITY_BUILDERS`, which maps each tile ``type`` constant
+  to a builder function. New tile types are added by registering a
+  builder there.
+
+A single tile may emit several entities. Examples:
+
+* a TYPE_TEMPERATURE tile with battery + signal yields a temperature,
+  battery and signal entity (and creates its own DeviceInfo);
+* a TYPE_VALVE tile yields a valve-percentage entity plus zero, one,
+  or several valve-temperature entities (return / set / current);
+* a TYPE_WIDGET tile yields one entity per non-empty widget, each
+  named from its own ``txtId`` -- this fixes the long-standing bug
+  where stock TileWidgetSensor read only widget1 and silently
+  dropped CH/DHW temperatures (issues #132 / #144 upstream).
+"""
 
 from __future__ import annotations
 
@@ -291,8 +315,15 @@ def _build_open_therm_tile(
 def _is_contact_widget(widget: dict[str, Any]) -> bool:
     """Return True for widgets that should be modelled as a binary contact sensor.
 
-    These are produced by EU-i-3+ inputs (and similar) and are exposed as
-    binary entities in :mod:`binary_sensor` rather than numeric sensors.
+    Tech encodes a "dry contact" / voltage input on a TYPE_WIDGET tile by
+    the marker triple ``unit == -1``, ``type == 0`` and a non-zero ``txtId``.
+    EU-i-3+ extension modules expose all four of their inputs this way.
+
+    The contact branch is mirrored by the same predicate in
+    :mod:`binary_sensor` -- both modules need to agree on which widgets
+    they own, so :func:`_build_widget_tile` *skips* contact widgets here
+    and lets the binary_sensor platform create
+    :class:`binary_sensor.TileWidgetContactSensor` for them instead.
     """
     return (
         widget.get("unit") == -1
@@ -306,13 +337,42 @@ def _build_widget_tile(
     coordinator: TechCoordinator,
     config_entry: ConfigEntry,
 ) -> list[CoordinatorEntity]:
-    """Create entities for a TYPE_WIDGET tile (one entity per non-empty widget).
+    """Build entities from a TYPE_WIDGET (=6) tile.
 
-    Each tile carries up to two ``widgetN`` payloads. The widget's ``type`` field
-    selects the semantic class (DHW pump set/current temp, collector pump
-    duty-cycle, CH temperature). Contact-shaped widgets are intentionally
-    skipped here and handled by :mod:`binary_sensor`. Widgets with ``unit==6``
-    are decorative state badges that always read 0 -- skip them too.
+    Tech's "Universal status with widgets" tile shape::
+
+        {
+            "type": 6,
+            "params": {
+                "iconId": <int>,
+                "statusId": <int>,
+                "widget1": {"txtId": ..., "value": ..., "unit": ..., "type": ...},
+                "widget2": {"txtId": ..., "value": ..., "unit": ..., "type": ...}
+            }
+        }
+
+    Each widget is an independent reading. The widget's *inner* ``type``
+    field selects the semantic class (see :data:`const.WIDGET_DHW_PUMP`,
+    :data:`const.WIDGET_COLLECTOR_PUMP`, :data:`const.WIDGET_TEMPERATURE_CH`),
+    while the ``unit`` field decides how to scale the integer ``value``
+    (see :data:`const.WIDGET_UNIT_DIVISORS`).
+
+    Filtering rules applied in order:
+
+    1. Widgets with ``txtId == 0`` are placeholders -- skip.
+    2. Contact-shaped widgets (``unit==-1, type==0, txtId!=0``) belong to
+       :mod:`binary_sensor`; skip here so they are not emitted twice.
+    3. ``unit == 6`` widgets are decorative state badges (always 0 in the
+       wild); skip to avoid useless "always 0" sensors.
+    4. WIDGET_COLLECTOR_PUMP -> :class:`TileWidgetPumpSensor` (percentage).
+    5. Everything else (DHW set/current temp, CH temp, generic
+       ``type==0`` numeric) -> :class:`TileWidgetTemperatureSensor`,
+       which applies unit-aware scaling at read time.
+
+    Returns:
+        Zero, one, or two coordinator entities -- the upstream registration
+        loop in :func:`async_setup_entry` flattens the results.
+
     """
     entities: list[CoordinatorEntity] = []
     params = tile.get(CONF_PARAMS, {})
@@ -330,9 +390,12 @@ def _build_widget_tile(
                 TileWidgetPumpSensor(tile, coordinator, config_entry, widget_key)
             )
         else:
-            # Treat WIDGET_DHW_PUMP, WIDGET_TEMPERATURE_CH and any unknown
-            # numeric widget (type=0) as a temperature reading whose scaling is
-            # driven by the widget's ``unit`` field.
+            # WIDGET_DHW_PUMP, WIDGET_TEMPERATURE_CH and any unknown numeric
+            # widget (most commonly ``type == 0``) all flow through the
+            # temperature class. Scaling is driven by the widget's own
+            # ``unit`` field, not by the widget type, so an unknown numeric
+            # type is still rendered correctly so long as ``unit`` is one of
+            # the documented values in :data:`const.WIDGET_UNIT_DIVISORS`.
             entities.append(
                 TileWidgetTemperatureSensor(
                     tile, coordinator, config_entry, widget_key
@@ -1422,7 +1485,24 @@ class TileTextSensor(TileSensor, SensorEntity):
 
 
 class _TileWidgetSensorBase(TileSensor, SensorEntity):
-    """Common scaffolding for TYPE_WIDGET-derived sensor entities."""
+    """Common scaffolding for TYPE_WIDGET-derived sensor entities.
+
+    Widget-backed sensors share three pieces of behaviour:
+
+    * **Indexing** -- a single TYPE_WIDGET tile yields up to two
+      sub-entities; ``self._widget_key`` selects ``widget1`` or
+      ``widget2`` so each one's :meth:`get_state` reads the right slot.
+    * **Naming** -- the entity name is derived from the widget's own
+      ``txtId``. If a widget carries no label of its own (txtId 0), the
+      sibling widget's label is borrowed so the resulting name still
+      reflects the tile's purpose. DHW pump widgets get a "Set Temperature"
+      / "Current Temperature" suffix to disambiguate the two slots, since
+      both share the same ``txtId``.
+    * **Unique ID namespacing** -- ``_UNIQUE_ID_SUFFIX`` plus
+      ``self._widget_key`` make the unique_id distinct per widget slot,
+      preventing the collisions that the old single-class implementation
+      hit when both widgets were exposed.
+    """
 
     _UNIQUE_ID_SUFFIX = "tile_widget"
     _NAME_SUFFIX_FOR_DHW: dict[str, str] = {
