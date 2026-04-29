@@ -100,13 +100,21 @@ ICON_BY_TYPE = {
 # map type -> txtId
 TXT_ID_BY_TYPE = {
     TYPE_FIRE_SENSOR: 205,
+    TYPE_ADDITIONAL_PUMP: 576,  # "Pompa dodatkowa"
     TYPE_FAN: 4135,
     TYPE_VALVE: 991,
     TYPE_MIXING_VALVE: 5731,
     TYPE_FUEL_SUPPLY: 961,
-    TYPE_DISINFECTION: 246,
+    TYPE_DISINFECTION: 246,  # "Dezynfekcja"
     TYPE_OPEN_THERM: 4633,
 }
+
+# Tiles whose ``params.txtId`` carries a *status* string ("Disabled"/"Active")
+# rather than the entity's name. For these tiles ``TileEntity`` falls back to
+# the type-level label in ``TXT_ID_BY_TYPE`` instead of the per-tile txtId.
+TXT_ID_IS_STATUS_FOR_TYPES: frozenset[int] = frozenset(
+    {TYPE_ADDITIONAL_PUMP, TYPE_DISINFECTION}
+)
 
 # Valve sensor measured values
 VALVE_SENSOR_RETURN_TEMPERATURE = {"txt_id": 747, "state_key": "returnTemp"}

@@ -1,0 +1,156 @@
+{
+  "MU": {
+    "count": 13,
+    "first_3": [
+      {
+        "menuType": "MU",
+        "type": 0,
+        "id": 0,
+        "parentId": 0,
+        "access": true,
+        "txtId": 388,
+        "wikiTxtId": 0,
+        "iconId": 0,
+        "params": {
+          "description": "Element gruping menu"
+        },
+        "duringChange": null
+      },
+      {
+        "menuType": "MU",
+        "type": 11,
+        "id": 1000,
+        "parentId": 0,
+        "access": true,
+        "txtId": 814,
+        "wikiTxtId": 0,
+        "iconId": 0,
+        "params": {
+          "value": 0,
+          "default": 0,
+          "options": [
+            {
+              "txtId": 3109,
+              "value": 0
+            },
+            {
+              "txtId": 1401,
+              "value": 1
+            },
+            {
+              "txtId": 4324,
+              "value": 2
+            },
+            {
+              "txtId": 4325,
+              "value": 3
+            }
+          ],
+          "description": "Radio button control"
+        },
+        "duringChange": null
+      },
+      {
+        "menuType": "MU",
+        "type": 0,
+        "id": 1007,
+        "parentId": 0,
+        "access": true,
+        "txtId": 4052,
+        "wikiTxtId": 0,
+        "iconId": 0,
+        "params": {
+          "description": "Element gruping menu"
+        },
+        "duringChange": null
+      }
+    ]
+  },
+  "MI": {
+    "count": 4122,
+    "first_3": [
+      {
+        "menuType": "MI",
+        "type": 0,
+        "id": 0,
+        "parentId": 0,
+        "access": true,
+        "txtId": 389,
+        "wikiTxtId": 0,
+        "iconId": 0,
+        "params": {
+          "description": "Element gruping menu"
+        },
+        "duringChange": null
+      },
+      {
+        "menuType": "MI",
+        "type": 0,
+        "id": 1018,
+        "parentId": 0,
+        "access": true,
+        "txtId": 5304,
+        "wikiTxtId": 0,
+        "iconId": 0,
+        "params": {
+          "description": "Element gruping menu"
+        },
+        "duringChange": null
+      },
+      {
+        "menuType": "MI",
+        "type": 0,
+        "id": 2621440,
+        "parentId": 1018,
+        "access": true,
+        "txtId": 1752,
+        "wikiTxtId": 0,
+        "iconId": 0,
+        "params": {
+          "description": "Element gruping menu"
+        },
+        "duringChange": null
+      }
+    ]
+  },
+  "MS": {
+    "count": 1,
+    "first_3": [
+      {
+        "menuType": "MS",
+        "type": 0,
+        "id": 0,
+        "parentId": 0,
+        "access": true,
+        "txtId": 391,
+        "wikiTxtId": 0,
+        "iconId": 0,
+        "params": {
+          "description": "Element gruping menu",
+          "password": "password"
+        },
+        "duringChange": null
+      }
+    ]
+  },
+  "MP": {
+    "count": 1,
+    "first_3": [
+      {
+        "menuType": "MP",
+        "type": 0,
+        "id": 0,
+        "parentId": 0,
+        "access": true,
+        "txtId": 390,
+        "wikiTxtId": 0,
+        "iconId": 0,
+        "params": {
+          "password": "password",
+          "description": "Element gruping menu"
+        },
+        "duringChange": null
+      }
+    ]
+  }
+}

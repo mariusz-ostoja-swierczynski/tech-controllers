@@ -19,7 +19,6 @@ from . import TechCoordinator, assets
 from .const import (
     CONTROLLER,
     DOMAIN,
-    INCLUDE_HUB_IN_NAME,
     TYPE_ADDITIONAL_PUMP,
     TYPE_FIRE_SENSOR,
     TYPE_RELAY,
@@ -178,13 +177,8 @@ class TileWidgetContactSensor(TileBinarySensor):
         widget = device[CONF_PARAMS][widget_key]
         # Contact widgets carry their label inside the widget payload, not the
         # tile params, so override the name TileEntity computed from tile-level
-        # txtId.
-        prefix = (
-            f"{config_entry.title} "
-            if config_entry.data[INCLUDE_HUB_IN_NAME]
-            else ""
-        )
-        self._name = f"{prefix}{assets.get_text(widget['txtId'])}"
+        # txtId. ``_attr_has_entity_name = True`` lets HA prepend the device.
+        self._name = assets.get_text(widget["txtId"])
         icon_id = device[CONF_PARAMS].get("iconId")
         if icon_id:
             self._attr_icon = assets.get_icon(icon_id)

@@ -1,0 +1,1063 @@
+{
+  "zones": {
+    "transaction_time": "2026-04-29T22:35:27.88336+02:00",
+    "elements": [
+      {
+        "zone": {
+          "id": 9061,
+          "parentId": 9002,
+          "time": "2026-04-29T22:35:24",
+          "duringChange": false,
+          "index": 3,
+          "currentTemperature": 230,
+          "setTemperature": 220,
+          "flags": {
+            "relayState": "off",
+            "minOneWindowOpen": false,
+            "algorithm": "heating",
+            "floorSensor": 0,
+            "humidityAlgorytm": 0,
+            "zoneExcluded": 0
+          },
+          "zoneState": "noAlarm",
+          "signalStrength": null,
+          "batteryLevel": null,
+          "actuatorsOpen": 0,
+          "humidity": 33,
+          "visibility": true
+        },
+        "description": {
+          "id": 9062,
+          "parentId": 9061,
+          "name": "Daisy",
+          "styleId": 3,
+          "styleIcon": "children",
+          "duringChange": false
+        },
+        "mode": {
+          "id": 9063,
+          "parentId": 9061,
+          "mode": "constantTemp",
+          "constTempTime": 60,
+          "setTemperature": 220,
+          "scheduleIndex": 0
+        },
+        "schedule": {
+          "id": 9065,
+          "parentId": 9061,
+          "index": -4,
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0Intervals": [
+            {
+              "start": 300,
+              "stop": 600,
+              "temp": 240
+            },
+            {
+              "start": 660,
+              "stop": 1380,
+              "temp": 240
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p0SetbackTemp": 260,
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1Intervals": [
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p1SetbackTemp": 150
+        },
+        "actuators": [],
+        "underfloor": {
+          "id": 9064,
+          "parentId": 9061,
+          "mode": "sustain",
+          "currentState": "parametersReached",
+          "floorPump": "on",
+          "sensorType": "wired",
+          "temperature": 179,
+          "signalStrength": null,
+          "batteryLevel": null,
+          "events": {
+            "correctWork": true,
+            "noCommunication": false,
+            "sensorDamaged": false,
+            "lowBattery": false,
+            "lowSignal": false,
+            "tempTooHigh": false,
+            "tempTooLow": false,
+            "serviceError": false
+          }
+        },
+        "windowsSensors": [],
+        "additionalContacts": []
+      },
+      {
+        "zone": {
+          "id": 9078,
+          "parentId": 9002,
+          "time": "2026-04-29T22:34:47",
+          "duringChange": false,
+          "index": 4,
+          "currentTemperature": 228,
+          "setTemperature": 218,
+          "flags": {
+            "relayState": "off",
+            "minOneWindowOpen": false,
+            "algorithm": "heating",
+            "floorSensor": 0,
+            "humidityAlgorytm": 0,
+            "zoneExcluded": 0
+          },
+          "zoneState": "noAlarm",
+          "signalStrength": null,
+          "batteryLevel": null,
+          "actuatorsOpen": 0,
+          "humidity": 32,
+          "visibility": true
+        },
+        "description": {
+          "id": 9079,
+          "parentId": 9078,
+          "name": "Leon",
+          "styleId": 3,
+          "styleIcon": "children",
+          "duringChange": false
+        },
+        "mode": {
+          "id": 9080,
+          "parentId": 9078,
+          "mode": "constantTemp",
+          "constTempTime": 60,
+          "setTemperature": 218,
+          "scheduleIndex": 0
+        },
+        "schedule": {
+          "id": 9082,
+          "parentId": 9078,
+          "index": -5,
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0Intervals": [
+            {
+              "start": 300,
+              "stop": 600,
+              "temp": 240
+            },
+            {
+              "start": 660,
+              "stop": 1380,
+              "temp": 240
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p0SetbackTemp": 260,
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1Intervals": [
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p1SetbackTemp": 150
+        },
+        "actuators": [],
+        "underfloor": {
+          "id": 9081,
+          "parentId": 9078,
+          "mode": "sustain",
+          "currentState": "parametersReached",
+          "floorPump": "on",
+          "sensorType": "wired",
+          "temperature": 226,
+          "signalStrength": null,
+          "batteryLevel": null,
+          "events": {
+            "correctWork": true,
+            "noCommunication": false,
+            "sensorDamaged": false,
+            "lowBattery": false,
+            "lowSignal": false,
+            "tempTooHigh": false,
+            "tempTooLow": false,
+            "serviceError": false
+          }
+        },
+        "windowsSensors": [],
+        "additionalContacts": []
+      },
+      {
+        "zone": {
+          "id": 9044,
+          "parentId": 9002,
+          "time": "2026-04-29T22:34:47",
+          "duringChange": false,
+          "index": 2,
+          "currentTemperature": 227,
+          "setTemperature": 121,
+          "flags": {
+            "relayState": "off",
+            "minOneWindowOpen": false,
+            "algorithm": "heating",
+            "floorSensor": 0,
+            "humidityAlgorytm": 0,
+            "zoneExcluded": 0
+          },
+          "zoneState": "noAlarm",
+          "signalStrength": null,
+          "batteryLevel": null,
+          "actuatorsOpen": 0,
+          "humidity": 36,
+          "visibility": true
+        },
+        "description": {
+          "id": 9045,
+          "parentId": 9044,
+          "name": "Sypialnia",
+          "styleId": 4,
+          "styleIcon": "bedroom",
+          "duringChange": false
+        },
+        "mode": {
+          "id": 9046,
+          "parentId": 9044,
+          "mode": "constantTemp",
+          "constTempTime": 60,
+          "setTemperature": 121,
+          "scheduleIndex": 0
+        },
+        "schedule": {
+          "id": 9048,
+          "parentId": 9044,
+          "index": -3,
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0Intervals": [
+            {
+              "start": 300,
+              "stop": 600,
+              "temp": 240
+            },
+            {
+              "start": 660,
+              "stop": 1380,
+              "temp": 240
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p0SetbackTemp": 260,
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1Intervals": [
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p1SetbackTemp": 150
+        },
+        "actuators": [],
+        "underfloor": {
+          "id": 9047,
+          "parentId": 9044,
+          "mode": "sustain",
+          "currentState": "parametersReached",
+          "floorPump": "on",
+          "sensorType": "wired",
+          "temperature": 223,
+          "signalStrength": null,
+          "batteryLevel": null,
+          "events": {
+            "correctWork": true,
+            "noCommunication": false,
+            "sensorDamaged": false,
+            "lowBattery": false,
+            "lowSignal": false,
+            "tempTooHigh": false,
+            "tempTooLow": false,
+            "serviceError": false
+          }
+        },
+        "windowsSensors": [],
+        "additionalContacts": []
+      },
+      {
+        "zone": {
+          "id": 9027,
+          "parentId": 9002,
+          "time": "2026-04-29T22:35:11",
+          "duringChange": false,
+          "index": 1,
+          "currentTemperature": 221,
+          "setTemperature": 213,
+          "flags": {
+            "relayState": "off",
+            "minOneWindowOpen": false,
+            "algorithm": "heating",
+            "floorSensor": 0,
+            "humidityAlgorytm": 0,
+            "zoneExcluded": 0
+          },
+          "zoneState": "noAlarm",
+          "signalStrength": null,
+          "batteryLevel": null,
+          "actuatorsOpen": 0,
+          "humidity": 37,
+          "visibility": true
+        },
+        "description": {
+          "id": 9028,
+          "parentId": 9027,
+          "name": "Garderoba",
+          "styleId": 5,
+          "styleIcon": "wardrobe",
+          "duringChange": false
+        },
+        "mode": {
+          "id": 9029,
+          "parentId": 9027,
+          "mode": "constantTemp",
+          "constTempTime": 60,
+          "setTemperature": 213,
+          "scheduleIndex": 0
+        },
+        "schedule": {
+          "id": 9031,
+          "parentId": 9027,
+          "index": -2,
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0Intervals": [
+            {
+              "start": 300,
+              "stop": 600,
+              "temp": 240
+            },
+            {
+              "start": 660,
+              "stop": 1380,
+              "temp": 240
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p0SetbackTemp": 260,
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1Intervals": [
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p1SetbackTemp": 150
+        },
+        "actuators": [],
+        "underfloor": {
+          "id": 9030,
+          "parentId": 9027,
+          "mode": "sustain",
+          "currentState": "parametersReached",
+          "floorPump": "on",
+          "sensorType": "wired",
+          "temperature": 224,
+          "signalStrength": null,
+          "batteryLevel": null,
+          "events": {
+            "correctWork": true,
+            "noCommunication": false,
+            "sensorDamaged": false,
+            "lowBattery": false,
+            "lowSignal": false,
+            "tempTooHigh": false,
+            "tempTooLow": false,
+            "serviceError": false
+          }
+        },
+        "windowsSensors": [],
+        "additionalContacts": []
+      },
+      {
+        "zone": {
+          "id": 9010,
+          "parentId": 9002,
+          "time": "2026-04-29T22:35:20",
+          "duringChange": false,
+          "index": 0,
+          "currentTemperature": null,
+          "setTemperature": 210,
+          "flags": {
+            "relayState": "off",
+            "minOneWindowOpen": false,
+            "algorithm": "heating",
+            "floorSensor": 0,
+            "humidityAlgorytm": 0,
+            "zoneExcluded": 0
+          },
+          "zoneState": "zoneOff",
+          "signalStrength": null,
+          "batteryLevel": null,
+          "actuatorsOpen": 0,
+          "humidity": 30,
+          "visibility": true
+        },
+        "description": {
+          "id": 9011,
+          "parentId": 9010,
+          "name": "Lazienka",
+          "styleId": 1,
+          "styleIcon": "bathroom",
+          "duringChange": false
+        },
+        "mode": {
+          "id": 9012,
+          "parentId": 9010,
+          "mode": "constantTemp",
+          "constTempTime": 60,
+          "setTemperature": 210,
+          "scheduleIndex": 0
+        },
+        "schedule": {
+          "id": 9014,
+          "parentId": 9010,
+          "index": -1,
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0Intervals": [
+            {
+              "start": 300,
+              "stop": 600,
+              "temp": 240
+            },
+            {
+              "start": 660,
+              "stop": 1380,
+              "temp": 240
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p0SetbackTemp": 260,
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1Intervals": [
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p1SetbackTemp": 150
+        },
+        "actuators": [],
+        "underfloor": {
+          "id": 9013,
+          "parentId": 9010,
+          "mode": "sustain",
+          "currentState": "parametersReached",
+          "floorPump": "on",
+          "sensorType": "wired",
+          "temperature": 235,
+          "signalStrength": null,
+          "batteryLevel": null,
+          "events": {
+            "correctWork": true,
+            "noCommunication": false,
+            "sensorDamaged": false,
+            "lowBattery": false,
+            "lowSignal": false,
+            "tempTooHigh": false,
+            "tempTooLow": false,
+            "serviceError": false
+          }
+        },
+        "windowsSensors": [],
+        "additionalContacts": []
+      }
+    ],
+    "globalSchedules": {
+      "time": "2026-04-29T22:33:49",
+      "duringChange": false,
+      "elements": [
+        {
+          "id": 9722,
+          "parentId": 9000,
+          "index": 0,
+          "name": "Better sleeping winter",
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0SetbackTemp": 220,
+          "p0Intervals": [
+            {
+              "start": 0,
+              "stop": 360,
+              "temp": 190
+            },
+            {
+              "start": 1080,
+              "stop": 1440,
+              "temp": 190
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1SetbackTemp": 220,
+          "p1Intervals": [
+            {
+              "start": 0,
+              "stop": 450,
+              "temp": 195
+            },
+            {
+              "start": 1140,
+              "stop": 1440,
+              "temp": 195
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ]
+        },
+        {
+          "id": 9723,
+          "parentId": 9000,
+          "index": 1,
+          "name": "Stable warm",
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0SetbackTemp": 220,
+          "p0Intervals": [
+            {
+              "start": 0,
+              "stop": 360,
+              "temp": 200
+            },
+            {
+              "start": 1080,
+              "stop": 1440,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1SetbackTemp": 220,
+          "p1Intervals": [
+            {
+              "start": 0,
+              "stop": 450,
+              "temp": 210
+            },
+            {
+              "start": 1170,
+              "stop": 1440,
+              "temp": 210
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ]
+        },
+        {
+          "id": 9724,
+          "parentId": 9000,
+          "index": 2,
+          "name": "default",
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0SetbackTemp": 190,
+          "p0Intervals": [
+            {
+              "start": 360,
+              "stop": 600,
+              "temp": 220
+            },
+            {
+              "start": 720,
+              "stop": 1380,
+              "temp": 220
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1SetbackTemp": 190,
+          "p1Intervals": [
+            {
+              "start": 480,
+              "stop": 600,
+              "temp": 220
+            },
+            {
+              "start": 780,
+              "stop": 1380,
+              "temp": 220
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ]
+        },
+        {
+          "id": 9725,
+          "parentId": 9000,
+          "index": 3,
+          "name": "default",
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0SetbackTemp": 150,
+          "p0Intervals": [
+            {
+              "start": 480,
+              "stop": 1080,
+              "temp": 210
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1SetbackTemp": 150,
+          "p1Intervals": [
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ]
+        },
+        {
+          "id": 9726,
+          "parentId": 9000,
+          "index": 4,
+          "name": "default",
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0SetbackTemp": 150,
+          "p0Intervals": [
+            {
+              "start": 0,
+              "stop": 600,
+              "temp": 220
+            },
+            {
+              "start": 600,
+              "stop": 1200,
+              "temp": 230
+            },
+            {
+              "start": 1200,
+              "stop": 1380,
+              "temp": 240
+            }
+          ],
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1SetbackTemp": 190,
+          "p1Intervals": [
+            {
+              "start": 480,
+              "stop": 600,
+              "temp": 220
+            },
+            {
+              "start": 780,
+              "stop": 1380,
+              "temp": 220
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ]
+        }
+      ]
+    },
+    "controllerParameters": {
+      "controllerMode": {
+        "id": 9001,
+        "parentId": 9000,
+        "type": 108,
+        "txtId": 0,
+        "iconId": 0,
+        "value": 0,
+        "menuId": 1000
+      },
+      "globalSchedulesNumber": {}
+    },
+    "system": {
+      "iterator": {
+        "9000": "9000,0,100"
+      },
+      "containers": [
+        {
+          "containerId": 9002,
+          "parentId": 9000,
+          "textId": 0,
+          "iconId": 0,
+          "wikiId": 0,
+          "version": "1.0.16",
+          "containerName": "Moduł główny",
+          "processorId": "D7684B1C",
+          "visibility": 1
+        }
+      ],
+      "containersData": [
+        {
+          "parameterId": 9003,
+          "parentId": 9002,
+          "type": 0,
+          "signal": -1,
+          "pumpsState": false,
+          "pumpsConnection": {
+            "0": true
+          },
+          "freeContactState": false,
+          "freeContactConnection": {
+            "0": true
+          },
+          "hcState": true,
+          "hcConnection": {
+            "0": true
+          }
+        }
+      ],
+      "containerParameters": [],
+      "additionalContacts": [],
+      "duringChange": [],
+      "options": {}
+    }
+  },
+  "tiles": [
+    {
+      "id": 8000,
+      "parentId": 0,
+      "type": 50,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Controller software version",
+        "version": "1.0.16",
+        "txtId": 873,
+        "iconId": 29,
+        "companyId": 0,
+        "controllerName": "L-12",
+        "mainControllerId": 681030883
+      }
+    },
+    {
+      "id": 8001,
+      "parentId": 0,
+      "type": 61,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "containerId": 9002
+      }
+    },
+    {
+      "id": 8002,
+      "parentId": 0,
+      "type": 61,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "containerId": 9146
+      }
+    },
+    {
+      "id": 8003,
+      "parentId": 0,
+      "type": 61,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "containerId": 9290
+      }
+    },
+    {
+      "id": 8004,
+      "parentId": 0,
+      "type": 61,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "containerId": 9434
+      }
+    },
+    {
+      "id": 8005,
+      "parentId": 0,
+      "type": 61,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "containerId": 9578
+      }
+    }
+  ],
+  "tilesOrder": null,
+  "tilesLastUpdate": "2026-04-29 22:35:27.923761+02"
+}

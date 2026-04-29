@@ -19,7 +19,15 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import assets
-from .const import CONTROLLER, DOMAIN, INCLUDE_HUB_IN_NAME, MANUFACTURER, UDID, VER
+from .const import (
+    CONTROLLER,
+    DOMAIN,
+    MANUFACTURER,
+    TXT_ID_BY_TYPE,
+    TXT_ID_IS_STATUS_FOR_TYPES,
+    UDID,
+    VER,
+)
 from .coordinator import TechCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,15 +58,21 @@ class TileEntity(
         self._model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
         self._state = self.get_state(device)
         self.manufacturer = MANUFACTURER
-        txt_id = device[CONF_PARAMS].get("txtId")
-        if self._config_entry.data[INCLUDE_HUB_IN_NAME]:
-            self._name = self._config_entry.title + " "
+
+        # ``_attr_has_entity_name = True`` makes Home Assistant prepend the
+        # owning device's name automatically, so the entity name is just the
+        # tile's localised label. Some tiles (additional pump, disinfection)
+        # use ``txtId`` as a *status* string rather than a label, and a few
+        # use ``-1`` to mean "no label" -- for both cases we fall back to the
+        # type-default txtId in ``TXT_ID_BY_TYPE``.
+        tile_type = device[CONF_TYPE]
+        txt_id = device[CONF_PARAMS].get("txtId") or 0
+        if txt_id <= 0 or tile_type in TXT_ID_IS_STATUS_FOR_TYPES:
+            txt_id = TXT_ID_BY_TYPE.get(tile_type, 0)
+        if txt_id > 0:
+            self._name = assets.get_text(txt_id)
         else:
-            self._name = ""
-        if txt_id:
-            self._name += assets.get_text(txt_id)
-        else:
-            self._name += assets.get_text_by_type(device[CONF_TYPE])
+            self._name = assets.get_text_by_type(tile_type)
 
     @property
     def device_info(self) -> DeviceInfo | None:
