@@ -64,14 +64,16 @@ from .const import (
     SIGNAL_STRENGTH,
     TEMP_TOO_HIGH,
     TEMP_TOO_LOW,
+    TYPE_ADDITIONAL_PUMP,
+    TYPE_DISINFECTION,
     TYPE_FAN,
     TYPE_FUEL_SUPPLY,
     TYPE_MIXING_VALVE,
     TYPE_OPEN_THERM,
     TYPE_TEMPERATURE,
-    TYPE_TEMPERATURE_CH,
     TYPE_TEXT,
     TYPE_VALVE,
+    TYPE_WIDGET,
     UDID,
     UNDERFLOOR,
     VALUE,
@@ -80,6 +82,10 @@ from .const import (
     VALVE_SENSOR_SET_TEMPERATURE,
     VER,
     VISIBILITY,
+    WIDGET_COLLECTOR_PUMP,
+    WIDGET_DHW_PUMP,
+    WIDGET_TEMPERATURE_CH,
+    WIDGET_UNIT_DIVISORS,
     WINDOW_SENSORS,
     WINDOW_STATE,
     WORKING_STATUS,
@@ -282,11 +288,59 @@ def _build_open_therm_tile(
     return entities
 
 
+def _is_contact_widget(widget: dict[str, Any]) -> bool:
+    """Return True for widgets that should be modelled as a binary contact sensor.
+
+    These are produced by EU-i-3+ inputs (and similar) and are exposed as
+    binary entities in :mod:`binary_sensor` rather than numeric sensors.
+    """
+    return (
+        widget.get("unit") == -1
+        and widget.get(CONF_TYPE) == 0
+        and widget.get("txtId", 0) != 0
+    )
+
+
+def _build_widget_tile(
+    tile: dict[str, Any],
+    coordinator: TechCoordinator,
+    config_entry: ConfigEntry,
+) -> list[CoordinatorEntity]:
+    """Create entities for a TYPE_WIDGET tile (one entity per non-empty widget).
+
+    Each tile carries up to two ``widgetN`` payloads. The widget's ``type`` field
+    selects the semantic class (DHW pump set/current temp, collector pump
+    duty-cycle, CH temperature). Contact-shaped widgets are intentionally
+    skipped here and handled by :mod:`binary_sensor`.
+    """
+    entities: list[CoordinatorEntity] = []
+    params = tile.get(CONF_PARAMS, {})
+    for widget_key in ("widget1", "widget2"):
+        widget = params.get(widget_key)
+        if not widget or widget.get("txtId", 0) == 0:
+            continue
+        if _is_contact_widget(widget):
+            continue
+        widget_type = widget.get(CONF_TYPE)
+        if widget_type == WIDGET_COLLECTOR_PUMP:
+            entities.append(
+                TileWidgetPumpSensor(tile, coordinator, config_entry, widget_key)
+            )
+        else:
+            # Treat WIDGET_DHW_PUMP, WIDGET_TEMPERATURE_CH and any unknown
+            # numeric widget (type=0) as a temperature reading whose scaling is
+            # driven by the widget's ``unit`` field.
+            entities.append(
+                TileWidgetTemperatureSensor(
+                    tile, coordinator, config_entry, widget_key
+                )
+            )
+    return entities
+
+
 _TILE_ENTITY_BUILDERS: dict[int, TileBuilder] = {
     TYPE_TEMPERATURE: _build_temperature_tile,
-    TYPE_TEMPERATURE_CH: lambda tile, coordinator, config_entry: [
-        TileWidgetSensor(tile, coordinator, config_entry)
-    ],
+    TYPE_WIDGET: _build_widget_tile,
     TYPE_FAN: lambda tile, coordinator, config_entry: [
         TileFanSensor(tile, coordinator, config_entry)
     ],
@@ -296,6 +350,9 @@ _TILE_ENTITY_BUILDERS: dict[int, TileBuilder] = {
     ],
     TYPE_FUEL_SUPPLY: lambda tile, coordinator, config_entry: [
         TileFuelSupplySensor(tile, coordinator, config_entry)
+    ],
+    TYPE_DISINFECTION: lambda tile, coordinator, config_entry: [
+        TileDisinfectionSensor(tile, coordinator, config_entry)
     ],
     TYPE_TEXT: lambda tile, coordinator, config_entry: [
         TileTextSensor(tile, coordinator, config_entry)
@@ -1361,26 +1418,121 @@ class TileTextSensor(TileSensor, SensorEntity):
         return assets.get_text(device[CONF_PARAMS]["statusId"])
 
 
-class TileWidgetSensor(TileSensor, SensorEntity):
-    """Representation of a Tile Widget Sensor."""
+class _TileWidgetSensorBase(TileSensor, SensorEntity):
+    """Common scaffolding for TYPE_WIDGET-derived sensor entities."""
 
-    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-    _attr_device_class = SensorDeviceClass.TEMPERATURE
-    _attr_state_class = SensorStateClass.MEASUREMENT
+    _UNIQUE_ID_SUFFIX = "tile_widget"
+    _NAME_SUFFIX_FOR_DHW: dict[str, str] = {
+        "widget1": " Set Temperature",
+        "widget2": " Current Temperature",
+    }
 
-    def __init__(self, device, coordinator, config_entry) -> None:
-        """Initialize the sensor."""
+    def __init__(
+        self,
+        device,
+        coordinator: TechCoordinator,
+        config_entry: ConfigEntry,
+        widget_key: str,
+    ) -> None:
+        """Initialise a widget-backed sensor.
+
+        Args:
+            device: Tile payload returned by the Tech API.
+            coordinator: Shared Tech data coordinator instance.
+            config_entry: Config entry providing controller metadata.
+            widget_key: Either ``"widget1"`` or ``"widget2"`` -- selects which
+                payload entry within the tile this entity represents.
+
+        """
+        self._widget_key = widget_key
         TileSensor.__init__(self, device, coordinator, config_entry)
-        self._name = (
-            self._config_entry.title + " "
+        self._name = self._build_name(device)
+
+    def _build_name(self, device) -> str:
+        params = device[CONF_PARAMS]
+        widget = params[self._widget_key]
+        txt_id = widget.get("txtId", 0)
+        # If this widget has no label (txtId 0), borrow it from its sibling so
+        # the entity name still reflects the tile's purpose.
+        if txt_id == 0:
+            other = "widget2" if self._widget_key == "widget1" else "widget1"
+            txt_id = params.get(other, {}).get("txtId", 0)
+        prefix = (
+            f"{self._config_entry.title} "
             if self._config_entry.data[INCLUDE_HUB_IN_NAME]
             else ""
-        ) + assets.get_text(device[CONF_PARAMS]["widget1"]["txtId"])
+        )
+        suffix = ""
+        if widget.get(CONF_TYPE) == WIDGET_DHW_PUMP:
+            suffix = self._NAME_SUFFIX_FOR_DHW.get(self._widget_key, "")
+        return f"{prefix}{assets.get_text(txt_id)}{suffix}"
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return f"{self._unique_id}_tile_widget"
+        return f"{self._unique_id}_{self._UNIQUE_ID_SUFFIX}_{self._widget_key}"
+
+    @property
+    def name(self) -> str | UndefinedType | None:
+        """Return the name of the sensor."""
+        return self._name
+
+
+class TileWidgetTemperatureSensor(_TileWidgetSensorBase):
+    """A TYPE_WIDGET widget reporting a (scaled) temperature value."""
+
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _UNIQUE_ID_SUFFIX = "tile_widget_temperature"
+
+    def get_state(self, device) -> Any:
+        """Get the state of the device."""
+        widget = device[CONF_PARAMS][self._widget_key]
+        divisor = WIDGET_UNIT_DIVISORS.get(widget.get("unit"), 1)
+        return widget[VALUE] / divisor if divisor != 1 else widget[VALUE]
+
+
+class TileWidgetPumpSensor(_TileWidgetSensorBase):
+    """A TYPE_WIDGET widget reporting a pump duty-cycle percentage."""
+
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:arrow-right-drop-circle-outline"
+    _UNIQUE_ID_SUFFIX = "tile_widget_pump"
+
+    def get_state(self, device) -> Any:
+        """Get the state of the device."""
+        return device[CONF_PARAMS][self._widget_key][VALUE]
+
+
+class TileDisinfectionSensor(TileSensor, SensorEntity):
+    """Disinfection-cycle progress for boilers exposing a TYPE_DISINFECTION tile.
+
+    The tile's ``txtId`` resolves to a status string ("Disabled" / "Active") so
+    this class falls back to the tile ``description`` field for the entity name.
+    """
+
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:shield-sun"
+
+    def __init__(self, device, coordinator, config_entry) -> None:
+        """Initialise the disinfection sensor."""
+        TileSensor.__init__(self, device, coordinator, config_entry)
+        prefix = (
+            f"{self._config_entry.title} "
+            if self._config_entry.data[INCLUDE_HUB_IN_NAME]
+            else ""
+        )
+        self._name = (
+            f"{prefix}{device[CONF_PARAMS].get(CONF_DESCRIPTION, 'Disinfection')}"
+        )
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_disinfection"
 
     @property
     def name(self) -> str | UndefinedType | None:
@@ -1389,7 +1541,7 @@ class TileWidgetSensor(TileSensor, SensorEntity):
 
     def get_state(self, device) -> Any:
         """Get the state of the device."""
-        return device[CONF_PARAMS]["widget1"][VALUE] / 10
+        return device[CONF_PARAMS].get("percentage", 0)
 
 
 class TileValveSensor(TileSensor, SensorEntity):
