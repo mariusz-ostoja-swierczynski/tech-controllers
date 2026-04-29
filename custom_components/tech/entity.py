@@ -1,4 +1,31 @@
-"""Shared base entity helpers for Tech tile-derived devices."""
+"""Shared base entity helpers for Tech tile-derived devices.
+
+Almost every entity created by the integration ultimately derives from
+:class:`TileEntity` (or its subclass :class:`sensor.TileSensor`), which
+encapsulates three responsibilities common to every tile:
+
+1. **Identity** -- ``unique_id`` is built from the controller UDID and the
+   tile id, guaranteeing global uniqueness even across multiple Tech
+   accounts paired to the same HA instance.
+2. **Naming** -- the tile's localised label is resolved from a small
+   precedence chain (per-tile ``txtId`` -> :data:`const.TXT_ID_BY_TYPE`
+   -> :func:`assets.get_text_by_type`). Tiles whose per-tile txtId is a
+   *status* string rather than a label (additional pump, disinfection)
+   skip the per-tile entry. A negative or zero txtId is treated as
+   "no label".
+3. **Device grouping** -- :meth:`TileEntity.device_info` returns the
+   controller's :class:`DeviceInfo` so that all tile entities for a given
+   controller cluster under one device in the HA Devices view, instead of
+   appearing as orphan entries. Subclasses that need their own device
+   (e.g. wireless temperature sensors carrying battery/signal sub-entities)
+   override the method but should call ``super().device_info`` to fall
+   back to the controller device when create_device=False.
+
+``_attr_has_entity_name = True`` lets HA prepend the device name to the
+entity name automatically. ``self._name`` therefore stores the *bare*
+tile label without any hub prefix; the prefix HA adds via the device
+becomes the single source of "Wisniowa 13 X" naming.
+"""
 
 from abc import abstractmethod
 import logging
@@ -37,8 +64,22 @@ class TileEntity(
     CoordinatorEntity,
     entity.Entity,
 ):
-    """Representation of a TileEntity."""
+    """Base class for every Tech tile-derived Home Assistant entity.
 
+    Subclasses must override :meth:`get_state` to extract the entity-specific
+    state from the tile payload. They should *not* override ``unique_id``
+    (the base implementation guarantees ``{udid}_{tile_id}`` uniqueness)
+    unless they also append a sub-key like ``_tile_temperature`` to keep the
+    namespace flat across multiple sensors emitted from the same tile.
+
+    See the module docstring for the naming and device-grouping protocol.
+    """
+
+    # _attr_has_entity_name = True tells Home Assistant to compose the final
+    # friendly_name as "<device.name> <self._name>". Setting this on the base
+    # class means every TileEntity descendant participates in the protocol --
+    # disabling it on a subclass would re-introduce the double-prefix bug
+    # this integration spent considerable effort eliminating.
     _attr_has_entity_name = True
 
     def __init__(self, device, coordinator: TechCoordinator, config_entry) -> None:
@@ -52,8 +93,16 @@ class TileEntity(
         """
         super().__init__(coordinator)
         self._config_entry = config_entry
+        # The Tech UDID is the stable identity of the *physical controller*
+        # behind this entity; it is reused as the controller's device id.
         self._udid = config_entry.data[CONTROLLER][UDID]
+        # ``_id`` is the per-tile id, used by the coordinator update callback
+        # to look the tile up in the refreshed payload (see
+        # :meth:`_handle_coordinator_update` below).
         self._id = device[CONF_ID]
+        # ``_unique_id`` is the *root* identifier; subclasses append a
+        # discriminator suffix (e.g. ``_tile_temperature_widget1``) when a
+        # single tile produces multiple entities.
         self._unique_id = f"{self._udid}_{device[CONF_ID]}"
         self._model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
         self._state = self.get_state(device)
