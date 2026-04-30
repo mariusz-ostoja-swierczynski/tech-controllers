@@ -14,6 +14,7 @@ fail until both implementations agree again.
 
 from __future__ import annotations
 
+from collections import Counter
 import importlib.util
 import json
 import pathlib
@@ -69,7 +70,7 @@ def _load(path: str) -> dict:
 
 
 def is_contact_widget_oracle(widget: dict) -> bool:
-    """Reference predicate, copy of :func:`sensor._is_contact_widget`.
+    """Mirror :func:`sensor._is_contact_widget` for use as a test oracle.
 
     If sensor.py / binary_sensor.py change the rule, update this oracle and
     re-run the tests so we know both implementations still agree.
@@ -90,29 +91,35 @@ class TestIsContactWidget:
     """Verify the contact-widget marker triple behaves as documented."""
 
     def test_canonical_contact_returns_true(self):
+        """Canonical contact triple (unit=-1, type=0, txtId!=0) is detected."""
         widget = {"unit": -1, "type": 0, "txtId": 1234, "value": 0}
         assert is_contact_widget_oracle(widget) is True
 
     def test_temperature_widget_is_not_contact(self):
+        """A unit=7 temperature widget must not be misread as a contact."""
         widget = {"unit": 7, "type": 9, "txtId": 774, "value": 521}
         assert is_contact_widget_oracle(widget) is False
 
     def test_dhw_pump_widget_is_not_contact(self):
+        """A DHW-pump widget (type!=0) must not be misread as a contact."""
         widget = {"unit": 7, "type": C.WIDGET_DHW_PUMP, "txtId": 938, "value": -40}
         assert is_contact_widget_oracle(widget) is False
 
     def test_zero_txtid_disables_contact(self):
+        """A txtId of 0 disqualifies the widget even with the unit/type pair."""
         widget = {"unit": -1, "type": 0, "txtId": 0, "value": 0}
         assert is_contact_widget_oracle(widget) is False
 
     def test_state_badge_unit6_is_not_contact(self):
+        """State-badge marker (unit=6, type=0) must not be flagged as contact."""
         # unit=6 is the mode/state badge marker (skipped by _build_widget_tile);
         # it shares type=0 with contacts but lacks unit=-1.
         widget = {"unit": 6, "type": 0, "txtId": 760, "value": 0}
         assert is_contact_widget_oracle(widget) is False
 
     def test_predicate_source_matches_oracle(self):
-        """sensor.py and binary_sensor.py duplicate the same predicate.
+        """Verify sensor.py and binary_sensor.py still encode the same rule.
+
         Asserting the source code of both still shows the canonical form
         catches divergence between the two copies.
         """
@@ -140,20 +147,25 @@ class TestUnitDivisors:
     """WIDGET_UNIT_DIVISORS scales raw widget values to engineering units."""
 
     def test_unit_7_is_tenths_of_degree(self):
+        """unit=7 (boiler temperatures) scales by 10: 521 -> 52.1°C."""
         # The most common boiler temperature unit. value=521 -> 52.1°C.
         assert C.WIDGET_UNIT_DIVISORS[7] == 10
 
     def test_unit_5_is_hundredths(self):
+        """unit=5 widget values scale by 100."""
         assert C.WIDGET_UNIT_DIVISORS[5] == 100
 
     def test_unit_4_is_tenths(self):
+        """unit=4 widget values scale by 10."""
         assert C.WIDGET_UNIT_DIVISORS[4] == 10
 
     def test_unit_6_passes_through(self):
+        """unit=6 (state-badge enums) must not be scaled."""
         # State badges should not be scaled (their value is an enum, not a temp).
         assert C.WIDGET_UNIT_DIVISORS[6] == 1
 
     def test_known_units_only(self):
+        """Pin the set of known unit codes to detect accidental additions."""
         # Codes outside the table fall back to a divisor of 1 in
         # _build_widget_tile / TileWidgetTemperatureSensor.get_state.
         assert set(C.WIDGET_UNIT_DIVISORS.keys()) == {0, 4, 5, 6, 7}
@@ -163,18 +175,22 @@ class TestTxtIdFallbacks:
     """Status-text tile types must fall back to a sane label, not "Disabled"."""
 
     def test_additional_pump_falls_back_to_pompa_dodatkowa(self):
+        """Additional-pump tiles fall back to txtId 576 ("Pompa dodatkowa")."""
         # 576 = "Pompa dodatkowa" in Polish.
         assert C.TXT_ID_BY_TYPE[C.TYPE_ADDITIONAL_PUMP] == 576
 
     def test_disinfection_falls_back_to_dezynfekcja(self):
+        """Disinfection tiles fall back to txtId 246 ("Dezynfekcja")."""
         # 246 = "Dezynfekcja" in Polish.
         assert C.TXT_ID_BY_TYPE[C.TYPE_DISINFECTION] == 246
 
     def test_status_text_set_covers_pump_and_disinfection(self):
+        """Both pump and disinfection types are marked status-text-bearing."""
         assert C.TYPE_ADDITIONAL_PUMP in C.TXT_ID_IS_STATUS_FOR_TYPES
         assert C.TYPE_DISINFECTION in C.TXT_ID_IS_STATUS_FOR_TYPES
 
     def test_relay_does_not_use_status_text_fallback(self):
+        """Plain relay tiles must not be classified as status-text bearers."""
         # Regular relays carry meaningful txtId values directly.
         assert C.TYPE_RELAY not in C.TXT_ID_IS_STATUS_FOR_TYPES
 
@@ -183,14 +199,17 @@ class TestTileTypeConstants:
     """The integer values are part of the API contract -- pin them."""
 
     def test_type_widget_is_six(self):
+        """TYPE_WIDGET keeps the legacy TYPE_TEMPERATURE_CH integer value 6."""
         # TYPE_WIDGET was renamed from TYPE_TEMPERATURE_CH; the API value (6)
         # must remain the same to stay backward-compatible.
         assert C.TYPE_WIDGET == 6
 
     def test_type_disinfection_is_thirty_two(self):
+        """TYPE_DISINFECTION is pinned to API value 32."""
         assert C.TYPE_DISINFECTION == 32
 
     def test_widget_subtypes(self):
+        """Widget-subtype constants are pinned to their API values."""
         assert C.WIDGET_DHW_PUMP == 1
         assert C.WIDGET_COLLECTOR_PUMP == 2
         assert C.WIDGET_TEMPERATURE_CH == 9
@@ -211,17 +230,21 @@ class TestSt491Fixture:
 
     @classmethod
     def setup_class(cls):
+        """Load the captured ST-491 module payload once for the class."""
         cls.module = _load("st491/module.json")
 
     def test_no_zones(self):
+        """ST-491 boilers expose no climate zones."""
         # ST-491 is an RS-bridged boiler controller -- no climate zones.
         assert self.module["zones"]["elements"] == []
 
     def test_three_widget_tiles(self):
+        """ST-491 fixture exposes exactly three TYPE_WIDGET tiles."""
         widgets = [t for t in self.module["tiles"] if t["type"] == C.TYPE_WIDGET]
         assert len(widgets) == 3
 
     def test_each_widget_tile_has_two_widgets(self):
+        """Every TYPE_WIDGET tile carries both widget1 and widget2 sub-payloads."""
         for tile in self.module["tiles"]:
             if tile["type"] != C.TYPE_WIDGET:
                 continue
@@ -244,6 +267,7 @@ class TestSt491Fixture:
             assert -30 <= scaled <= 100
 
     def test_state_badge_widgets_are_skipped(self):
+        """At least two unit=6 state-badge widgets exist and would be skipped."""
         # Tiles 2050 and 2051 each carry a widget1 with unit=6, type=0,
         # value=0 -- a decorative "Temperatura zadana" status badge that
         # _build_widget_tile skips.
@@ -258,6 +282,7 @@ class TestSt491Fixture:
         assert skipped >= 2
 
     def test_disinfection_tile_uses_status_txtid(self):
+        """Disinfection tile reports a status txtId (922) handled via fallback."""
         disinfection_tiles = [
             t for t in self.module["tiles"] if t["type"] == C.TYPE_DISINFECTION
         ]
@@ -267,6 +292,7 @@ class TestSt491Fixture:
         assert disinfection_tiles[0]["params"]["txtId"] == 922
 
     def test_additional_pump_tile_uses_status_txtid(self):
+        """Visible additional-pump tile reports a status txtId (922)."""
         pumps = [
             t for t in self.module["tiles"]
             if t["type"] == C.TYPE_ADDITIONAL_PUMP and t.get("visibility")
@@ -275,6 +301,7 @@ class TestSt491Fixture:
         assert pumps[0]["params"]["txtId"] == 922
 
     def test_valve_tile_has_settemp_and_unset_label(self):
+        """Valve tile carries three temp descriptors and an unset (-1) txtId."""
         valves = [t for t in self.module["tiles"] if t["type"] == C.TYPE_VALVE]
         assert len(valves) == 1
         params = valves[0]["params"]
@@ -287,8 +314,7 @@ class TestSt491Fixture:
         assert params["txtId"] == -1
 
     def test_expected_tile_type_distribution(self):
-        from collections import Counter
-
+        """Pin the per-type tile counts of the captured ST-491 fixture."""
         counts = Counter(t["type"] for t in self.module["tiles"])
         assert counts == {
             C.TYPE_TEMPERATURE: 4,
@@ -340,15 +366,18 @@ class TestL12Fixture:
 
     @classmethod
     def setup_class(cls):
+        """Load the captured L-12 module payload once for the class."""
         cls.module = _load("l12/module.json")
 
     def test_five_zones_visible(self):
+        """L-12 fixture exposes five visible climate zones."""
         zones = self.module["zones"]["elements"]
         assert len(zones) == 5
         for z in zones:
             assert z["zone"]["visibility"] is True
 
     def test_zone_temperatures_in_tenths(self):
+        """Zone currentTemperature values are tenths-of-degree integers."""
         # Zone payloads use tenths of a degree like widget unit=7.
         # Asserting this guards against accidental double-scaling.
         for z in self.module["zones"]["elements"]:
@@ -357,6 +386,7 @@ class TestL12Fixture:
                 assert 100 <= cur <= 350  # 10°C -- 35°C in tenths
 
     def test_carries_unsupported_type_61_tiles(self):
+        """L-12 carries TYPE_SW_VERSION (50) and structural TYPE 61 tiles."""
         # L-12 carries TYPE_SW_VERSION (=50) and TYPE 61 "container reference"
         # tiles. The latter are intentionally ignored because they are
         # structural pointers, not data-bearing.
