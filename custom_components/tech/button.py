@@ -17,14 +17,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import assets
-from .const import (
-    CONTROLLER,
-    DOMAIN,
-    INCLUDE_HUB_IN_NAME,
-    MANUFACTURER,
-    MENU_ITEM_TYPE_DIALOGUE,
-    UDID,
-)
+from .const import CONTROLLER, DOMAIN, MANUFACTURER, MENU_ITEM_TYPE_DIALOGUE, UDID
 from .coordinator import TechCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -107,10 +100,9 @@ class MenuButtonEntity(CoordinatorEntity, ButtonEntity):
         self.manufacturer = MANUFACTURER
         self._zone_id = zone_id
 
-        prefix = (
-            (config_entry.title + " ") if config_entry.data[INCLUDE_HUB_IN_NAME] else ""
-        )
-        self._name = assets.menu_entity_name(item, group_names, prefix)
+        # ``_attr_has_entity_name = True`` lets HA prepend the device name; the
+        # entity name itself is the menu label only.
+        self._name = assets.menu_entity_name(item, group_names, "")
 
         self._disabled = item.get("parentId", 0) != 0
 
