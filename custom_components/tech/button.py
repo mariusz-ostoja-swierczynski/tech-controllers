@@ -17,13 +17,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import assets
-from .const import (
-    CONTROLLER,
-    DOMAIN,
-    MANUFACTURER,
-    MENU_ITEM_TYPE_DIALOGUE,
-    UDID,
-)
+from .const import CONTROLLER, DOMAIN, MANUFACTURER, MENU_ITEM_TYPE_DIALOGUE, UDID
 from .coordinator import TechCoordinator
 
 _LOGGER = logging.getLogger(__name__)
