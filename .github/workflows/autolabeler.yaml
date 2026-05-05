@@ -1,13 +1,6 @@
 name: 'Autolabeler'
 
 on:
-  # pull_request is required for autolabeler
-  pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
-  # pull_request_target is required for autolabeler on PRs from forks
   pull_request_target:
     types:
       - opened
