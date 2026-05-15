@@ -11,7 +11,7 @@ from homeassistant.const import (
     CONF_NAME,
     EntityCategory,
 )
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -30,6 +30,7 @@ from .const import (
     VALUE_FORMAT_TENTH,
 )
 from .coordinator import TechCoordinator
+from .entity import OptimisticMenuMixin
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -85,7 +86,7 @@ async def async_setup_entry(
     async_add_entities(entities, True)
 
 
-class MenuNumberEntity(CoordinatorEntity, NumberEntity):
+class MenuNumberEntity(OptimisticMenuMixin, CoordinatorEntity, NumberEntity):
     """A numeric menu parameter exposed as a Home Assistant number entity."""
 
     _attr_has_entity_name = True
@@ -194,32 +195,17 @@ class MenuNumberEntity(CoordinatorEntity, NumberEntity):
             self._attr_native_step = float(step)
 
     async def async_set_native_value(self, value: float) -> None:
-        """Set the menu parameter to the requested value.
-
-        Update local state optimistically after the API call returns success
-        so HA reflects the change immediately. We deliberately do NOT request
-        an immediate coordinator refresh here -- the eModul API has a
-        ``duringChange: "t"`` window during which it still reports the old
-        value, so an immediate refresh would clobber the optimistic state.
-        The regular 60 s polling cadence reconciles eventually; if the
-        controller rejected the change the entity will revert by then.
-        """
+        """Set the menu parameter (optimistic + ``duringChange`` confirm)."""
         if self._format == VALUE_FORMAT_TENTH:
             api_value = int(value * 10)
+            display_value = api_value / 10.0
         else:
             api_value = int(value)
+            display_value = float(api_value)
 
-        await self.coordinator.api.set_menu_value(
-            self._udid, self._menu_type, self._item_id, {"value": api_value}
-        )
-        self._attr_native_value = value
-        self.async_write_ha_state()
+        def apply() -> None:
+            # Mirror the round-trip the controller will perform so the
+            # optimistic value matches the post-reconcile state.
+            self._attr_native_value = display_value
 
-    @callback
-    def _handle_coordinator_update(self, *args: Any) -> None:
-        """Handle updated data from the coordinator."""
-        menus = self._coordinator.data.get("menus", {})
-        item = menus.get(self._menu_key)
-        if item:
-            self._update_from_item(item)
-        self.async_write_ha_state()
+        await self._async_set_menu_value({"value": api_value}, apply)

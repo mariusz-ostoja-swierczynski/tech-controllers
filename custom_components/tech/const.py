@@ -54,6 +54,15 @@ PLATFORMS = [
 SCAN_INTERVAL: Final = timedelta(seconds=60)
 API_TIMEOUT: Final = 60
 
+# Optimistic write window. Controllers can take 2-3 min to settle a change,
+# so window outlives the 60 s coordinator tick. Budget = MAX_ATTEMPTS *
+# POLL_INTERVAL must exceed worst-case settle time.
+OPTIMISTIC_TIMEOUT: Final = timedelta(seconds=180)
+OPTIMISTIC_POLL_INTERVAL: Final = 15
+OPTIMISTIC_POLL_MAX_ATTEMPTS: Final = 12
+# Delay before first poll — eModul returns 520 if probed too soon after POST.
+OPTIMISTIC_POLL_INITIAL_DELAY: Final = 15
+
 # tile type
 TYPE_TEMPERATURE = 1
 TYPE_FIRE_SENSOR = 2

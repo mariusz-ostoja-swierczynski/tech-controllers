@@ -11,7 +11,8 @@ from homeassistant.const import (
     CONF_NAME,
     EntityCategory,
 )
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -28,6 +29,7 @@ from .const import (
     UDID,
 )
 from .coordinator import TechCoordinator
+from .entity import OptimisticMenuMixin
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -83,7 +85,7 @@ async def async_setup_entry(
     async_add_entities(entities, True)
 
 
-class MenuSelectEntity(CoordinatorEntity, SelectEntity):
+class MenuSelectEntity(OptimisticMenuMixin, CoordinatorEntity, SelectEntity):
     """A choice menu parameter exposed as a Home Assistant select entity."""
 
     _attr_has_entity_name = True
@@ -211,32 +213,14 @@ class MenuSelectEntity(CoordinatorEntity, SelectEntity):
             self._attr_current_option = None
 
     async def async_select_option(self, option: str) -> None:
-        """Change the selected option.
-
-        Update local state optimistically after the API call returns success
-        so HA reflects the change immediately. We deliberately do NOT request
-        an immediate coordinator refresh here -- the eModul API has a
-        ``duringChange: "t"`` window during which it still reports the old
-        value, so an immediate refresh would clobber the optimistic state.
-        The regular 60 s polling cadence reconciles eventually; if the
-        controller rejected the change the entity will revert by then.
-        """
+        """Change the selected option (optimistic + ``duringChange`` confirm)."""
         value = self._label_to_value.get(option)
         if value is None:
-            _LOGGER.warning("Unknown option %s for menu item %s", option, self._item_id)
-            return
+            raise HomeAssistantError(
+                f"Unknown option '{option}' for menu item {self._item_id}"
+            )
 
-        await self.coordinator.api.set_menu_value(
-            self._udid, self._menu_type, self._item_id, {"value": value}
-        )
-        self._attr_current_option = option
-        self.async_write_ha_state()
+        def apply() -> None:
+            self._attr_current_option = option
 
-    @callback
-    def _handle_coordinator_update(self, *args: Any) -> None:
-        """Handle updated data from the coordinator."""
-        menus = self._coordinator.data.get("menus", {})
-        item = menus.get(self._menu_key)
-        if item:
-            self._update_from_item(item)
-        self.async_write_ha_state()
+        await self._async_set_menu_value({"value": value}, apply)
