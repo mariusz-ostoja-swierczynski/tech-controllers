@@ -3,6 +3,7 @@
 from abc import abstractmethod
 import asyncio
 from collections.abc import Callable
+from contextlib import suppress
 from datetime import datetime
 import logging
 from typing import Any
@@ -18,6 +19,7 @@ from .const import (
     CONTROLLER,
     INCLUDE_HUB_IN_NAME,
     MANUFACTURER,
+    OPTIMISTIC_POLL_INITIAL_DELAY,
     OPTIMISTIC_POLL_INTERVAL,
     OPTIMISTIC_POLL_MAX_ATTEMPTS,
     OPTIMISTIC_TIMEOUT,
@@ -119,7 +121,20 @@ class OptimisticMenuMixin:
     """
 
     _optimistic_until: datetime | None = None
+    _last_confirmed_at: datetime | None = None
+    _confirm_task: asyncio.Task | None = None
     _attr_assumed_state: bool = False
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose optimistic-window + confirm telemetry for HA UI."""
+        attrs: dict[str, Any] = {}
+        if self._is_optimistic_active():
+            attrs["optimistic_until"] = self._optimistic_until.isoformat()  # type: ignore[union-attr]
+            attrs["pending_confirm"] = True
+        if self._last_confirmed_at is not None:
+            attrs["last_confirmed_at"] = self._last_confirmed_at.isoformat()
+        return attrs
 
     async def _async_set_menu_value(
         self,
@@ -136,6 +151,12 @@ class OptimisticMenuMixin:
 
         """
         api = self.coordinator.api  # type: ignore[attr-defined]
+        # Drain prior confirm before applying new window — its cancellation
+        # cleanup would otherwise wipe the state we're about to write.
+        if self._confirm_task is not None and not self._confirm_task.done():
+            self._confirm_task.cancel()
+            with suppress(BaseException):
+                await self._confirm_task
         await api.set_menu_value(
             self._udid, self._menu_type, self._item_id, payload
         )
@@ -143,7 +164,7 @@ class OptimisticMenuMixin:
         self._optimistic_until = dt_util.utcnow() + OPTIMISTIC_TIMEOUT
         self._attr_assumed_state = True
         self.async_write_ha_state()  # type: ignore[attr-defined]
-        self.hass.async_create_task(  # type: ignore[attr-defined]
+        self._confirm_task = self.hass.async_create_task(  # type: ignore[attr-defined]
             self._async_confirm_menu_change()
         )
 
@@ -156,30 +177,45 @@ class OptimisticMenuMixin:
         regular coordinator path resolves the final state.
         """
         api = self.coordinator.api  # type: ignore[attr-defined]
-        cursor = api.last_update or ""
-        for _ in range(OPTIMISTIC_POLL_MAX_ATTEMPTS):
-            try:
-                data = await api.poll_update(self._udid, cursor)
-            except (TechError, asyncio.TimeoutError) as err:
-                _LOGGER.debug(
-                    "poll_update failed for %s: %s", self._menu_key, err
-                )
-                break
-            cursor = data.get("lastUpdate") or cursor
-            item = _find_menu_item(data, self._menu_type, self._item_id)
-            if item and item.get("duringChange") == "f":
-                self._update_from_item(item)
-                self._clear_optimistic_state()
+        # eModul expects a tz-aware ISO cursor matching the web UI format
+        # (local time + offset, e.g. ``...+02:00``). ``"0"`` returns 520.
+        cursor = api.last_update or dt_util.now().isoformat()
+        try:
+            # First poll delayed — immediate post-POST polls race the
+            # controller's settle cycle and return 520.
+            await asyncio.sleep(OPTIMISTIC_POLL_INITIAL_DELAY)
+            for _ in range(OPTIMISTIC_POLL_MAX_ATTEMPTS):
+                try:
+                    data = await api.poll_update(self._udid, cursor)
+                except (TechError, asyncio.TimeoutError) as err:
+                    # Retry transient 520/503/timeout — controller may still
+                    # be settling. Don't break the window on first error.
+                    _LOGGER.debug(
+                        "poll_update failed for %s: %s; retrying",
+                        self._menu_key,
+                        err,
+                    )
+                    await asyncio.sleep(OPTIMISTIC_POLL_INTERVAL)
+                    continue
+                cursor = data.get("lastUpdate") or cursor
+                item = _find_menu_item(data, self._menu_type, self._item_id)
+                if item and item.get("duringChange") == "f":
+                    self._update_from_item(item)
+                    self._clear_optimistic_state()
+                    self._last_confirmed_at = dt_util.utcnow()
+                    self.async_write_ha_state()  # type: ignore[attr-defined]
+                    return
+                await asyncio.sleep(OPTIMISTIC_POLL_INTERVAL)
+            self._clear_optimistic_state()
+            self.async_write_ha_state()  # type: ignore[attr-defined]
+            self.hass.async_create_task(  # type: ignore[attr-defined]
+                self.coordinator.async_request_refresh()  # type: ignore[attr-defined]
+            )
+        except asyncio.CancelledError:
+            self._clear_optimistic_state()
+            with suppress(Exception):
                 self.async_write_ha_state()  # type: ignore[attr-defined]
-                return
-            await asyncio.sleep(OPTIMISTIC_POLL_INTERVAL)
-        # Budget exhausted or transport error: clear the assumed flag and let
-        # the coordinator's next refresh authoritatively reconcile.
-        self._clear_optimistic_state()
-        self.async_write_ha_state()  # type: ignore[attr-defined]
-        self.hass.async_create_task(  # type: ignore[attr-defined]
-            self.coordinator.async_request_refresh()  # type: ignore[attr-defined]
-        )
+            raise
 
     def _clear_optimistic_state(self) -> None:
         """Reset the optimistic window so coordinator updates flow normally."""
@@ -197,17 +233,20 @@ class OptimisticMenuMixin:
     def _handle_coordinator_update(self, *args: Any) -> None:
         """Shared coordinator-update path for menu entities.
 
-        While the optimistic window is open we drop stale ``duringChange:"t"``
-        snapshots so the entity doesn't briefly revert to the previous value.
-        Any other payload (settled, or out-of-window) clears the assumed flag
-        and is applied authoritatively.
+        The coordinator's ``/menu/{type}/`` fetch does NOT carry the
+        ``duringChange`` flag (that field only appears on the ``update/data``
+        long-poll endpoint that ``_async_confirm_menu_change`` drives). So
+        while the optimistic window is open we drop every coordinator update
+        for this entity -- otherwise the 60 s coordinator tick would revert
+        the entity to the controller's pre-settle value mid-write. The
+        background confirm task is responsible for applying the authoritative
+        post-settle value and clearing the window.
         """
+        if self._is_optimistic_active():
+            return
         menus = self.coordinator.data.get("menus", {})  # type: ignore[attr-defined]
         item = menus.get(self._menu_key)
         if item is not None:
-            if self._is_optimistic_active() and item.get("duringChange") == "t":
-                return
-            self._clear_optimistic_state()
             self._update_from_item(item)
         self.async_write_ha_state()  # type: ignore[attr-defined]
 

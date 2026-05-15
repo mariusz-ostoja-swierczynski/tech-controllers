@@ -94,15 +94,22 @@ async def test_confirm_settles_on_during_change_f() -> None:
 
 
 @pytest.mark.asyncio
-async def test_confirm_tech_error_falls_back_to_refresh() -> None:
-    """Transport error breaks the loop and falls back to coordinator refresh."""
+async def test_confirm_tech_error_retries_then_falls_back() -> None:
+    """Transient transport errors are retried; budget exhaustion refreshes."""
     entity = _StubEntity()
     entity._attr_assumed_state = True
     entity._optimistic_until = MagicMock()
-    entity.api.poll_update.side_effect = TechError(500, "boom")
+    entity.api.poll_update.side_effect = TechError(520, "no modules")
 
-    await entity._async_confirm_menu_change()
+    with patch(
+        "custom_components.tech.entity.asyncio.sleep", new=AsyncMock()
+    ) as mock_sleep:
+        await entity._async_confirm_menu_change()
 
+    # All attempts retried instead of breaking on first error.
+    # Sleep count = 1 initial delay + 12 retry sleeps.
+    assert entity.api.poll_update.await_count == 12
+    assert mock_sleep.await_count == 13
     assert entity._attr_assumed_state is False
     assert entity._optimistic_until is None
     # Fallback path: queue a coordinator refresh task.
@@ -139,24 +146,28 @@ async def test_confirm_budget_exhaustion_triggers_refresh() -> None:
 
 
 @pytest.mark.asyncio
-async def test_handle_update_drops_stale_during_change() -> None:
-    """During the optimistic window, ``duringChange:"t"`` is ignored."""
+async def test_handle_update_drops_all_coord_ticks_while_window_active() -> None:
+    """Coordinator tick during the optimistic window is dropped entirely.
+
+    The coordinator's regular menu fetch does NOT carry ``duringChange``, so
+    we cannot rely on that flag to filter stale snapshots. Drop every update
+    while the window is open and let the confirm task settle.
+    """
     entity = _StubEntity()
     entity.value = 7
     entity._attr_assumed_state = True
-    # Future timestamp so the window is still active.
     from datetime import timedelta
 
     from homeassistant.util import dt as dt_util
 
     entity._optimistic_until = dt_util.utcnow() + timedelta(seconds=60)
+    # Coordinator menu cache lacks ``duringChange`` (real-world payload).
     entity.coordinator.data = {
         "menus": {
             "MU_42": {
                 "id": 42,
                 "menuType": "MU",
-                "duringChange": "t",
-                "params": {"value": 1},
+                "params": {"value": 0},
             }
         }
     }
@@ -169,21 +180,15 @@ async def test_handle_update_drops_stale_during_change() -> None:
 
 
 @pytest.mark.asyncio
-async def test_handle_update_applies_settled_payload() -> None:
-    """Settled payloads always clear optimistic and update authoritatively."""
+async def test_handle_update_applies_after_window_expires() -> None:
+    """Out-of-window coordinator updates apply authoritatively."""
     entity = _StubEntity()
-    entity._attr_assumed_state = True
-    from datetime import timedelta
-
-    from homeassistant.util import dt as dt_util
-
-    entity._optimistic_until = dt_util.utcnow() + timedelta(seconds=60)
+    entity._optimistic_until = None
     entity.coordinator.data = {
         "menus": {
             "MU_42": {
                 "id": 42,
                 "menuType": "MU",
-                "duringChange": "f",
                 "params": {"value": 12},
             }
         }
@@ -192,9 +197,23 @@ async def test_handle_update_applies_settled_payload() -> None:
     entity._handle_coordinator_update()
 
     assert entity.value == 12
+    assert entity.write_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_confirm_cancellation_clears_optimistic_state() -> None:
+    """Cancellation (re-toggle / shutdown) must clear ``pending_confirm``."""
+    entity = _StubEntity()
+    entity._attr_assumed_state = True
+    entity._optimistic_until = MagicMock()
+    entity.api.poll_update.side_effect = asyncio.CancelledError()
+
+    with patch("custom_components.tech.entity.asyncio.sleep", new=AsyncMock()):
+        with pytest.raises(asyncio.CancelledError):
+            await entity._async_confirm_menu_change()
+
     assert entity._attr_assumed_state is False
     assert entity._optimistic_until is None
-    assert entity.write_calls == 1
 
 
 def test_find_menu_item_matches_type_and_id() -> None:

@@ -792,19 +792,18 @@ class TestTechAPI:
             assert result["menu"] == []
 
     @pytest.mark.asyncio
-    async def test_poll_update_cold_start_cursor(
+    async def test_poll_update_requires_cursor(
         self, client_session: aiohttp.ClientSession
     ):
-        """Empty/None ``last_update`` uses the ``0`` cold-start cursor."""
-        with patch.object(Tech, "get", new_callable=AsyncMock) as mock_get:
-            mock_get.return_value = {"lastUpdate": "x", "menu": []}
-            instance = Tech(client_session)
-            instance.authenticated = True
-            instance.user_id = "user123"
+        """Empty/None ``last_update`` is rejected — caller must supply cursor."""
+        instance = Tech(client_session)
+        instance.authenticated = True
+        instance.user_id = "user123"
 
+        with pytest.raises(TechError) as exc_info:
             await instance.poll_update("udid1", None)
 
-            assert mock_get.call_args[0][0].endswith("/last_update/0")
+        assert exc_info.value.status_code == 400
 
     @pytest.mark.asyncio
     async def test_poll_update_unauthorized(

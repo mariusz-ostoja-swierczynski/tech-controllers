@@ -373,27 +373,27 @@ class Tech:
     ) -> dict[str, Any]:
         """Long-poll the controller's update/data endpoint.
 
-        After a menu write the eModul UI polls this endpoint with the
-        previous ``lastUpdate`` cursor until ``duringChange`` flips from
-        ``"t"`` to ``"f"`` (change settled). Empty ``last_update`` works as
-        a cold-start cursor.
+        Used after a menu write to wait for ``duringChange`` to flip from
+        ``"t"`` to ``"f"``. ``last_update`` must be a tz-aware ISO cursor —
+        eModul rejects sentinels like ``"0"`` with 520.
 
         Args:
             module_udid: Tech module identifier.
             last_update: Cursor timestamp from the previous response.
 
         Returns:
-            Parsed JSON response. Contains ``menu``, ``tiles`` and an updated
-            ``lastUpdate`` cursor.
+            Parsed JSON response with ``menu``, ``tiles`` and ``lastUpdate``.
 
         Raises:
-            TechError: If the client is not authenticated or the request fails.
+            TechError: Not authenticated, missing cursor, or request failed.
 
         """
         if not self.authenticated:
             raise TechError(401, "Unauthorized")
+        if not last_update:
+            raise TechError(400, "poll_update requires last_update cursor")
         empty_array = quote("[]", safe="")
-        cursor = quote(last_update, safe="") if last_update else "0"
+        cursor = quote(last_update, safe="")
         path = (
             f"users/{self.user_id}/modules/{module_udid}/update/data/"
             f"parents/{empty_array}/alarm_ids/{empty_array}/last_update/{cursor}"

@@ -54,23 +54,14 @@ PLATFORMS = [
 SCAN_INTERVAL: Final = timedelta(seconds=60)
 API_TIMEOUT: Final = 60
 
-# Optimistic write reconciliation.
-# After a menu write we record an expected-confirm window during which we
-# ignore stale ``duringChange:"t"`` coordinator updates. A background task
-# long-polls the ``update/data`` endpoint until ``duringChange:"f"`` or the
-# attempt budget is exhausted (then we trigger a coordinator refresh as
-# fallback).
-#
-# Some controllers take 2-3 minutes to settle a change (slow boilers,
-# busy installer menus), so the window must outlive the coordinator's
-# 60 s SCAN_INTERVAL. The ``_handle_coordinator_update`` guard drops
-# stale ``duringChange:"t"`` snapshots during that overlap.
-#
-# Budget: ``MAX_ATTEMPTS * POLL_INTERVAL`` should exceed the worst-case
-# settle time. Default 12 * 15 s = 180 s.
+# Optimistic write window. Controllers can take 2-3 min to settle a change,
+# so window outlives the 60 s coordinator tick. Budget = MAX_ATTEMPTS *
+# POLL_INTERVAL must exceed worst-case settle time.
 OPTIMISTIC_TIMEOUT: Final = timedelta(seconds=180)
 OPTIMISTIC_POLL_INTERVAL: Final = 15
 OPTIMISTIC_POLL_MAX_ATTEMPTS: Final = 12
+# Delay before first poll — eModul returns 520 if probed too soon after POST.
+OPTIMISTIC_POLL_INITIAL_DELAY: Final = 15
 
 # tile type
 TYPE_TEMPERATURE = 1
