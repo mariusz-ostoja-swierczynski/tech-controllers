@@ -89,6 +89,48 @@ def get_icon_by_type(icon_type: int) -> str:
     return ICON_BY_TYPE.get(icon_type, DEFAULT_ICON)
 
 
+def compute_menu_depths(
+    menus: dict[str, dict[str, Any]],
+) -> dict[str, int]:
+    """Compute the nesting depth of every menu item.
+
+    Depth 0 is a top-level item (``parentId == 0``). Each parent traversal
+    adds one. Used by the menu setup functions in :mod:`switch`, :mod:`number`,
+    :mod:`select` and :mod:`button` to skip deeply-nested items (issue #187)
+    and to drive the ``entity_registry_enabled_default`` decision (issue #189
+    is satisfied because OpenTherm items sit at depth 1-3 and remain
+    registered for users to enable explicitly).
+
+    The traversal is bounded by an internal cycle guard and a hard cap of 20
+    levels so that pathological data cannot hang setup.
+
+    Args:
+        menus: Flat mapping of ``{menu_type}_{item_id}`` to menu item payload.
+
+    Returns:
+        Mapping of the same keys to the integer depth of each item.
+
+    """
+    # Index items by (menuType, id) for O(1) parent lookup.
+    by_key: dict[tuple[str, int], dict[str, Any]] = {
+        (item["menuType"], item["id"]): item for item in menus.values()
+    }
+    depths: dict[str, int] = {}
+    for menu_key, item in menus.items():
+        depth = 0
+        cur = item
+        seen: set[tuple[str, int]] = set()
+        while cur is not None and cur.get("parentId", 0) != 0:
+            cur_key = (cur["menuType"], cur["id"])
+            if cur_key in seen or depth >= 20:
+                break
+            seen.add(cur_key)
+            depth += 1
+            cur = by_key.get((cur["menuType"], cur["parentId"]))
+        depths[menu_key] = depth
+    return depths
+
+
 def build_menu_group_names(
     menus: dict[str, dict[str, Any]],
 ) -> dict[tuple[str, int], str]:
