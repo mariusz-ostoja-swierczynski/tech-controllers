@@ -11,7 +11,7 @@ from homeassistant.const import (
     CONF_NAME,
     EntityCategory,
 )
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -28,6 +28,7 @@ from .const import (
     UDID,
 )
 from .coordinator import TechCoordinator
+from .entity import OptimisticMenuMixin
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -80,7 +81,7 @@ async def async_setup_entry(
     async_add_entities(entities, True)
 
 
-class MenuSwitchEntity(CoordinatorEntity, SwitchEntity):
+class MenuSwitchEntity(OptimisticMenuMixin, CoordinatorEntity, SwitchEntity):
     """An on/off menu parameter exposed as a Home Assistant switch entity."""
 
     _attr_has_entity_name = True
@@ -169,38 +170,15 @@ class MenuSwitchEntity(CoordinatorEntity, SwitchEntity):
         self._attr_is_on = params.get("value", 0) == 1
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the switch on.
-
-        Update local state optimistically after the API call returns success
-        so HA reflects the change immediately. We deliberately do NOT request
-        an immediate coordinator refresh here -- the eModul API has a
-        ``duringChange: "t"`` window during which it still reports the old
-        value, so an immediate refresh would clobber the optimistic state.
-        The regular 60 s polling cadence reconciles eventually; if the
-        controller rejected the change the entity will revert by then.
-        """
-        await self.coordinator.api.set_menu_value(
-            self._udid, self._menu_type, self._item_id, {"value": 1}
-        )
-        self._attr_is_on = True
-        self.async_write_ha_state()
+        """Turn the switch on (optimistic write + ``duringChange`` confirm)."""
+        await self._set_switch_value(True)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn the switch off.
+        """Turn the switch off (optimistic write + ``duringChange`` confirm)."""
+        await self._set_switch_value(False)
 
-        See :meth:`async_turn_on` for the optimistic-update rationale.
-        """
-        await self.coordinator.api.set_menu_value(
-            self._udid, self._menu_type, self._item_id, {"value": 0}
-        )
-        self._attr_is_on = False
-        self.async_write_ha_state()
+    async def _set_switch_value(self, on: bool) -> None:
+        def apply() -> None:
+            self._attr_is_on = on
 
-    @callback
-    def _handle_coordinator_update(self, *args: Any) -> None:
-        """Handle updated data from the coordinator."""
-        menus = self._coordinator.data.get("menus", {})
-        item = menus.get(self._menu_key)
-        if item:
-            self._update_from_item(item)
-        self.async_write_ha_state()
+        await self._async_set_menu_value({"value": 1 if on else 0}, apply)

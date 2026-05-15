@@ -7,6 +7,7 @@ import json
 import logging
 import time
 from typing import TYPE_CHECKING, Any
+from urllib.parse import quote
 
 if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
     from aiohttp import ClientSession
@@ -347,16 +348,61 @@ class Tech:
         Returns:
             Parsed JSON response from the API.
 
+        Raises:
+            TechError: If the client is not authenticated or the controller
+                rejected the write (response status is not ``"success"``).
+
         """
         _LOGGER.debug("Setting menu value for %s/%s: %s", menu_type, ido, data)
-        if self.authenticated:
-            path = (
-                f"users/{self.user_id}/modules/{module_udid}/menu/{menu_type}/ido/{ido}"
-            )
-            result = await self.post(path, json.dumps(data))
-            _LOGGER.debug(result)
-        else:
+        if not self.authenticated:
             raise TechError(401, "Unauthorized")
+        path = f"users/{self.user_id}/modules/{module_udid}/menu/{menu_type}/ido/{ido}"
+        result = await self.post(path, json.dumps(data))
+        _LOGGER.debug(result)
+        # API contract: a successful write returns ``{"status": "success"}``.
+        # Some envelopes omit the field entirely (treated as success); only
+        # an explicit non-success status indicates rejection.
+        if isinstance(result, dict):
+            status = result.get("status")
+            if status is not None and status != "success":
+                raise TechError(400, f"set_menu_value rejected: {result}")
+        return result
+
+    async def poll_update(
+        self, module_udid: str, last_update: str | None
+    ) -> dict[str, Any]:
+        """Long-poll the controller's update/data endpoint.
+
+        After a menu write the eModul UI polls this endpoint with the
+        previous ``lastUpdate`` cursor until ``duringChange`` flips from
+        ``"t"`` to ``"f"`` (change settled). Empty ``last_update`` works as
+        a cold-start cursor.
+
+        Args:
+            module_udid: Tech module identifier.
+            last_update: Cursor timestamp from the previous response.
+
+        Returns:
+            Parsed JSON response. Contains ``menu``, ``tiles`` and an updated
+            ``lastUpdate`` cursor.
+
+        Raises:
+            TechError: If the client is not authenticated or the request fails.
+
+        """
+        if not self.authenticated:
+            raise TechError(401, "Unauthorized")
+        empty_array = quote("[]", safe="")
+        cursor = quote(last_update, safe="") if last_update else "0"
+        path = (
+            f"users/{self.user_id}/modules/{module_udid}/update/data/"
+            f"parents/{empty_array}/alarm_ids/{empty_array}/last_update/{cursor}"
+        )
+        result = await self.get(path)
+        if isinstance(result, dict):
+            new_cursor = result.get("lastUpdate")
+            if new_cursor:
+                self.last_update = new_cursor
         return result
 
     async def get_zone(self, module_udid, zone_id):

@@ -693,6 +693,132 @@ class TestTechAPI:
             assert result == mock_set_const_temp_response
 
     @pytest.mark.asyncio
+    async def test_set_menu_value_success(
+        self, client_session: aiohttp.ClientSession
+    ):
+        """set_menu_value accepts a ``status:success`` response."""
+        with patch.object(Tech, "post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = {"status": "success"}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            result = await instance.set_menu_value(
+                "udid1", "MU", 42, {"value": 1}
+            )
+
+            assert mock_post.called
+            assert (
+                mock_post.call_args[0][0]
+                == "users/user123/modules/udid1/menu/MU/ido/42"
+            )
+            assert json.loads(mock_post.call_args[0][1]) == {"value": 1}
+            assert result == {"status": "success"}
+
+    @pytest.mark.asyncio
+    async def test_set_menu_value_missing_status_treated_as_success(
+        self, client_session: aiohttp.ClientSession
+    ):
+        """Response without a ``status`` field is accepted."""
+        with patch.object(Tech, "post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = {"foo": "bar"}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            result = await instance.set_menu_value(
+                "udid1", "MU", 42, {"value": 1}
+            )
+
+            assert result == {"foo": "bar"}
+
+    @pytest.mark.asyncio
+    async def test_set_menu_value_rejected_status_raises(
+        self, client_session: aiohttp.ClientSession
+    ):
+        """Non-success status from the controller raises ``TechError``."""
+        with patch.object(Tech, "post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = {"status": "error"}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            with pytest.raises(TechError) as exc_info:
+                await instance.set_menu_value(
+                    "udid1", "MU", 42, {"value": 1}
+                )
+
+            assert exc_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_set_menu_value_unauthorized(
+        self, client_session: aiohttp.ClientSession
+    ):
+        """set_menu_value raises when the client is not authenticated."""
+        instance = Tech(client_session)
+        instance.authenticated = False
+
+        with pytest.raises(TechError) as exc_info:
+            await instance.set_menu_value("udid1", "MU", 42, {"value": 1})
+
+        assert exc_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_poll_update_url_encoding_and_cursor(
+        self, client_session: aiohttp.ClientSession
+    ):
+        """poll_update encodes brackets and ISO cursor, updates last_update."""
+        with patch.object(Tech, "get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = {
+                "lastUpdate": "2026-05-15T10:00:01Z",
+                "menu": [],
+            }
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            result = await instance.poll_update(
+                "udid1", "2026-05-15T10:00:00Z"
+            )
+
+            assert mock_get.called
+            path = mock_get.call_args[0][0]
+            assert path == (
+                "users/user123/modules/udid1/update/data/"
+                "parents/%5B%5D/alarm_ids/%5B%5D/last_update/"
+                "2026-05-15T10%3A00%3A00Z"
+            )
+            assert instance.last_update == "2026-05-15T10:00:01Z"
+            assert result["menu"] == []
+
+    @pytest.mark.asyncio
+    async def test_poll_update_cold_start_cursor(
+        self, client_session: aiohttp.ClientSession
+    ):
+        """Empty/None ``last_update`` uses the ``0`` cold-start cursor."""
+        with patch.object(Tech, "get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = {"lastUpdate": "x", "menu": []}
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+
+            await instance.poll_update("udid1", None)
+
+            assert mock_get.call_args[0][0].endswith("/last_update/0")
+
+    @pytest.mark.asyncio
+    async def test_poll_update_unauthorized(
+        self, client_session: aiohttp.ClientSession
+    ):
+        """poll_update raises when not authenticated."""
+        instance = Tech(client_session)
+        instance.authenticated = False
+
+        with pytest.raises(TechError) as exc_info:
+            await instance.poll_update("udid1", None)
+
+        assert exc_info.value.status_code == 401
+    @pytest.mark.asyncio
     async def test_set_zone_mock(
         self, client_session: aiohttp.ClientSession, mock_set_const_temp_response
     ):
