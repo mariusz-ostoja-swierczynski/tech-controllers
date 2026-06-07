@@ -24,6 +24,7 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -100,6 +101,8 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         )
         self._temperature = None
         self._target_temperature = None
+        self._zone_mode = None
+        self._const_temp_time = None
         self.update_properties(device)
         # Remove the line below after HA 2025.1
         self._enable_turn_on_off_backwards_compatibility = False
@@ -169,6 +172,11 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
             self._mode = HVACMode.HEAT
         else:
             self._mode = HVACMode.OFF
+
+        # Update zone mode and const temp time from mode object
+        if "mode" in device:
+            self._zone_mode = device["mode"].get("mode")
+            self._const_temp_time = device["mode"].get("constTempTime")
 
     @callback
     def _handle_coordinator_update(self, *args: Any) -> None:
@@ -249,6 +257,16 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         """Return the temperature we try to reach."""
         return self._target_temperature
 
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra state attributes for the custom card."""
+        attrs = {}
+        if self._zone_mode is not None:
+            attrs["zone_mode"] = self._zone_mode
+        if self._const_temp_time is not None:
+            attrs["const_temp_time"] = self._const_temp_time
+        return attrs
+
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set a new target temperature on the Tech module.
 
@@ -265,6 +283,34 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
             self._temperature = temperature
             await self._coordinator.api.set_const_temp(
                 self._udid, self._id, temperature
+            )
+            self._target_temperature = temperature
+            await self.coordinator.async_request_refresh()
+
+
+    async def async_set_temperature_with_duration(
+        self, temperature: float, duration_minutes: int
+    ) -> None:
+        """Set a new target temperature with time limit on the Tech module.
+
+        This is a custom service that provides a UI-friendly way to set
+        temperature with duration. It will use the timeLimit mode.
+
+        Args:
+            temperature: Target temperature in °C.
+            duration_minutes: Duration in minutes for the time-limited temperature.
+
+        """
+        _LOGGER.debug(
+            "%s: Setting temperature to %s for %s minutes",
+            self.device_name,
+            temperature,
+            duration_minutes,
+        )
+        if temperature:
+            self._temperature = temperature
+            await self._coordinator.api.set_const_temp(
+                self._udid, self._id, temperature, duration_minutes
             )
             self._target_temperature = temperature
             await self.coordinator.async_request_refresh()
