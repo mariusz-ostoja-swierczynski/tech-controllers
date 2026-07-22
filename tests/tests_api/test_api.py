@@ -725,3 +725,52 @@ class TestTechAPI:
 
             # Verify that the method returns the response
             assert result == mock_set_const_temp_response
+
+    @pytest.mark.asyncio
+    async def test_set_const_temp_with_duration_mock(
+        self, client_session: aiohttp.ClientSession, mock_set_const_temp_response
+    ):
+        """Test that set_const_temp() with duration sends timeLimit mode."""
+        module_udid = "123456789"
+        zone_id = 1
+        target_temp = 24.0
+        duration_minutes = 120
+
+        # Set up the mock post method and the instance
+        with patch.object(Tech, "post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = mock_set_const_temp_response
+            instance = Tech(client_session)
+            instance.authenticated = True
+            instance.user_id = "user123"
+            instance.modules = {
+                module_udid: {"zones": {zone_id: {"mode": {"id": 123}}}}
+            }
+
+            # Call the method with duration
+            result = await instance.set_const_temp(
+                module_udid, zone_id, target_temp, const_temp_time=duration_minutes
+            )
+
+            # Verify that the mock was called with the expected arguments
+            assert mock_post.called
+            assert mock_post.call_args[0][0] == "users/user123/modules/123456789/zones"
+
+            # Verify that the mock was called with timeLimit mode and correct duration
+            expected_data = {
+                "mode": {
+                    "id": 123,
+                    "parentId": zone_id,
+                    "mode": "timeLimit",
+                    "constTempTime": duration_minutes,
+                    "setTemperature": int(target_temp * 10),
+                    "scheduleIndex": 0,
+                }
+            }
+            assert (
+                mock_post.await_args is not None
+                and mock_post.await_args[0][1] is not None
+            ), "The argument should not be None"
+            assert json.loads(mock_post.call_args[0][1]) == expected_data
+
+            # Verify that the method returns the response
+            assert result == mock_set_const_temp_response
