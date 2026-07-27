@@ -8,14 +8,15 @@ injecting minimal stubs for every HA module/class the target module imports.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import copy
 import importlib.util
 import logging
 import pathlib
 import sys
 import types
-from typing import Any, Callable, TypeVar
-from unittest.mock import ANY, AsyncMock, MagicMock, PropertyMock, patch
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -61,10 +62,7 @@ _ha_core = sys.modules.setdefault(
     "homeassistant.core", types.ModuleType("homeassistant.core")
 )
 
-_F = TypeVar("_F", bound=Callable[..., Any])
-
-
-def _callback(f: _F) -> _F:
+def _callback[_F: Callable[..., Any]](f: _F) -> _F:
     """Stub for ``@homeassistant.core.callback`` -- no-op."""
     return f
 
@@ -267,7 +265,6 @@ MenuFanSpeedSelectEntity = _select_rec_mod.MenuFanSpeedSelectEntity
 
 # Shorter alias for the const-level values used in these tests.
 from custom_components.tech.const import CONTROLLER, DOMAIN, UDID  # noqa: E402
-
 
 # ============================================================================
 # Fixture data  (from issue #201 JSON.txt)
