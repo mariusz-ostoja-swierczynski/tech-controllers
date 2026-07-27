@@ -87,6 +87,7 @@ PLATFORMS = [
     Platform.CLIMATE,
     Platform.NUMBER,
     Platform.SELECT,
+    "select_recuperator",
     Platform.SENSOR,
     Platform.SWITCH,
 ]
