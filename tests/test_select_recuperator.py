@@ -1,14 +1,10 @@
 """Unit tests for :mod:`custom_components.tech.select_recuperator`.
 
 Tests cover ``MenuFanSpeedSelectEntity`` and its ``async_setup_entry`` gate.
-
-Home Assistant is **not** installed in this environment, so the file begins by
-injecting minimal stubs for every HA module/class the target module imports.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
 import copy
 import importlib.util
 import logging
@@ -19,190 +15,6 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
-# ============================================================================
-# Stub Home Assistant – inject before ANY other import that touches HA
-# ============================================================================
-
-_ha = sys.modules.setdefault("homeassistant", types.ModuleType("homeassistant"))
-
-# -- homeassistant.const ----------------------------------------------------
-_ha_const = sys.modules.setdefault(
-    "homeassistant.const", types.ModuleType("homeassistant.const")
-)
-
-if not hasattr(_ha_const, "Platform"):
-
-    class _Platform:
-        BINARY_SENSOR = "binary_sensor"
-        BUTTON = "button"
-        CLIMATE = "climate"
-        NUMBER = "number"
-        SELECT = "select"
-        SENSOR = "sensor"
-        SWITCH = "switch"
-
-    _ha_const.Platform = _Platform
-
-_ha_const.ATTR_IDENTIFIERS = "identifiers"
-_ha_const.ATTR_MANUFACTURER = "manufacturer"
-_ha_const.CONF_NAME = "name"
-
-if not hasattr(_ha_const, "EntityCategory"):
-
-    class _EntityCategory:
-        CONFIG = "config"
-        DIAGNOSTIC = "diagnostic"
-        SYSTEM = "system"
-
-    _ha_const.EntityCategory = _EntityCategory
-
-# -- homeassistant.core -----------------------------------------------------
-_ha_core = sys.modules.setdefault(
-    "homeassistant.core", types.ModuleType("homeassistant.core")
-)
-
-def _callback[_F: Callable[..., Any]](f: _F) -> _F:
-    """Stub for ``@homeassistant.core.callback`` -- no-op."""
-    return f
-
-
-if not hasattr(_ha_core, "callback"):
-    _ha_core.callback = _callback
-
-if not hasattr(_ha_core, "HomeAssistant"):
-
-    class _HomeAssistant:
-        data: dict[str, Any] = {}
-
-    _ha_core.HomeAssistant = _HomeAssistant
-
-# -- homeassistant.helpers --------------------------------------------------
-_ha_helpers = sys.modules.setdefault(
-    "homeassistant.helpers", types.ModuleType("homeassistant.helpers")
-)
-
-# -- homeassistant.helpers.entity_platform ----------------------------------
-_ha_helpers_ep = sys.modules.setdefault(
-    "homeassistant.helpers.entity_platform",
-    types.ModuleType("homeassistant.helpers.entity_platform"),
-)
-if not hasattr(_ha_helpers_ep, "AddEntitiesCallback"):
-
-    class _AddEntitiesCallback:
-        """Stub for typing-only ``AddEntitiesCallback``."""
-
-        def __call__(self, entities: list[Any], update_before_add: bool = True) -> None:
-            pass
-
-    _ha_helpers_ep.AddEntitiesCallback = _AddEntitiesCallback
-
-# -- homeassistant.helpers.update_coordinator -------------------------------
-_ha_helpers_uc = sys.modules.setdefault(
-    "homeassistant.helpers.update_coordinator",
-    types.ModuleType("homeassistant.helpers.update_coordinator"),
-)
-if not hasattr(_ha_helpers_uc, "_Entity"):
-
-    class _Entity:
-        """Minimal stub for ``homeassistant.helpers.entity.Entity``.
-
-        Shared base for ``CoordinatorEntity`` and ``SelectEntity`` so
-        that MRO does not become a diamond problem.
-        """
-
-        _attr_has_entity_name: bool = False
-        _attr_entity_category: str | None = None
-        _attr_icon: str | None = None
-        _attr_current_option: str | None = None
-        _attr_options: list[str] = []
-
-        def __init__(self) -> None:
-            pass
-
-        @property
-        def unique_id(self) -> str | None:
-            return getattr(self, "_attr_unique_id", None)
-
-        @property
-        def name(self) -> str | None:
-            return getattr(self, "_attr_name", None)
-
-        @property
-        def device_info(self) -> dict | None:
-            return None
-
-        def async_write_ha_state(self) -> None:
-            pass
-
-    _ha_helpers_uc._Entity = _Entity
-
-
-if not hasattr(_ha_helpers_uc, "CoordinatorEntity"):
-
-    class _CoordinatorEntity(_Entity):
-        """Minimal stub for ``CoordinatorEntity``.
-
-        Only what ``MenuFanSpeedSelectEntity`` actually uses at runtime.
-        """
-
-        def __init__(self, coordinator: Any) -> None:
-            super().__init__()
-            self.coordinator = coordinator
-            self.hass = getattr(coordinator, "hass", None)
-
-    _ha_helpers_uc.CoordinatorEntity = _CoordinatorEntity
-
-# -- homeassistant.helpers.device_registry ----------------------------------
-_ha_helpers_dr = sys.modules.setdefault(
-    "homeassistant.helpers.device_registry",
-    types.ModuleType("homeassistant.helpers.device_registry"),
-)
-if not hasattr(_ha_helpers_dr, "DeviceInfo"):
-    _ha_helpers_dr.DeviceInfo = dict
-
-# -- homeassistant.config_entries -------------------------------------------
-_ha_ce = sys.modules.setdefault(
-    "homeassistant.config_entries", types.ModuleType("homeassistant.config_entries")
-)
-if not hasattr(_ha_ce, "ConfigEntry"):
-
-    class _ConfigEntry:
-        """Minimal stub for typing-only ``ConfigEntry``."""
-
-        def __init__(self, data: dict | None = None, title: str = "") -> None:
-            self.data = data or {}
-            self.title = title
-            self.entry_id = "test_entry_id"
-
-    _ha_ce.ConfigEntry = _ConfigEntry
-
-# -- homeassistant.components.select ----------------------------------------
-_ha_comp_select = sys.modules.setdefault(
-    "homeassistant.components.select",
-    types.ModuleType("homeassistant.components.select"),
-)
-if not hasattr(_ha_comp_select, "SelectEntity"):
-
-    class _SelectEntity(_Entity):
-        """Minimal stub for ``SelectEntity``."""
-
-        _attr_current_option: str | None = None
-        _attr_options: list[str] = []
-
-        @property
-        def current_option(self) -> str | None:
-            return self._attr_current_option
-
-        @current_option.setter
-        def current_option(self, value: str | None) -> None:
-            self._attr_current_option = value
-
-        async def async_select_option(self, option: str) -> None:
-            raise NotImplementedError
-
-    _ha_comp_select.SelectEntity = _SelectEntity
-
 
 # ============================================================================
 # Load the real target module: ``custom_components.tech.select_recuperator``
@@ -357,7 +169,11 @@ def async_add_entities() -> MagicMock:
 def entity(coordinator: MagicMock, config_entry: MagicMock) -> MenuFanSpeedSelectEntity:
     """Return a fully-initialised ``MenuFanSpeedSelectEntity``."""
     item = copy.deepcopy(MU_2070_FIXTURE)
-    return MenuFanSpeedSelectEntity(item, "MU_2070", coordinator, config_entry)
+    ent = MenuFanSpeedSelectEntity(item, "MU_2070", coordinator, config_entry)
+    ent.hass = MagicMock()
+    ent.entity_id = "select.test_fan_speed"
+    ent.async_write_ha_state = MagicMock()
+    return ent
 
 
 # ============================================================================
