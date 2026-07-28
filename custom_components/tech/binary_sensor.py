@@ -1,6 +1,6 @@
 """Binary sensor platform for the Tech Sterowniki integration.
 
-Three flavours of binary entity are emitted:
+Four flavours of binary entity are emitted:
 
 * **Relays** -- TYPE_RELAY (=11) tiles ("Pompa CO", "Pompa CWU",
   "Podajnik" etc.) and TYPE_ADDITIONAL_PUMP (=21) tiles, both backed by
@@ -14,6 +14,14 @@ Three flavours of binary entity are emitted:
   contact-shape marker (``unit==-1, type==0, txtId!=0``), backed by
   :class:`TileWidgetContactSensor`. EU-i-3+ extension modules expose all
   four of their voltage / potential-free inputs this way.
+* **Widget status sensors** -- TYPE_WIDGET (=6) tiles whose
+  ``params.statusId`` is ``0`` or ``1`` **and** whose widgets include a
+  pump type (``WIDGET_DHW_PUMP`` or ``WIDGET_COLLECTOR_PUMP``), backed by
+  :class:`TileWidgetStatusSensor`. The statusId signals ON/OFF state for
+  PWM-controlled pumps whose widgets carry temperature data (rather than
+  a relay ``workingStatus`` boolean). Tiles with only temperature or
+  contact widgets always report ``statusId=1`` and never toggle, so they
+  are excluded to avoid flooding HA with useless always-ON sensors.
 
 Contact widgets share their parent tile with numeric widgets that go to
 :mod:`sensor`. Both modules use the same :func:`_is_contact_widget`
@@ -47,6 +55,8 @@ from .const import (
     UDID,
     VALUE,
     VISIBILITY,
+    WIDGET_COLLECTOR_PUMP,
+    WIDGET_DHW_PUMP,
 )
 from .entity import TileEntity
 
@@ -60,6 +70,21 @@ def _is_contact_widget(widget: dict) -> bool:
         and widget.get(CONF_TYPE) == 0
         and widget.get("txtId", 0) != 0
     )
+
+
+def _has_pump_widget(params: dict) -> bool:
+    """Return ``True`` if the TYPE_WIDGET tile carries a pump-type widget.
+
+    Pump-type widgets (``type=1`` = WIDGET_DHW_PUMP, ``type=2`` =
+    WIDGET_COLLECTOR_PUMP) indicate the tile represents a pump whose
+    ``statusId`` carries ON/OFF semantics. Pure temperature or contact
+    widgets always report ``statusId=1`` and never toggle.
+    """
+    for key in ("widget1", "widget2"):
+        widget = params.get(key)
+        if widget and widget.get(CONF_TYPE) in (WIDGET_DHW_PUMP, WIDGET_COLLECTOR_PUMP):
+            return True
+    return False
 
 
 async def async_setup_entry(
@@ -110,6 +135,16 @@ async def async_setup_entry(
                             tile, coordinator, config_entry, widget_key
                         )
                     )
+            # TYPE_WIDGET tiles with statusId 0 or 1 carry ON/OFF state for
+            # PWM-controlled pumps (e.g. solar collector). Only emit the
+            # binary sensor when the tile has pump-type widgets (type=1 or
+            # type=2) — pure temperature/contact widgets always report
+            # statusId=1 and never toggle.
+            status_id = tile.get(CONF_PARAMS, {}).get("statusId")
+            if status_id in (0, 1) and _has_pump_widget(tile.get(CONF_PARAMS, {})):
+                entities.append(
+                    TileWidgetStatusSensor(tile, coordinator, config_entry)
+                )
 
     async_add_entities(entities, True)
 
@@ -212,3 +247,61 @@ class TileWidgetContactSensor(TileBinarySensor):
     def get_state(self, device):
         """Return the contact state from the widget value."""
         return device[CONF_PARAMS][self._widget_key][VALUE] == 1
+
+
+class TileWidgetStatusSensor(TileBinarySensor):
+    """A TYPE_WIDGET tile whose ``statusId`` signals ON/OFF pump state.
+
+    PWM-controlled pumps (solar collector, etc.) use ``statusId``
+    (1=ON, 0=OFF) rather than a ``workingStatus`` boolean or a relay
+    tile. The tile's own widgets carry temperature readings handled by
+    :mod:`sensor`; this entity adds the companion ON/OFF indicator.
+
+    Only statusId values 0 and 1 are consumed — larger values are
+    translation keys for :class:`~sensor.TileTextSensor` and are ignored
+    here.
+    """
+
+    _attr_device_class = binary_sensor.BinarySensorDeviceClass.RUNNING
+
+    def __init__(
+        self,
+        device,
+        coordinator: TechCoordinator,
+        config_entry,
+    ) -> None:
+        """Initialise the status-id-backed binary sensor.
+
+        Args:
+            device: Tile payload returned by the Tech API.
+            coordinator: Shared Tech data coordinator instance.
+            config_entry: Config entry providing controller metadata.
+
+        """
+        TileBinarySensor.__init__(self, device, coordinator, config_entry)
+        icon_id = device[CONF_PARAMS].get("iconId")
+        if icon_id:
+            self._attr_icon = assets.get_icon(icon_id)
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_tile_status"
+
+    def get_state(self, device):
+        """Return the ON/OFF state from the tile's statusId.
+
+        Args:
+            device: Tile payload returned by the Tech API.
+
+        Returns:
+            ``True`` when statusId == 1 (ON), ``False`` when statusId == 0
+            (OFF). Any other value is returned as ``None`` (unknown).
+
+        """
+        status_id = device[CONF_PARAMS].get("statusId")
+        if status_id == 1:
+            return True
+        if status_id == 0:
+            return False
+        return None

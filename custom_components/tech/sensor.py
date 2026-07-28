@@ -360,8 +360,9 @@ def _build_widget_tile(
     1. Widgets with ``txtId == 0`` are placeholders -- skip.
     2. Contact-shaped widgets (``unit==-1, type==0, txtId!=0``) belong to
        :mod:`binary_sensor`; skip here so they are not emitted twice.
-    3. ``unit == 6`` widgets are decorative state badges (always 0 in the
-       wild); skip to avoid useless "always 0" sensors.
+    3. ``unit == 6`` widgets with a zero value are decorative state badges;
+       skip them to avoid useless "always 0" sensors. Non-zero unit=6
+       widgets (e.g. solar pump temperatures) are kept and handled below.
     4. WIDGET_COLLECTOR_PUMP -> :class:`TileWidgetPumpSensor` (percentage).
     5. Everything else (DHW set/current temp, CH temp, generic
        ``type==0`` numeric) -> :class:`TileWidgetTemperatureSensor`,
@@ -380,7 +381,7 @@ def _build_widget_tile(
             continue
         if _is_contact_widget(widget):
             continue
-        if widget.get("unit") == 6:
+        if widget.get("unit") == 6 and widget.get("value", 0) == 0:
             continue
         widget_type = widget.get(CONF_TYPE)
         if widget_type == WIDGET_COLLECTOR_PUMP or widget.get("unit") == 8:

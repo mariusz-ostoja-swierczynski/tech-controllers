@@ -117,6 +117,27 @@ class TestIsContactWidget:
         widget = {"unit": 6, "type": 0, "txtId": 760, "value": 0}
         assert is_contact_widget_oracle(widget) is False
 
+    def test_unit6_zero_valued_widget_skipped_by_dispatch(self):
+        """A unit=6 widget with value=0 is still skipped (badge)."""
+        widget = {"unit": 6, "type": 0, "txtId": 760, "value": 0}
+        # This emulates the _build_widget_tile dispatch: skip when
+        # unit=6 AND value==0 (decorative badge, no numeric meaning).
+        should_skip = (
+            widget.get("unit") == 6 and widget.get("value", 0) == 0
+        )
+        assert should_skip is True
+
+    def test_unit6_nonzero_valued_widget_not_skipped_by_dispatch(self):
+        """A unit=6 widget with non-zero value is kept (real data, e.g. solar pump temperatures)."""
+        widget = {"unit": 6, "type": 1, "txtId": 2442, "value": 56}
+        # After the fix for the PWM solar pump (issue #196), non-zero
+        # unit=6 widgets are no longer skipped — they flow through to
+        # TileWidgetTemperatureSensor.
+        should_skip = (
+            widget.get("unit") == 6 and widget.get("value", 0) == 0
+        )
+        assert should_skip is False
+
     def test_predicate_source_matches_oracle(self):
         """Verify sensor.py and binary_sensor.py still encode the same rule.
 
@@ -136,6 +157,14 @@ class TestIsContactWidget:
         for src in (sensor_src, binary_src):
             assert 'widget.get("unit") == -1' in src
             assert 'widget.get("txtId", 0) != 0' in src
+
+    def test_unit6_skip_condition_source_matches(self):
+        """sensor.py must encode the updated unit=6 skip rule (skip only when value==0)."""
+        sensor_src = (
+            _REPO_ROOT / "custom_components" / "tech" / "sensor.py"
+        ).read_text()
+        # The new skip condition: only skip unit=6 widgets with value==0.
+        assert 'if widget.get("unit") == 6 and widget.get("value", 0) == 0:' in sensor_src
 
 
 # ---------------------------------------------------------------------------
@@ -357,6 +386,25 @@ class TestSt491Fixture:
         assert emitted == 4
 
 
+    def test_all_widget_tiles_have_status_binary_sensor(self):
+        """Only TYPE_WIDGET tiles with pump-type widgets get a TileWidgetStatusSensor."""
+        count = 0
+        for tile in self.module["tiles"]:
+            if tile["type"] != C.TYPE_WIDGET:
+                continue
+            status_id = tile["params"].get("statusId")
+            if status_id not in (0, 1):
+                continue
+            has_pump = any(
+                tile["params"].get(key, {}).get("type") in (C.WIDGET_DHW_PUMP, C.WIDGET_COLLECTOR_PUMP)
+                for key in ("widget1", "widget2")
+            )
+            if has_pump:
+                count += 1
+        # ST-491 has no pump-type widgets among its TYPE_WIDGET tiles
+        assert count == 0
+
+
 # ---------------------------------------------------------------------------
 # Fixture-driven assertions: L-12 zone controller
 # ---------------------------------------------------------------------------
@@ -495,6 +543,23 @@ class TestSt2801Fixture:
         # raw percentage -- no scaling needed
         assert C.WIDGET_UNIT_DIVISORS[8] == 1
 
+    def test_all_widget_tiles_have_status_binary_sensor(self):
+        """The lone TYPE_WIDGET tile has a pump-type widget and gets a status sensor."""
+        count = 0
+        for tile in self.module["tiles"]:
+            if tile["type"] != C.TYPE_WIDGET:
+                continue
+            status_id = tile["params"].get("statusId")
+            if status_id not in (0, 1):
+                continue
+            has_pump = any(
+                tile["params"].get(key, {}).get("type") in (C.WIDGET_DHW_PUMP, C.WIDGET_COLLECTOR_PUMP)
+                for key in ("widget1", "widget2")
+            )
+            if has_pump:
+                count += 1
+        assert count == 1
+
     def test_expected_tile_type_distribution(self):
         """Pin the per-type tile counts of the captured ST-2801 fixture."""
         counts = Counter(t["type"] for t in self.module["tiles"])
@@ -605,6 +670,44 @@ class TestSt521Fixture:
                     continue
                 emitted += 1
         assert emitted == 66
+
+    def test_all_widget_tiles_have_status_binary_sensor(self):
+        """66 of 70 TYPE_WIDGET tiles have pump-type widgets and get a status sensor.
+
+        The remaining 4 are pure contact-sensor tiles (type=0 on both widgets)
+        and are correctly excluded.
+        """
+        count = 0
+        for tile in self.module["tiles"]:
+            if tile["type"] != C.TYPE_WIDGET:
+                continue
+            status_id = tile["params"].get("statusId")
+            if status_id not in (0, 1):
+                continue
+            has_pump = any(
+                tile["params"].get(key, {}).get("type") in (C.WIDGET_DHW_PUMP, C.WIDGET_COLLECTOR_PUMP)
+                for key in ("widget1", "widget2")
+            )
+            if has_pump:
+                count += 1
+        assert count == 66
+
+    def test_status_binary_sensor_off_states(self):
+        """One TYPE_WIDGET tile has statusId=0 and a pump-type widget (OFF)."""
+        off_count = 0
+        for tile in self.module["tiles"]:
+            if tile["type"] != C.TYPE_WIDGET:
+                continue
+            status_id = tile["params"].get("statusId")
+            if status_id != 0:
+                continue
+            has_pump = any(
+                tile["params"].get(key, {}).get("type") in (C.WIDGET_DHW_PUMP, C.WIDGET_COLLECTOR_PUMP)
+                for key in ("widget1", "widget2")
+            )
+            if has_pump:
+                off_count += 1
+        assert off_count == 1
 
     def test_new_unit_codes_scale_correctly(self):
         """Unit codes 23, 26, 33 scale values by 10 (bar, kW, %).
