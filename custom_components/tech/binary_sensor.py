@@ -206,7 +206,10 @@ class TileWidgetContactSensor(TileBinarySensor):
     """A widget-shaped contact (e.g. EU-i-3+ voltage / potential-free input).
 
     Detected by ``unit == -1`` and ``type == 0`` on a TYPE_WIDGET tile widget.
-    Exposed as an opening device-class binary sensor; ``value == 1`` means open.
+    Exposed as an opening device-class binary sensor; ON/OFF state comes from
+    the tile-level ``params.statusId`` (1=ON, 0=OFF), which is how the emodul
+    UI renders contact state — the individual widget ``value`` field is always
+    0 for contact widgets in the API response.
     """
 
     _attr_device_class = binary_sensor.BinarySensorDeviceClass.OPENING
@@ -245,8 +248,13 @@ class TileWidgetContactSensor(TileBinarySensor):
         return f"{self._unique_id}_tile_widget_contact_{self._widget_key}"
 
     def get_state(self, device):
-        """Return the contact state from the widget value."""
-        return device[CONF_PARAMS][self._widget_key][VALUE] == 1
+        """Return the contact state from the tile's statusId.
+
+        The emodul UI derives contact ON/OFF from ``params.statusId``
+        (1=ON, 0=OFF), not from the individual widget ``value`` which
+        is always 0 for contact widgets in the API response.
+        """
+        return device[CONF_PARAMS].get("statusId") == 1
 
 
 class TileWidgetStatusSensor(TileBinarySensor):
@@ -282,6 +290,17 @@ class TileWidgetStatusSensor(TileBinarySensor):
         icon_id = device[CONF_PARAMS].get("iconId")
         if icon_id:
             self._attr_icon = assets.get_icon(icon_id)
+        # Override the name from TileEntity's "type 6" fallback to the
+        # pump widget's own label (e.g. "Pompa solarna"). Iterate widgets
+        # in order so widget1's txtId wins when both carry labels.
+        params = device.get(CONF_PARAMS, {})
+        for key in ("widget1", "widget2"):
+            widget = params.get(key, {})
+            if widget.get(CONF_TYPE) in (WIDGET_DHW_PUMP, WIDGET_COLLECTOR_PUMP):
+                txt_id = widget.get("txtId", 0)
+                if txt_id > 0:
+                    self._name = coordinator.translations.get_text(txt_id)
+                    break
 
     @property
     def unique_id(self) -> str:
