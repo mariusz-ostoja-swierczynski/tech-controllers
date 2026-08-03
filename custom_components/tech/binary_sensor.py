@@ -34,6 +34,7 @@ import logging
 from homeassistant.components import binary_sensor
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
+    CONF_ID,
     CONF_PARAMS,
     CONF_TYPE,
     STATE_OFF,
@@ -53,7 +54,6 @@ from .const import (
     TYPE_RELAY,
     TYPE_WIDGET,
     UDID,
-    VALUE,
     VISIBILITY,
     WIDGET_COLLECTOR_PUMP,
     WIDGET_DHW_PUMP,
@@ -113,27 +113,65 @@ async def async_setup_entry(
         tile = tiles[t]
         if tile[VISIBILITY] is False:
             continue
+        tile_id = tile.get(CONF_ID)
         if tile[CONF_TYPE] == TYPE_RELAY:
-            entities.append(RelaySensor(tile, coordinator, config_entry))
+            entity = RelaySensor(tile, coordinator, config_entry)
+            entities.append(entity)
+            _LOGGER.debug(
+                "Creating %s from tile %s: name=%r unique_id=%s "
+                "workingStatus=%s",
+                type(entity).__name__,
+                tile_id,
+                getattr(entity, "_name", None),
+                entity.unique_id,
+                tile.get(CONF_PARAMS, {}).get("workingStatus"),
+            )
         if tile[CONF_TYPE] == TYPE_FIRE_SENSOR:
-            entities.append(
-                RelaySensor(
-                    tile,
-                    coordinator,
-                    config_entry,
-                    binary_sensor.BinarySensorDeviceClass.MOTION,
-                )
+            entity = RelaySensor(
+                tile,
+                coordinator,
+                config_entry,
+                binary_sensor.BinarySensorDeviceClass.MOTION,
+            )
+            entities.append(entity)
+            _LOGGER.debug(
+                "Creating %s from tile %s: name=%r unique_id=%s "
+                "workingStatus=%s",
+                type(entity).__name__,
+                tile_id,
+                getattr(entity, "_name", None),
+                entity.unique_id,
+                tile.get(CONF_PARAMS, {}).get("workingStatus"),
             )
         if tile[CONF_TYPE] == TYPE_ADDITIONAL_PUMP:
-            entities.append(RelaySensor(tile, coordinator, config_entry))
+            entity = RelaySensor(tile, coordinator, config_entry)
+            entities.append(entity)
+            _LOGGER.debug(
+                "Creating %s from tile %s: name=%r unique_id=%s "
+                "workingStatus=%s",
+                type(entity).__name__,
+                tile_id,
+                getattr(entity, "_name", None),
+                entity.unique_id,
+                tile.get(CONF_PARAMS, {}).get("workingStatus"),
+            )
         if tile[CONF_TYPE] == TYPE_WIDGET:
             for widget_key in ("widget1", "widget2"):
                 widget = tile.get(CONF_PARAMS, {}).get(widget_key)
                 if widget and _is_contact_widget(widget):
-                    entities.append(
-                        TileWidgetContactSensor(
-                            tile, coordinator, config_entry, widget_key
-                        )
+                    entity = TileWidgetContactSensor(
+                        tile, coordinator, config_entry, widget_key
+                    )
+                    entities.append(entity)
+                    _LOGGER.debug(
+                        "Creating %s from tile %s widget %s: name=%r "
+                        "unique_id=%s statusId=%s",
+                        type(entity).__name__,
+                        tile_id,
+                        widget_key,
+                        getattr(entity, "_name", None),
+                        entity.unique_id,
+                        tile.get(CONF_PARAMS, {}).get("statusId"),
                     )
             # TYPE_WIDGET tiles with statusId 0 or 1 carry ON/OFF state for
             # PWM-controlled pumps (e.g. solar collector). Only emit the
@@ -142,8 +180,15 @@ async def async_setup_entry(
             # statusId=1 and never toggle.
             status_id = tile.get(CONF_PARAMS, {}).get("statusId")
             if status_id in (0, 1) and _has_pump_widget(tile.get(CONF_PARAMS, {})):
-                entities.append(
-                    TileWidgetStatusSensor(tile, coordinator, config_entry)
+                entity = TileWidgetStatusSensor(tile, coordinator, config_entry)
+                entities.append(entity)
+                _LOGGER.debug(
+                    "Creating %s from tile %s: name=%r unique_id=%s statusId=%s",
+                    type(entity).__name__,
+                    tile_id,
+                    getattr(entity, "_name", None),
+                    entity.unique_id,
+                    status_id,
                 )
 
     async_add_entities(entities, True)
