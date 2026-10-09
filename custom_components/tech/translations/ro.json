@@ -1,4 +1,14 @@
 {
+    "issues": {
+        "deprecated_flag_sensor": {
+            "title": "Senzor învechit detectat",
+            "description": "Senzorul `{entity_id}` este învechit: widgeturile de tip valoare 28, care raportează Activat/Dezactivat, sunt acum expuse ca senzori binari cu același nume.\n\nActualizează tablourile de bord, șabloanele, automatizările și scripturile pentru a folosi senzorul binar, apoi dezactivează senzorul învechit și repornește Home Assistant."
+        },
+        "deprecated_flag_sensor_used": {
+            "title": "Senzor învechit detectat",
+            "description": "Senzorul `{entity_id}` este învechit: widgeturile de tip valoare 28, care raportează Activat/Dezactivat, sunt acum expuse ca senzori binari cu același nume.\n\nEste folosit în următoarele automatizări sau scripturi:\n{items}\n\nActualizează-le, împreună cu tablourile de bord și șabloanele care îl folosesc, pentru a folosi senzorul binar, apoi dezactivează senzorul învechit și repornește Home Assistant."
+        }
+    },
     "config": {
         "abort": {
             "already_configured": "Dispozitiv deja configurat",

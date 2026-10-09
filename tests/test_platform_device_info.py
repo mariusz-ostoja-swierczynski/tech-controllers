@@ -40,17 +40,27 @@ _HUB = "L-8 DEMO"
 _FAKE_MODULES = (
     "homeassistant",
     "homeassistant.components",
-    "homeassistant.components.switch",
-    "homeassistant.components.number",
-    "homeassistant.components.select",
+    "homeassistant.components.automation",
+    "homeassistant.components.binary_sensor",
     "homeassistant.components.button",
+    "homeassistant.components.number",
+    "homeassistant.components.script",
+    "homeassistant.components.select",
+    "homeassistant.components.sensor",
+    "homeassistant.components.sensor.const",
+    "homeassistant.components.switch",
     "homeassistant.config_entries",
     "homeassistant.const",
     "homeassistant.core",
     "homeassistant.exceptions",
     "homeassistant.helpers",
     "homeassistant.helpers.device_registry",
+    "homeassistant.helpers.entity",
     "homeassistant.helpers.entity_platform",
+    "homeassistant.helpers.entity_registry",
+    "homeassistant.helpers.icon",
+    "homeassistant.helpers.issue_registry",
+    "homeassistant.helpers.typing",
     "homeassistant.helpers.update_coordinator",
 )
 
@@ -73,6 +83,18 @@ class CoordinatorEntity(_Entity):
         """Store the coordinator the way the real base class does."""
         super().__init__(*args, **kwargs)
         self.coordinator = coordinator
+
+
+class SensorEntity(_Entity):
+    """Stand-in for ``homeassistant.components.sensor.SensorEntity``.
+
+    Kept a sibling of :class:`BinarySensorEntity` rather than the same class, so
+    a platform that mixes both bases keeps a resolvable MRO as it does in core.
+    """
+
+
+class BinarySensorEntity(_Entity):
+    """Stand-in for ``homeassistant.components.binary_sensor.BinarySensorEntity``."""
 
 
 class DataUpdateCoordinator(_Entity):
@@ -130,6 +152,64 @@ for _name in ("switch", "button", "select", "number"):
     globals()[_name] = type(f"{_name.title()}Entity", (_Entity,), {})
 
 
+class _AutoNamespace:
+    """Stand-in for an HA enum; any attribute reads back as its own name."""
+
+    def __getattr__(self, name: str) -> str:
+        """Return the attribute name lowercased."""
+        return name.lower()
+
+
+class _RegistryEntry:
+    """Stand-in for a registry entry, carrying only what the code reads."""
+
+    def __init__(self, disabled: bool) -> None:
+        """Record the disabled flag."""
+        self.disabled = disabled
+
+
+class _Registry:
+    """Stand-in for the entity registry, recording removals."""
+
+    def __init__(self, entity_id: str | None, disabled: bool = False) -> None:
+        """Record the entity the lookups should resolve to."""
+        self.entity_id = entity_id
+        self.entry = _RegistryEntry(disabled)
+        self.removed: list[str] = []
+
+    def async_get_entity_id(self, *args: Any) -> str | None:
+        """Return the recorded entity id, if any."""
+        return self.entity_id
+
+    def async_get(self, entity_id: str) -> _RegistryEntry | None:
+        """Return the recorded entry when the id matches."""
+        return self.entry if entity_id == self.entity_id else None
+
+    def async_remove(self, entity_id: str) -> None:
+        """Record the removal instead of touching a real registry."""
+        self.removed.append(entity_id)
+        self.entity_id = None
+
+
+def _async_get_registry(hass: Any) -> _Registry:
+    """Return an empty registry; tests install their own."""
+    return _Registry(entity_id=None)
+
+
+def _async_create_issue(hass: Any, domain: str, issue_id: str, **kwargs: Any) -> None:
+    """Accept a repair issue without registering one; tests install their own."""
+
+
+def _automations_with_entity(hass: Any, entity_id: str) -> list[str]:
+    """Report no automations referencing an entity."""
+    return []
+
+
+def _scripts_with_entity(hass: Any, entity_id: str) -> list[str]:
+    """Report no scripts referencing an entity."""
+    return []
+
+
 def _fake_module(name: str) -> types.ModuleType:
     """Build the stub for one ``homeassistant`` module."""
     module = types.ModuleType(name)
@@ -140,13 +220,20 @@ def _fake_module(name: str) -> types.ModuleType:
         module.ATTR_MANUFACTURER = "manufacturer"
         module.CONF_DESCRIPTION = "description"
         module.CONF_ID = "id"
+        module.CONF_MODEL = "model"
         module.CONF_NAME = "name"
+        module.CONF_PARAMS = "params"
         module.CONF_PASSWORD = "password"
         module.CONF_TOKEN = "token"
+        module.CONF_TYPE = "type"
         module.CONF_USERNAME = "username"
         module.CONF_ZONE = "zone"
+        module.PERCENTAGE = "%"
+        module.STATE_OFF = "off"
+        module.STATE_ON = "on"
         module.EntityCategory = _EntityCategory
         module.Platform = _Platform
+        module.UnitOfTemperature = _AutoNamespace()
     elif name == "homeassistant.components.switch":
         module.SwitchEntity = globals()["switch"]
     elif name == "homeassistant.components.button":
@@ -175,6 +262,33 @@ def _fake_module(name: str) -> types.ModuleType:
         module.CoordinatorEntity = CoordinatorEntity
         module.DataUpdateCoordinator = DataUpdateCoordinator
         module.UpdateFailed = _UpdateFailed
+    elif name == "homeassistant.components.automation":
+        module.automations_with_entity = _automations_with_entity
+    elif name == "homeassistant.components.binary_sensor":
+        module.BinarySensorEntity = BinarySensorEntity
+        module.BinarySensorDeviceClass = _AutoNamespace()
+    elif name == "homeassistant.components.script":
+        module.scripts_with_entity = _scripts_with_entity
+    elif name == "homeassistant.components.sensor":
+        module.SensorEntity = SensorEntity
+    elif name == "homeassistant.components.sensor.const":
+        module.SensorDeviceClass = _AutoNamespace()
+        module.SensorStateClass = _AutoNamespace()
+    elif name == "homeassistant.helpers.entity":
+        module.Entity = _Entity
+    elif name == "homeassistant.helpers.entity_registry":
+        module.EntityRegistry = _Registry
+        module.async_get = _async_get_registry
+    elif name == "homeassistant.helpers.icon":
+        module.icon_for_signal_level = lambda level: "mdi:signal"
+    elif name == "homeassistant.helpers.typing":
+        module.StateType = object
+        module.UndefinedType = type("UndefinedType", (), {})
+    elif name == "homeassistant.helpers.issue_registry":
+        module.IssueSeverity = _AutoNamespace()
+        module.async_create_issue = _async_create_issue
+    elif name == "homeassistant.helpers.typing":
+        module.UndefinedType = type("UndefinedType", (), {})
     return module
 
 
@@ -189,14 +303,38 @@ def _install_stubs() -> None:
             "homeassistant",
             ("components", "config_entries", "const", "core", "exceptions", "helpers"),
         ),
-        ("homeassistant.components", ("button", "number", "select", "switch")),
+        (
+            "homeassistant.components",
+            (
+                "automation",
+                "binary_sensor",
+                "button",
+                "number",
+                "script",
+                "select",
+                "sensor",
+                "switch",
+            ),
+        ),
         (
             "homeassistant.helpers",
-            ("device_registry", "entity_platform", "update_coordinator"),
+            (
+                "device_registry",
+                "entity",
+                "entity_platform",
+                "entity_registry",
+                "icon",
+                "issue_registry",
+                "typing",
+                "update_coordinator",
+            ),
         ),
     ):
         for child in children:
             setattr(modules[parent], child, modules[f"{parent}.{child}"])
+    modules["homeassistant.components.sensor"].const = modules[
+        "homeassistant.components.sensor.const"
+    ]
     sys.modules.update(modules)
 
 
@@ -226,6 +364,16 @@ const = _load_tech_module("const")
 assets = _load_tech_module("assets")
 _load_tech_module("tech")
 _load_tech_module("coordinator")
+sensor = _load_tech_module("sensor")
+
+# binary_sensor.py imports TechCoordinator and assets from the package rather
+# than from their own modules, which only resolves once the package exposes them.
+_tech_package = sys.modules["custom_components.tech"]
+_tech_package.TechCoordinator = sys.modules[
+    "custom_components.tech.coordinator"
+].TechCoordinator
+_tech_package.assets = assets
+binary_sensor = _load_tech_module("binary_sensor")
 
 PLATFORMS = (
     ("switch", "MenuSwitchEntity"),
@@ -405,3 +553,215 @@ def test_zone_names_built_without_the_prefix_reach_the_device(
     entity = _build(module_name, class_name, zone_id=101, zone_names=zone_names)
 
     assert entity.device_info["name"] == "Strefa 1"
+
+
+def _flag_tile(*, txt_id: int = 4640, unit: int = 28) -> dict[str, Any]:
+    """Return a TYPE_WIDGET tile carrying one flag-shaped widget."""
+    return {
+        "id": 4660,
+        "type": const.TYPE_WIDGET,
+        "visibility": True,
+        "params": {
+            "id": 4660,
+            "txtId": 100,
+            "iconId": 0,
+            "value": 1,
+            "widget1": {"txtId": txt_id, "value": 1, "unit": unit, "type": 1},
+        },
+    }
+
+
+def _record_issues(
+    *,
+    automations: list[str] | None = None,
+    scripts: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Point the deprecation helpers at recording fakes and return the log."""
+    issues: list[dict[str, Any]] = []
+
+    def _create(hass: Any, domain: str, issue_id: str, **kwargs: Any) -> None:
+        """Record a repair issue instead of registering one."""
+        issues.append({"domain": domain, "issue_id": issue_id, **kwargs})
+
+    # The sensor module imports these two by name, so they are replaced there
+    # rather than on the homeassistant module.
+    sensor.automations_with_entity = lambda hass, entity_id: list(automations or [])
+    sensor.scripts_with_entity = lambda hass, entity_id: list(scripts or [])
+    sys.modules["homeassistant.helpers.issue_registry"].async_create_issue = _create
+    return issues
+
+
+def _install_registry(registry: _Registry) -> _Registry:
+    """Make ``er.async_get`` hand out the given registry."""
+    module = sys.modules["homeassistant.helpers.entity_registry"]
+    module.async_get = lambda hass: registry
+    return registry
+
+
+def _deprecate(registry: _Registry) -> bool:
+    """Run the deprecation decision the way the sensor platform does."""
+    return sensor._async_deprecate_flag_sensor(object(), registry, "some-unique-id")
+
+
+def _widget_tile(
+    *,
+    status_id: int,
+    widget: dict[str, Any],
+    tile_id: int = 4660,
+) -> dict[str, Any]:
+    """Return a TYPE_WIDGET tile carrying one widget and a chosen ``statusId``."""
+    return {
+        "id": tile_id,
+        "type": const.TYPE_WIDGET,
+        "visibility": True,
+        "params": {
+            "id": tile_id,
+            "txtId": 100,
+            "iconId": 0,
+            "statusId": status_id,
+            "value": 0,
+            "widget1": widget,
+        },
+    }
+
+
+class TestContactAndFlagStateSources:
+    """Contacts read the tile's ``statusId``; unit-28 flags read their own value.
+
+    Both entities are built from the same kind of tile, and each case is arranged
+    so the two candidate fields disagree. A test where they agreed would pass
+    against either implementation and prove nothing.
+    """
+
+    def test_contact_takes_its_state_from_status_id(self) -> None:
+        """A contact is on when statusId is 1, even though its value is 0."""
+        tile = _widget_tile(
+            status_id=1,
+            widget={"txtId": 5320, "unit": -1, "type": 0, "value": 0},
+        )
+        entity = binary_sensor.TileWidgetContactSensor(
+            tile, _Coordinator(), _Entry(), "widget1"
+        )
+
+        assert entity.get_state(tile) is True
+
+    def test_flag_takes_its_state_from_its_own_value(self) -> None:
+        """A flag is on when its own value is 1, even though statusId is 0."""
+        tile = _widget_tile(
+            status_id=0,
+            widget={"txtId": 4640, "unit": 28, "type": 1, "value": 1},
+        )
+        entity = binary_sensor.TileWidgetFlagSensor(
+            tile, _Coordinator(), _Entry(), "widget1"
+        )
+
+        assert entity.get_state(tile) is True
+
+    def test_flag_does_not_inherit_the_status_id_lookup(self) -> None:
+        """A flag with an off value stays off even when statusId is on.
+
+        This is the case that catches the inherited contact implementation: if
+        the flag read ``statusId`` it would report on here.
+        """
+        tile = _widget_tile(
+            status_id=1,
+            widget={"txtId": 4640, "unit": 28, "type": 1, "value": 0},
+        )
+        entity = binary_sensor.TileWidgetFlagSensor(
+            tile, _Coordinator(), _Entry(), "widget1"
+        )
+
+        assert entity.get_state(tile) is False
+
+
+class TestDeprecatedFlagSensor:
+    """The numeric sensor that value type 28 widgets used to be exposed as."""
+
+    def test_absent_legacy_entity_is_not_rebuilt(self) -> None:
+        """A fresh install gets no deprecated sensor and no repair issue."""
+        registry = _Registry(entity_id=None)
+        issues = _record_issues()
+
+        assert _deprecate(registry) is False
+        assert registry.removed == []
+        assert issues == []
+
+    def test_enabled_entity_is_rebuilt_and_warns(self) -> None:
+        """While the entity is enabled it keeps working, and the user is told."""
+        registry = _Registry(entity_id="sensor.flag", disabled=False)
+        issues = _record_issues()
+
+        assert _deprecate(registry) is True
+        assert registry.removed == []
+        assert [issue["translation_key"] for issue in issues] == [
+            "deprecated_flag_sensor"
+        ]
+        assert issues[0]["severity"] == "warning"
+        assert issues[0]["breaks_in_ha_version"] == "2027.5.0"
+        assert issues[0]["translation_placeholders"] == {"entity_id": "sensor.flag"}
+
+    def test_references_block_removal_and_are_named(self) -> None:
+        """A disabled entity that is still referenced is kept, and named."""
+        registry = _Registry(entity_id="sensor.flag", disabled=True)
+        issues = _record_issues(
+            automations=["automation.boiler"], scripts=["script.evening"]
+        )
+
+        assert _deprecate(registry) is True
+        assert registry.removed == []
+        assert issues[0]["translation_key"] == "deprecated_flag_sensor_used"
+        items = issues[0]["translation_placeholders"]["items"]
+        assert "automation.boiler" in items
+        assert "script.evening" in items
+
+    def test_disabled_unreferenced_entity_is_removed(self) -> None:
+        """Disabling the entity with no references left is the acknowledgement."""
+        registry = _Registry(entity_id="sensor.flag", disabled=True)
+        issues = _record_issues()
+
+        assert _deprecate(registry) is False
+        assert registry.removed == ["sensor.flag"]
+        assert issues == []
+
+
+class TestDeprecatedFlagSensorSelection:
+    """Which widgets do and do not produce a deprecated sensor."""
+
+    def test_labelled_flag_with_a_registry_row_is_rebuilt(self) -> None:
+        """An existing labelled flag entity is the only one recreated."""
+        _record_issues()
+        _install_registry(_Registry(entity_id="sensor.flag"))
+
+        entities = sensor._build_deprecated_flag_sensors(
+            object(), {4660: _flag_tile()}, _Coordinator(), _Entry()
+        )
+
+        assert [type(entity).__name__ for entity in entities] == [
+            "TileWidgetTemperatureSensor"
+        ]
+
+    def test_nothing_is_built_without_a_registry_row(self) -> None:
+        """No registry row means no entity, so new installs never see one."""
+        _record_issues()
+        _install_registry(_Registry(entity_id=None))
+
+        entities = sensor._build_deprecated_flag_sensors(
+            object(), {4660: _flag_tile()}, _Coordinator(), _Entry()
+        )
+
+        assert entities == []
+
+    def test_unlabelled_and_other_widgets_are_skipped(self) -> None:
+        """An unlabelled flag, or a widget that is not a flag, is skipped."""
+        _record_issues()
+        _install_registry(_Registry(entity_id="sensor.flag"))
+
+        unlabelled = sensor._build_deprecated_flag_sensors(
+            object(), {4660: _flag_tile(txt_id=0)}, _Coordinator(), _Entry()
+        )
+        temperature = sensor._build_deprecated_flag_sensors(
+            object(), {4660: _flag_tile(unit=7)}, _Coordinator(), _Entry()
+        )
+
+        assert unlabelled == []
+        assert temperature == []

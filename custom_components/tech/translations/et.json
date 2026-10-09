@@ -1,4 +1,14 @@
 {
+    "issues": {
+        "deprecated_flag_sensor": {
+            "title": "Tuvastati aegunud andur",
+            "description": "Andur `{entity_id}` on aegunud: väärtuse tüübi 28 vidinad, mis näitavad lubatud/keelatud olekut, kuvatakse nüüd binaaranduritena sama nimega.\n\nUuenda oma töölaudu, malle, automatiseeringuid ja skripte, et need kasutaksid binaarandurit, seejärel keela aegunud andur ja taaskäivita Home Assistant."
+        },
+        "deprecated_flag_sensor_used": {
+            "title": "Tuvastati aegunud andur",
+            "description": "Andur `{entity_id}` on aegunud: väärtuse tüübi 28 vidinad, mis näitavad lubatud/keelatud olekut, kuvatakse nüüd binaaranduritena sama nimega.\n\nSeda kasutatakse järgmistes automatiseeringutes või skriptides:\n{items}\n\nUuenda need koos töölaudade ja mallidega, mis seda kasutavad, et need kasutaksid binaarandurit, seejärel keela aegunud andur ja taaskäivita Home Assistant."
+        }
+    },
     "config": {
         "abort": {
             "already_configured": "Seade on juba konfigureeritud",

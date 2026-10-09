@@ -1,4 +1,14 @@
 {
+    "issues": {
+        "deprecated_flag_sensor": {
+            "title": "Aptiktas pasenęs jutiklis",
+            "description": "Jutiklis `{entity_id}` yra pasenęs: 28 vertės tipo valdikliai, kurie rodo įjungta/išjungta, dabar pateikiami kaip dvejetainiai jutikliai tuo pačiu pavadinimu.\n\nAtnaujinkite savo prietaisų skydus, šablonus, automatizavimus ir scenarijus, kad jie naudotų dvejetainį jutiklį, tada išjunkite pasenusį jutiklį ir iš naujo paleiskite Home Assistant."
+        },
+        "deprecated_flag_sensor_used": {
+            "title": "Aptiktas pasenęs jutiklis",
+            "description": "Jutiklis `{entity_id}` yra pasenęs: 28 vertės tipo valdikliai, kurie rodo įjungta/išjungta, dabar pateikiami kaip dvejetainiai jutikliai tuo pačiu pavadinimu.\n\nJis naudojamas šiuose automatizavimuose arba scenarijuose:\n{items}\n\nAtnaujinkite juos kartu su prietaisų skydais ir šablonais, kurie jį naudoja, kad jie naudotų dvejetainį jutiklį, tada išjunkite pasenusį jutiklį ir iš naujo paleiskite Home Assistant."
+        }
+    },
     "config": {
         "abort": {
             "already_configured": "Įrenginys jau sukonfigūruotas",

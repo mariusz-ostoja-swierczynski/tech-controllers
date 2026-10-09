@@ -1,4 +1,14 @@
 {
+    "issues": {
+        "deprecated_flag_sensor": {
+            "title": "Elavult érzékelő észlelve",
+            "description": "A(z) `{entity_id}` érzékelő elavult: a 28-as értéktípusú widgetek, amelyek Engedélyezve/Letiltva állapotot jelentenek, mostantól azonos nevű bináris érzékelőkként jelennek meg.\n\nFrissítsd az irányítópultjaidat, sablonjaidat, automatizálásaidat és szkriptjeidet, hogy a bináris érzékelőt használják, majd tiltsd le az elavult érzékelőt és indítsd újra a Home Assistantot."
+        },
+        "deprecated_flag_sensor_used": {
+            "title": "Elavult érzékelő észlelve",
+            "description": "A(z) `{entity_id}` érzékelő elavult: a 28-as értéktípusú widgetek, amelyek Engedélyezve/Letiltva állapotot jelentenek, mostantól azonos nevű bináris érzékelőkként jelennek meg.\n\nA következő automatizálásokban vagy szkriptekben használják:\n{items}\n\nFrissítsd ezeket, valamint az őket használó irányítópultokat és sablonokat, hogy a bináris érzékelőt használják, majd tiltsd le az elavult érzékelőt és indítsd újra a Home Assistantot."
+        }
+    },
     "config": {
         "abort": {
             "already_configured": "Az eszköz már konfigurálva van",

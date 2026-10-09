@@ -53,6 +53,7 @@ from .const import (
     TYPE_RELAY,
     TYPE_WIDGET,
     UDID,
+    VALUE,
     VISIBILITY,
     WIDGET_COLLECTOR_PUMP,
     WIDGET_DHW_PUMP,
@@ -74,6 +75,18 @@ def _is_contact_widget(widget: dict) -> bool:
         and widget.get(CONF_TYPE) == 0
         and widget.get("txtId", 0) != 0
     )
+
+
+def _is_flag_widget(widget: dict) -> bool:
+    """Return ``True`` for enable/disable widgets (API value type 28).
+
+    The API documents value type 28 as "Enabled / Disabled - [1/0]", which is a
+    state rather than a measurement, so these widgets belong here instead of the
+    sensor platform. The widget ``type`` is deliberately not checked: real
+    payloads carry these as ``type == 1``, unlike the ``type == 0`` contact
+    marker. A widget without a label of its own is skipped, as everywhere else.
+    """
+    return widget.get("unit") == 28 and widget.get("txtId", 0) != 0
 
 
 def _has_pump_widget(params: dict) -> bool:
@@ -133,6 +146,12 @@ async def async_setup_entry(
         if tile[CONF_TYPE] == TYPE_WIDGET:
             for widget_key in ("widget1", "widget2"):
                 widget = tile.get(CONF_PARAMS, {}).get(widget_key)
+                if widget and _is_flag_widget(widget):
+                    entities.append(
+                        TileWidgetFlagSensor(
+                            tile, coordinator, config_entry, widget_key
+                        )
+                    )
                 if widget and _is_contact_widget(widget):
                     entities.append(
                         TileWidgetContactSensor(
@@ -216,6 +235,7 @@ class TileWidgetContactSensor(TileBinarySensor):
     0 for contact widgets in the API response.
     """
 
+    _UNIQUE_ID_SUFFIX = "tile_widget_contact"
     _attr_device_class = binary_sensor.BinarySensorDeviceClass.OPENING
 
     def __init__(
@@ -249,7 +269,7 @@ class TileWidgetContactSensor(TileBinarySensor):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return f"{self._unique_id}_tile_widget_contact_{self._widget_key}"
+        return f"{self._unique_id}_{self._UNIQUE_ID_SUFFIX}_{self._widget_key}"
 
     def get_state(self, device):
         """Return the contact state from the tile's statusId.
@@ -259,6 +279,29 @@ class TileWidgetContactSensor(TileBinarySensor):
         is always 0 for contact widgets in the API response.
         """
         return device[CONF_PARAMS].get("statusId") == 1
+
+
+class TileWidgetFlagSensor(TileWidgetContactSensor):
+    """A widget-shaped enable/disable flag (API value type 28).
+
+    Detected by ``unit == 28``. The API names the state "Enabled / Disabled"
+    without naming a device class, so this one carries none; ``value == 1``
+    means enabled.
+    """
+
+    _UNIQUE_ID_SUFFIX = "tile_widget_flag"
+    _attr_device_class = None
+
+    def get_state(self, device):
+        """Return the flag state from its own widget value.
+
+        Unlike a contact, whose state lives in the tile's ``statusId``, a value
+        type 28 widget reports its state in its own ``value``: the API documents
+        it as "Enabled / Disabled - [1/0]" and real payloads carry non-zero
+        values, so inheriting :meth:`TileWidgetContactSensor.get_state` would
+        read the wrong field.
+        """
+        return device[CONF_PARAMS][self._widget_key][VALUE] == 1
 
 
 class TileWidgetStatusSensor(TileBinarySensor):

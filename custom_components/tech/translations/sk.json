@@ -1,4 +1,14 @@
 {
+  "issues": {
+    "deprecated_flag_sensor": {
+      "title": "Zistený zastaraný senzor",
+      "description": "Senzor `{entity_id}` je zastaraný: widgety typu hodnoty 28, ktoré hlásia Zapnuté/Vypnuté, sú teraz zobrazené ako binárne senzory s rovnakým názvom.\n\nAktualizujte svoje panely, šablóny, automatizácie a skripty, aby používali binárny senzor, potom zakážte zastaraný senzor a reštartujte Home Assistant."
+    },
+    "deprecated_flag_sensor_used": {
+      "title": "Zistený zastaraný senzor",
+      "description": "Senzor `{entity_id}` je zastaraný: widgety typu hodnoty 28, ktoré hlásia Zapnuté/Vypnuté, sú teraz zobrazené ako binárne senzory s rovnakým názvom.\n\nPoužíva sa v nasledujúcich automatizáciách alebo skriptoch:\n{items}\n\nAktualizujte ich spolu s panelmi a šablónami, ktoré ho používajú, aby používali binárny senzor, potom zakážte zastaraný senzor a reštartujte Home Assistant."
+    }
+  },
   "config": {
     "abort": {
       "already_configured": "Zariadenie už bolo nakonfigurované",

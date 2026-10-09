@@ -30,10 +30,12 @@ from collections.abc import Callable, Iterable
 import logging
 from typing import Any, cast
 
+from homeassistant.components.automation import automations_with_entity
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
+from homeassistant.components.script import scripts_with_entity
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
@@ -54,6 +56,7 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er, issue_registry as ir
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.icon import icon_for_signal_level
@@ -151,7 +154,13 @@ async def async_setup_entry(
         for entity in _build_tile_entities(tile, coordinator, config_entry)
     ]
 
-    async_add_entities([*tile_entities, *zone_entities], True)
+    deprecated_entities = _build_deprecated_flag_sensors(
+        hass, tiles, coordinator, config_entry
+    )
+
+    async_add_entities(
+        [*tile_entities, *zone_entities, *deprecated_entities], True
+    )
 
 
 def _iter_mapping(mapping: dict[Any, Any] | Iterable[Any]) -> Iterable[Any]:
@@ -330,6 +339,108 @@ def _is_contact_widget(widget: dict[str, Any]) -> bool:
     )
 
 
+def _is_flag_widget(widget: dict) -> bool:
+    """Return ``True`` for enable/disable widgets (API value type 28).
+
+    Mirrored by the same predicate in :mod:`binary_sensor`, which owns these
+    widgets; see there for why the widget ``type`` is not part of the check.
+    """
+    return widget.get("unit") == 28 and widget.get("txtId", 0) != 0
+
+
+def _build_deprecated_flag_sensors(
+    hass: HomeAssistant,
+    tiles: dict[Any, Any] | Iterable[Any],
+    coordinator: TechCoordinator,
+    config_entry: ConfigEntry,
+) -> list[TileWidgetTemperatureSensor]:
+    """Return the numeric sensors that value type 28 widgets used to create.
+
+    Those widgets are binary sensors now, so :func:`_build_widget_tile` skips
+    them, but the deprecation policy does not allow removing an entity without a
+    transition: an entity referenced from automations or dashboards would break
+    silently. The old numeric entity is therefore rebuilt for installs that
+    already have it, and a repair issue tells those users to migrate. Installs
+    that never had it never get it.
+    """
+
+    # Removal checklist for 2027.5.0, the version this deprecation announces via
+    # breaks_in_ha_version: delete this function and its call in
+    # async_setup_entry, delete _async_deprecate_flag_sensor, drop the two
+    # "issues" entries from strings.json and every translations file, and remove
+    # the sensor registry rows still left for these widgets. That last step is
+    # safe by then because the notice period will have passed; doing it sooner is
+    # what the deprecation policy forbids.
+    registry = er.async_get(hass)
+    entities: list[TileWidgetTemperatureSensor] = []
+    for tile in _iter_mapping(tiles):
+        if tile.get(CONF_TYPE) != TYPE_WIDGET or tile.get(VISIBILITY) is False:
+            continue
+        for widget_key in ("widget1", "widget2"):
+            widget = tile.get(CONF_PARAMS, {}).get(widget_key)
+            if not widget or not _is_flag_widget(widget):
+                continue
+            entity = TileWidgetTemperatureSensor(
+                tile, coordinator, config_entry, widget_key
+            )
+            if _async_deprecate_flag_sensor(hass, registry, entity.unique_id):
+                entities.append(entity)
+    return entities
+
+
+def _async_deprecate_flag_sensor(
+    hass: HomeAssistant, registry: er.EntityRegistry, unique_id: str
+) -> bool:
+    """Return whether the deprecated numeric flag sensor should still be created.
+
+    The deprecated entity keeps working until the user disables it, which is how
+    the deprecation is acknowledged: once it is disabled and neither an automation
+    nor a script references it, the registry entry is removed so it is not
+    recreated.
+
+    Args:
+        hass: Home Assistant instance.
+        registry: Entity registry to look the deprecated sensor up in.
+        unique_id: Unique ID the sensor platform registered the widget under.
+
+    Returns:
+        ``True`` when the deprecated entity should be added.
+
+    """
+    entity_id = registry.async_get_entity_id("sensor", DOMAIN, unique_id)
+    if entity_id is None:
+        return False
+
+    entry = registry.async_get(entity_id)
+    references = automations_with_entity(hass, entity_id) + scripts_with_entity(
+        hass, entity_id
+    )
+    if entry is not None and entry.disabled and not references:
+        _LOGGER.debug("Removing deprecated flag sensor %s", entity_id)
+        registry.async_remove(entity_id)
+        return False
+
+    # The issue id is scoped by the unique id, which carries the controller udid,
+    # so entries for several controllers do not collide.
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        f"deprecated_flag_sensor_{unique_id}",
+        breaks_in_ha_version="2027.5.0",
+        is_fixable=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key=(
+            "deprecated_flag_sensor_used" if references else "deprecated_flag_sensor"
+        ),
+        translation_placeholders=(
+            {"entity_id": entity_id, "items": "\n".join(references)}
+            if references
+            else {"entity_id": entity_id}
+        ),
+    )
+    return True
+
+
 def _build_widget_tile(
     tile: dict[str, Any],
     coordinator: TechCoordinator,
@@ -396,7 +507,7 @@ def _build_widget_tile(
             other = params.get(other_key, {})
             if not other or other.get("txtId", 0) == 0:
                 continue
-        if _is_contact_widget(widget):
+        if _is_contact_widget(widget) or _is_flag_widget(widget):
             continue
         if widget.get("unit") == 6 and widget.get("value", 0) == 0:
             continue

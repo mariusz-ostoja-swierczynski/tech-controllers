@@ -1,4 +1,14 @@
 {
+    "issues": {
+        "deprecated_flag_sensor": {
+            "title": "Capteur obsolète détecté",
+            "description": "Le capteur `{entity_id}` est obsolète : les widgets de type de valeur 28, qui signalent Activé/Désactivé, sont désormais exposés comme capteurs binaires portant le même nom.\n\nMettez à jour vos tableaux de bord, modèles, automatisations et scripts pour utiliser le capteur binaire à la place, puis désactivez le capteur obsolète et redémarrez Home Assistant."
+        },
+        "deprecated_flag_sensor_used": {
+            "title": "Capteur obsolète détecté",
+            "description": "Le capteur `{entity_id}` est obsolète : les widgets de type de valeur 28, qui signalent Activé/Désactivé, sont désormais exposés comme capteurs binaires portant le même nom.\n\nIl est utilisé dans les automatisations ou scripts suivants :\n{items}\n\nMettez à jour ceux-ci, ainsi que les tableaux de bord et modèles qui l'utilisent, pour utiliser le capteur binaire à la place, puis désactivez le capteur obsolète et redémarrez Home Assistant."
+        }
+    },
     "config": {
         "abort": {
             "already_configured": "Appareil déjà configuré",

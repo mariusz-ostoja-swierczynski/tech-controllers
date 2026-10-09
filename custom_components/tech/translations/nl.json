@@ -1,4 +1,14 @@
 {
+    "issues": {
+        "deprecated_flag_sensor": {
+            "title": "Verouderde sensor gedetecteerd",
+            "description": "De sensor `{entity_id}` is verouderd: widgets van waardetype 28, die Ingeschakeld/Uitgeschakeld melden, worden nu weergegeven als binaire sensoren met dezelfde naam.\n\nWerk je dashboards, templates, automatiseringen en scripts bij om in plaats daarvan de binaire sensor te gebruiken, schakel daarna de verouderde sensor uit en herstart Home Assistant."
+        },
+        "deprecated_flag_sensor_used": {
+            "title": "Verouderde sensor gedetecteerd",
+            "description": "De sensor `{entity_id}` is verouderd: widgets van waardetype 28, die Ingeschakeld/Uitgeschakeld melden, worden nu weergegeven als binaire sensoren met dezelfde naam.\n\nHij wordt gebruikt in de volgende automatiseringen of scripts:\n{items}\n\nWerk die bij, samen met de dashboards en templates die hem gebruiken, om in plaats daarvan de binaire sensor te gebruiken, schakel daarna de verouderde sensor uit en herstart Home Assistant."
+        }
+    },
     "config": {
         "abort": {
             "already_configured": "Apparaat is al geconfigureerd",

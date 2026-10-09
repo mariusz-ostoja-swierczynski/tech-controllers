@@ -1,4 +1,14 @@
 {
+  "issues": {
+    "deprecated_flag_sensor": {
+      "title": "Wykryto przestarzały czujnik",
+      "description": "Czujnik `{entity_id}` jest przestarzały: widżety typu wartości 28, które zgłaszają Włączone/Wyłączone, są teraz udostępniane jako czujniki binarne o tej samej nazwie.\n\nZaktualizuj swoje pulpity, szablony, automatyzacje i skrypty, aby korzystały z czujnika binarnego, następnie wyłącz przestarzały czujnik i uruchom ponownie Home Assistant."
+    },
+    "deprecated_flag_sensor_used": {
+      "title": "Wykryto przestarzały czujnik",
+      "description": "Czujnik `{entity_id}` jest przestarzały: widżety typu wartości 28, które zgłaszają Włączone/Wyłączone, są teraz udostępniane jako czujniki binarne o tej samej nazwie.\n\nJest używany w następujących automatyzacjach lub skryptach:\n{items}\n\nZaktualizuj je wraz z pulpitami i szablonami, które go używają, aby korzystały z czujnika binarnego, następnie wyłącz przestarzały czujnik i uruchom ponownie Home Assistant."
+    }
+  },
   "config": {
     "abort": {
       "already_configured": "Urządzenie jest już skonfigurowane",

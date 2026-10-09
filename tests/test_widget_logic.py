@@ -111,6 +111,15 @@ def is_contact_widget_oracle(widget: dict) -> bool:
     )
 
 
+def is_flag_widget_oracle(widget: dict) -> bool:
+    """Mirror :func:`sensor._is_flag_widget` for use as a test oracle.
+
+    If sensor.py / binary_sensor.py change the rule, update this oracle and
+    re-run the tests so we know both implementations still agree.
+    """
+    return widget.get("unit") == 28 and widget.get("txtId", 0) != 0
+
+
 # ---------------------------------------------------------------------------
 # _is_contact_widget oracle
 # ---------------------------------------------------------------------------
@@ -208,6 +217,53 @@ class TestIsContactWidget:
         ).read_text()
         # The new skip condition: only skip unit=6 widgets with value==0.
         assert 'if widget.get("unit") == 6 and widget.get("value", 0) == 0:' in sensor_src
+
+
+class TestIsFlagWidget:
+    """Verify the value type 28 enable/disable marker."""
+
+    def test_canonical_flag_returns_true(self):
+        """A labelled unit=28 widget is a flag."""
+        widget = {"unit": 28, "type": 1, "txtId": 4640, "value": 1}
+        assert is_flag_widget_oracle(widget) is True
+
+    def test_widget_type_is_not_part_of_the_marker(self):
+        """Real payloads carry flags as type=1, so type must not disqualify."""
+        widget = {"unit": 28, "type": 1, "txtId": 4640, "value": 0}
+        assert is_flag_widget_oracle(widget) is True
+
+    def test_markers_stay_disjoint(self):
+        """No widget may be claimed by both the contact and the flag rule."""
+        flag = {"unit": 28, "type": 1, "txtId": 4640, "value": 1}
+        contact = {"unit": -1, "type": 0, "txtId": 1234, "value": 1}
+        assert is_contact_widget_oracle(flag) is False
+        assert is_flag_widget_oracle(contact) is False
+
+    def test_zero_txtid_disables_flag(self):
+        """An unlabelled flag widget is skipped, as everywhere else.
+
+        The heat pump payload carries 18 flags with txtId 0, so they stay
+        unexposed rather than appearing with a borrowed or empty name.
+        """
+        widget = {"unit": 28, "type": 1, "txtId": 0, "value": 1}
+        assert is_flag_widget_oracle(widget) is False
+
+    def test_temperature_widget_is_not_a_flag(self):
+        """A unit=7 temperature widget must not be misread as a flag."""
+        widget = {"unit": 7, "type": 9, "txtId": 774, "value": 521}
+        assert is_flag_widget_oracle(widget) is False
+
+    def test_predicate_source_matches_oracle(self):
+        """Verify sensor.py and binary_sensor.py still encode the same rule."""
+        sensor_src = (
+            _REPO_ROOT / "custom_components" / "tech" / "sensor.py"
+        ).read_text()
+        binary_src = (
+            _REPO_ROOT / "custom_components" / "tech" / "binary_sensor.py"
+        ).read_text()
+        for src in (sensor_src, binary_src):
+            assert "def _is_flag_widget" in src
+            assert 'widget.get("unit") == 28' in src
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,14 @@
 {
+    "issues": {
+        "deprecated_flag_sensor": {
+            "title": "Otkriven zastarjeli senzor",
+            "description": "Senzor `{entity_id}` je zastario: widgeti tipa vrijednosti 28, koji prijavljuju Omogućeno/Onemogućeno, sada se izlažu kao binarni senzori s istim nazivom.\n\nAžurirajte svoje nadzorne ploče, predloške, automatizacije i skripte da koriste binarni senzor, zatim onemogućite zastarjeli senzor i ponovno pokrenite Home Assistant."
+        },
+        "deprecated_flag_sensor_used": {
+            "title": "Otkriven zastarjeli senzor",
+            "description": "Senzor `{entity_id}` je zastario: widgeti tipa vrijednosti 28, koji prijavljuju Omogućeno/Onemogućeno, sada se izlažu kao binarni senzori s istim nazivom.\n\nKoristi se u sljedećim automatizacijama ili skriptama:\n{items}\n\nAžurirajte ih, zajedno s nadzornim pločama i predlošcima koji ga koriste, da koriste binarni senzor, zatim onemogućite zastarjeli senzor i ponovno pokrenite Home Assistant."
+        }
+    },
     "config": {
         "abort": {
             "already_configured": "Uređaj već konfiguriran",
