@@ -214,8 +214,13 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         """
         return self._state
 
+    # Home Assistant 2026.11 renamed these temperature properties with a
+    # ``native_`` prefix and took ownership of the ``temperature_unit`` state
+    # attribute, so this entity needs 2026.11 or newer. The old names keep
+    # working but log a deprecation warning, and are removed in 2027.11. See
+    # https://developers.home-assistant.io/blog/2026/10/08/climate-native-temperature
     @property
-    def temperature_unit(self) -> str:
+    def native_temperature_unit(self) -> str:
         """Return the unit of measurement."""
         return UnitOfTemperature.CELSIUS
 
@@ -225,7 +230,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         return 0.1
 
     @property
-    def current_temperature(self) -> float | None:
+    def native_current_temperature(self) -> float | None:
         """Return the current temperature."""
         return self._temperature
 
@@ -245,7 +250,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         return DEFAULT_MAX_TEMP
 
     @property
-    def target_temperature(self) -> float | None:
+    def native_target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
         return self._target_temperature
 
