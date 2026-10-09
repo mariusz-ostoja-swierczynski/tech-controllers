@@ -357,11 +357,14 @@ def _build_widget_tile(
 
     Filtering rules applied in order:
 
-    1. Widgets with ``txtId == 0`` are placeholders -- skip.
+    1. Widgets with ``txtId == 0`` are placeholders -- skip, *unless* the
+       widget is a pump type (``type==1`` / ``type==2``) whose sibling
+       carries a label, in which case the sibling's label is borrowed.
     2. Contact-shaped widgets (``unit==-1, type==0, txtId!=0``) belong to
        :mod:`binary_sensor`; skip here so they are not emitted twice.
-    3. ``unit == 6`` widgets are decorative state badges (always 0 in the
-       wild); skip to avoid useless "always 0" sensors.
+    3. ``unit == 6`` widgets with a zero value are decorative state badges;
+       skip them to avoid useless "always 0" sensors. Non-zero unit=6
+       widgets (e.g. solar pump temperatures) are kept and handled below.
     4. WIDGET_COLLECTOR_PUMP -> :class:`TileWidgetPumpSensor` (percentage).
     5. Everything else (DHW set/current temp, CH temp, generic
        ``type==0`` numeric) -> :class:`TileWidgetTemperatureSensor`,
@@ -376,11 +379,26 @@ def _build_widget_tile(
     params = tile.get(CONF_PARAMS, {})
     for widget_key in ("widget1", "widget2"):
         widget = params.get(widget_key)
-        if not widget or widget.get("txtId", 0) == 0:
+        if not widget:
             continue
+        # Widgets with txtId==0 are usually placeholders, but pump-type
+        # widgets (WIDGET_DHW_PUMP, WIDGET_COLLECTOR_PUMP) may lack their
+        # own label when they share the sibling's txtId. Let them through
+        # so the second temperature on a dual-widget tile (e.g. solar pump)
+        # is not silently dropped -- _build_name borrows the sibling label.
+        if widget.get("txtId", 0) == 0:
+            if widget.get(CONF_TYPE) not in (
+                WIDGET_DHW_PUMP,
+                WIDGET_COLLECTOR_PUMP,
+            ):
+                continue
+            other_key = "widget2" if widget_key == "widget1" else "widget1"
+            other = params.get(other_key, {})
+            if not other or other.get("txtId", 0) == 0:
+                continue
         if _is_contact_widget(widget):
             continue
-        if widget.get("unit") == 6:
+        if widget.get("unit") == 6 and widget.get("value", 0) == 0:
             continue
         widget_type = widget.get(CONF_TYPE)
         if widget_type == WIDGET_COLLECTOR_PUMP or widget.get("unit") == 8:
@@ -1197,8 +1215,11 @@ class _TileWidgetSensorBase(TileSensor, SensorEntity):
         suffix = ""
         if widget.get(CONF_TYPE) == WIDGET_DHW_PUMP:
             other_key = "widget2" if self._widget_key == "widget1" else "widget1"
-            other_widget = params.get(other_key, {})
-            if other_widget.get("txtId", 0) != 0:
+            # Emit "Set Temperature" / "Current Temperature" when both
+            # widget slots exist, regardless of individual txtId values.
+            # This handles tiles (e.g. solar pump) where one widget's
+            # txtId is 0 and borrows the sibling's label.
+            if params.get(other_key):
                 suffix = self._NAME_SUFFIX_FOR_DHW.get(self._widget_key, "")
         return f"{self.coordinator.translations.get_text(txt_id)}{suffix}"
 
