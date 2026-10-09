@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import logging
 from typing import Any
 
-from homeassistant.const import CONF_DESCRIPTION, CONF_NAME
+from homeassistant.const import CONF_DESCRIPTION, CONF_NAME, CONF_ZONE
 
 from .const import (
     DEFAULT_ICON,
@@ -174,6 +174,30 @@ def build_menu_group_names(
     return groups
 
 
+def zone_payloads(zones: dict[int, Any] | None) -> dict[int, dict[str, Any]]:
+    """Return only the entries of ``zones`` that are usable zone payloads.
+
+    The API delivers zones under a ``zones.elements`` envelope, which
+    :meth:`tech.Tech.module_data` normalises into a zone-id mapping filtered for
+    visible zones. Controllers with no zones at all -- heat pumps, for instance
+    -- may still send an envelope in that position, and a payload can carry
+    entries without the expected ``zone`` sub-dict. Consumers filter through here
+    rather than assuming the shape and raising on it.
+
+    Args:
+        zones: Value of the cached ``zones`` entry, which may be malformed.
+
+    Returns:
+        Mapping of zone ID to zone payload, containing only usable entries.
+
+    """
+    return {
+        zone_id: zone
+        for zone_id, zone in (zones or {}).items()
+        if isinstance(zone, dict) and isinstance(zone.get(CONF_ZONE), dict)
+    }
+
+
 def build_menu_zone_assignments(
     menus: dict[str, dict[str, Any]],
     zones: dict[int, dict[str, Any]],
@@ -192,6 +216,7 @@ def build_menu_zone_assignments(
         Dictionary mapping menu item key (e.g. ``MI_308``) to zone ID.
 
     """
+    zones = zone_payloads(zones)
     if not zones:
         return {}
 
@@ -231,7 +256,21 @@ def build_menu_zone_assignments(
         children_by_parent.get((mt, zones_group["id"]), []), key=lambda g: g["id"]
     )
 
-    # Sort zones by index for positional matching
+    # Sort zones by index for positional matching. A zone without an index
+    # cannot be matched to a subgroup positionally, and guessing would attach
+    # menu items to the wrong zone device, so skip the assignment entirely.
+    without_index = [
+        zid for zid, zdata in zones.items() if zdata["zone"].get("index") is None
+    ]
+    if without_index:
+        _LOGGER.debug(
+            "Not assigning menu items to zones: %d of %d zones have no index (%s)",
+            len(without_index),
+            len(zones),
+            without_index,
+        )
+        return {}
+
     sorted_zone_ids = [
         zid for zid, zdata in sorted(zones.items(), key=lambda x: x[1]["zone"]["index"])
     ]
@@ -302,7 +341,7 @@ def build_zone_names(
 
     """
     zone_names: dict[int, str] = {}
-    for zone_id, zone in zones.items():
+    for zone_id, zone in zone_payloads(zones).items():
         description = zone.get(CONF_DESCRIPTION)
         name = description.get(CONF_NAME) if isinstance(description, dict) else None
         if not name:

@@ -37,6 +37,8 @@ if not hasattr(_ha_const, "CONF_DESCRIPTION"):
     _ha_const.CONF_DESCRIPTION = "description"
 if not hasattr(_ha_const, "CONF_NAME"):
     _ha_const.CONF_NAME = "name"
+if not hasattr(_ha_const, "CONF_ZONE"):
+    _ha_const.CONF_ZONE = "zone"
 
 
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -233,3 +235,65 @@ def test_resolve_zone_device_name_falls_back_to_title() -> None:
 def test_resolve_zone_device_name_none_for_unzoned_entity() -> None:
     """Entities without a zone get no zone device name."""
     assert assets.resolve_zone_device_name(None, None, "Wisniowa 13") is None
+
+
+def _menus_with_zone_group(children: int = 4) -> dict:
+    """Build a minimal menu tree: a top-level group holding ``children`` groups."""
+    group_type = const.MENU_ITEM_TYPE_GROUP
+    menus = {"MI_1": {"id": 1, "menuType": "MI", "type": group_type, "parentId": 0}}
+    for index in range(children):
+        menus[f"MI_{10 + index}"] = {
+            "id": 10 + index,
+            "menuType": "MI",
+            "type": group_type,
+            "parentId": 1,
+        }
+    return menus
+
+
+def _zoneless_envelope() -> dict:
+    """Return the zones payload an ST-5305 heat pump sends (issue #211): no elements."""
+    return {
+        "transaction_time": None,
+        "elements": [],
+        "globalSchedules": {"time": None, "duringChange": None, "elements": []},
+        "controllerParameters": {},
+    }
+
+
+def test_zone_payloads_keeps_only_usable_entries() -> None:
+    """Entries that are not zone payloads are dropped rather than passed on."""
+    valid = _zone(1, "Strefa 1", index=0)
+    mixed = {1: valid, 2: None, 3: [], 4: {"description": {"name": "x"}}, 5: "nope"}
+
+    assert assets.zone_payloads(mixed) == {1: valid}
+
+
+def test_zone_payloads_tolerates_none_and_empty() -> None:
+    """A missing or empty zones value yields an empty mapping."""
+    assert assets.zone_payloads(None) == {}
+    assert assets.zone_payloads({}) == {}
+
+
+def test_build_menu_zone_assignments_ignores_a_zoneless_envelope() -> None:
+    """A heat pump's zones envelope neither raises nor assigns anything."""
+    assignments = assets.build_menu_zone_assignments(
+        _menus_with_zone_group(), _zoneless_envelope()
+    )
+
+    assert assignments == {}
+
+
+def test_build_menu_zone_assignments_skips_zones_without_an_index() -> None:
+    """Zones that cannot be matched positionally lead to no assignment at all."""
+    zones = {1: _zone(1, "Strefa 1")}  # a zone payload without "index"
+
+    assert assets.build_menu_zone_assignments(_menus_with_zone_group(1), zones) == {}
+
+
+def test_build_zone_names_ignores_non_zone_entries() -> None:
+    """The naming helper filters the same way, naming only real zones."""
+    zones = dict(_zoneless_envelope())
+    zones[101] = _zone(101, "Strefa 1", index=0)
+
+    assert assets.build_zone_names(zones, "L-8 DEMO") == {101: "Strefa 1"}
