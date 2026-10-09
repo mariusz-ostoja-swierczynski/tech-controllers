@@ -18,6 +18,7 @@ from collections import Counter
 import importlib.util
 import json
 import pathlib
+import re
 import sys
 import types
 
@@ -48,7 +49,8 @@ _ha_const.Platform = _Platform
 
 
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
-_CONST_PATH = _REPO_ROOT / "custom_components" / "tech" / "const.py"
+_TECH_DIR = _REPO_ROOT / "custom_components" / "tech"
+_CONST_PATH = _TECH_DIR / "const.py"
 
 
 def _load_const_module():
@@ -67,6 +69,33 @@ FIXTURES = pathlib.Path(__file__).parent / "fixtures"
 def _load(path: str) -> dict:
     """Load a JSON fixture relative to ``tests/fixtures``."""
     return json.loads((FIXTURES / path).read_text())
+
+
+def normalised_function(source: str, function_name: str) -> list[str]:
+    """Return a function's code lines, without its docstring or signature.
+
+    The predicates sensor.py and binary_sensor.py both define have to stay
+    identical in behaviour. Comments, docstrings and type annotations may
+    differ; the logic may not. Reducing both to their code lines makes that
+    comparable.
+    """
+    match = re.search(
+        rf"^def {function_name}\b.*?(?=^\S|\Z)", source, re.MULTILINE | re.DOTALL
+    )
+    assert match is not None, f"no definition of {function_name} in the source"
+
+    lines = match.group(0).splitlines()[1:]  # drop `def ...:` and its annotations
+    body = re.sub(r'""".*?"""', "", "\n".join(lines), flags=re.DOTALL)
+    return [
+        line.strip()
+        for line in body.splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+
+
+def predicate_body(path: pathlib.Path, function_name: str) -> list[str]:
+    """Return ``normalised_function`` for a function in the given file."""
+    return normalised_function(path.read_text(), function_name)
 
 
 def is_contact_widget_oracle(widget: dict) -> bool:
@@ -126,25 +155,68 @@ class TestIsContactWidget:
         widget = {"unit": 6, "type": 0, "txtId": 760, "value": 0}
         assert is_contact_widget_oracle(widget) is False
 
-    def test_predicate_source_matches_oracle(self):
-        """Verify sensor.py and binary_sensor.py still encode the same rule.
+    def test_unit6_zero_valued_widget_skipped_by_dispatch(self):
+        """A unit=6 widget with value=0 is still skipped (badge)."""
+        widget = {"unit": 6, "type": 0, "txtId": 760, "value": 0}
+        # This emulates the _build_widget_tile dispatch: skip when
+        # unit=6 AND value==0 (decorative badge, no numeric meaning).
+        should_skip = (
+            widget.get("unit") == 6 and widget.get("value", 0) == 0
+        )
+        assert should_skip is True
 
-        Asserting the source code of both still shows the canonical form
-        catches divergence between the two copies.
+    def test_unit6_nonzero_valued_widget_not_skipped_by_dispatch(self):
+        """A unit=6 widget with non-zero value is kept (real data, e.g. solar pump temperatures)."""
+        widget = {"unit": 6, "type": 1, "txtId": 2442, "value": 56}
+        # After the fix for the PWM solar pump (issue #196), non-zero
+        # unit=6 widgets are no longer skipped — they flow through to
+        # TileWidgetTemperatureSensor.
+        should_skip = (
+            widget.get("unit") == 6 and widget.get("value", 0) == 0
+        )
+        assert should_skip is False
+
+    def test_predicate_bodies_match(self):
+        """Verify sensor.py and binary_sensor.py encode the same rule.
+
+        The earlier version of this test only looked for marker strings, which
+        cannot tell a matching pair from one that has drifted - an added
+        condition would still have passed. The two implementations are therefore
+        compared as normalised source.
         """
+        assert predicate_body(
+            _TECH_DIR / "sensor.py", "_is_contact_widget"
+        ) == predicate_body(_TECH_DIR / "binary_sensor.py", "_is_contact_widget")
+
+    def test_the_comparison_notices_a_drifted_condition(self):
+        """Verify the guard above cannot pass on a diverged pair.
+
+        An extra condition is exactly the drift the string-based check missed, so
+        the comparison is exercised against a deliberately divergent copy.
+        """
+        original = (
+            "def _is_contact_widget(widget: dict) -> bool:\n"
+            '    """Return whether the widget is a contact."""\n'
+            "    return (\n"
+            '        widget.get("unit") == -1\n'
+            '        and widget.get("txtId", 0) != 0\n'
+            "    )\n"
+        )
+        drifted = original.replace(
+            'widget.get("txtId", 0) != 0', 'widget.get("txtId", 0) != 0\n        and widget.get("extra")'
+        )
+
+        assert normalised_function(original, "_is_contact_widget") != (
+            normalised_function(drifted, "_is_contact_widget")
+        )
+
+    def test_unit6_skip_condition_source_matches(self):
+        """sensor.py must encode the updated unit=6 skip rule (skip only when value==0)."""
         sensor_src = (
             _REPO_ROOT / "custom_components" / "tech" / "sensor.py"
         ).read_text()
-        binary_src = (
-            _REPO_ROOT / "custom_components" / "tech" / "binary_sensor.py"
-        ).read_text()
-        # Both files must define _is_contact_widget.
-        assert "def _is_contact_widget" in sensor_src
-        assert "def _is_contact_widget" in binary_src
-        # Both implementations must reference the same three marker fields.
-        for src in (sensor_src, binary_src):
-            assert 'widget.get("unit") == -1' in src
-            assert 'widget.get("txtId", 0) != 0' in src
+        # The new skip condition: only skip unit=6 widgets with value==0.
+        assert 'if widget.get("unit") == 6 and widget.get("value", 0) == 0:' in sensor_src
 
 
 class TestIsFlagWidget:
@@ -223,8 +295,25 @@ class TestUnitDivisors:
     def test_known_units_only(self):
         """Pin the set of known unit codes to detect accidental additions."""
         # Codes outside the table fall back to a divisor of 1 in
-        # _build_widget_tile / TileWidgetTemperatureSensor.get_state.
-        assert set(C.WIDGET_UNIT_DIVISORS.keys()) == {0, 4, 5, 6, 7, 8, 23, 26, 33}
+        # _build_widget_tile / TileWidgetTemperatureSensor.get_state. The set is
+        # the API's value-type table (see const.WIDGET_UNIT_DIVISORS).
+        assert set(C.WIDGET_UNIT_DIVISORS.keys()) == {
+            0,
+            4,
+            5,
+            6,
+            7,
+            8,
+            21,
+            22,
+            23,
+            26,
+            30,
+            33,
+            36,
+            38,
+            40,
+        }
 
 
 class TestTxtIdFallbacks:
@@ -413,6 +502,25 @@ class TestSt491Fixture:
         assert emitted == 4
 
 
+    def test_all_widget_tiles_have_status_binary_sensor(self):
+        """Only TYPE_WIDGET tiles with pump-type widgets get a TileWidgetStatusSensor."""
+        count = 0
+        for tile in self.module["tiles"]:
+            if tile["type"] != C.TYPE_WIDGET:
+                continue
+            status_id = tile["params"].get("statusId")
+            if status_id not in (0, 1):
+                continue
+            has_pump = any(
+                tile["params"].get(key, {}).get("type") in (C.WIDGET_DHW_PUMP, C.WIDGET_COLLECTOR_PUMP)
+                for key in ("widget1", "widget2")
+            )
+            if has_pump:
+                count += 1
+        # ST-491 has no pump-type widgets among its TYPE_WIDGET tiles
+        assert count == 0
+
+
 # ---------------------------------------------------------------------------
 # Fixture-driven assertions: L-12 zone controller
 # ---------------------------------------------------------------------------
@@ -551,6 +659,23 @@ class TestSt2801Fixture:
         # raw percentage -- no scaling needed
         assert C.WIDGET_UNIT_DIVISORS[8] == 1
 
+    def test_all_widget_tiles_have_status_binary_sensor(self):
+        """The lone TYPE_WIDGET tile has a pump-type widget and gets a status sensor."""
+        count = 0
+        for tile in self.module["tiles"]:
+            if tile["type"] != C.TYPE_WIDGET:
+                continue
+            status_id = tile["params"].get("statusId")
+            if status_id not in (0, 1):
+                continue
+            has_pump = any(
+                tile["params"].get(key, {}).get("type") in (C.WIDGET_DHW_PUMP, C.WIDGET_COLLECTOR_PUMP)
+                for key in ("widget1", "widget2")
+            )
+            if has_pump:
+                count += 1
+        assert count == 1
+
     def test_expected_tile_type_distribution(self):
         """Pin the per-type tile counts of the captured ST-2801 fixture."""
         counts = Counter(t["type"] for t in self.module["tiles"])
@@ -662,6 +787,44 @@ class TestSt521Fixture:
                 emitted += 1
         assert emitted == 66
 
+    def test_all_widget_tiles_have_status_binary_sensor(self):
+        """66 of 70 TYPE_WIDGET tiles have pump-type widgets and get a status sensor.
+
+        The remaining 4 are pure contact-sensor tiles (type=0 on both widgets)
+        and are correctly excluded.
+        """
+        count = 0
+        for tile in self.module["tiles"]:
+            if tile["type"] != C.TYPE_WIDGET:
+                continue
+            status_id = tile["params"].get("statusId")
+            if status_id not in (0, 1):
+                continue
+            has_pump = any(
+                tile["params"].get(key, {}).get("type") in (C.WIDGET_DHW_PUMP, C.WIDGET_COLLECTOR_PUMP)
+                for key in ("widget1", "widget2")
+            )
+            if has_pump:
+                count += 1
+        assert count == 66
+
+    def test_status_binary_sensor_off_states(self):
+        """One TYPE_WIDGET tile has statusId=0 and a pump-type widget (OFF)."""
+        off_count = 0
+        for tile in self.module["tiles"]:
+            if tile["type"] != C.TYPE_WIDGET:
+                continue
+            status_id = tile["params"].get("statusId")
+            if status_id != 0:
+                continue
+            has_pump = any(
+                tile["params"].get(key, {}).get("type") in (C.WIDGET_DHW_PUMP, C.WIDGET_COLLECTOR_PUMP)
+                for key in ("widget1", "widget2")
+            )
+            if has_pump:
+                off_count += 1
+        assert off_count == 1
+
     def test_new_unit_codes_scale_correctly(self):
         """Unit codes 23, 26, 33 scale values by 10 (bar, kW, %).
 
@@ -741,3 +904,14 @@ class TestSt521Fixture:
         assert 23 in units, "unit=23 (bar×10) missing from ST-521"
         assert 26 in units, "unit=26 (kW×10) missing from ST-521"
         assert 33 in units, "unit=33 (percentage×10) missing from ST-521"
+
+    def test_documented_value_type_divisors(self):
+        """The API's value-type table divisors are all present."""
+        documented = {21: 10, 22: 10, 30: 100, 36: 100, 40: 1000}
+        assert {
+            unit: C.WIDGET_UNIT_DIVISORS[unit] for unit in documented
+        } == documented
+
+        # 38 (COP) is inferred rather than stated: the API documents decimal
+        # places without a transformation, and reported COP values divide by 10.
+        assert C.WIDGET_UNIT_DIVISORS[38] == 10
