@@ -281,6 +281,9 @@ def _fake_module(name: str) -> types.ModuleType:
         module.async_get = _async_get_registry
     elif name == "homeassistant.helpers.icon":
         module.icon_for_signal_level = lambda level: "mdi:signal"
+    elif name == "homeassistant.helpers.typing":
+        module.StateType = object
+        module.UndefinedType = type("UndefinedType", (), {})
     elif name == "homeassistant.helpers.issue_registry":
         module.IssueSeverity = _AutoNamespace()
         module.async_create_issue = _async_create_issue
@@ -362,6 +365,15 @@ assets = _load_tech_module("assets")
 _load_tech_module("tech")
 _load_tech_module("coordinator")
 sensor = _load_tech_module("sensor")
+
+# binary_sensor.py imports TechCoordinator and assets from the package rather
+# than from their own modules, which only resolves once the package exposes them.
+_tech_package = sys.modules["custom_components.tech"]
+_tech_package.TechCoordinator = sys.modules[
+    "custom_components.tech.coordinator"
+].TechCoordinator
+_tech_package.assets = assets
+binary_sensor = _load_tech_module("binary_sensor")
 
 PLATFORMS = (
     ("switch", "MenuSwitchEntity"),
@@ -589,6 +601,77 @@ def _install_registry(registry: _Registry) -> _Registry:
 def _deprecate(registry: _Registry) -> bool:
     """Run the deprecation decision the way the sensor platform does."""
     return sensor._async_deprecate_flag_sensor(object(), registry, "some-unique-id")
+
+
+def _widget_tile(
+    *,
+    status_id: int,
+    widget: dict[str, Any],
+    tile_id: int = 4660,
+) -> dict[str, Any]:
+    """Return a TYPE_WIDGET tile carrying one widget and a chosen ``statusId``."""
+    return {
+        "id": tile_id,
+        "type": const.TYPE_WIDGET,
+        "visibility": True,
+        "params": {
+            "id": tile_id,
+            "txtId": 100,
+            "iconId": 0,
+            "statusId": status_id,
+            "value": 0,
+            "widget1": widget,
+        },
+    }
+
+
+class TestContactAndFlagStateSources:
+    """Contacts read the tile's ``statusId``; unit-28 flags read their own value.
+
+    Both entities are built from the same kind of tile, and each case is arranged
+    so the two candidate fields disagree. A test where they agreed would pass
+    against either implementation and prove nothing.
+    """
+
+    def test_contact_takes_its_state_from_status_id(self) -> None:
+        """A contact is on when statusId is 1, even though its value is 0."""
+        tile = _widget_tile(
+            status_id=1,
+            widget={"txtId": 5320, "unit": -1, "type": 0, "value": 0},
+        )
+        entity = binary_sensor.TileWidgetContactSensor(
+            tile, _Coordinator(), _Entry(), "widget1"
+        )
+
+        assert entity.get_state(tile) is True
+
+    def test_flag_takes_its_state_from_its_own_value(self) -> None:
+        """A flag is on when its own value is 1, even though statusId is 0."""
+        tile = _widget_tile(
+            status_id=0,
+            widget={"txtId": 4640, "unit": 28, "type": 1, "value": 1},
+        )
+        entity = binary_sensor.TileWidgetFlagSensor(
+            tile, _Coordinator(), _Entry(), "widget1"
+        )
+
+        assert entity.get_state(tile) is True
+
+    def test_flag_does_not_inherit_the_status_id_lookup(self) -> None:
+        """A flag with an off value stays off even when statusId is on.
+
+        This is the case that catches the inherited contact implementation: if
+        the flag read ``statusId`` it would report on here.
+        """
+        tile = _widget_tile(
+            status_id=1,
+            widget={"txtId": 4640, "unit": 28, "type": 1, "value": 0},
+        )
+        entity = binary_sensor.TileWidgetFlagSensor(
+            tile, _Coordinator(), _Entry(), "widget1"
+        )
+
+        assert entity.get_state(tile) is False
 
 
 class TestDeprecatedFlagSensor:
