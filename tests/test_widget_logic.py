@@ -239,8 +239,25 @@ class TestUnitDivisors:
     def test_known_units_only(self):
         """Pin the set of known unit codes to detect accidental additions."""
         # Codes outside the table fall back to a divisor of 1 in
-        # _build_widget_tile / TileWidgetTemperatureSensor.get_state.
-        assert set(C.WIDGET_UNIT_DIVISORS.keys()) == {0, 4, 5, 6, 7, 8, 23, 26, 33}
+        # _build_widget_tile / TileWidgetTemperatureSensor.get_state. The set is
+        # the API's value-type table (see const.WIDGET_UNIT_DIVISORS).
+        assert set(C.WIDGET_UNIT_DIVISORS.keys()) == {
+            0,
+            4,
+            5,
+            6,
+            7,
+            8,
+            21,
+            22,
+            23,
+            26,
+            30,
+            33,
+            36,
+            38,
+            40,
+        }
 
 
 class TestTxtIdFallbacks:
@@ -831,3 +848,14 @@ class TestSt521Fixture:
         assert 23 in units, "unit=23 (bar×10) missing from ST-521"
         assert 26 in units, "unit=26 (kW×10) missing from ST-521"
         assert 33 in units, "unit=33 (percentage×10) missing from ST-521"
+
+    def test_documented_value_type_divisors(self):
+        """The API's value-type table divisors are all present."""
+        documented = {21: 10, 22: 10, 30: 100, 36: 100, 40: 1000}
+        assert {
+            unit: C.WIDGET_UNIT_DIVISORS[unit] for unit in documented
+        } == documented
+
+        # 38 (COP) is inferred rather than stated: the API documents decimal
+        # places without a transformation, and reported COP values divide by 10.
+        assert C.WIDGET_UNIT_DIVISORS[38] == 10

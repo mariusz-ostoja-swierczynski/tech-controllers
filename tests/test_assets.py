@@ -252,7 +252,7 @@ def _menus_with_zone_group(children: int = 4) -> dict:
 
 
 def _zoneless_envelope() -> dict:
-    """Return the zones payload an ST-5305 heat pump sends (issue #211): no elements."""
+    """Return a zones payload with no elements, as a controller without zones sends."""
     return {
         "transaction_time": None,
         "elements": [],
