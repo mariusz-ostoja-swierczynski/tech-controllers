@@ -20,6 +20,7 @@ from . import assets
 from .const import (
     CONTROLLER,
     DOMAIN,
+    INCLUDE_HUB_IN_NAME,
     MANUFACTURER,
     MENU_DEPTH_DEFAULT_ENABLED_LIMIT,
     MENU_DEPTH_REGISTRATION_LIMIT,
@@ -55,6 +56,11 @@ async def async_setup_entry(
     menus = await coordinator.api.get_module_menus(controller_udid)
     zones = await coordinator.api.get_module_zones(controller_udid)
     ctx = assets.build_menu_context(menus, zones, coordinator.translations)
+    zone_names = assets.build_zone_names(
+        zones,
+        config_entry.title,
+        config_entry.data.get(INCLUDE_HUB_IN_NAME, False),
+    )
 
     entities: list[MenuNumberEntity] = []
     for key, item in menus.items():
@@ -76,6 +82,7 @@ async def async_setup_entry(
                 ctx.group_names,
                 depth=ctx.depths[key],
                 zone_id=ctx.zone_assignments.get(key),
+                zone_names=zone_names,
             )
         )
 
@@ -97,6 +104,7 @@ class MenuNumberEntity(CoordinatorEntity, NumberEntity):
         group_names: dict[tuple[str, int], str],
         depth: int = 0,
         zone_id: int | None = None,
+        zone_names: dict[int, str] | None = None,
     ) -> None:
         """Initialise a menu number entity.
 
@@ -109,6 +117,8 @@ class MenuNumberEntity(CoordinatorEntity, NumberEntity):
             depth: Nesting depth of this item in the Tech menu tree
                 (0 = top-level). Drives ``entity_registry_enabled_default``.
             zone_id: Optional zone ID to associate this entity with a zone device.
+            zone_names: Mapping of zone ID to zone device name, used to name
+                the zone device when ``zone_id`` is set.
 
         """
         super().__init__(coordinator)
@@ -121,6 +131,13 @@ class MenuNumberEntity(CoordinatorEntity, NumberEntity):
         self._unique_id = f"{self._udid}_menu_{menu_key}"
         self.manufacturer = MANUFACTURER
         self._zone_id = zone_id
+        # Explicit zone device name -- without it the device registry falls back
+        # to the config entry title and changes composed entity names; see
+        # https://developers.home-assistant.io/blog/2026/08/24/device-registry-follow-up-changes
+        # (core PR #179397).
+        self._zone_name = assets.resolve_zone_device_name(
+            zone_names, zone_id, config_entry.title
+        )
 
         params = item.get("params", {})
         self._format = params.get("format", 1)
@@ -158,6 +175,7 @@ class MenuNumberEntity(CoordinatorEntity, NumberEntity):
         if self._zone_id is not None:
             return {
                 ATTR_IDENTIFIERS: {(DOMAIN, f"{self._udid}_{self._zone_id}")},
+                CONF_NAME: self._zone_name,
                 ATTR_MANUFACTURER: self.manufacturer,
             }
         return {
