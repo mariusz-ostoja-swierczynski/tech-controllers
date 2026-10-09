@@ -1,4 +1,14 @@
 {
+    "issues": {
+        "deprecated_flag_sensor": {
+            "title": "Rilevato sensore obsoleto",
+            "description": "Il sensore `{entity_id}` è obsoleto: i widget di tipo valore 28, che indicano Abilitato/Disabilitato, ora sono esposti come sensori binari con lo stesso nome.\n\nAggiorna le dashboard, i template, le automazioni e gli script per usare il sensore binario, poi disabilita il sensore obsoleto e riavvia Home Assistant."
+        },
+        "deprecated_flag_sensor_used": {
+            "title": "Rilevato sensore obsoleto",
+            "description": "Il sensore `{entity_id}` è obsoleto: i widget di tipo valore 28, che indicano Abilitato/Disabilitato, ora sono esposti come sensori binari con lo stesso nome.\n\nÈ usato nelle seguenti automazioni o script:\n{items}\n\nAggiornali, insieme alle dashboard e ai template che lo usano, per usare il sensore binario, poi disabilita il sensore obsoleto e riavvia Home Assistant."
+        }
+    },
     "config": {
         "abort": {
             "already_configured": "Dispositivo già configurato",

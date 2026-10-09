@@ -1,5 +1,15 @@
 {
   "title": "Tech Sterowniki",
+  "issues": {
+    "deprecated_flag_sensor": {
+      "title": "Deprecated sensor detected",
+      "description": "The sensor `{entity_id}` is deprecated: value type 28 widgets, which report Enabled/Disabled, are now exposed as binary sensors with the same name.\n\nUpdate your dashboards, templates, automations and scripts to use the binary sensor instead, then disable the deprecated sensor and restart Home Assistant."
+    },
+    "deprecated_flag_sensor_used": {
+      "title": "Deprecated sensor detected",
+      "description": "The sensor `{entity_id}` is deprecated: value type 28 widgets, which report Enabled/Disabled, are now exposed as binary sensors with the same name.\n\nIt is used in the following automations or scripts:\n{items}\n\nUpdate those, along with any dashboards and templates that use it, to use the binary sensor instead, then disable the deprecated sensor and restart Home Assistant."
+    }
+  },
   "config": {
     "step": {
       "user": {

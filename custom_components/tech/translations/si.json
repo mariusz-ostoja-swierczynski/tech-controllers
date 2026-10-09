@@ -1,4 +1,14 @@
 {
+    "issues": {
+        "deprecated_flag_sensor": {
+            "title": "Zaznan zastarel senzor",
+            "description": "Senzor `{entity_id}` je zastarel: gradniki vrste vrednosti 28, ki poročajo Omogočeno/Onemogočeno, so zdaj izpostavljeni kot binarni senzorji z istim imenom.\n\nPosodobite svoje nadzorne plošče, predloge, avtomatizacije in skripte, da uporabljajo binarni senzor, nato onemogočite zastarel senzor in znova zaženite Home Assistant."
+        },
+        "deprecated_flag_sensor_used": {
+            "title": "Zaznan zastarel senzor",
+            "description": "Senzor `{entity_id}` je zastarel: gradniki vrste vrednosti 28, ki poročajo Omogočeno/Onemogočeno, so zdaj izpostavljeni kot binarni senzorji z istim imenom.\n\nUporablja se v naslednjih avtomatizacijah ali skriptah:\n{items}\n\nPosodobite te skupaj z nadzornimi ploščami in predlogami, ki ga uporabljajo, da uporabljajo binarni senzor, nato onemogočite zastarel senzor in znova zaženite Home Assistant."
+        }
+    },
     "config": {
         "abort": {
             "already_configured": "Naprava je že konfigurirana",

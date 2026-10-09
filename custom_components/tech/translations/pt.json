@@ -1,4 +1,14 @@
 {
+    "issues": {
+        "deprecated_flag_sensor": {
+            "title": "Sensor obsoleto detetado",
+            "description": "O sensor `{entity_id}` está obsoleto: os widgets de tipo de valor 28, que indicam Ativado/Desativado, são agora expostos como sensores binários com o mesmo nome.\n\nAtualize os seus painéis, modelos, automações e scripts para usar o sensor binário, depois desative o sensor obsoleto e reinicie o Home Assistant."
+        },
+        "deprecated_flag_sensor_used": {
+            "title": "Sensor obsoleto detetado",
+            "description": "O sensor `{entity_id}` está obsoleto: os widgets de tipo de valor 28, que indicam Ativado/Desativado, são agora expostos como sensores binários com o mesmo nome.\n\nÉ usado nas seguintes automações ou scripts:\n{items}\n\nAtualize esses, juntamente com os painéis e modelos que o usam, para usar o sensor binário, depois desative o sensor obsoleto e reinicie o Home Assistant."
+        }
+    },
     "config": {
         "abort": {
             "already_configured": "Dispositivo já configurado",

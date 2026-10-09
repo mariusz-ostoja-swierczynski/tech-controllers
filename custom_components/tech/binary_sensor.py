@@ -62,6 +62,18 @@ def _is_contact_widget(widget: dict) -> bool:
     )
 
 
+def _is_flag_widget(widget: dict) -> bool:
+    """Return ``True`` for enable/disable widgets (API value type 28).
+
+    The API documents value type 28 as "Enabled / Disabled - [1/0]", which is a
+    state rather than a measurement, so these widgets belong here instead of the
+    sensor platform. The widget ``type`` is deliberately not checked: real
+    payloads carry these as ``type == 1``, unlike the ``type == 0`` contact
+    marker. A widget without a label of its own is skipped, as everywhere else.
+    """
+    return widget.get("unit") == 28 and widget.get("txtId", 0) != 0
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -104,6 +116,12 @@ async def async_setup_entry(
         if tile[CONF_TYPE] == TYPE_WIDGET:
             for widget_key in ("widget1", "widget2"):
                 widget = tile.get(CONF_PARAMS, {}).get(widget_key)
+                if widget and _is_flag_widget(widget):
+                    entities.append(
+                        TileWidgetFlagSensor(
+                            tile, coordinator, config_entry, widget_key
+                        )
+                    )
                 if widget and _is_contact_widget(widget):
                     entities.append(
                         TileWidgetContactSensor(
@@ -174,6 +192,7 @@ class TileWidgetContactSensor(TileBinarySensor):
     Exposed as an opening device-class binary sensor; ``value == 1`` means open.
     """
 
+    _UNIQUE_ID_SUFFIX = "tile_widget_contact"
     _attr_device_class = binary_sensor.BinarySensorDeviceClass.OPENING
 
     def __init__(
@@ -207,8 +226,20 @@ class TileWidgetContactSensor(TileBinarySensor):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return f"{self._unique_id}_tile_widget_contact_{self._widget_key}"
+        return f"{self._unique_id}_{self._UNIQUE_ID_SUFFIX}_{self._widget_key}"
 
     def get_state(self, device):
         """Return the contact state from the widget value."""
         return device[CONF_PARAMS][self._widget_key][VALUE] == 1
+
+
+class TileWidgetFlagSensor(TileWidgetContactSensor):
+    """A widget-shaped enable/disable flag (API value type 28).
+
+    Detected by ``unit == 28``. The API names the state "Enabled / Disabled"
+    without naming a device class, so this one carries none; ``value == 1``
+    means enabled.
+    """
+
+    _UNIQUE_ID_SUFFIX = "tile_widget_flag"
+    _attr_device_class = None
