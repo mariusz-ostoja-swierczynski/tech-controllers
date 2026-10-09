@@ -15,65 +15,14 @@ if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
 else:  # pragma: no cover
     ClientSession = Any
 
-from homeassistant.const import CONF_ID, CONF_PARAMS, CONF_TYPE
-
 from .const import (
     API_TIMEOUT,
     MENU_TYPES,
     MODULE_DATA_CACHE_TTL,
     TECH_SUPPORTED_LANGUAGES,
-    TYPE_ADDITIONAL_PUMP,
-    TYPE_FIRE_SENSOR,
-    TYPE_RELAY,
-    TYPE_WIDGET,
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-
-# Tile types whose raw ``params`` payload is worth dumping verbatim at
-# DEBUG level: they drive the #196 solar-pump / relay / contact pipeline
-# where "missing sensor" or "wrong state" bugs live.
-_DETAILED_TILE_TYPES = (
-    TYPE_WIDGET,
-    TYPE_RELAY,
-    TYPE_ADDITIONAL_PUMP,
-    TYPE_FIRE_SENSOR,
-)
-
-
-def _log_tile_payloads(tiles: list[dict], module_udid: str) -> None:
-    """Emit a compact DEBUG summary of the raw tile payloads.
-
-    One line per tile (``id`` + ``type``). For :data:`_DETAILED_TILE_TYPES`
-    the full ``params`` dict is dumped (widget1/widget2 ``txtId``,
-    ``type``, ``unit``, ``value``; ``statusId``; ``workingStatus``) so a
-    failing install can be diagnosed from the log alone -- without it the
-    log only shows a tile count and nothing about the parsing inputs.
-
-    Args:
-        tiles: Visible tiles as returned by the emodul API.
-        module_udid: Tech module identifier (used as the log anchor).
-
-    """
-    for tile in tiles:
-        tile_id = tile.get(CONF_ID)
-        tile_type = tile.get(CONF_TYPE)
-        if tile_type in _DETAILED_TILE_TYPES:
-            _LOGGER.debug(
-                "Module %s: tile %s (type=%s) params: %s",
-                module_udid,
-                tile_id,
-                tile_type,
-                tile.get(CONF_PARAMS),
-            )
-        else:
-            _LOGGER.debug(
-                "Module %s: tile %s (type=%s)",
-                module_udid,
-                tile_id,
-                tile_type,
-            )
 
 
 class Tech:
@@ -365,11 +314,6 @@ class Tech:
                     module_udid,
                 )
                 cache["tiles"].update({tile["id"]: tile for tile in visible_tiles})
-
-            # Raw per-tile payload dump (DEBUG only) so "missing sensor" /
-            # "wrong state" reports can be checked against what the API
-            # actually sent, without re-asking the user for a JSON capture.
-            _log_tile_payloads(visible_tiles, module_udid)
 
             menu_items = await self._fetch_menu_data(module_udid)
             if menu_items:

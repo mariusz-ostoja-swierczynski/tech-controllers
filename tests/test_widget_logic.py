@@ -18,6 +18,7 @@ from collections import Counter
 import importlib.util
 import json
 import pathlib
+import re
 import sys
 import types
 
@@ -48,7 +49,8 @@ _ha_const.Platform = _Platform
 
 
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
-_CONST_PATH = _REPO_ROOT / "custom_components" / "tech" / "const.py"
+_TECH_DIR = _REPO_ROOT / "custom_components" / "tech"
+_CONST_PATH = _TECH_DIR / "const.py"
 
 
 def _load_const_module():
@@ -67,6 +69,33 @@ FIXTURES = pathlib.Path(__file__).parent / "fixtures"
 def _load(path: str) -> dict:
     """Load a JSON fixture relative to ``tests/fixtures``."""
     return json.loads((FIXTURES / path).read_text())
+
+
+def normalised_function(source: str, function_name: str) -> list[str]:
+    """Return a function's code lines, without its docstring or signature.
+
+    The predicates sensor.py and binary_sensor.py both define have to stay
+    identical in behaviour. Comments, docstrings and type annotations may
+    differ; the logic may not. Reducing both to their code lines makes that
+    comparable.
+    """
+    match = re.search(
+        rf"^def {function_name}\b.*?(?=^\S|\Z)", source, re.MULTILINE | re.DOTALL
+    )
+    assert match is not None, f"no definition of {function_name} in the source"
+
+    lines = match.group(0).splitlines()[1:]  # drop `def ...:` and its annotations
+    body = re.sub(r'""".*?"""', "", "\n".join(lines), flags=re.DOTALL)
+    return [
+        line.strip()
+        for line in body.splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+
+
+def predicate_body(path: pathlib.Path, function_name: str) -> list[str]:
+    """Return ``normalised_function`` for a function in the given file."""
+    return normalised_function(path.read_text(), function_name)
 
 
 def is_contact_widget_oracle(widget: dict) -> bool:
@@ -138,25 +167,39 @@ class TestIsContactWidget:
         )
         assert should_skip is False
 
-    def test_predicate_source_matches_oracle(self):
-        """Verify sensor.py and binary_sensor.py still encode the same rule.
+    def test_predicate_bodies_match(self):
+        """Verify sensor.py and binary_sensor.py encode the same rule.
 
-        Asserting the source code of both still shows the canonical form
-        catches divergence between the two copies.
+        The earlier version of this test only looked for marker strings, which
+        cannot tell a matching pair from one that has drifted - an added
+        condition would still have passed. The two implementations are therefore
+        compared as normalised source.
         """
-        sensor_src = (
-            _REPO_ROOT / "custom_components" / "tech" / "sensor.py"
-        ).read_text()
-        binary_src = (
-            _REPO_ROOT / "custom_components" / "tech" / "binary_sensor.py"
-        ).read_text()
-        # Both files must define _is_contact_widget.
-        assert "def _is_contact_widget" in sensor_src
-        assert "def _is_contact_widget" in binary_src
-        # Both implementations must reference the same three marker fields.
-        for src in (sensor_src, binary_src):
-            assert 'widget.get("unit") == -1' in src
-            assert 'widget.get("txtId", 0) != 0' in src
+        assert predicate_body(
+            _TECH_DIR / "sensor.py", "_is_contact_widget"
+        ) == predicate_body(_TECH_DIR / "binary_sensor.py", "_is_contact_widget")
+
+    def test_the_comparison_notices_a_drifted_condition(self):
+        """Verify the guard above cannot pass on a diverged pair.
+
+        An extra condition is exactly the drift the string-based check missed, so
+        the comparison is exercised against a deliberately divergent copy.
+        """
+        original = (
+            "def _is_contact_widget(widget: dict) -> bool:\n"
+            '    """Return whether the widget is a contact."""\n'
+            "    return (\n"
+            '        widget.get("unit") == -1\n'
+            '        and widget.get("txtId", 0) != 0\n'
+            "    )\n"
+        )
+        drifted = original.replace(
+            'widget.get("txtId", 0) != 0', 'widget.get("txtId", 0) != 0\n        and widget.get("extra")'
+        )
+
+        assert normalised_function(original, "_is_contact_widget") != (
+            normalised_function(drifted, "_is_contact_widget")
+        )
 
     def test_unit6_skip_condition_source_matches(self):
         """sensor.py must encode the updated unit=6 skip rule (skip only when value==0)."""

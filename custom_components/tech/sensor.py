@@ -213,31 +213,12 @@ def _build_tile_entities(
 ) -> list[CoordinatorEntity]:
     """Create coordinator entities for a single tile payload."""
 
-    tile_id = tile.get(CONF_ID)
     if not tile.get(VISIBILITY, False) or not tile.get(WORKING_STATUS, True):
-        _LOGGER.debug(
-            "Skipping tile %s (type=%s): visibility=%s workingStatus=%s",
-            tile_id,
-            tile.get(CONF_TYPE),
-            tile.get(VISIBILITY, False),
-            tile.get(WORKING_STATUS, True),
-        )
         return []
 
     builder = _TILE_ENTITY_BUILDERS.get(tile[CONF_TYPE])
     if builder is None:
-        _LOGGER.debug(
-            "Skipping tile %s (type=%s): no builder registered",
-            tile_id,
-            tile[CONF_TYPE],
-        )
         return []
-    _LOGGER.debug(
-        "Building entities for tile %s (type=%s) via %s",
-        tile_id,
-        tile[CONF_TYPE],
-        getattr(builder, "__name__", builder),
-    )
     return builder(tile, coordinator, config_entry)
 
 
@@ -396,7 +377,6 @@ def _build_widget_tile(
     """
     entities: list[CoordinatorEntity] = []
     params = tile.get(CONF_PARAMS, {})
-    tile_id = tile.get(CONF_ID)
     for widget_key in ("widget1", "widget2"):
         widget = params.get(widget_key)
         if not widget:
@@ -411,52 +391,19 @@ def _build_widget_tile(
                 WIDGET_DHW_PUMP,
                 WIDGET_COLLECTOR_PUMP,
             ):
-                _LOGGER.debug(
-                    "Skipping widget %s of tile %s: txtId=0 placeholder without "
-                    "pump type (type=%s)",
-                    widget_key,
-                    tile_id,
-                    widget.get(CONF_TYPE),
-                )
                 continue
             other_key = "widget2" if widget_key == "widget1" else "widget1"
             other = params.get(other_key, {})
             if not other or other.get("txtId", 0) == 0:
-                _LOGGER.debug(
-                    "Skipping widget %s of tile %s: txtId=0 and no labelled "
-                    "sibling widget",
-                    widget_key,
-                    tile_id,
-                )
                 continue
         if _is_contact_widget(widget):
-            _LOGGER.debug(
-                "Skipping widget %s of tile %s: contact widget (owned by "
-                "binary_sensor)",
-                widget_key,
-                tile_id,
-            )
             continue
         if widget.get("unit") == 6 and widget.get("value", 0) == 0:
-            _LOGGER.debug(
-                "Skipping widget %s of tile %s: unit=6 zero-valued state badge",
-                widget_key,
-                tile_id,
-            )
             continue
         widget_type = widget.get(CONF_TYPE)
         if widget_type == WIDGET_COLLECTOR_PUMP or widget.get("unit") == 8:
-            entity = TileWidgetPumpSensor(tile, coordinator, config_entry, widget_key)
-            entities.append(entity)
-            _LOGGER.debug(
-                "Creating %s from tile %s widget %s: name=%r unique_id=%s "
-                "widget=%s",
-                type(entity).__name__,
-                tile_id,
-                widget_key,
-                getattr(entity, "_name", None),
-                entity.unique_id,
-                widget,
+            entities.append(
+                TileWidgetPumpSensor(tile, coordinator, config_entry, widget_key)
             )
         else:
             # WIDGET_DHW_PUMP, WIDGET_TEMPERATURE_CH and any unknown numeric
@@ -465,19 +412,8 @@ def _build_widget_tile(
             # ``unit`` field, not by the widget type, so an unknown numeric
             # type is still rendered correctly so long as ``unit`` is one of
             # the documented values in :data:`const.WIDGET_UNIT_DIVISORS`.
-            entity = TileWidgetTemperatureSensor(
-                tile, coordinator, config_entry, widget_key
-            )
-            entities.append(entity)
-            _LOGGER.debug(
-                "Creating %s from tile %s widget %s: name=%r unique_id=%s "
-                "widget=%s",
-                type(entity).__name__,
-                tile_id,
-                widget_key,
-                getattr(entity, "_name", None),
-                entity.unique_id,
-                widget,
+            entities.append(
+                TileWidgetTemperatureSensor(tile, coordinator, config_entry, widget_key)
             )
     return entities
 
