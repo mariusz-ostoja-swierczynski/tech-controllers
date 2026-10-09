@@ -28,6 +28,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from . import assets
 from .const import CONTROLLER, DOMAIN, INCLUDE_HUB_IN_NAME, MANUFACTURER, UDID, VER
 from .coordinator import TechCoordinator
 
@@ -54,9 +55,12 @@ async def async_setup_entry(
     udid = config_entry.data[CONTROLLER][UDID]
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     _LOGGER.debug("Setting up entry, controller udid: %s", udid)
-    zones = await coordinator.api.get_module_zones(udid)
+    # Only usable zone payloads: a controller without zones, or one whose payload
+    # carries entries that are not zone payloads, must not take the whole climate
+    # platform down with it.
+    zones = assets.zone_payloads(await coordinator.api.get_module_zones(udid))
     thermostats = [
-        TechThermostat(zones[zone], coordinator, config_entry) for zone in zones
+        TechThermostat(zone, coordinator, config_entry) for zone in zones.values()
     ]
 
     async_add_entities(thermostats, True)

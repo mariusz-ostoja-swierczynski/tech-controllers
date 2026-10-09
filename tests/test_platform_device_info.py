@@ -383,7 +383,7 @@ def test_zone_names_built_with_the_hub_prefix_reach_the_device(
 ) -> None:
     """The prefixed mapping built for ``include_hub_in_name`` is what gets used."""
     zone_names = assets.build_zone_names(
-        {101: {"description": {"name": "Strefa 1"}}},
+        {101: {"zone": {"id": 101, "index": 0}, "description": {"name": "Strefa 1"}}},
         _HUB,
         include_hub_in_name=True,
     )
@@ -398,7 +398,7 @@ def test_zone_names_built_without_the_prefix_reach_the_device(
 ) -> None:
     """With the flag off the device takes the bare zone name, as before."""
     zone_names = assets.build_zone_names(
-        {101: {"description": {"name": "Strefa 1"}}},
+        {101: {"zone": {"id": 101, "index": 0}, "description": {"name": "Strefa 1"}}},
         _HUB,
         include_hub_in_name=False,
     )

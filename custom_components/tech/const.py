@@ -148,6 +148,25 @@ WIDGET_TEMPERATURE_CH = 9  # Central-heating temperature reading
 #  * 26  -- tenths of a kW (power sensor, observed on ST-521)
 #  * 33  -- tenths of a percent (mixer opening, observed on ST-521)
 #  * -1  -- contact widget marker (handled by binary_sensor, not scaled here)
+#
+# The remaining divisors come from the API's own value-type table
+# (https://api-documentation.emodul.eu/openapi.yaml, "Data types format"), which
+# states the transformation each value type needs:
+#  * 21 -- MWh with a decimal point   -> / 10
+#  * 22 -- L/min with a decimal point -> / 10
+#  * 30 -- L/hr with a decimal point  -> / 100
+#  * 36 -- kWh with a hundredth       -> / 100
+#  * 40 -- kWh with a thousandth      -> / 1000
+#  * 38 -- COP with decimal places    -> / 10. The API states the decimal places
+#          but not the transformation; reported COP values are divided by 10,
+#          as every other "with decimals" type is.
+# Value types the API documents without a transformation are deliberately absent
+# and fall back to the unscaled value: 1 (s), 2 (min), 3 (h), 10 (kW), 11 (kWh),
+# 13 (hh:mm), 14 (days), 15 (run), 18 (text / flame brightness), 19 (kWh),
+# 20 (MWh), 24 (epoch), 27 (RPM), 29 (W), 32 (K), 34 (Wh), 39 (l/m), 41 (l),
+# 42 (m3). Types 25, 31 and 37 are durations that need a conversion rather than
+# a divisor, 28 is an on/off flag rather than a measurement, and 35 is
+# hexadecimal.
 WIDGET_UNIT_DIVISORS = {
     0: 1,
     4: 10,
@@ -155,9 +174,15 @@ WIDGET_UNIT_DIVISORS = {
     6: 1,
     7: 10,
     8: 1,
+    21: 10,
+    22: 10,
     23: 10,
     26: 10,
+    30: 100,
     33: 10,
+    36: 100,
+    38: 10,
+    40: 1000,
 }
 
 # ---------------------------------------------------------------------------
