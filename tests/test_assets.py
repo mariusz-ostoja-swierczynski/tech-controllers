@@ -33,6 +33,10 @@ class _Platform:
 
 if not hasattr(_ha_const, "Platform"):
     _ha_const.Platform = _Platform
+if not hasattr(_ha_const, "CONF_DESCRIPTION"):
+    _ha_const.CONF_DESCRIPTION = "description"
+if not hasattr(_ha_const, "CONF_NAME"):
+    _ha_const.CONF_NAME = "name"
 
 
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -149,3 +153,83 @@ def test_build_menu_context_bundles_all_lookups() -> None:
     assert ctx.group_names == {("MU", 10): "Grupa"}
     assert ctx.zone_assignments == {}
     assert ctx.depths == {"MU_10": 0, "MU_11": 1}
+
+
+def _zone(zone_id: int, name: str | None = None, index: int | None = None) -> dict:
+    """Build a minimal zone payload matching the cached API shape."""
+    zone: dict = {"zone": {"id": zone_id, "visibility": True, "zoneState": "zoneOn"}}
+    if index is not None:
+        zone["zone"]["index"] = index
+    if name is not None:
+        zone["description"] = {"name": name}
+    return zone
+
+
+def test_build_zone_names_extracts_description_name() -> None:
+    """Zone device names come from the zone payload description."""
+    zones = {
+        1: _zone(1, "Strefa 1", index=0),
+        2: _zone(2, "Strefa 2", index=1),
+    }
+    assert assets.build_zone_names(zones, "Wisniowa 13") == {
+        1: "Strefa 1",
+        2: "Strefa 2",
+    }
+
+
+def test_build_zone_names_prefixes_hub_when_configured() -> None:
+    """include_hub_in_name prefixes the zone name with the hub title."""
+    zones = {1: _zone(1, "Strefa 1", index=0)}
+    assert assets.build_zone_names(zones, "Wisniowa 13", include_hub_in_name=True) == {
+        1: "Wisniowa 13 Strefa 1"
+    }
+
+
+def test_build_zone_names_skips_zones_without_name() -> None:
+    """Zones without a usable description name are omitted."""
+    zones = {
+        1: _zone(1, "Strefa 1", index=0),
+        2: _zone(2, index=1),
+    }
+    assert assets.build_zone_names(zones, "Wisniowa 13") == {1: "Strefa 1"}
+
+
+def test_build_zone_names_no_bare_prefix_for_nameless_zone() -> None:
+    """A nameless zone is omitted even with the hub prefix enabled."""
+    zones = {1: _zone(1, index=0)}
+    assert assets.build_zone_names(zones, "Wisniowa 13", include_hub_in_name=True) == {}
+
+
+def test_build_zone_names_skips_empty_name() -> None:
+    """An empty description name is treated as no name."""
+    zones = {1: _zone(1, "", index=0)}
+    assert assets.build_zone_names(zones, "Wisniowa 13") == {}
+
+
+def test_build_zone_names_skips_non_dict_description() -> None:
+    """A non-dict description is treated as no name."""
+    zones = {1: _zone(1, index=0)}
+    zones[1]["description"] = "not a dict"
+    assert assets.build_zone_names(zones, "Wisniowa 13") == {}
+
+
+def test_resolve_zone_device_name_uses_zone_name() -> None:
+    """A zone with a mapped name yields that name."""
+    zone_names = {1: "Strefa 1"}
+    assert assets.resolve_zone_device_name(zone_names, 1, "Wisniowa 13") == "Strefa 1"
+
+
+def test_resolve_zone_device_name_falls_back_to_title() -> None:
+    """A missing or empty zone entry falls back to the config entry title."""
+    assert assets.resolve_zone_device_name({}, 1, "Wisniowa 13") == "Wisniowa 13"
+    assert assets.resolve_zone_device_name(None, 1, "Wisniowa 13") == "Wisniowa 13"
+    assert (
+        assets.resolve_zone_device_name({2: "Strefa 2"}, 1, "Wisniowa 13")
+        == "Wisniowa 13"
+    )
+    assert assets.resolve_zone_device_name({1: ""}, 1, "Wisniowa 13") == "Wisniowa 13"
+
+
+def test_resolve_zone_device_name_none_for_unzoned_entity() -> None:
+    """Entities without a zone get no zone device name."""
+    assert assets.resolve_zone_device_name(None, None, "Wisniowa 13") is None

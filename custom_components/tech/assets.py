@@ -6,6 +6,8 @@ from dataclasses import dataclass
 import logging
 from typing import Any
 
+from homeassistant.const import CONF_DESCRIPTION, CONF_NAME
+
 from .const import (
     DEFAULT_ICON,
     ICON_BY_ID,
@@ -273,6 +275,71 @@ def build_menu_zone_assignments(
         "Assigned %d menu items to %d zones", len(assignments), len(subgroup_to_zone)
     )
     return assignments
+
+
+def build_zone_names(
+    zones: dict[int, dict[str, Any]],
+    config_entry_title: str,
+    include_hub_in_name: bool = False,
+) -> dict[int, str]:
+    """Map zone IDs to the display names used for zone-level devices.
+
+    Zone devices are shared by the zone sensor/climate entities and the
+    menu-based platforms (switch, select, button, number); the name is taken
+    from the zone payload description, optionally prefixed with the hub
+    (config entry) title when ``include_hub_in_name`` is set -- the same
+    convention used by :class:`sensor.ZoneSensor` and
+    :class:`climate.TechThermostat`.
+
+    Args:
+        zones: Mapping of zone ID to zone payload (as cached by the API client).
+        config_entry_title: Title of the owning config entry (the hub name).
+        include_hub_in_name: Whether to prefix the zone name with the hub title.
+
+    Returns:
+        Mapping of zone ID to device name. Zones without a usable name are
+        omitted; callers fall back to the config entry title.
+
+    """
+    zone_names: dict[int, str] = {}
+    for zone_id, zone in zones.items():
+        description = zone.get(CONF_DESCRIPTION)
+        name = description.get(CONF_NAME) if isinstance(description, dict) else None
+        if not name:
+            continue
+        if include_hub_in_name:
+            name = f"{config_entry_title} {name}"
+        zone_names[zone_id] = name
+    return zone_names
+
+
+def resolve_zone_device_name(
+    zone_names: dict[int, str] | None,
+    zone_id: int | None,
+    config_entry_title: str,
+) -> str | None:
+    """Return the device name for a menu entity attached to a zone device.
+
+    Menu entities attached to a zone (``zone_id`` set) must set an explicit
+    device name: since Home Assistant 2026.8 an unnamed device defaults to
+    the config entry title, which would change the composed entity names.
+    The name falls back to the config entry title when the zone has no
+    usable name, and ``None`` for entities not attached to a zone.
+
+    Args:
+        zone_names: Mapping of zone ID to zone device name (see
+            :func:`build_zone_names`); may be ``None``.
+        zone_id: Zone ID the entity is attached to, or ``None``.
+        config_entry_title: Title of the owning config entry (the hub name).
+
+    Returns:
+        The zone device name, the config entry title as a fallback, or
+        ``None`` when the entity is not attached to a zone.
+
+    """
+    if zone_id is None:
+        return None
+    return (zone_names or {}).get(zone_id) or config_entry_title
 
 
 def menu_entity_name(
