@@ -128,7 +128,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         """
 
-        include_name: bool = INCLUDE_HUB_IN_NAME in user_input
+        # ``controllers_schema`` declares INCLUDE_HUB_IN_NAME with
+        # ``default=False`` and Home Assistant hands this method the
+        # schema-validated payload, so voluptuous fills the key in even when the
+        # checkbox was left unticked. The key's presence therefore says nothing
+        # about the user's choice -- only its value does.
+        include_name: bool = bool(user_input.get(INCLUDE_HUB_IN_NAME, False))
 
         if self._controllers is None or not user_input.get(CONTROLLERS):
             return self.async_abort(reason="no_modules")
