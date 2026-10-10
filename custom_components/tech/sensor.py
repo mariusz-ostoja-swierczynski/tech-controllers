@@ -110,11 +110,11 @@ from .const import (
     VISIBILITY,
     WIDGET_COLLECTOR_PUMP,
     WIDGET_DHW_PUMP,
-    WIDGET_UNIT_DIVISORS,
     WINDOW_SENSORS,
     WINDOW_STATE,
     WORKING_STATUS,
     ZONE_STATE,
+    widget_unit,
 )
 from .coordinator import TechCoordinator
 from .entity import TileEntity
@@ -464,7 +464,7 @@ def _build_widget_tile(
     field selects the semantic class (see :data:`const.WIDGET_DHW_PUMP`,
     :data:`const.WIDGET_COLLECTOR_PUMP`, :data:`const.WIDGET_TEMPERATURE_CH`),
     while the ``unit`` field decides how to scale the integer ``value``
-    (see :data:`const.WIDGET_UNIT_DIVISORS`).
+    (see :data:`const.WIDGET_UNITS`).
 
     Filtering rules applied in order:
 
@@ -522,7 +522,7 @@ def _build_widget_tile(
             # temperature class. Scaling is driven by the widget's own
             # ``unit`` field, not by the widget type, so an unknown numeric
             # type is still rendered correctly so long as ``unit`` is one of
-            # the documented values in :data:`const.WIDGET_UNIT_DIVISORS`.
+            # the documented values in :data:`const.WIDGET_UNITS`.
             entities.append(
                 TileWidgetTemperatureSensor(tile, coordinator, config_entry, widget_key)
             )
@@ -1293,6 +1293,26 @@ class _TileWidgetSensorBase(TileSensor, SensorEntity):
         "widget2": " Current Temperature",
     }
 
+    def _apply_unit_metadata(self, widget: dict[str, Any]) -> None:
+        """Take unit, class, precision and icon from the widget's value type.
+
+        The class-level attributes describe a temperature. A widget whose API
+        value type says otherwise - kilowatts, COP, a kelvin difference, a plain
+        number - has to replace them, or the reading is published in the wrong
+        engineering unit and with a device class that lies about it (issue #221).
+        The divisor comes from the same entry, through :meth:`get_state`.
+
+        Args:
+            widget: The widget payload this entity reads.
+
+        """
+        metadata = widget_unit(widget.get("unit"))
+        self._attr_native_unit_of_measurement = metadata.unit
+        self._attr_device_class = metadata.device_class
+        self._attr_state_class = metadata.state_class
+        self._attr_suggested_display_precision = metadata.precision
+        self._attr_icon = metadata.icon
+
     def __init__(
         self,
         device,
@@ -1346,17 +1366,38 @@ class _TileWidgetSensorBase(TileSensor, SensorEntity):
 
 
 class TileWidgetTemperatureSensor(_TileWidgetSensorBase):
-    """A TYPE_WIDGET widget reporting a (scaled) temperature value."""
+    """A TYPE_WIDGET numeric value, scaled and typed by its API value type."""
 
+    # Class-level defaults describe a temperature; the constructor replaces them
+    # from the widget's own API value type.
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
     _attr_device_class = SensorDeviceClass.TEMPERATURE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _UNIQUE_ID_SUFFIX = "tile_widget_temperature"
 
+    def __init__(
+        self,
+        device: dict[str, Any],
+        coordinator: TechCoordinator,
+        config_entry: ConfigEntry,
+        widget_key: str,
+    ) -> None:
+        """Initialise the sensor and take its metadata from the widget type.
+
+        Args:
+            device: Tile payload this entity belongs to.
+            coordinator: Shared Tech data coordinator instance.
+            config_entry: Config entry that owns the coordinator.
+            widget_key: ``widget1`` or ``widget2``.
+
+        """
+        super().__init__(device, coordinator, config_entry, widget_key)
+        self._apply_unit_metadata(device[CONF_PARAMS][widget_key])
+
     def get_state(self, device) -> Any:
         """Get the state of the device."""
         widget = device[CONF_PARAMS][self._widget_key]
-        divisor = WIDGET_UNIT_DIVISORS.get(widget.get("unit"), 1)
+        divisor = widget_unit(widget.get("unit")).divisor
         return widget[VALUE] / divisor if divisor != 1 else widget[VALUE]
 
 

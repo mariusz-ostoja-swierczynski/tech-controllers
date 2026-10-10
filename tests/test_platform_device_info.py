@@ -233,7 +233,14 @@ def _fake_module(name: str) -> types.ModuleType:
         module.STATE_ON = "on"
         module.EntityCategory = _EntityCategory
         module.Platform = _Platform
+        module.UnitOfElectricPotential = _AutoNamespace()
+        module.UnitOfEnergy = _AutoNamespace()
+        module.UnitOfPower = _AutoNamespace()
+        module.UnitOfPressure = _AutoNamespace()
         module.UnitOfTemperature = _AutoNamespace()
+        module.UnitOfTime = _AutoNamespace()
+        module.UnitOfVolume = _AutoNamespace()
+        module.UnitOfVolumeFlowRate = _AutoNamespace()
     elif name == "homeassistant.components.switch":
         module.SwitchEntity = globals()["switch"]
     elif name == "homeassistant.components.button":
@@ -623,6 +630,49 @@ def _widget_tile(
             "widget1": widget,
         },
     }
+
+
+def test_widget_metadata_follows_the_api_value_type() -> None:
+    """Unit and device class come from the value type, not from a temperature.
+
+    Issue #221: kW, COP and kelvin readings were published as degrees Celsius with
+    the temperature device class. Units are compared through the table because
+    the harness stubs Home Assistant's unit constants as name-like strings; the
+    device classes are compared by name, which works either way because they are
+    StrEnum members in Home Assistant.
+    """
+    cases = {
+        0: (3600, None, None),
+        6: (55, const.WIDGET_UNITS[6].unit, "temperature"),
+        7: (498, const.WIDGET_UNITS[7].unit, "temperature"),
+        10: (3, const.WIDGET_UNITS[10].unit, "power"),
+        26: (56, const.WIDGET_UNITS[26].unit, "power"),
+        29: (950, const.WIDGET_UNITS[29].unit, "power"),
+        32: (35, const.WIDGET_UNITS[32].unit, None),
+        38: (35, None, None),
+    }
+
+    for code, (raw, unit, device_class) in cases.items():
+        tile = {
+            "id": 9000 + code,
+            "type": const.TYPE_WIDGET,
+            "visibility": True,
+            "params": {
+                "id": 9000 + code,
+                "txtId": 100,
+                "iconId": 0,
+                "statusId": 1,
+                "value": 0,
+                "widget1": {"txtId": 1562, "unit": code, "type": 0, "value": raw},
+            },
+        }
+        entities = sensor._build_widget_tile(tile, _Coordinator(), _Entry())
+
+        assert len(entities) == 1, code
+        entity = entities[0]
+        assert entity._attr_native_unit_of_measurement == unit, code
+        assert entity._attr_device_class == device_class, code
+        assert entity.get_state(tile) == raw / const.widget_unit(code).divisor, code
 
 
 class TestContactAndFlagStateSources:

@@ -24,10 +24,13 @@ import types
 
 # ---------------------------------------------------------------------------
 # Stub Home Assistant so that const.py can be imported without booting HA.
-# const.py only needs ``homeassistant.const.Platform``; everything else lives
-# in the integration's own modules.
+# const.py needs the platform enum, the sensor device/state classes and the unit
+# constants. A stand-in that answers any attribute with its own name is enough
+# for the latter two, because these tests compare the widget table against
+# itself rather than against Home Assistant's real values.
 # ---------------------------------------------------------------------------
 _ha = sys.modules.setdefault("homeassistant", types.ModuleType("homeassistant"))
+_ha.__path__ = []
 _ha_const = sys.modules.setdefault(
     "homeassistant.const", types.ModuleType("homeassistant.const")
 )
@@ -45,7 +48,44 @@ class _Platform:
     SWITCH = "switch"
 
 
+class _AnyMember:
+    """Stand-in for a Home Assistant enum; any attribute names itself."""
+
+    def __getattr__(self, name: str) -> str:
+        """Return the attribute name lowercased."""
+        return name.lower()
+
+
 _ha_const.Platform = _Platform
+_ha_const.PERCENTAGE = "%"
+for _unit_class in (
+    "UnitOfElectricPotential",
+    "UnitOfEnergy",
+    "UnitOfPower",
+    "UnitOfPressure",
+    "UnitOfTemperature",
+    "UnitOfTime",
+    "UnitOfVolume",
+    "UnitOfVolumeFlowRate",
+):
+    setattr(_ha_const, _unit_class, _AnyMember())
+
+_ha_components = sys.modules.setdefault(
+    "homeassistant.components", types.ModuleType("homeassistant.components")
+)
+_ha_components.__path__ = []
+_ha_sensor = sys.modules.setdefault(
+    "homeassistant.components.sensor",
+    types.ModuleType("homeassistant.components.sensor"),
+)
+_ha_sensor_const = sys.modules.setdefault(
+    "homeassistant.components.sensor.const",
+    types.ModuleType("homeassistant.components.sensor.const"),
+)
+_ha_sensor_const.SensorDeviceClass = _AnyMember()
+_ha_sensor_const.SensorStateClass = _AnyMember()
+_ha_components.sensor = _ha_sensor
+_ha_sensor.const = _ha_sensor_const
 
 
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -272,47 +312,51 @@ class TestIsFlagWidget:
 
 
 class TestUnitDivisors:
-    """WIDGET_UNIT_DIVISORS scales raw widget values to engineering units."""
+    """WIDGET_UNITS scales raw widget values and carries their HA metadata."""
 
     def test_unit_7_is_tenths_of_degree(self):
         """unit=7 (boiler temperatures) scales by 10: 521 -> 52.1°C."""
         # The most common boiler temperature unit. value=521 -> 52.1°C.
-        assert C.WIDGET_UNIT_DIVISORS[7] == 10
+        assert C.widget_unit(7).divisor == 10
 
     def test_unit_5_is_hundredths(self):
         """unit=5 widget values scale by 100."""
-        assert C.WIDGET_UNIT_DIVISORS[5] == 100
+        assert C.widget_unit(5).divisor == 100
 
     def test_unit_4_is_tenths(self):
         """unit=4 widget values scale by 10."""
-        assert C.WIDGET_UNIT_DIVISORS[4] == 10
+        assert C.widget_unit(4).divisor == 10
 
     def test_unit_6_passes_through(self):
         """unit=6 (state-badge enums) must not be scaled."""
         # State badges should not be scaled (their value is an enum, not a temp).
-        assert C.WIDGET_UNIT_DIVISORS[6] == 1
+        assert C.widget_unit(6).divisor == 1
 
-    def test_known_units_only(self):
-        """Pin the set of known unit codes to detect accidental additions."""
-        # Codes outside the table fall back to a divisor of 1 in
-        # _build_widget_tile / TileWidgetTemperatureSensor.get_state. The set is
-        # the API's value-type table (see const.WIDGET_UNIT_DIVISORS).
-        assert set(C.WIDGET_UNIT_DIVISORS.keys()) == {
-            0,
-            4,
-            5,
-            6,
-            7,
-            8,
-            21,
-            22,
-            23,
-            26,
-            30,
-            33,
-            36,
-            38,
-            40,
+    def test_every_documented_code_is_present(self):
+        """The table covers every value type the API documents (issue #221)."""
+        # The API's "Data types format" table runs from -1 (invisible) to 42
+        # (cubic metres). A missing code would fall back to the ordinary-value
+        # entry, so coverage is pinned rather than assumed.
+        assert set(C.WIDGET_UNITS) == set(range(-1, 43))
+
+    def test_divisors_cover_the_documented_transformations(self):
+        """Every code the API divides carries the documented divisor."""
+        assert {
+            code: C.widget_unit(code).divisor
+            for code in (4, 5, 7, 21, 22, 23, 26, 30, 33, 36, 38, 40)
+        } == {
+            4: 10,
+            5: 100,
+            7: 10,
+            21: 10,
+            22: 10,
+            23: 10,
+            26: 10,
+            30: 100,
+            33: 10,
+            36: 100,
+            38: 10,
+            40: 1000,
         }
 
 
@@ -406,7 +450,7 @@ class TestSt491Fixture:
             if tile["type"] != C.TYPE_WIDGET:
                 continue
             w = tile["params"]["widget2"]
-            divisor = C.WIDGET_UNIT_DIVISORS.get(w["unit"], 1)
+            divisor = C.widget_unit(w["unit"]).divisor
             scaled = w["value"] / divisor if divisor != 1 else w["value"]
             # Temperatures across CH (~50°C), DHW (~45°C), room (~22°C).
             assert -30 <= scaled <= 100
@@ -657,7 +701,7 @@ class TestSt2801Fixture:
         assert w2["value"] == 14
         assert w2["unit"] == 8
         # raw percentage -- no scaling needed
-        assert C.WIDGET_UNIT_DIVISORS[8] == 1
+        assert C.widget_unit(8).divisor == 1
 
     def test_all_widget_tiles_have_status_binary_sensor(self):
         """The lone TYPE_WIDGET tile has a pump-type widget and gets a status sensor."""
@@ -908,10 +952,8 @@ class TestSt521Fixture:
     def test_documented_value_type_divisors(self):
         """The API's value-type table divisors are all present."""
         documented = {21: 10, 22: 10, 30: 100, 36: 100, 40: 1000}
-        assert {
-            unit: C.WIDGET_UNIT_DIVISORS[unit] for unit in documented
-        } == documented
+        assert {unit: C.widget_unit(unit).divisor for unit in documented} == documented
 
         # 38 (COP) is inferred rather than stated: the API documents decimal
         # places without a transformation, and reported COP values divide by 10.
-        assert C.WIDGET_UNIT_DIVISORS[38] == 10
+        assert C.widget_unit(38).divisor == 10
