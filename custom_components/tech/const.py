@@ -426,6 +426,7 @@ MENU_TYPES = [MENU_TYPE_USER, MENU_TYPE_INSTALLER]
 #   - CODE / TIME_MODE  -> currently unmapped
 #   - ON_OFF            -> SwitchEntity
 #   - CHOICE            -> SelectEntity
+#   - CHECKBOX          -> SwitchEntity, one per option (bit of ``params.value``)
 #   - DIALOGUE          -> ButtonEntity (one-shot action)
 MENU_ITEM_TYPE_GROUP = 0
 MENU_ITEM_TYPE_VALUE = {1, 2, 3, 4, 5}
@@ -433,6 +434,7 @@ MENU_ITEM_TYPE_CODE = 6
 MENU_ITEM_TYPE_TIME_MODE = 7
 MENU_ITEM_TYPE_ON_OFF = 10
 MENU_ITEM_TYPE_CHOICE = {11, 111, 112}
+MENU_ITEM_TYPE_CHECKBOX = 15
 MENU_ITEM_TYPE_DIALOGUE = 20
 MENU_ITEM_TYPE_UNIVERSAL_VALUE = 106
 

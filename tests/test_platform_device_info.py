@@ -76,6 +76,9 @@ class _Entity:
     async def async_added_to_hass(self) -> None:
         """Pretend the entity was added."""
 
+    def async_write_ha_state(self) -> None:
+        """Pretend to publish the entity state; nothing is recorded."""
+
 
 class CoordinatorEntity(_Entity):
     """Stand-in for ``CoordinatorEntity``; only stores the coordinator."""
@@ -148,8 +151,20 @@ class _NumberMode:
     SLIDER = "slider"
 
 
-# The subclasses each platform module declares for its own entity type.
-for _name in ("switch", "button", "select", "number"):
+# The subclasses each platform module declares for its own entity type. The
+# switch stub is written out because a test has to be able to read ``is_on`` the
+# way Home Assistant publishes it, not just the ``_attr_is_on`` behind it.
+class SwitchEntity(_Entity):
+    """Stand-in for ``homeassistant.components.switch.SwitchEntity``."""
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return the state Home Assistant would publish."""
+        return getattr(self, "_attr_is_on", None)
+
+
+globals()["switch"] = SwitchEntity
+for _name in ("button", "select", "number"):
     globals()[_name] = type(f"{_name.title()}Entity", (_Entity,), {})
 
 
@@ -412,7 +427,15 @@ class _Translations:
 
 
 class _Api:
-    """Async API stub; the menu payload is irrelevant to these tests."""
+    """Async API stub; the menu payload is irrelevant to these tests.
+
+    Menu writes are recorded rather than sent, so a test can assert the payload
+    a platform sends to the controller.
+    """
+
+    def __init__(self) -> None:
+        """Start with no writes recorded."""
+        self.calls: list[tuple[str, int, dict]] = []
 
     async def get_module_menus(self, udid: str) -> dict:
         """Return an empty menu tree."""
@@ -420,6 +443,13 @@ class _Api:
 
     async def get_module_zones(self, udid: str) -> dict:
         """Return an empty zone payload."""
+        return {}
+
+    async def set_menu_value(
+        self, udid: str, menu_type: str, ido: int, data: dict
+    ) -> dict:
+        """Record a menu write instead of sending it."""
+        self.calls.append((menu_type, ido, data))
         return {}
 
 
@@ -1130,3 +1160,150 @@ class TestDeprecatedFlagSensorSelection:
 
         assert unlabelled == []
         assert temperature == []
+
+
+# ---------------------------------------------------------------------------
+# Menu item type 15 -- checkbox controls (issue #222)
+# ---------------------------------------------------------------------------
+
+
+def _kolton_menus() -> dict[str, dict[str, Any]]:
+    """Return the reporter's user menu, keyed the way the API client keys it."""
+    payload = json.loads(
+        (_REPO_ROOT / "tests/fixtures/kolton_st5305/menus.json").read_text()
+    )
+    return {
+        f"{item['menuType']}_{item['id']}": item
+        for item in payload["data"]["elements"]
+    }
+
+
+def _kolton_switches() -> list[Any]:
+    """Return every switch the reporter's user menu produces."""
+    menus = _kolton_menus()
+    coordinator = _Coordinator()
+    ctx = assets.build_menu_context(menus, {}, coordinator.translations)
+    return _modules["switch"]._build_menu_switches(
+        menus, ctx, coordinator, _Entry(), {}
+    )
+
+
+def _kolton_checkbox_switches() -> dict[str, Any]:
+    """Return the checkbox option switches of the reporter's menu by unique id."""
+    checkbox = _modules["switch"].MenuCheckboxEntity
+    return {
+        entity.unique_id: entity
+        for entity in _kolton_switches()
+        if isinstance(entity, checkbox)
+    }
+
+
+def test_kolton_user_menu_switch_inventory() -> None:
+    """The whole switch inventory of the reporter's user menu.
+
+    Eight accessible on/off items (two are inaccessible and stay out) plus the
+    two options of the Operating modes checkbox item, in menu order. His board
+    has both operating modes available, and the ``value: 1`` bitmask means the
+    first option is the one currently enabled.
+    """
+    assert [(entity.unique_id, entity.is_on) for entity in _kolton_switches()] == [
+        (f"{_UDID}_menu_MU_2311", True),
+        (f"{_UDID}_menu_MU_30029_option_128", True),
+        (f"{_UDID}_menu_MU_30029_option_3645", False),
+        (f"{_UDID}_menu_MU_1049", True),
+        (f"{_UDID}_menu_MU_1076", False),
+        (f"{_UDID}_menu_MU_2165", True),
+        (f"{_UDID}_menu_MU_1095", False),
+        (f"{_UDID}_menu_MU_2164", False),
+        (f"{_UDID}_menu_MU_1645", False),
+        (f"{_UDID}_menu_MU_2323", False),
+    ]
+
+
+def test_checkbox_option_switches_are_named_after_their_option() -> None:
+    """Each option switch takes the option label, not the group's label.
+
+    The item's own label belongs to the group, which several switches share, so
+    the option's subtitle id is what names and identifies the entity.
+    """
+    switches = _kolton_checkbox_switches()
+
+    assert [
+        (entity.name, entity.unique_id) for entity in switches.values()
+    ] == [
+        ("label-128", f"{_UDID}_menu_MU_30029_option_128"),
+        ("label-3645", f"{_UDID}_menu_MU_30029_option_3645"),
+    ]
+
+
+def test_inaccessible_checkbox_item_produces_no_switch() -> None:
+    """An inaccessible checkbox item stays out, even sharing the group label.
+
+    The reporter's menu carries label 820 twice: the accessible two-option item
+    and an inaccessible three-option one. Registering both would duplicate the
+    group, so only the accessible item creates switches.
+    """
+    menus = _kolton_menus()
+    item = menus["MU_30030"]
+
+    assert item["access"] is False
+    assert item["params"]["options"] == [128, 3645, 1815]
+    assert not [key for key in _kolton_checkbox_switches() if "30030" in key]
+
+
+async def test_turning_one_option_keeps_the_other_options() -> None:
+    """A write sends every option with the state it should end up in.
+
+    That is the payload the eModul app uses for a checkbox item, and it is what
+    keeps the other boxes as the user set them: the group starts as ``value: 1``,
+    so switching the second option on leaves the first on, and switching the
+    first off afterwards leaves the second on.
+    """
+    switches = _kolton_checkbox_switches()
+    first = switches[f"{_UDID}_menu_MU_30029_option_128"]
+    second = switches[f"{_UDID}_menu_MU_30029_option_3645"]
+    api = first.coordinator.api
+
+    await second.async_turn_on()
+
+    assert api.calls == [
+        (
+            "MU",
+            30029,
+            {"many_of_many": [{"id": 0, "value": 1}, {"id": 1, "value": 1}]},
+        )
+    ]
+    assert (first.is_on, second.is_on) == (True, True)
+
+    await first.async_turn_off()
+
+    assert api.calls[-1] == (
+        "MU",
+        30029,
+        {"many_of_many": [{"id": 0, "value": 0}, {"id": 1, "value": 1}]},
+    )
+    assert (first.is_on, second.is_on) == (False, True)
+
+
+def test_clear_lockout_is_already_mapped_as_a_button() -> None:
+    """The user menu's single dialogue item is already exposed as a button.
+
+    Issue #222 also asked for the clear-lockout control. It is menu type 20,
+    which :mod:`button` already maps, and the reporter's menu carries exactly one
+    such item -- so it needs no new platform support; it is only as visible as
+    the controller's own ``access`` flag makes it.
+    """
+    menus = _kolton_menus()
+    dialogues = [
+        item
+        for item in menus.values()
+        if item.get("type") == const.MENU_ITEM_TYPE_DIALOGUE
+    ]
+
+    assert [item["id"] for item in dialogues] == [10000]
+
+    entity = _modules["button"].MenuButtonEntity(
+        dialogues[0], "MU_10000", _Coordinator(), _Entry(), {}, depth=0
+    )
+
+    assert (entity.name, entity.unique_id) == ("label-839", f"{_UDID}_menu_MU_10000")
