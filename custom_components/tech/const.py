@@ -145,11 +145,15 @@ TYPE_OPEN_THERM = 252  # OpenTherm boiler -- carries 4-5 sub-temperature values
 WIDGET_DHW_PUMP = 1  # DHW pump set vs current temperature pair
 WIDGET_COLLECTOR_PUMP = 2  # Solar collector pump duty cycle (percentage)
 WIDGET_TEMPERATURE_CH = 9  # Central-heating temperature reading
-# Value type 13 is a *reading in hours and minutes*: the API documents it as
-# "Time written as hours * 60 + min, shown as 00:00 - 23:59", so the raw value
-# is minutes, and :func:`widget_hours_and_minutes` renders it. Controllers use
-# the type for a time of day *and* for elapsed-time counters (a compressor
-# downtime of 2190 minutes is 36:30 in issue #221), so nothing bounds the hours.
+# Value type 13 is a *two-field reading*: the API documents it as
+# "Time written as hours * 60 + min, shown as 00:00 - 23:59", so its raw value
+# is a count of minutes and :func:`widget_hours_and_minutes` splits it into the
+# two fields the controller shows. Controllers also use the type for
+# elapsed-time counters whose raw value counts *seconds* instead (the Kołton
+# ST-5305 compressor downtime advanced 205:00 -> 226:00 over about twenty
+# minutes, i.e. one per second), which is why nothing bounds the first field.
+# The split is the same either way, so only the meaning of the raw value -- and
+# therefore the unit the two fields are in -- differs between fields.
 WIDGET_UNIT_TIME_OF_DAY: Final = 13
 
 # ``params.widgetN.unit`` codes seen in the wild and the divisor that turns
@@ -298,29 +302,39 @@ def widget_unit(code: int | None) -> WidgetUnit:
 
 
 def widget_hours_and_minutes(value: Any) -> str | None:
-    """Render a value type 13 reading, which is hours * 60 + minutes.
+    """Render a value type 13 reading, which is a two-field time or duration.
 
     The API documents value type 13 as "Time written as hours * 60 + min, shown
     as 00:00 - 23:59", and the eModul app's formatter splits the raw value the
     same way (``minutes = t % 60; hours = (t - minutes) / 60``) without bounding
-    the hours. Controllers use the type for both a time of day and an
-    elapsed-time counter: the Kołton ST-5305 reports a compressor downtime of
-    ``2190`` minutes, which is 36:30, in issue #221. Values the format cannot
-    express - negative, fractional, or not a number at all - return ``None``
-    (unknown) rather than a nonsense reading; the same payload's ``-29536``
-    sentinel is one of those.
+    the first field. Both the app and the controller therefore render a raw
+    count as ``total // 60`` and ``total % 60``.
+
+    Which unit that count is in is per field, not per type. The API's own prose
+    is minutes, which makes the reading a time of day (``1041`` is 17:21). The
+    Kołton ST-5305 uses the same type for its compressor run-time counters, and
+    the reporter measured those counting *seconds* -- his history shows 205:00
+    to 226:00 over about twenty minutes, one per second, so ``2190`` is 36
+    minutes 30 seconds (issue #221). Both readings render as the same two-field
+    string, so the entity shows what the controller shows either way; the
+    payload does not say which unit applies.
+
+    Values the format cannot express - negative, fractional, or not a number at
+    all - return ``None`` (unknown) rather than a nonsense reading; the same
+    payload's ``-29536`` sentinel is one of those.
 
     Args:
         value: The widget's raw ``value`` field.
 
     Returns:
-        ``"HH:MM"`` (hours may exceed 23), or ``None`` for an unusable value.
+        ``"MM:SS"`` or ``"HH:MM"`` (the first field may exceed 59), or ``None``
+        for an unusable value.
 
     """
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         return None
-    hours, minutes = divmod(value, 60)
-    return f"{hours:02d}:{minutes:02d}"
+    first, second = divmod(value, 60)
+    return f"{first:02d}:{second:02d}"
 
 # ---------------------------------------------------------------------------
 # Icon mapping tables

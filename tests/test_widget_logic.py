@@ -515,25 +515,28 @@ class TestUnitDivisors:
 
 
 class TestHoursAndMinutesValues:
-    """Value type 13 is hours * 60 + minutes, for clocks and for counters."""
+    """Value type 13 is a two-field reading, for clocks and for counters."""
 
-    def test_the_raw_value_is_minutes(self):
-        """The API stores hours * 60 + min and shows the result as HH:MM."""
-        # 889 = 14 * 60 + 49, 1041 = 17 * 60 + 21.
+    def test_the_raw_value_is_split_into_two_fields(self):
+        """The API stores a count and the controller shows count//60 : count%60."""
+        # 889 = 14 * 60 + 49, 1041 = 17 * 60 + 21, so those read as times of day.
         assert C.widget_hours_and_minutes(0) == "00:00"
         assert C.widget_hours_and_minutes(889) == "14:49"
         assert C.widget_hours_and_minutes(1041) == "17:21"
         assert C.widget_hours_and_minutes(1439) == "23:59"
 
-    def test_the_hours_are_not_bounded_to_a_clock(self):
-        """Controllers also use the type for elapsed time, so 24 h and up is fine.
+    def test_the_first_field_is_not_bounded(self):
+        """Controllers also use the type for counters, so 24 h and up is fine.
 
-        Issue #221: the Kołton ST-5305 reports its compressor downtime in these
-        fields, and 2190 minutes has to read 36:30 rather than "unknown". The
-        eModul app's formatter does not bound the hours either.
+        Issue #221: the reporter's Kołton counts its compressor downtime in a
+        type 13 field, and its history advanced 205:00 -> 226:00 over about
+        twenty minutes -- one per second, so the field counts seconds and 2190 is
+        36 minutes 30 seconds. A field whose raw value counts minutes renders the
+        same two fields, so the string is right either way; it is the unit that
+        the payload does not state.
         """
         assert C.widget_hours_and_minutes(1440) == "24:00"
-        assert C.widget_hours_and_minutes(2190) == "36:30"  # 36 h 30 min
+        assert C.widget_hours_and_minutes(2190) == "36:30"  # 36 min 30 s, or 36 h 30 min
         assert C.widget_hours_and_minutes(6000) == "100:00"
 
     def test_values_the_format_cannot_express_are_unknown(self):
@@ -1228,7 +1231,9 @@ class TestKoltonSt5305Fixture:
         assert C.widget_hours_and_minutes(1041) == "17:21"
         # -29536 is negative, so it is unknown rather than a negative reading.
         assert C.widget_hours_and_minutes(-29536) is None
-        # The reporter's own compressor downtime reading from the same fields.
+        # The reporter's own counter reading from these fields. His history shows
+        # the raw value counting seconds (205:00 -> 226:00 in ~20 min), so this is
+        # 36 min 30 s; a minutes-valued field would split identically.
         assert C.widget_hours_and_minutes(2190) == "36:30"
 
     def test_power_cop_and_kelvin_readings(self):
