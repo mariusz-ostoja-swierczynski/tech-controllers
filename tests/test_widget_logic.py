@@ -180,6 +180,38 @@ def sibling_of(tile: dict, widget_key: str) -> dict | None:
     return params.get("widget2" if widget_key == "widget1" else "widget1")
 
 
+def has_pump_widget_oracle(params: dict) -> bool:
+    """Mirror :func:`binary_sensor._has_pump_widget` for use as a test oracle.
+
+    A tile gets a statusId ON/OFF binary sensor when it carries a pump-type
+    widget (``type`` 1 or 2) whose *value type* is a pump quantity: a
+    temperature or a percentage. Issue #221 narrowed the rule to that, because
+    heat pumps mark every reading with the pump subtype and the tile's pressure,
+    energy, flow and runtime readings were raising phantom ON/OFF sensors.
+
+    If binary_sensor.py changes the rule, update this oracle and re-run the tests
+    so we know the fixtures still reflect it.
+    """
+
+    def is_pump_reading(widget: dict) -> bool:
+        """Return whether one widget's value type is a pump quantity."""
+        metadata = C.widget_unit(widget.get("unit"))
+        return (
+            metadata.device_class == "temperature"
+            or metadata.unit == C.widget_unit(8).unit
+        )
+
+    for key in ("widget1", "widget2"):
+        widget = params.get(key)
+        if not widget:
+            continue
+        if widget.get("type") not in (C.WIDGET_DHW_PUMP, C.WIDGET_COLLECTOR_PUMP):
+            continue
+        if is_pump_reading(widget):
+            return True
+    return False
+
+
 # ---------------------------------------------------------------------------
 # _is_contact_widget oracle
 # ---------------------------------------------------------------------------
@@ -412,6 +444,22 @@ class TestUnitDivisors:
         # State badges should not be scaled (their value is an enum, not a temp).
         assert C.widget_unit(6).divisor == 1
 
+    def test_elapsed_time_counters_are_registered_disabled(self):
+        """Value types 3 and 13 are counters, so their entities stay switched off.
+
+        Issue #221: the reporter asked for his eight numbered compressor
+        run-time/downtime counters to stay out of the way. The payload has no
+        counter-specific marker -- only the value types, which the same
+        controller also uses for three other duration readings -- so the family
+        is registered disabled and any reading a user wants is one toggle away.
+        """
+        assert C.widget_unit(3).enabled_default is False
+        assert C.widget_unit(C.WIDGET_UNIT_TIME_OF_DAY).enabled_default is False
+        # Everything else starts enabled, including the other durations (16/17),
+        # the temperatures and the measurements.
+        for code in (0, 6, 7, 8, 16, 17, 23, 26, 32, 38, 39):
+            assert C.widget_unit(code).enabled_default is True, code
+
     def test_every_documented_code_is_present(self):
         """The table covers every value type the API documents (issue #221)."""
         # The API's "Data types format" table runs from -1 (invisible) to 42
@@ -450,26 +498,52 @@ class TestUnitDivisors:
         assert C.widget_unit(19).divisor == 10
         assert C.widget_unit(19).precision == 1
 
+    def test_unit_39_is_a_flow_rate_in_litres_per_hour(self):
+        """unit=39 carries the unit the eModul app labels it with (issue #221).
 
-class TestTimeOfDayValues:
-    """Value type 13 is a time of day, not a duration (issue #221)."""
+        The API prose calls value type 39 "Value l / m" and stops there; the app
+        renders it with the same string as value type 30, which is litres per
+        hour, and applies no transformation, so the raw integer is published
+        as-is.
+        """
+        entry = C.widget_unit(39)
+        assert entry.unit is not None
+        assert entry.unit != C.widget_unit(0).unit
+        assert entry.device_class == "volume_flow_rate"
+        assert entry.state_class == "measurement"
+        assert entry.divisor == 1
 
-    def test_the_raw_value_is_minutes_since_midnight(self):
+
+class TestHoursAndMinutesValues:
+    """Value type 13 is hours * 60 + minutes, for clocks and for counters."""
+
+    def test_the_raw_value_is_minutes(self):
         """The API stores hours * 60 + min and shows the result as HH:MM."""
         # 889 = 14 * 60 + 49, 1041 = 17 * 60 + 21.
-        assert C.widget_time_of_day(0) == "00:00"
-        assert C.widget_time_of_day(889) == "14:49"
-        assert C.widget_time_of_day(1041) == "17:21"
-        assert C.widget_time_of_day(C.MINUTES_PER_DAY - 1) == "23:59"
+        assert C.widget_hours_and_minutes(0) == "00:00"
+        assert C.widget_hours_and_minutes(889) == "14:49"
+        assert C.widget_hours_and_minutes(1041) == "17:21"
+        assert C.widget_hours_and_minutes(1439) == "23:59"
 
-    def test_values_the_documented_range_excludes_are_unknown(self):
-        """Negative, fractional and past-23:59 values are not clock readings."""
-        # -29536 is what the Kołton ST-5305 payload carries in one of its seven
-        # value type 13 widgets; the API only defines 00:00 - 23:59.
-        for value in (-1, -29536, 1440, 2000, 2.5, None, "889", True):
-            assert C.widget_time_of_day(value) is None
+    def test_the_hours_are_not_bounded_to_a_clock(self):
+        """Controllers also use the type for elapsed time, so 24 h and up is fine.
 
-    def test_the_clock_reading_carries_no_numeric_metadata(self):
+        Issue #221: the Kołton ST-5305 reports its compressor downtime in these
+        fields, and 2190 minutes has to read 36:30 rather than "unknown". The
+        eModul app's formatter does not bound the hours either.
+        """
+        assert C.widget_hours_and_minutes(1440) == "24:00"
+        assert C.widget_hours_and_minutes(2190) == "36:30"  # 36 h 30 min
+        assert C.widget_hours_and_minutes(6000) == "100:00"
+
+    def test_values_the_format_cannot_express_are_unknown(self):
+        """Negative, fractional and non-numeric values are not readings."""
+        # -29536 is the sentinel the Kołton ST-5305 payload carries in one of its
+        # seven value type 13 widgets.
+        for value in (-1, -29536, 2.5, None, "889", True):
+            assert C.widget_hours_and_minutes(value) is None
+
+    def test_the_reading_carries_no_numeric_metadata(self):
         """HA rejects a non-numeric state when a unit, class or precision wants one."""
         entry = C.widget_unit(C.WIDGET_UNIT_TIME_OF_DAY)
         assert (entry.unit, entry.state_class, entry.precision) == (None, None, None)
@@ -670,13 +744,10 @@ class TestSt491Fixture:
             status_id = tile["params"].get("statusId")
             if status_id not in (0, 1):
                 continue
-            has_pump = any(
-                tile["params"].get(key, {}).get("type") in (C.WIDGET_DHW_PUMP, C.WIDGET_COLLECTOR_PUMP)
-                for key in ("widget1", "widget2")
-            )
-            if has_pump:
+            if has_pump_widget_oracle(tile["params"]):
                 count += 1
-        # ST-491 has no pump-type widgets among its TYPE_WIDGET tiles
+        # ST-491's TYPE_WIDGET tiles carry CH/DHW temperatures (type=9) and no
+        # pump-type widget at all
         assert count == 0
 
 
@@ -827,11 +898,7 @@ class TestSt2801Fixture:
             status_id = tile["params"].get("statusId")
             if status_id not in (0, 1):
                 continue
-            has_pump = any(
-                tile["params"].get(key, {}).get("type") in (C.WIDGET_DHW_PUMP, C.WIDGET_COLLECTOR_PUMP)
-                for key in ("widget1", "widget2")
-            )
-            if has_pump:
+            if has_pump_widget_oracle(tile["params"]):
                 count += 1
         assert count == 1
 
@@ -947,10 +1014,13 @@ class TestSt521Fixture:
         assert emitted == 66
 
     def test_all_widget_tiles_have_status_binary_sensor(self):
-        """66 of 70 TYPE_WIDGET tiles have pump-type widgets and get a status sensor.
+        """35 of 70 TYPE_WIDGET tiles get a statusId ON/OFF sensor.
 
-        The remaining 4 are pure contact-sensor tiles (type=0 on both widgets)
-        and are correctly excluded.
+        Only tiles whose pump-type widget reads a pump quantity qualify: a
+        temperature (30 tiles at unit=7) or a percentage (4 at unit=8, 1 at
+        unit=33). The 4 pure contact tiles and the readings that happen to carry
+        the pump subtype -- energy, pressure, COP, flow, runtime -- do not
+        (issue #221).
         """
         count = 0
         for tile in self.module["tiles"]:
@@ -959,13 +1029,9 @@ class TestSt521Fixture:
             status_id = tile["params"].get("statusId")
             if status_id not in (0, 1):
                 continue
-            has_pump = any(
-                tile["params"].get(key, {}).get("type") in (C.WIDGET_DHW_PUMP, C.WIDGET_COLLECTOR_PUMP)
-                for key in ("widget1", "widget2")
-            )
-            if has_pump:
+            if has_pump_widget_oracle(tile["params"]):
                 count += 1
-        assert count == 66
+        assert count == 35
 
     def test_status_binary_sensor_off_states(self):
         """One TYPE_WIDGET tile has statusId=0 and a pump-type widget (OFF)."""
@@ -1155,14 +1221,15 @@ class TestKoltonSt5305Fixture:
             assert is_flag_widget_oracle(widget, sibling) is True, tile["id"]
             assert sibling["unit"] == -1 and sibling["txtId"] != 0, tile["id"]
 
-    def test_time_widgets_are_minutes_since_midnight(self):
-        """Seven value type 13 widgets: six clock readings and one bad value."""
+    def test_time_widgets_are_minutes(self):
+        """Seven value type 13 widgets: six usable counts and one bad value."""
         values = sorted(w["value"] for *_, w in self.widgets() if w["unit"] == 13)
         assert values == [-29536, 0, 0, 0, 0, 0, 1041]
-        assert C.widget_time_of_day(1041) == "17:21"
-        # -29536 falls outside the API's "shown as 00:00 - 23:59" range, so it
-        # is unknown rather than a negative clock reading.
-        assert C.widget_time_of_day(-29536) is None
+        assert C.widget_hours_and_minutes(1041) == "17:21"
+        # -29536 is negative, so it is unknown rather than a negative reading.
+        assert C.widget_hours_and_minutes(-29536) is None
+        # The reporter's own compressor downtime reading from the same fields.
+        assert C.widget_hours_and_minutes(2190) == "36:30"
 
     def test_power_cop_and_kelvin_readings(self):
         """Power and COP are tenths; a kelvin difference takes no class."""
@@ -1175,3 +1242,34 @@ class TestKoltonSt5305Fixture:
     def test_every_value_type_resolves_through_the_table(self):
         """No undocumented code: each one of them is a WIDGET_UNITS entry."""
         assert {w["unit"] for *_, w in self.widgets()} <= set(C.WIDGET_UNITS)
+
+    def test_only_the_duty_cycle_tiles_get_a_status_sensor(self):
+        """Four tiles qualify for a statusId ON/OFF sensor, not fifty-one.
+
+        Every widget on this controller carries the pump subtype, so the rule
+        has to require a pump *quantity* as well: only the percentage readings
+        are the pumps' own duty cycle (issue #221).
+        """
+        status_tiles = [
+            tile["id"]
+            for tile in self.module["tiles"]
+            if tile["type"] == C.TYPE_WIDGET
+            and tile["params"].get("statusId") in (0, 1)
+            and has_pump_widget_oracle(tile["params"])
+        ]
+        assert status_tiles == [1006, 1014, 1552, 2270]
+
+    def test_the_old_rule_would_have_qualified_fifty_one_tiles(self):
+        """Guard the numbers the reporter measured on his controller."""
+        eligible = [
+            tile
+            for tile in self.module["tiles"]
+            if tile["type"] == C.TYPE_WIDGET
+            and tile["params"].get("statusId") in (0, 1)
+            and any(
+                tile["params"].get(key, {}).get("type")
+                in (C.WIDGET_DHW_PUMP, C.WIDGET_COLLECTOR_PUMP)
+                for key in ("widget1", "widget2")
+            )
+        ]
+        assert len(eligible) == 51

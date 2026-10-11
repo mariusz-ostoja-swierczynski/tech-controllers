@@ -115,7 +115,7 @@ from .const import (
     WINDOW_STATE,
     WORKING_STATUS,
     ZONE_STATE,
-    widget_time_of_day,
+    widget_hours_and_minutes,
     widget_unit,
 )
 from .coordinator import TechCoordinator
@@ -1371,13 +1371,15 @@ class _TileWidgetSensorBase(TileSensor, SensorEntity):
     }
 
     def _apply_unit_metadata(self, widget: dict[str, Any]) -> None:
-        """Take unit, class, precision and icon from the widget's value type.
+        """Take unit, class, precision, icon and default from the widget's type.
 
         The class-level attributes describe a temperature. A widget whose API
         value type says otherwise - kilowatts, COP, a kelvin difference, a plain
         number - has to replace them, or the reading is published in the wrong
         engineering unit and with a device class that lies about it (issue #221).
-        The divisor comes from the same entry, through :meth:`get_state`.
+        The divisor comes from the same entry, through :meth:`get_state`, and so
+        does whether the entity starts out enabled: an elapsed-time counter is
+        registered disabled rather than cluttering the list.
 
         Args:
             widget: The widget payload this entity reads.
@@ -1389,6 +1391,7 @@ class _TileWidgetSensorBase(TileSensor, SensorEntity):
         self._attr_state_class = metadata.state_class
         self._attr_suggested_display_precision = metadata.precision
         self._attr_icon = metadata.icon
+        self._attr_entity_registry_enabled_default = metadata.enabled_default
 
     def __init__(
         self,
@@ -1419,11 +1422,17 @@ class _TileWidgetSensorBase(TileSensor, SensorEntity):
         # the entity name still reflects the tile's purpose.
         txt_id = _widget_txt_id(widget, sibling)
         suffix = ""
-        # Emit "Set Temperature" / "Current Temperature" when both widget slots
-        # exist, regardless of individual txtId values. This handles tiles (e.g.
-        # solar pump) where one widget's txtId is 0 and borrows the sibling's
-        # label.
-        if widget.get(CONF_TYPE) == WIDGET_DHW_PUMP and sibling:
+        # The "Set Temperature" / "Current Temperature" suffix disambiguates the
+        # two slots of a DHW pump's temperature pair, so it belongs on a widget
+        # that *reads* a temperature: heat pumps mark every reading with the pump
+        # subtype, and a pressure, flow or runtime widget would otherwise be
+        # published as "Przepływ Current Temperature" (issue #221).
+        if (
+            widget.get(CONF_TYPE) == WIDGET_DHW_PUMP
+            and sibling
+            and widget_unit(widget.get("unit")).device_class
+            == SensorDeviceClass.TEMPERATURE
+        ):
             suffix = self._NAME_SUFFIX_FOR_DHW.get(self._widget_key, "")
         return f"{self.coordinator.translations.get_text(txt_id)}{suffix}"
 
@@ -1476,7 +1485,7 @@ class TileWidgetTemperatureSensor(_TileWidgetSensorBase):
         """
         widget = device[CONF_PARAMS][self._widget_key]
         if widget.get("unit") == WIDGET_UNIT_TIME_OF_DAY:
-            return widget_time_of_day(widget[VALUE])
+            return widget_hours_and_minutes(widget[VALUE])
         divisor = widget_unit(widget.get("unit")).divisor
         return widget[VALUE] / divisor if divisor != 1 else widget[VALUE]
 

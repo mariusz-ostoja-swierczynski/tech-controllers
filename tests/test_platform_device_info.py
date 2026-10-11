@@ -740,7 +740,7 @@ def test_kolton_st5305_widget_entities() -> None:
     one of the 18 invisible widgets.
     """
     percent, hours, bar = _widget_unit(8), _widget_unit(3), _widget_unit(23)
-    kilowatt, kelvin = _widget_unit(26), _widget_unit(32)
+    kilowatt, kelvin, flow = _widget_unit(26), _widget_unit(32), _widget_unit(39)
     expected = [
         # 8 -- percentages (pump duty cycle)
         (1006, "widget2", 8, "TileWidgetPumpSensor", percent, None, 0),
@@ -759,8 +759,9 @@ def test_kolton_st5305_widget_entities() -> None:
         (2220, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 0),
         (2223, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 4274),
         (2232, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 0),
-        (1096, "widget2", 39, "TileWidgetTemperatureSensor", None, None, 0),
-        # 13 -- times of day, published as the clock reading the app shows
+        # 39 -- "Value l / m" in the API prose, labelled l/godz. by the app
+        (1096, "widget2", 39, "TileWidgetTemperatureSensor", flow, "volume_flow_rate", 0),
+        # 13 -- hours and minutes
         (1664, "widget2", 13, "TileWidgetTemperatureSensor", None, None, "00:00"),
         (1666, "widget2", 13, "TileWidgetTemperatureSensor", None, None, "17:21"),
         (1668, "widget2", 13, "TileWidgetTemperatureSensor", None, None, None),
@@ -790,11 +791,53 @@ def test_kolton_st5305_widget_entities() -> None:
     assert sorted(rows) == sorted(expected)
     assert len(rows) == 34
     # Nothing may claim to be a temperature: the payload has no unit 6 or 7.
-    assert {row[5] for row in rows} == {None, "duration", "power", "pressure"}
+    assert {row[5] for row in rows} == {
+        None,
+        "duration",
+        "power",
+        "pressure",
+        "volume_flow_rate",
+    }
     assert {_widget_unit(6), _widget_unit(7)}.isdisjoint({row[4] for row in rows})
     # Every widget is published through its own slot, and only widget2 carries
     # a reading: all 52 widget1 payloads are placeholders, flags, or invisible.
     assert {row[1] for row in rows} == {"widget2"}
+
+
+def test_kolton_st5305_registers_the_counters_disabled() -> None:
+    """The eleven elapsed-time counters are registered disabled by default.
+
+    The reporter asked for the eight numbered compressor counters to stay out of
+    the entity list (issue #221). The payload marks them only by their value type
+    -- 3 hours for the run-time block, 13 hours:minutes for the downtime block --
+    which three other duration readings share, so the value types are switched
+    off as a family and a user enables the one they read.
+    """
+    disabled = [
+        (tile["id"], tile["params"][entity._widget_key]["unit"])
+        for tile in _kolton_module()["tiles"]
+        if tile["type"] == const.TYPE_WIDGET
+        for entity in sensor._build_widget_tile(tile, _Coordinator(), _Entry())
+        # Home Assistant defaults an entity to enabled when the attribute is
+        # never set, and the pump sensors do not set it.
+        if getattr(entity, "_attr_entity_registry_enabled_default", True) is False
+    ]
+
+    assert sorted(disabled) == sorted(
+        [
+            (1664, 13),
+            (1666, 13),
+            (1668, 13),
+            (2193, 13),
+            (2194, 13),
+            (2195, 13),
+            (2196, 13),
+            (2213, 3),
+            (2214, 3),
+            (2215, 3),
+            (2216, 3),
+        ]
+    )
 
 
 def test_kolton_st5305_exposes_flags_but_no_contacts() -> None:
@@ -907,6 +950,44 @@ class TestBorrowedLabelWidgets:
             )
             is False
         )
+
+
+class TestWidgetNameSuffix:
+    """The DHW "Set/Current Temperature" suffix belongs to temperature readings."""
+
+    def test_a_flow_reading_keeps_its_plain_label(self) -> None:
+        """A pump-subtype widget that is not a temperature gets no suffix.
+
+        Issue #221: the Kołton's unit=39 flow reading was published as
+        "Przepływ Current Temperature", because heat pumps mark every reading
+        with the pump subtype, not just their temperature pair.
+        """
+        tile = _widget_tile(
+            status_id=1,
+            widget={"txtId": 632, "unit": 39, "type": 1, "value": 0},
+        )
+        # The Kołton reports this reading in the second slot, the way widget2 of
+        # its tile 1096 does, so " Current Temperature" is the suffix at stake.
+        tile["params"]["widget2"] = tile["params"].pop("widget1")
+
+        entities = sensor._build_widget_tile(tile, _Coordinator(), _Entry())
+
+        assert [entity.name for entity in entities] == ["label-632"]
+
+    def test_a_pump_temperature_pair_keeps_the_suffix(self) -> None:
+        """Both slots of a real DHW pump temperature pair stay distinguishable."""
+        tile = _widget_tile(
+            status_id=1,
+            widget={"txtId": 2442, "unit": 7, "type": 1, "value": 560},
+        )
+        tile["params"]["widget2"] = {"txtId": 2442, "unit": 7, "type": 1, "value": 455}
+
+        entities = sensor._build_widget_tile(tile, _Coordinator(), _Entry())
+
+        assert [entity.name for entity in entities] == [
+            "label-2442 Set Temperature",
+            "label-2442 Current Temperature",
+        ]
 
 
 class TestContactAndFlagStateSources:

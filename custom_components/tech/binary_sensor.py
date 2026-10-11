@@ -21,8 +21,8 @@ Four flavours of binary entity are emitted:
   label may live on the sibling widget, which is how heat pumps name
   their settings (issue #221).
 * **Widget status sensors** -- TYPE_WIDGET (=6) tiles whose
-  ``params.statusId`` is ``0`` or ``1`` **and** whose widgets include a
-  pump type (``WIDGET_DHW_PUMP`` or ``WIDGET_COLLECTOR_PUMP``), backed by
+  ``params.statusId`` is ``0`` or ``1`` **and** which carry a pump widget that
+  reads a pump quantity (a temperature or a percentage), backed by
   :class:`TileWidgetStatusSensor`. The statusId signals ON/OFF state for
   PWM-controlled pumps whose widgets carry temperature data (rather than
   a relay ``workingStatus`` boolean). Tiles with only temperature or
@@ -38,10 +38,12 @@ without that agreement the same widget could be emitted twice (or not at all).
 import logging
 
 from homeassistant.components import binary_sensor
+from homeassistant.components.sensor.const import SensorDeviceClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_PARAMS,
     CONF_TYPE,
+    PERCENTAGE,
     STATE_OFF,
     STATE_ON,
     EntityCategory,
@@ -63,6 +65,7 @@ from .const import (
     VISIBILITY,
     WIDGET_COLLECTOR_PUMP,
     WIDGET_DHW_PUMP,
+    widget_unit,
 )
 from .entity import TileEntity
 
@@ -136,16 +139,28 @@ def _is_flag_widget(widget: dict, sibling: dict | None) -> bool:
 
 
 def _has_pump_widget(params: dict) -> bool:
-    """Return ``True`` if the TYPE_WIDGET tile carries a pump-type widget.
+    """Return ``True`` if the tile carries a pump widget that reads a pump value.
 
     Pump-type widgets (``type=1`` = WIDGET_DHW_PUMP, ``type=2`` =
     WIDGET_COLLECTOR_PUMP) indicate the tile represents a pump whose
-    ``statusId`` carries ON/OFF semantics. Pure temperature or contact
-    widgets always report ``statusId=1`` and never toggle.
+    ``statusId`` carries ON/OFF semantics. Heat pumps use those subtypes for
+    *every* reading, so the widget's value type has to agree as well: only a
+    temperature or a percentage is a pump quantity, and without that check a
+    pressure, energy, flow or runtime tile raises a phantom ON/OFF sensor
+    (issue #221 -- 51 of the Kołton's tiles qualified before this).
     """
     for key in ("widget1", "widget2"):
         widget = params.get(key)
-        if widget and widget.get(CONF_TYPE) in (WIDGET_DHW_PUMP, WIDGET_COLLECTOR_PUMP):
+        if not widget or widget.get(CONF_TYPE) not in (
+            WIDGET_DHW_PUMP,
+            WIDGET_COLLECTOR_PUMP,
+        ):
+            continue
+        metadata = widget_unit(widget.get("unit"))
+        if (
+            metadata.device_class == SensorDeviceClass.TEMPERATURE
+            or metadata.unit == PERCENTAGE
+        ):
             return True
     return False
 
@@ -209,9 +224,11 @@ async def async_setup_entry(
                         )
                     )
             # TYPE_WIDGET tiles with statusId 0 or 1 carry ON/OFF state for
-            # PWM-controlled pumps (e.g. solar collector). Only emit the
-            # binary sensor when the tile has pump-type widgets (type=1 or
-            # type=2) — pure temperature/contact widgets always report
+            # PWM-controlled pumps (e.g. solar collector). Only emit the binary
+            # sensor when the tile carries a pump widget that reads a pump
+            # quantity -- a temperature or a percentage -- so that a pressure,
+            # energy or runtime tile does not raise a phantom ON/OFF entity
+            # (issue #221). Pure temperature or contact widgets always report
             # statusId=1 and never toggle.
             status_id = tile.get(CONF_PARAMS, {}).get("statusId")
             if status_id in (0, 1) and _has_pump_widget(tile.get(CONF_PARAMS, {})):
