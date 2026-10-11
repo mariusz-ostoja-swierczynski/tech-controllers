@@ -110,10 +110,12 @@ from .const import (
     VISIBILITY,
     WIDGET_COLLECTOR_PUMP,
     WIDGET_DHW_PUMP,
+    WIDGET_UNIT_TIME_OF_DAY,
     WINDOW_SENSORS,
     WINDOW_STATE,
     WORKING_STATUS,
     ZONE_STATE,
+    widget_time_of_day,
     widget_unit,
 )
 from .coordinator import TechCoordinator
@@ -319,33 +321,96 @@ def _build_open_therm_tile(
     return entities
 
 
-def _is_contact_widget(widget: dict[str, Any]) -> bool:
-    """Return True for widgets that should be modelled as a binary contact sensor.
+def _sibling_widget(tile_params: dict, widget_key: str) -> dict | None:
+    """Return the tile's other widget payload, when it carries one.
 
-    Tech encodes a "dry contact" / voltage input on a TYPE_WIDGET tile by
-    the marker triple ``unit == -1``, ``type == 0`` and a non-zero ``txtId``.
-    EU-i-3+ extension modules expose all four of their inputs this way.
+    A TYPE_WIDGET tile has exactly two slots, so the sibling is simply the one
+    ``widget_key`` does not name.
 
-    The contact branch is mirrored by the same predicate in
-    :mod:`binary_sensor` -- both modules need to agree on which widgets
-    they own, so :func:`_build_widget_tile` *skips* contact widgets here
-    and lets the binary_sensor platform create
-    :class:`binary_sensor.TileWidgetContactSensor` for them instead.
+    Args:
+        tile_params: The tile's ``params`` dict.
+        widget_key: ``widget1`` or ``widget2`` -- the slot being classified.
+
+    Returns:
+        The other slot's payload, or ``None`` when that slot is empty.
+
     """
-    return (
+    other_key = "widget2" if widget_key == "widget1" else "widget1"
+    return tile_params.get(other_key) or None
+
+
+def _is_contact_marker(widget: dict | None) -> bool:
+    """Return True for the per-widget half of the dry-contact marker.
+
+    Tech marks an invisible input with the API's "value invisible" type
+    (``unit == -1``), ``type == 0`` and a ``txtId`` of its own. Find out whether
+    the whole tile is like that through :func:`_is_contact_widget`.
+    """
+    return bool(widget) and (
         widget.get("unit") == -1
         and widget.get(CONF_TYPE) == 0
         and widget.get("txtId", 0) != 0
     )
 
 
-def _is_flag_widget(widget: dict) -> bool:
+def _is_contact_widget(widget: dict, sibling: dict | None) -> bool:
+    """Return True for widgets that should be modelled as a binary contact sensor.
+
+    EU-i-3+ and i2+ extension modules expose their voltage and potential-free
+    inputs as a TYPE_WIDGET tile built *entirely* of contact widgets, so a
+    contact is only recognised when its sibling is one too. A lone ``unit == -1``
+    widget next to a visible reading is something else: the API uses that type
+    for an invisible value, and heat pumps (e.g. Kołton ST-5305) pair one with
+    their Enabled/Disabled widget. Reading those as contacts produced phantom
+    opening sensors (issue #221).
+
+    The contact branch is mirrored by the same predicate in
+    :mod:`binary_sensor` -- both modules need to agree on which widgets they
+    own, so :func:`_build_widget_tile` *skips* contact widgets here and lets the
+    binary_sensor platform create
+    :class:`binary_sensor.TileWidgetContactSensor` for them instead.
+
+    Args:
+        widget: The widget payload being classified.
+        sibling: The tile's other widget payload, or ``None`` when it is empty.
+
+    Returns:
+        ``True`` when the widget is a contact marker and every other widget the
+        tile defines is one as well.
+
+    """
+    return _is_contact_marker(widget) and (sibling is None or _is_contact_marker(sibling))
+
+
+def _widget_txt_id(widget: dict, sibling: dict | None = None) -> int:
+    """Return the label a widget is named by, borrowing its sibling's.
+
+    A widget without a label of its own (``txtId == 0``) is named after its
+    sibling, which is how the emodul UI labels such tiles as well.
+
+    Args:
+        widget: The widget payload being named.
+        sibling: The tile's other widget payload, or ``None`` when it is empty.
+
+    Returns:
+        The widget's own ``txtId``, the sibling's, or 0 when neither has one.
+
+    """
+    return widget.get("txtId") or (sibling or {}).get("txtId", 0)
+
+
+def _is_flag_widget(widget: dict, sibling: dict | None) -> bool:
     """Return ``True`` for enable/disable widgets (API value type 28).
 
     Mirrored by the same predicate in :mod:`binary_sensor`, which owns these
     widgets; see there for why the widget ``type`` is not part of the check.
+
+    Args:
+        widget: The widget payload being classified.
+        sibling: The tile's other widget payload, or ``None`` when it is empty.
+
     """
-    return widget.get("unit") == 28 and widget.get("txtId", 0) != 0
+    return widget.get("unit") == 28 and _widget_txt_id(widget, sibling) != 0
 
 
 def _build_deprecated_flag_sensors(
@@ -376,9 +441,12 @@ def _build_deprecated_flag_sensors(
     for tile in _iter_mapping(tiles):
         if tile.get(CONF_TYPE) != TYPE_WIDGET or tile.get(VISIBILITY) is False:
             continue
+        params = tile.get(CONF_PARAMS, {})
         for widget_key in ("widget1", "widget2"):
-            widget = tile.get(CONF_PARAMS, {}).get(widget_key)
-            if not widget or not _is_flag_widget(widget):
+            widget = params.get(widget_key)
+            if not widget:
+                continue
+            if not _is_flag_widget(widget, _sibling_widget(params, widget_key)):
                 continue
             entity = TileWidgetTemperatureSensor(
                 tile, coordinator, config_entry, widget_key
@@ -468,16 +536,19 @@ def _build_widget_tile(
 
     Filtering rules applied in order:
 
-    1. Widgets with ``txtId == 0`` are placeholders -- skip, *unless* the
+    1. Contact and value type 28 widgets belong to :mod:`binary_sensor`; skip
+       them here so no widget is claimed by both platforms. A contact is a
+       tile made of contact widgets only (see :func:`_is_contact_widget`).
+    2. ``unit == -1`` is the API's "value invisible": skip it. Paired with a
+       visible reading it is not a contact, it is just an invisible value.
+    3. Widgets with ``txtId == 0`` are placeholders -- skip, *unless* the
        widget is a pump type (``type==1`` / ``type==2``) whose sibling
        carries a label, in which case the sibling's label is borrowed.
-    2. Contact-shaped widgets (``unit==-1, type==0, txtId!=0``) belong to
-       :mod:`binary_sensor`; skip here so they are not emitted twice.
-    3. ``unit == 6`` widgets with a zero value are decorative state badges;
+    4. ``unit == 6`` widgets with a zero value are decorative state badges;
        skip them to avoid useless "always 0" sensors. Non-zero unit=6
        widgets (e.g. solar pump temperatures) are kept and handled below.
-    4. WIDGET_COLLECTOR_PUMP -> :class:`TileWidgetPumpSensor` (percentage).
-    5. Everything else (DHW set/current temp, CH temp, generic
+    5. WIDGET_COLLECTOR_PUMP -> :class:`TileWidgetPumpSensor` (percentage).
+    6. Everything else (DHW set/current temp, CH temp, generic
        ``type==0`` numeric) -> :class:`TileWidgetTemperatureSensor`,
        which applies unit-aware scaling at read time.
 
@@ -492,6 +563,16 @@ def _build_widget_tile(
         widget = params.get(widget_key)
         if not widget:
             continue
+        sibling = _sibling_widget(params, widget_key)
+        # Contacts and flags belong to binary_sensor; agree with that module on
+        # which widgets they own, or a widget is claimed twice or not at all.
+        if _is_contact_widget(widget, sibling) or _is_flag_widget(widget, sibling):
+            continue
+        # Value type -1 means "value invisible" in the API's own table, so there
+        # is nothing to publish. On a tile that is not all contacts this is an
+        # invisible value sitting next to a visible one (issue #221).
+        if widget.get("unit") == -1:
+            continue
         # Widgets with txtId==0 are usually placeholders, but pump-type
         # widgets (WIDGET_DHW_PUMP, WIDGET_COLLECTOR_PUMP) may lack their
         # own label when they share the sibling's txtId. Let them through
@@ -503,12 +584,8 @@ def _build_widget_tile(
                 WIDGET_COLLECTOR_PUMP,
             ):
                 continue
-            other_key = "widget2" if widget_key == "widget1" else "widget1"
-            other = params.get(other_key, {})
-            if not other or other.get("txtId", 0) == 0:
+            if not sibling or sibling.get("txtId", 0) == 0:
                 continue
-        if _is_contact_widget(widget) or _is_flag_widget(widget):
-            continue
         if widget.get("unit") == 6 and widget.get("value", 0) == 0:
             continue
         widget_type = widget.get(CONF_TYPE)
@@ -1337,21 +1414,17 @@ class _TileWidgetSensorBase(TileSensor, SensorEntity):
     def _build_name(self, device) -> str:
         params = device[CONF_PARAMS]
         widget = params[self._widget_key]
-        txt_id = widget.get("txtId", 0)
-        # If this widget has no label (txtId 0), borrow it from its sibling so
+        sibling = _sibling_widget(params, self._widget_key)
+        # A widget with no label of its own (txtId 0) borrows its sibling's, so
         # the entity name still reflects the tile's purpose.
-        if txt_id == 0:
-            other = "widget2" if self._widget_key == "widget1" else "widget1"
-            txt_id = params.get(other, {}).get("txtId", 0)
+        txt_id = _widget_txt_id(widget, sibling)
         suffix = ""
-        if widget.get(CONF_TYPE) == WIDGET_DHW_PUMP:
-            other_key = "widget2" if self._widget_key == "widget1" else "widget1"
-            # Emit "Set Temperature" / "Current Temperature" when both
-            # widget slots exist, regardless of individual txtId values.
-            # This handles tiles (e.g. solar pump) where one widget's
-            # txtId is 0 and borrows the sibling's label.
-            if params.get(other_key):
-                suffix = self._NAME_SUFFIX_FOR_DHW.get(self._widget_key, "")
+        # Emit "Set Temperature" / "Current Temperature" when both widget slots
+        # exist, regardless of individual txtId values. This handles tiles (e.g.
+        # solar pump) where one widget's txtId is 0 and borrows the sibling's
+        # label.
+        if widget.get(CONF_TYPE) == WIDGET_DHW_PUMP and sibling:
+            suffix = self._NAME_SUFFIX_FOR_DHW.get(self._widget_key, "")
         return f"{self.coordinator.translations.get_text(txt_id)}{suffix}"
 
     @property
@@ -1395,8 +1468,15 @@ class TileWidgetTemperatureSensor(_TileWidgetSensorBase):
         self._apply_unit_metadata(device[CONF_PARAMS][widget_key])
 
     def get_state(self, device) -> Any:
-        """Get the state of the device."""
+        """Get the state of the device.
+
+        The widget's ``unit`` field is the API's value type, and it decides how
+        the raw integer is published: most types are a scaled measurement, value
+        type 13 is a time of day the API stores as minutes since midnight.
+        """
         widget = device[CONF_PARAMS][self._widget_key]
+        if widget.get("unit") == WIDGET_UNIT_TIME_OF_DAY:
+            return widget_time_of_day(widget[VALUE])
         divisor = widget_unit(widget.get("unit")).divisor
         return widget[VALUE] / divisor if divisor != 1 else widget[VALUE]
 

@@ -31,7 +31,7 @@ tile-derived entities.
 """
 
 from datetime import timedelta
-from typing import Final, NamedTuple
+from typing import Any, Final, NamedTuple
 
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
@@ -145,6 +145,11 @@ TYPE_OPEN_THERM = 252  # OpenTherm boiler -- carries 4-5 sub-temperature values
 WIDGET_DHW_PUMP = 1  # DHW pump set vs current temperature pair
 WIDGET_COLLECTOR_PUMP = 2  # Solar collector pump duty cycle (percentage)
 WIDGET_TEMPERATURE_CH = 9  # Central-heating temperature reading
+# Value type 13 is a *time of day*: the API documents it as
+# "Time written as hours * 60 + min, shown as 00:00 - 23:59", so its raw value
+# is minutes since midnight and :func:`widget_time_of_day` renders it.
+WIDGET_UNIT_TIME_OF_DAY: Final = 13
+MINUTES_PER_DAY: Final = 24 * 60
 
 # ``params.widgetN.unit`` codes seen in the wild and the divisor that turns
 # the integer ``value`` into a human-readable measurement. Codes not listed
@@ -164,6 +169,10 @@ WIDGET_TEMPERATURE_CH = 9  # Central-heating temperature reading
 # The remaining divisors come from the API's own value-type table
 # (https://api-documentation.emodul.eu/openapi.yaml, "Data types format"), which
 # states the transformation each value type needs:
+#  * 19 -- kWh with a decimal point    -> / 10. The API names the decimal point
+#          but not the transformation; every other "with a decimal point" type
+#          (21, 26) divides by 10, and the eModul app's own formatter multiplies
+#          value types 19 by 0.1 before showing one decimal place.
 #  * 21 -- MWh with a decimal point   -> / 10
 #  * 22 -- L/min with a decimal point -> / 10
 #  * 30 -- L/hr with a decimal point  -> / 100
@@ -178,7 +187,10 @@ WIDGET_TEMPERATURE_CH = 9  # Central-heating temperature reading
 # temperature device class is wrong no matter how it is scaled (issue #221).
 # Types the API leaves semantically open stay unitless: 13 (hh:mm), 15 (run),
 # 18 (flame brightness), 24 (epoch), 35 (hexadecimal), 37 (years/days) and 39
-# ("Value l / m", which the API does not define further).
+# ("Value l / m", which the API does not define further). Value type 13 carries
+# no precision either: its state is the clock reading :func:`widget_time_of_day`
+# builds, and Home Assistant refuses a non-numeric state when a precision (or
+# unit, or state class) asks for one.
 class WidgetUnit(NamedTuple):
     """Home Assistant metadata for one eModul value type.
 
@@ -221,13 +233,13 @@ WIDGET_UNITS: dict[int, WidgetUnit] = {
     10: WidgetUnit(UnitOfPower.KILO_WATT, 1, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT, 1, "mdi:flash"),
     11: WidgetUnit(UnitOfEnergy.KILO_WATT_HOUR, 1, SensorDeviceClass.ENERGY, None, 0, "mdi:lightning-bolt"),
     12: WidgetUnit(UnitOfElectricPotential.VOLT, 1, SensorDeviceClass.VOLTAGE, SensorStateClass.MEASUREMENT, 1, "mdi:flash"),
-    13: WidgetUnit(None, 1, None, None, 0, "mdi:clock-outline"),  # hh:mm
+    13: WidgetUnit(None, 1, None, None, None, "mdi:clock-outline"),  # hh:mm, see widget_time_of_day
     14: WidgetUnit(UnitOfTime.DAYS, 1, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, 0, "mdi:calendar"),
     15: WidgetUnit(None, 1, None, None, 0, "mdi:play-circle-outline"),  # run
     16: WidgetUnit(UnitOfTime.SECONDS, 1, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, 0, "mdi:timer-outline"),
     17: WidgetUnit(UnitOfTime.MINUTES, 1, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, 0, "mdi:timer-outline"),
     18: WidgetUnit(None, 1, None, None, 0, "mdi:fire"),  # flame brightness
-    19: WidgetUnit(UnitOfEnergy.KILO_WATT_HOUR, 1, SensorDeviceClass.ENERGY, None, 1, "mdi:lightning-bolt"),
+    19: WidgetUnit(UnitOfEnergy.KILO_WATT_HOUR, 10, SensorDeviceClass.ENERGY, None, 1, "mdi:lightning-bolt"),
     20: WidgetUnit(UnitOfEnergy.MEGA_WATT_HOUR, 1, SensorDeviceClass.ENERGY, None, 1, "mdi:lightning-bolt"),
     21: WidgetUnit(UnitOfEnergy.MEGA_WATT_HOUR, 10, SensorDeviceClass.ENERGY, None, 2, "mdi:lightning-bolt"),
     22: WidgetUnit(UnitOfVolumeFlowRate.LITERS_PER_MINUTE, 10, SensorDeviceClass.VOLUME_FLOW_RATE, SensorStateClass.MEASUREMENT, 2, "mdi:waves"),
@@ -266,6 +278,33 @@ def widget_unit(code: int | None) -> WidgetUnit:
 
     """
     return WIDGET_UNITS.get(code, WIDGET_UNITS[0])
+
+
+def widget_time_of_day(value: Any) -> str | None:
+    """Render a value type 13 reading, which is a time of day.
+
+    The API documents value type 13 as "Time written as hours * 60 + min, shown
+    as 00:00 - 23:59", and the eModul app's formatter splits the raw value the
+    same way (``minutes = t % 60; hours = (t - minutes) / 60``). The reading is
+    minutes since midnight, not a duration, so it is published as the clock time
+    the app shows. A value the documented range cannot express - negative,
+    fractional, or past 23:59 - returns ``None`` (unknown) instead of a nonsense
+    time: the Kołton ST-5305 payload in issue #221 carries ``-29536`` in one of
+    its seven value type 13 widgets.
+
+    Args:
+        value: The widget's raw ``value`` field.
+
+    Returns:
+        ``"HH:MM"``, or ``None`` when the raw value is not a valid time of day.
+
+    """
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    if not 0 <= value < MINUTES_PER_DAY:
+        return None
+    hours, minutes = divmod(value, 60)
+    return f"{hours:02d}:{minutes:02d}"
 
 # ---------------------------------------------------------------------------
 # Icon mapping tables

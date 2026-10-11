@@ -10,10 +10,16 @@ Four flavours of binary entity are emitted:
 * **Fire/motion sensors** -- TYPE_FIRE_SENSOR (=2) tiles, also handled by
   :class:`RelaySensor` but with the MOTION device class so the HA UI
   shows the correct iconography.
-* **Contact widgets** -- TYPE_WIDGET (=6) sub-payloads with the
-  contact-shape marker (``unit==-1, type==0, txtId!=0``), backed by
-  :class:`TileWidgetContactSensor`. EU-i-3+ extension modules expose all
-  four of their voltage / potential-free inputs this way.
+* **Contact widgets** -- TYPE_WIDGET (=6) tiles made of contact widgets
+  only (``unit==-1, type==0, txtId!=0``), backed by
+  :class:`TileWidgetContactSensor`. EU-i-3+ and i2+ extension modules
+  expose their voltage / potential-free inputs this way. A *lone*
+  ``unit == -1`` widget next to a visible reading is the API's "value
+  invisible" rather than a contact (issue #221).
+* **Widget flags** -- TYPE_WIDGET widgets of API value type 28
+  ("Enabled / Disabled"), backed by :class:`TileWidgetFlagSensor`. The
+  label may live on the sibling widget, which is how heat pumps name
+  their settings (issue #221).
 * **Widget status sensors** -- TYPE_WIDGET (=6) tiles whose
   ``params.statusId`` is ``0`` or ``1`` **and** whose widgets include a
   pump type (``WIDGET_DHW_PUMP`` or ``WIDGET_COLLECTOR_PUMP``), backed by
@@ -23,10 +29,10 @@ Four flavours of binary entity are emitted:
   contact widgets always report ``statusId=1`` and never toggle, so they
   are excluded to avoid flooding HA with useless always-ON sensors.
 
-Contact widgets share their parent tile with numeric widgets that go to
-:mod:`sensor`. Both modules use the same :func:`_is_contact_widget`
-predicate to decide which platform owns each widget; without that
-agreement the same widget could be emitted twice (or not at all).
+Contact and flag widgets share their parent tile with numeric widgets that go
+to :mod:`sensor`. Both modules use the same :func:`_is_contact_widget` and
+:func:`_is_flag_widget` predicates to decide which platform owns each widget;
+without that agreement the same widget could be emitted twice (or not at all).
 """
 
 import logging
@@ -63,30 +69,70 @@ from .entity import TileEntity
 _LOGGER = logging.getLogger(__name__)
 
 
-def _is_contact_widget(widget: dict) -> bool:
-    """Return ``True`` for widgets that should be exposed as binary contacts.
+def _sibling_widget(tile_params: dict, widget_key: str) -> dict | None:
+    """Return the tile's other widget payload, when it carries one.
+
+    A TYPE_WIDGET tile has exactly two slots, so the sibling is simply the one
+    ``widget_key`` does not name.
+
+    Args:
+        tile_params: The tile's ``params`` dict.
+        widget_key: ``widget1`` or ``widget2`` -- the slot being classified.
+
+    Returns:
+        The other slot's payload, or ``None`` when that slot is empty.
+
+    """
+    other_key = "widget2" if widget_key == "widget1" else "widget1"
+    return tile_params.get(other_key) or None
+
+
+def _is_contact_marker(widget: dict | None) -> bool:
+    """Return True for the per-widget half of the dry-contact marker.
 
     The marker triple this tests is documented on the mirrored predicate in
-    :func:`sensor._is_contact_widget`. Both modules have to agree on which
-    widgets they own, or a widget is claimed twice or not at all.
+    :func:`sensor._is_contact_marker`.
     """
-    return (
+    return bool(widget) and (
         widget.get("unit") == -1
         and widget.get(CONF_TYPE) == 0
         and widget.get("txtId", 0) != 0
     )
 
 
-def _is_flag_widget(widget: dict) -> bool:
+def _is_contact_widget(widget: dict, sibling: dict | None) -> bool:
+    """Return ``True`` for widgets that should be exposed as binary contacts.
+
+    The rule this tests is documented on the mirrored predicate in
+    :func:`sensor._is_contact_widget`: contacts come as a tile built entirely of
+    contact widgets, so a lone ``unit == -1`` widget next to a visible reading
+    is an invisible value rather than a contact. Both modules have to agree on
+    which widgets they own, or a widget is claimed twice or not at all.
+    """
+    return _is_contact_marker(widget) and (sibling is None or _is_contact_marker(sibling))
+
+
+def _widget_txt_id(widget: dict, sibling: dict | None = None) -> int:
+    """Return the label a widget is named by, borrowing its sibling's.
+
+    The marker triple this borrows on is documented on the mirrored helper in
+    :func:`sensor._widget_txt_id`.
+    """
+    return widget.get("txtId") or (sibling or {}).get("txtId", 0)
+
+
+def _is_flag_widget(widget: dict, sibling: dict | None) -> bool:
     """Return ``True`` for enable/disable widgets (API value type 28).
 
     The API documents value type 28 as "Enabled / Disabled - [1/0]", which is a
     state rather than a measurement, so these widgets belong here instead of the
     sensor platform. The widget ``type`` is deliberately not checked: real
     payloads carry these as ``type == 1``, unlike the ``type == 0`` contact
-    marker. A widget without a label of its own is skipped, as everywhere else.
+    marker. A widget without a label of its own is named after its sibling --
+    heat pumps label their settings that way (issue #221) -- and one with no
+    label anywhere is skipped, as everywhere else.
     """
-    return widget.get("unit") == 28 and widget.get("txtId", 0) != 0
+    return widget.get("unit") == 28 and _widget_txt_id(widget, sibling) != 0
 
 
 def _has_pump_widget(params: dict) -> bool:
@@ -144,15 +190,19 @@ async def async_setup_entry(
         if tile[CONF_TYPE] == TYPE_ADDITIONAL_PUMP:
             entities.append(RelaySensor(tile, coordinator, config_entry))
         if tile[CONF_TYPE] == TYPE_WIDGET:
+            params = tile.get(CONF_PARAMS, {})
             for widget_key in ("widget1", "widget2"):
-                widget = tile.get(CONF_PARAMS, {}).get(widget_key)
-                if widget and _is_flag_widget(widget):
+                widget = params.get(widget_key)
+                if not widget:
+                    continue
+                sibling = _sibling_widget(params, widget_key)
+                if _is_flag_widget(widget, sibling):
                     entities.append(
                         TileWidgetFlagSensor(
                             tile, coordinator, config_entry, widget_key
                         )
                     )
-                if widget and _is_contact_widget(widget):
+                if _is_contact_widget(widget, sibling):
                     entities.append(
                         TileWidgetContactSensor(
                             tile, coordinator, config_entry, widget_key
@@ -260,8 +310,13 @@ class TileWidgetContactSensor(TileBinarySensor):
         widget = device[CONF_PARAMS][widget_key]
         # Contact widgets carry their label inside the widget payload, not the
         # tile params, so override the name TileEntity computed from tile-level
-        # txtId. ``_attr_has_entity_name = True`` lets HA prepend the device.
-        self._name = coordinator.translations.get_text(widget["txtId"])
+        # txtId. A widget without a label of its own borrows the sibling's -
+        # which is how a value type 28 flag is labelled, since its label sits
+        # on the widget next to it. ``_attr_has_entity_name = True`` lets HA
+        # prepend the device.
+        self._name = coordinator.translations.get_text(
+            _widget_txt_id(widget, _sibling_widget(device[CONF_PARAMS], widget_key))
+        )
         icon_id = device[CONF_PARAMS].get("iconId")
         if icon_id:
             self._attr_icon = assets.get_icon(icon_id)

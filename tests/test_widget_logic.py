@@ -138,26 +138,46 @@ def predicate_body(path: pathlib.Path, function_name: str) -> list[str]:
     return normalised_function(path.read_text(), function_name)
 
 
-def is_contact_widget_oracle(widget: dict) -> bool:
+def is_contact_widget_oracle(widget: dict, sibling: dict | None = None) -> bool:
     """Mirror :func:`sensor._is_contact_widget` for use as a test oracle.
 
+    A dry contact comes as a TYPE_WIDGET tile built entirely of contact widgets,
+    so the sibling slot has to carry the marker too: a lone ``unit == -1``
+    widget next to a visible reading is the API's "value invisible" and not a
+    contact (issue #221). No sibling models a tile whose other slot is empty.
+
     If sensor.py / binary_sensor.py change the rule, update this oracle and
     re-run the tests so we know both implementations still agree.
     """
-    return (
-        widget.get("unit") == -1
-        and widget.get("type") == 0
-        and widget.get("txtId", 0) != 0
-    )
+
+    def marker(candidate: dict | None) -> bool:
+        """Return whether one widget payload carries the contact marker."""
+        return bool(candidate) and (
+            candidate.get("unit") == -1
+            and candidate.get("type") == 0
+            and candidate.get("txtId", 0) != 0
+        )
+
+    return marker(widget) and (sibling is None or marker(sibling))
 
 
-def is_flag_widget_oracle(widget: dict) -> bool:
+def is_flag_widget_oracle(widget: dict, sibling: dict | None = None) -> bool:
     """Mirror :func:`sensor._is_flag_widget` for use as a test oracle.
 
+    A value type 28 widget without a label of its own is named after its
+    sibling, so it is exposed whenever either slot carries a label (issue #221).
+
     If sensor.py / binary_sensor.py change the rule, update this oracle and
     re-run the tests so we know both implementations still agree.
     """
-    return widget.get("unit") == 28 and widget.get("txtId", 0) != 0
+    txt_id = widget.get("txtId") or (sibling or {}).get("txtId", 0)
+    return widget.get("unit") == 28 and txt_id != 0
+
+
+def sibling_of(tile: dict, widget_key: str) -> dict | None:
+    """Return the tile's other widget payload, as the platforms' helper does."""
+    params = tile.get("params", {})
+    return params.get("widget2" if widget_key == "widget1" else "widget1")
 
 
 # ---------------------------------------------------------------------------
@@ -169,9 +189,29 @@ class TestIsContactWidget:
     """Verify the contact-widget marker triple behaves as documented."""
 
     def test_canonical_contact_returns_true(self):
-        """Canonical contact triple (unit=-1, type=0, txtId!=0) is detected."""
+        """A tile of contact widgets (unit=-1, type=0, labelled) is a contact."""
         widget = {"unit": -1, "type": 0, "txtId": 1234, "value": 0}
-        assert is_contact_widget_oracle(widget) is True
+        sibling = {"unit": -1, "type": 0, "txtId": 1235, "value": 0}
+        assert is_contact_widget_oracle(widget, sibling) is True
+
+    def test_lone_invisible_value_is_not_a_contact(self):
+        """A lone unit=-1 widget next to a visible reading is invisible, not a contact.
+
+        Issue #221: the Kołton ST-5305 pairs a labelled unit=-1 widget with its
+        "Enabled / Disabled" widget, and reading those 18 as contacts produced
+        phantom opening sensors.
+        """
+        widget = {"unit": -1, "type": 0, "txtId": 4492, "value": 0}
+        flag = {"unit": 28, "type": 1, "txtId": 0, "value": 1}
+        reading = {"unit": 7, "type": 1, "txtId": 0, "value": 521}
+        assert is_contact_widget_oracle(widget, flag) is False
+        assert is_contact_widget_oracle(widget, reading) is False
+
+    def test_half_a_contact_tile_is_not_a_contact_tile(self):
+        """The sibling has to carry the marker itself, not just be invisible."""
+        contact = {"unit": -1, "type": 0, "txtId": 834, "value": 0}
+        placeholder = {"unit": -1, "type": 0, "txtId": 0, "value": 0}
+        assert is_contact_widget_oracle(contact, placeholder) is False
 
     def test_temperature_widget_is_not_contact(self):
         """A unit=7 temperature widget must not be misread as a contact."""
@@ -279,14 +319,24 @@ class TestIsFlagWidget:
         assert is_contact_widget_oracle(flag) is False
         assert is_flag_widget_oracle(contact) is False
 
-    def test_zero_txtid_disables_flag(self):
-        """An unlabelled flag widget is skipped, as everywhere else.
+    def test_zero_txtid_disables_flag_without_a_sibling_label(self):
+        """An unlabelled flag with no label to borrow stays hidden."""
+        widget = {"unit": 28, "type": 1, "txtId": 0, "value": 1}
+        placeholder = {"unit": -1, "type": 0, "txtId": 0, "value": 0}
+        assert is_flag_widget_oracle(widget) is False
+        assert is_flag_widget_oracle(widget, placeholder) is False
 
-        The heat pump payload carries 18 flags with txtId 0, so they stay
-        unexposed rather than appearing with a borrowed or empty name.
+    def test_sibling_label_exposes_an_unlabelled_flag(self):
+        """A unit=28 widget without its own label takes the sibling's.
+
+        Issue #221: the Kołton ST-5305 carries 18 of these, with the label on the
+        unit=-1 widget next to the state, so they used to be dropped (or, on the
+        intermediate branch, published as 0/1 sensors named "<label> Set
+        Temperature").
         """
         widget = {"unit": 28, "type": 1, "txtId": 0, "value": 1}
-        assert is_flag_widget_oracle(widget) is False
+        sibling = {"unit": -1, "type": 0, "txtId": 4492, "value": 0}
+        assert is_flag_widget_oracle(widget, sibling) is True
 
     def test_temperature_widget_is_not_a_flag(self):
         """A unit=7 temperature widget must not be misread as a flag."""
@@ -304,6 +354,36 @@ class TestIsFlagWidget:
         for src in (sensor_src, binary_src):
             assert "def _is_flag_widget" in src
             assert 'widget.get("unit") == 28' in src
+
+
+# ---------------------------------------------------------------------------
+# Mirrored widget predicates
+# ---------------------------------------------------------------------------
+
+# sensor.py and binary_sensor.py each decide which widgets they own, and both
+# have to reach the same verdict: a diverged copy claims a widget twice or drops
+# it. The two copies are compared as normalised source, so a docstring or a
+# comment may differ while the logic may not.
+MIRRORED_WIDGET_PREDICATES = (
+    "_sibling_widget",
+    "_is_contact_marker",
+    "_is_contact_widget",
+    "_widget_txt_id",
+    "_is_flag_widget",
+)
+
+
+class TestMirroredWidgetPredicates:
+    """Every shared widget predicate must stay identical in both platforms."""
+
+    def test_the_two_platforms_encode_the_same_rule(self):
+        """Compare both copies of each predicate, ignoring comments."""
+        for function_name in MIRRORED_WIDGET_PREDICATES:
+            assert predicate_body(
+                _TECH_DIR / "sensor.py", function_name
+            ) == predicate_body(
+                _TECH_DIR / "binary_sensor.py", function_name
+            ), function_name
 
 
 # ---------------------------------------------------------------------------
@@ -343,11 +423,12 @@ class TestUnitDivisors:
         """Every code the API divides carries the documented divisor."""
         assert {
             code: C.widget_unit(code).divisor
-            for code in (4, 5, 7, 21, 22, 23, 26, 30, 33, 36, 38, 40)
+            for code in (4, 5, 7, 19, 21, 22, 23, 26, 30, 33, 36, 38, 40)
         } == {
             4: 10,
             5: 100,
             7: 10,
+            19: 10,
             21: 10,
             22: 10,
             23: 10,
@@ -358,6 +439,40 @@ class TestUnitDivisors:
             38: 10,
             40: 1000,
         }
+
+    def test_unit_19_is_tenths_of_a_kwh(self):
+        """unit=19 is "kWh with a decimal point": 1234 -> 123.4 kWh."""
+        # Issue #221: value type 19 was published with divisor 1. The API names
+        # the decimal point without stating the transformation, and the eModul
+        # app's formatter does `case 19: t *= 0.1; t.toFixed(1)`, so the value
+        # is tenths of a kWh, exactly like the other "with a decimal point"
+        # codes (21 MWh, 26 kW).
+        assert C.widget_unit(19).divisor == 10
+        assert C.widget_unit(19).precision == 1
+
+
+class TestTimeOfDayValues:
+    """Value type 13 is a time of day, not a duration (issue #221)."""
+
+    def test_the_raw_value_is_minutes_since_midnight(self):
+        """The API stores hours * 60 + min and shows the result as HH:MM."""
+        # 889 = 14 * 60 + 49, 1041 = 17 * 60 + 21.
+        assert C.widget_time_of_day(0) == "00:00"
+        assert C.widget_time_of_day(889) == "14:49"
+        assert C.widget_time_of_day(1041) == "17:21"
+        assert C.widget_time_of_day(C.MINUTES_PER_DAY - 1) == "23:59"
+
+    def test_values_the_documented_range_excludes_are_unknown(self):
+        """Negative, fractional and past-23:59 values are not clock readings."""
+        # -29536 is what the Kołton ST-5305 payload carries in one of its seven
+        # value type 13 widgets; the API only defines 00:00 - 23:59.
+        for value in (-1, -29536, 1440, 2000, 2.5, None, "889", True):
+            assert C.widget_time_of_day(value) is None
+
+    def test_the_clock_reading_carries_no_numeric_metadata(self):
+        """HA rejects a non-numeric state when a unit, class or precision wants one."""
+        entry = C.widget_unit(C.WIDGET_UNIT_TIME_OF_DAY)
+        assert (entry.unit, entry.state_class, entry.precision) == (None, None, None)
 
 
 class TestTxtIdFallbacks:
@@ -535,7 +650,7 @@ class TestSt491Fixture:
                 w = tile["params"].get(key)
                 if not w or w.get("txtId", 0) == 0:
                     continue
-                if is_contact_widget_oracle(w):
+                if is_contact_widget_oracle(w, sibling_of(tile, key)):
                     continue
                 if w.get("unit") == 6:
                     continue
@@ -662,7 +777,7 @@ class TestSt2801Fixture:
                 w = tile["params"].get(key)
                 if not w or w.get("txtId", 0) == 0:
                     continue
-                if is_contact_widget_oracle(w):
+                if is_contact_widget_oracle(w, sibling_of(tile, key)):
                     continue
                 if w.get("unit") == 6:
                     continue
@@ -687,7 +802,7 @@ class TestSt2801Fixture:
                 w = tile["params"].get(key)
                 if not w or w.get("txtId", 0) == 0:
                     continue
-                if is_contact_widget_oracle(w):
+                if is_contact_widget_oracle(w, sibling_of(tile, key)):
                     continue
                 if w.get("unit") == 6:
                     continue
@@ -790,7 +905,7 @@ class TestSt521Fixture:
             else:
                 real_count += 1
                 # These are contact widgets consumed by binary_sensor
-                assert is_contact_widget_oracle(w1), (
+                assert is_contact_widget_oracle(w1, sibling_of(tile, "widget1")), (
                     f"Tile {tile['id']}: non-zero txtId widget1 is not a contact"
                 )
         assert placeholder_count == 66
@@ -824,7 +939,7 @@ class TestSt521Fixture:
                 w = tile["params"].get(key)
                 if not w or w.get("txtId", 0) == 0:
                     continue
-                if is_contact_widget_oracle(w):
+                if is_contact_widget_oracle(w, sibling_of(tile, key)):
                     continue
                 if w.get("unit") == 6:
                     continue
@@ -957,3 +1072,106 @@ class TestSt521Fixture:
         # 38 (COP) is inferred rather than stated: the API documents decimal
         # places without a transformation, and reported COP values divide by 10.
         assert C.widget_unit(38).divisor == 10
+
+
+# ---------------------------------------------------------------------------
+# Fixture-driven assertions: Kołton ST-5305 heat pump
+# ---------------------------------------------------------------------------
+
+
+class TestKoltonSt5305Fixture:
+    """Live Kołton ST-5305 heat pump payload (issue #221).
+
+    Attached to the issue by the reporter and kept as the permanent regression
+    fixture for widget value types. The controller reports no temperature widget
+    at all - its value types are -1, 0, 3, 8, 13, 23, 26, 28, 32, 38 and 39 -
+    yet every reading used to be published as degrees Celsius with the
+    temperature device class.
+    """
+
+    @classmethod
+    def setup_class(cls):
+        """Load the captured ST-5305 module payload once for the class."""
+        cls.module = _load("kolton_st5305/module.json")
+
+    def widgets(self):
+        """Yield ``(tile, slot, params, widget)`` for every widget payload."""
+        for tile in self.module["tiles"]:
+            if tile["type"] != C.TYPE_WIDGET:
+                continue
+            params = tile["params"]
+            for key in ("widget1", "widget2"):
+                widget = params.get(key)
+                if widget:
+                    yield tile, key, params, widget
+
+    def test_tile_counts(self):
+        """98 tiles, 52 of them TYPE_WIDGET."""
+        assert len(self.module["tiles"]) == 98
+        assert sum(1 for t in self.module["tiles"] if t["type"] == C.TYPE_WIDGET) == 52
+
+    def test_value_type_histogram(self):
+        """The payload's value types, pinned so the fixture cannot drift."""
+        assert Counter(w["unit"] for *_, w in self.widgets()) == {
+            -1: 52,
+            0: 11,
+            3: 4,
+            8: 4,
+            13: 7,
+            23: 2,
+            26: 2,
+            28: 18,
+            32: 2,
+            38: 1,
+            39: 1,
+        }
+
+    def test_no_widget_reports_a_temperature(self):
+        """No unit 6/7 widget exists, so nothing here may become a temperature."""
+        assert {w["unit"] for *_, w in self.widgets()}.isdisjoint({6, 7})
+
+    def test_the_invisible_widgets_are_not_contacts(self):
+        """All 52 unit=-1 widgets are invisible values; none of them is a contact.
+
+        34 carry no label of their own (placeholders) and the other 18 carry the
+        label belonging to the value type 28 widget beside them - those used to
+        be published as opening sensors.
+        """
+        invisible = [(t, k, w) for t, k, _, w in self.widgets() if w["unit"] == -1]
+        assert len(invisible) == 52
+        assert sum(1 for _, _, w in invisible if w["txtId"] != 0) == 18
+        for tile, key, widget in invisible:
+            assert (
+                is_contact_widget_oracle(widget, sibling_of(tile, key)) is False
+            ), (tile["id"], key)
+
+    def test_the_state_widgets_are_flags_named_by_their_sibling(self):
+        """The 18 unit=28 widgets borrow the label of the widget next to them."""
+        flags = [(t, k, w) for t, k, _, w in self.widgets() if w["unit"] == 28]
+        assert len(flags) == 18
+        for tile, key, widget in flags:
+            sibling = sibling_of(tile, key)
+            assert widget["txtId"] == 0, tile["id"]
+            assert is_flag_widget_oracle(widget, sibling) is True, tile["id"]
+            assert sibling["unit"] == -1 and sibling["txtId"] != 0, tile["id"]
+
+    def test_time_widgets_are_minutes_since_midnight(self):
+        """Seven value type 13 widgets: six clock readings and one bad value."""
+        values = sorted(w["value"] for *_, w in self.widgets() if w["unit"] == 13)
+        assert values == [-29536, 0, 0, 0, 0, 0, 1041]
+        assert C.widget_time_of_day(1041) == "17:21"
+        # -29536 falls outside the API's "shown as 00:00 - 23:59" range, so it
+        # is unknown rather than a negative clock reading.
+        assert C.widget_time_of_day(-29536) is None
+
+    def test_power_cop_and_kelvin_readings(self):
+        """Power and COP are tenths; a kelvin difference takes no class."""
+        assert C.widget_unit(26).divisor == 10
+        assert C.widget_unit(38).divisor == 10
+        assert C.widget_unit(38).unit is None
+        assert C.widget_unit(32).device_class is None
+        assert [w["value"] for *_, w in self.widgets() if w["unit"] == 32] == [3, 10]
+
+    def test_every_value_type_resolves_through_the_table(self):
+        """No undocumented code: each one of them is a WIDGET_UNITS entry."""
+        assert {w["unit"] for *_, w in self.widgets()} <= set(C.WIDGET_UNITS)
