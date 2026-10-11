@@ -18,6 +18,7 @@ mapping produced by ``assets.build_zone_names`` in ``async_setup_entry``.
 from __future__ import annotations
 
 import importlib.util
+import json
 import pathlib
 import sys
 import types
@@ -233,7 +234,14 @@ def _fake_module(name: str) -> types.ModuleType:
         module.STATE_ON = "on"
         module.EntityCategory = _EntityCategory
         module.Platform = _Platform
+        module.UnitOfElectricPotential = _AutoNamespace()
+        module.UnitOfEnergy = _AutoNamespace()
+        module.UnitOfPower = _AutoNamespace()
+        module.UnitOfPressure = _AutoNamespace()
         module.UnitOfTemperature = _AutoNamespace()
+        module.UnitOfTime = _AutoNamespace()
+        module.UnitOfVolume = _AutoNamespace()
+        module.UnitOfVolumeFlowRate = _AutoNamespace()
     elif name == "homeassistant.components.switch":
         module.SwitchEntity = globals()["switch"]
     elif name == "homeassistant.components.button":
@@ -392,6 +400,15 @@ class _Translations:
     def get_text(self, txt_id: int) -> str:
         """Return a stable label for any text id."""
         return f"label-{txt_id}"
+
+    def get_text_by_type(self, text_type: int) -> str:
+        """Return a stable label for any tile type.
+
+        TYPE_WIDGET tiles carry no ``txtId`` of their own, so
+        :class:`~custom_components.tech.entity.TileEntity` resolves their name
+        through the tile type instead.
+        """
+        return f"type-{text_type}"
 
 
 class _Api:
@@ -623,6 +640,354 @@ def _widget_tile(
             "widget1": widget,
         },
     }
+
+
+def test_widget_metadata_follows_the_api_value_type() -> None:
+    """Unit and device class come from the value type, not from a temperature.
+
+    Issue #221: kW, COP and kelvin readings were published as degrees Celsius with
+    the temperature device class. Units are compared through the table because
+    the harness stubs Home Assistant's unit constants as name-like strings; the
+    device classes are compared by name, which works either way because they are
+    StrEnum members in Home Assistant.
+    """
+    cases = {
+        0: (3600, None, None),
+        6: (55, const.WIDGET_UNITS[6].unit, "temperature"),
+        7: (498, const.WIDGET_UNITS[7].unit, "temperature"),
+        10: (3, const.WIDGET_UNITS[10].unit, "power"),
+        26: (56, const.WIDGET_UNITS[26].unit, "power"),
+        29: (950, const.WIDGET_UNITS[29].unit, "power"),
+        32: (35, const.WIDGET_UNITS[32].unit, None),
+        38: (35, None, None),
+    }
+
+    for code, (raw, unit, device_class) in cases.items():
+        tile = {
+            "id": 9000 + code,
+            "type": const.TYPE_WIDGET,
+            "visibility": True,
+            "params": {
+                "id": 9000 + code,
+                "txtId": 100,
+                "iconId": 0,
+                "statusId": 1,
+                "value": 0,
+                "widget1": {"txtId": 1562, "unit": code, "type": 0, "value": raw},
+            },
+        }
+        entities = sensor._build_widget_tile(tile, _Coordinator(), _Entry())
+
+        assert len(entities) == 1, code
+        entity = entities[0]
+        assert entity._attr_native_unit_of_measurement == unit, code
+        assert entity._attr_device_class == device_class, code
+        assert entity.get_state(tile) == raw / const.widget_unit(code).divisor, code
+
+
+_KOLTON_DUMP = _REPO_ROOT / "tests" / "fixtures" / "kolton_st5305" / "module.json"
+
+
+def _kolton_module() -> dict[str, Any]:
+    """Load the Kołton ST-5305 dump the reporter attached to issue #221."""
+    return json.loads(_KOLTON_DUMP.read_text())
+
+
+def _kolton_sensor_rows() -> list[tuple[Any, ...]]:
+    """Return one row per sensor entity the payload's TYPE_WIDGET tiles yield.
+
+    Columns: tile id, widget slot, API value type, entity class, unit of
+    measurement, device class, state. Device classes are read as their name so
+    the table reads the same against Home Assistant's StrEnums and the stubs,
+    and the expected table compares units through :data:`const.WIDGET_UNITS`
+    because which module loaded that table first decides whether a unit is the
+    real constant or the harness's stand-in.
+
+    """
+    rows: list[tuple[Any, ...]] = []
+    for tile in _kolton_module()["tiles"]:
+        if tile["type"] != const.TYPE_WIDGET:
+            continue
+        for entity in sensor._build_widget_tile(tile, _Coordinator(), _Entry()):
+            device_class = getattr(entity, "_attr_device_class", None)
+            rows.append(
+                (
+                    tile["id"],
+                    entity._widget_key,
+                    tile["params"][entity._widget_key]["unit"],
+                    type(entity).__name__,
+                    entity._attr_native_unit_of_measurement,
+                    getattr(device_class, "value", device_class),
+                    entity.get_state(tile),
+                )
+            )
+    return rows
+
+
+def _widget_unit(code: int) -> str | None:
+    """Return the unit of measurement the value-type table gives a code."""
+    return const.widget_unit(code).unit
+
+
+def test_kolton_st5305_widget_entities() -> None:
+    """The whole widget entity table for the issue #221 payload.
+
+    Every reading on this heat pump used to be published as degrees Celsius with
+    the temperature device class, whatever its value type said. The payload is
+    kept as the permanent fixture for that: it carries no temperature widget at
+    all (the histogram is -1, 0, 3, 8, 13, 23, 26, 28, 32, 38, 39), so any °C
+    reading in the table below is a regression, and so is an opening sensor for
+    one of the 18 invisible widgets.
+    """
+    percent, hours, bar = _widget_unit(8), _widget_unit(3), _widget_unit(23)
+    kilowatt, kelvin, flow = _widget_unit(26), _widget_unit(32), _widget_unit(39)
+    expected = [
+        # 8 -- percentages (pump duty cycle)
+        (1006, "widget2", 8, "TileWidgetPumpSensor", percent, None, 0),
+        (1014, "widget2", 8, "TileWidgetPumpSensor", percent, None, 0),
+        (1552, "widget2", 8, "TileWidgetPumpSensor", percent, None, 0),
+        (2270, "widget2", 8, "TileWidgetPumpSensor", percent, None, 5),
+        # 0 -- ordinary numbers, no unit
+        (1553, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 78),
+        (2191, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 0),
+        (2197, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 0),
+        (2198, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 0),
+        (2209, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 1000),
+        (2217, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 0),
+        (2218, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 0),
+        (2219, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 0),
+        (2220, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 0),
+        (2223, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 4274),
+        (2232, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 0),
+        # 39 -- "Value l / m" in the API prose, labelled l/godz. by the app
+        (1096, "widget2", 39, "TileWidgetTemperatureSensor", flow, "volume_flow_rate", 0),
+        # 13 -- hours and minutes
+        (1664, "widget2", 13, "TileWidgetTemperatureSensor", None, None, "00:00"),
+        (1666, "widget2", 13, "TileWidgetTemperatureSensor", None, None, "17:21"),
+        (1668, "widget2", 13, "TileWidgetTemperatureSensor", None, None, None),
+        (2193, "widget2", 13, "TileWidgetTemperatureSensor", None, None, "00:00"),
+        (2194, "widget2", 13, "TileWidgetTemperatureSensor", None, None, "00:00"),
+        (2195, "widget2", 13, "TileWidgetTemperatureSensor", None, None, "00:00"),
+        (2196, "widget2", 13, "TileWidgetTemperatureSensor", None, None, "00:00"),
+        # 23 -- pressure in tenths of a bar
+        (1548, "widget2", 23, "TileWidgetTemperatureSensor", bar, "pressure", 6.1),
+        (1550, "widget2", 23, "TileWidgetTemperatureSensor", bar, "pressure", 6.0),
+        # 26 -- power in tenths of a kW (the snapshot was taken with the pump idle)
+        (1562, "widget2", 26, "TileWidgetTemperatureSensor", kilowatt, "power", 0.0),
+        (1575, "widget2", 26, "TileWidgetTemperatureSensor", kilowatt, "power", 0.0),
+        # 32 -- kelvin, and these are superheat *differences*, so no class
+        (1549, "widget2", 32, "TileWidgetTemperatureSensor", kelvin, None, 3),
+        (2269, "widget2", 32, "TileWidgetTemperatureSensor", kelvin, None, 10),
+        # 38 -- COP, dimensionless
+        (1590, "widget2", 38, "TileWidgetTemperatureSensor", None, None, 0.0),
+        # 3 -- hours
+        (2213, "widget2", 3, "TileWidgetTemperatureSensor", hours, "duration", 0),
+        (2214, "widget2", 3, "TileWidgetTemperatureSensor", hours, "duration", 0),
+        (2215, "widget2", 3, "TileWidgetTemperatureSensor", hours, "duration", 0),
+        (2216, "widget2", 3, "TileWidgetTemperatureSensor", hours, "duration", 0),
+    ]
+
+    rows = _kolton_sensor_rows()
+    assert sorted(rows) == sorted(expected)
+    assert len(rows) == 34
+    # Nothing may claim to be a temperature: the payload has no unit 6 or 7.
+    assert {row[5] for row in rows} == {
+        None,
+        "duration",
+        "power",
+        "pressure",
+        "volume_flow_rate",
+    }
+    assert {_widget_unit(6), _widget_unit(7)}.isdisjoint({row[4] for row in rows})
+    # Every widget is published through its own slot, and only widget2 carries
+    # a reading: all 52 widget1 payloads are placeholders, flags, or invisible.
+    assert {row[1] for row in rows} == {"widget2"}
+
+
+def test_kolton_st5305_registers_the_counters_disabled() -> None:
+    """The eleven elapsed-time counters are registered disabled by default.
+
+    The reporter asked for the eight numbered compressor counters to stay out of
+    the entity list (issue #221). The payload marks them only by their value type
+    -- 3 hours for the run-time block, 13 hours:minutes for the downtime block --
+    which three other duration readings share, so the value types are switched
+    off as a family and a user enables the one they read.
+    """
+    disabled = [
+        (tile["id"], tile["params"][entity._widget_key]["unit"])
+        for tile in _kolton_module()["tiles"]
+        if tile["type"] == const.TYPE_WIDGET
+        for entity in sensor._build_widget_tile(tile, _Coordinator(), _Entry())
+        # Home Assistant defaults an entity to enabled when the attribute is
+        # never set, and the pump sensors do not set it.
+        if getattr(entity, "_attr_entity_registry_enabled_default", True) is False
+    ]
+
+    assert sorted(disabled) == sorted(
+        [
+            (1664, 13),
+            (1666, 13),
+            (1668, 13),
+            (2193, 13),
+            (2194, 13),
+            (2195, 13),
+            (2196, 13),
+            (2213, 3),
+            (2214, 3),
+            (2215, 3),
+            (2216, 3),
+        ]
+    )
+
+
+def test_kolton_st5305_exposes_flags_but_no_contacts() -> None:
+    """The 18 invisible widgets are flags, not phantom opening sensors.
+
+    Their partner widget is the value type 28 "Enabled / Disabled" state, and
+    the label sits on the invisible widget: value type -1 means "value
+    invisible" in the API, so the tile is not a contact either (issue #221).
+    """
+    flags: list[tuple[Any, ...]] = []
+    contacts: list[tuple[Any, ...]] = []
+    for tile in _kolton_module()["tiles"]:
+        if tile["type"] != const.TYPE_WIDGET:
+            continue
+        params = tile["params"]
+        for widget_key in ("widget1", "widget2"):
+            widget = params.get(widget_key)
+            if not widget:
+                continue
+            sibling = binary_sensor._sibling_widget(params, widget_key)
+            if binary_sensor._is_flag_widget(widget, sibling):
+                entity = binary_sensor.TileWidgetFlagSensor(
+                    tile, _Coordinator(), _Entry(), widget_key
+                )
+                flags.append((tile["id"], entity.name, entity.get_state(tile)))
+            if binary_sensor._is_contact_widget(widget, sibling):
+                contacts.append((tile["id"], widget_key))
+
+    assert contacts == []
+    assert len(flags) == 18
+    assert flags[0] == (1075, "label-246", False)
+    assert (12038, "label-296", True) in flags
+    assert (12052, "label-6677", False) in flags
+
+
+def test_kolton_st5305_publishes_the_reported_values() -> None:
+    """The three readings the reporter named, in the unit he expects.
+
+    unit=26 (heat pump power) and unit=38 (COP) are zero in this idle snapshot,
+    which is why the divisor matters more than the sample: 35 must be 3.5 kW and
+    35 must be COP 3.5, and neither may be a temperature.
+    """
+    for code, raw, state in (
+        (26, 56, 5.6),
+        (38, 35, 3.5),
+        (32, 35, 35),
+        (29, 950, 950),
+    ):
+        tile = _widget_tile(
+            status_id=1,
+            widget={"txtId": 1562, "unit": code, "type": 0, "value": raw},
+        )
+        entity = sensor._build_widget_tile(tile, _Coordinator(), _Entry())[0]
+
+        assert entity._attr_native_unit_of_measurement == _widget_unit(code), code
+        assert entity.get_state(tile) == state, code
+        assert entity._attr_device_class != "temperature", code
+
+    # unit=19 is "kWh with a decimal point", which no widget in this payload
+    # carries; the API's own wording and the eModul formatter agree on tenths.
+    tile = _widget_tile(
+        status_id=1,
+        widget={"txtId": 1562, "unit": 19, "type": 0, "value": 1234},
+    )
+    energy = sensor._build_widget_tile(tile, _Coordinator(), _Entry())[0]
+    assert energy.get_state(tile) == 123.4
+    assert energy._attr_native_unit_of_measurement == _widget_unit(19)
+
+
+class TestBorrowedLabelWidgets:
+    """A widget may carry its label on the sibling (issue #221).
+
+    Heat pump tiles put the label on one widget and the state on the other, so
+    both platforms have to look at the pair when deciding which widget they own
+    and what to call it.
+    """
+
+    def test_unlabelled_flag_next_to_a_labelled_widget_is_exposed(self) -> None:
+        """A unit-28 widget without its own label takes the sibling's."""
+        tile = _widget_tile(
+            status_id=0,
+            widget={"txtId": 0, "unit": 28, "type": 1, "value": 1},
+        )
+        tile["params"]["widget2"] = {"txtId": 4492, "unit": -1, "type": 0, "value": 0}
+
+        # The sensor platform owns neither widget: the flag belongs to
+        # binary_sensor, and the lone unit=-1 widget is an invisible value
+        # rather than a contact.
+        assert sensor._build_widget_tile(tile, _Coordinator(), _Entry()) == []
+
+        entity = binary_sensor.TileWidgetFlagSensor(
+            tile, _Coordinator(), _Entry(), "widget1"
+        )
+        assert entity.name == "label-4492"
+        assert entity.unique_id.endswith("_tile_widget_flag_widget1")
+        assert entity.get_state(tile) is True
+
+    def test_unlabelled_flag_without_any_label_stays_hidden(self) -> None:
+        """With no label on either slot there is nothing to name the flag."""
+        tile = _widget_tile(
+            status_id=0,
+            widget={"txtId": 0, "unit": 28, "type": 1, "value": 1},
+        )
+        tile["params"]["widget2"] = {"txtId": 0, "unit": -1, "type": 0, "value": 0}
+
+        assert sensor._build_widget_tile(tile, _Coordinator(), _Entry()) == []
+        assert (
+            binary_sensor._is_flag_widget(
+                tile["params"]["widget1"], tile["params"]["widget2"]
+            )
+            is False
+        )
+
+
+class TestWidgetNameSuffix:
+    """The DHW "Set/Current Temperature" suffix belongs to temperature readings."""
+
+    def test_a_flow_reading_keeps_its_plain_label(self) -> None:
+        """A pump-subtype widget that is not a temperature gets no suffix.
+
+        Issue #221: the Kołton's unit=39 flow reading was published as
+        "Przepływ Current Temperature", because heat pumps mark every reading
+        with the pump subtype, not just their temperature pair.
+        """
+        tile = _widget_tile(
+            status_id=1,
+            widget={"txtId": 632, "unit": 39, "type": 1, "value": 0},
+        )
+        # The Kołton reports this reading in the second slot, the way widget2 of
+        # its tile 1096 does, so " Current Temperature" is the suffix at stake.
+        tile["params"]["widget2"] = tile["params"].pop("widget1")
+
+        entities = sensor._build_widget_tile(tile, _Coordinator(), _Entry())
+
+        assert [entity.name for entity in entities] == ["label-632"]
+
+    def test_a_pump_temperature_pair_keeps_the_suffix(self) -> None:
+        """Both slots of a real DHW pump temperature pair stay distinguishable."""
+        tile = _widget_tile(
+            status_id=1,
+            widget={"txtId": 2442, "unit": 7, "type": 1, "value": 560},
+        )
+        tile["params"]["widget2"] = {"txtId": 2442, "unit": 7, "type": 1, "value": 455}
+
+        entities = sensor._build_widget_tile(tile, _Coordinator(), _Entry())
+
+        assert [entity.name for entity in entities] == [
+            "label-2442 Set Temperature",
+            "label-2442 Current Temperature",
+        ]
 
 
 class TestContactAndFlagStateSources:

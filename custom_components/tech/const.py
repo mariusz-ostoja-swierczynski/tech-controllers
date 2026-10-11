@@ -31,9 +31,21 @@ tile-derived entities.
 """
 
 from datetime import timedelta
-from typing import Final
+from typing import Any, Final, NamedTuple
 
-from homeassistant.const import Platform
+from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
+from homeassistant.const import (
+    PERCENTAGE,
+    Platform,
+    UnitOfElectricPotential,
+    UnitOfEnergy,
+    UnitOfPower,
+    UnitOfPressure,
+    UnitOfTemperature,
+    UnitOfTime,
+    UnitOfVolume,
+    UnitOfVolumeFlowRate,
+)
 
 # ---------------------------------------------------------------------------
 # Config-entry and API field keys
@@ -133,6 +145,16 @@ TYPE_OPEN_THERM = 252  # OpenTherm boiler -- carries 4-5 sub-temperature values
 WIDGET_DHW_PUMP = 1  # DHW pump set vs current temperature pair
 WIDGET_COLLECTOR_PUMP = 2  # Solar collector pump duty cycle (percentage)
 WIDGET_TEMPERATURE_CH = 9  # Central-heating temperature reading
+# Value type 13 is a *two-field reading*: the API documents it as
+# "Time written as hours * 60 + min, shown as 00:00 - 23:59", so its raw value
+# is a count of minutes and :func:`widget_hours_and_minutes` splits it into the
+# two fields the controller shows. Controllers also use the type for
+# elapsed-time counters whose raw value counts *seconds* instead (the Kołton
+# ST-5305 compressor downtime advanced 205:00 -> 226:00 over about twenty
+# minutes, i.e. one per second), which is why nothing bounds the first field.
+# The split is the same either way, so only the meaning of the raw value -- and
+# therefore the unit the two fields are in -- differs between fields.
+WIDGET_UNIT_TIME_OF_DAY: Final = 13
 
 # ``params.widgetN.unit`` codes seen in the wild and the divisor that turns
 # the integer ``value`` into a human-readable measurement. Codes not listed
@@ -152,6 +174,10 @@ WIDGET_TEMPERATURE_CH = 9  # Central-heating temperature reading
 # The remaining divisors come from the API's own value-type table
 # (https://api-documentation.emodul.eu/openapi.yaml, "Data types format"), which
 # states the transformation each value type needs:
+#  * 19 -- kWh with a decimal point    -> / 10. The API names the decimal point
+#          but not the transformation; every other "with a decimal point" type
+#          (21, 26) divides by 10, and the eModul app's own formatter multiplies
+#          value types 19 by 0.1 before showing one decimal place.
 #  * 21 -- MWh with a decimal point   -> / 10
 #  * 22 -- L/min with a decimal point -> / 10
 #  * 30 -- L/hr with a decimal point  -> / 100
@@ -160,30 +186,155 @@ WIDGET_TEMPERATURE_CH = 9  # Central-heating temperature reading
 #  * 38 -- COP with decimal places    -> / 10. The API states the decimal places
 #          but not the transformation; reported COP values are divided by 10,
 #          as every other "with decimals" type is.
-# Value types the API documents without a transformation are deliberately absent
-# and fall back to the unscaled value: 1 (s), 2 (min), 3 (h), 10 (kW), 11 (kWh),
-# 13 (hh:mm), 14 (days), 15 (run), 18 (text / flame brightness), 19 (kWh),
-# 20 (MWh), 24 (epoch), 27 (RPM), 29 (W), 32 (K), 34 (Wh), 39 (l/m), 41 (l),
-# 42 (m3). Types 25, 31 and 37 are durations that need a conversion rather than
-# a divisor, 28 is an on/off flag rather than a measurement, and 35 is
-# hexadecimal.
-WIDGET_UNIT_DIVISORS = {
-    0: 1,
-    4: 10,
-    5: 100,
-    6: 1,
-    7: 10,
-    8: 1,
-    21: 10,
-    22: 10,
-    23: 10,
-    26: 10,
-    30: 100,
-    33: 10,
-    36: 100,
-    38: 10,
-    40: 1000,
+# Every documented value type is listed below. The divisor scales the raw
+# integer; the remaining fields carry the engineering meaning that value alone
+# cannot express - a power reading published with a temperature unit and the
+# temperature device class is wrong no matter how it is scaled (issue #221).
+# Types the API leaves semantically open stay unitless: 15 (run), 18 (flame
+# brightness), 24 (epoch), 35 (hexadecimal), 37 (years/days) and 39 ("Value
+# l / m", which the API does not define further, but which the app labels with
+# the same "l/godz." string as value type 30 -- litres per hour). Value type 13
+# carries no precision either: its state is the hours-and-minutes reading
+# :func:`widget_hours_and_minutes` builds, and Home Assistant refuses a
+# non-numeric state when a precision (or unit, or state class) asks for one.
+# Value types 3 (hours) and 13 (hours:minutes) are also the two the payload uses
+# for elapsed-time counters, so their entities are registered *disabled*: a
+# heat pump carries a whole block of them (start counts, compressor run and
+# downtime) that most installations never read, and the ones a user does read
+# are one toggle away.
+class WidgetUnit(NamedTuple):
+    """Home Assistant metadata for one eModul value type.
+
+    Attributes:
+        unit: Unit of measurement, or ``None`` for a dimensionless reading.
+        divisor: What the API's raw integer is divided by.
+        device_class: Home Assistant sensor device class, where the unit implies
+            one. Kelvin carries none: the API uses it for temperature
+            *differences*, which an absolute-temperature converter would mangle.
+        state_class: Statistics class. ``MEASUREMENT`` for a physical quantity,
+            ``None`` for identifiers, settings and counters, where statistics
+            would be noise.
+        precision: Suggested display precision, or ``None`` to leave it to the
+            user.
+        icon: Suggested icon, which a user's own choice still overrides.
+        enabled_default: Whether Home Assistant registers the entity enabled.
+            Elapsed-time counters are registered disabled: they are diagnostics
+            that most installations never read (issue #221), and a user enables
+            the one counter they care about with a single toggle.
+
+    """
+
+    unit: str | None = None
+    divisor: int = 1
+    device_class: SensorDeviceClass | None = None
+    state_class: SensorStateClass | None = None
+    precision: int | None = None
+    icon: str = "mdi:numeric"
+    enabled_default: bool = True
+
+
+# Columns: unit, divisor, device_class, state_class, precision, icon,
+# enabled_default.
+WIDGET_UNITS: dict[int, WidgetUnit] = {
+    -1: WidgetUnit(),  # invisible value
+    0: WidgetUnit(None, 1, None, None, 0, "mdi:counter"),  # ordinary value
+    1: WidgetUnit(UnitOfTime.SECONDS, 1, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, 0, "mdi:timer-outline"),
+    2: WidgetUnit(UnitOfTime.MINUTES, 1, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, 0, "mdi:timer-outline"),
+    3: WidgetUnit(UnitOfTime.HOURS, 1, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, 1, "mdi:timer-outline", enabled_default=False),  # run-time counter
+    4: WidgetUnit(None, 10, None, SensorStateClass.MEASUREMENT, 1, "mdi:numeric"),
+    5: WidgetUnit(None, 100, None, SensorStateClass.MEASUREMENT, 2, "mdi:numeric"),
+    6: WidgetUnit(UnitOfTemperature.CELSIUS, 1, SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT, 1, "mdi:thermometer"),
+    7: WidgetUnit(UnitOfTemperature.CELSIUS, 10, SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT, 1, "mdi:thermometer"),
+    8: WidgetUnit(PERCENTAGE, 1, None, SensorStateClass.MEASUREMENT, 0, "mdi:percent"),
+    9: WidgetUnit(None, 1, None, SensorStateClass.MEASUREMENT, 1, "mdi:numeric"),  # promile
+    10: WidgetUnit(UnitOfPower.KILO_WATT, 1, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT, 1, "mdi:flash"),
+    11: WidgetUnit(UnitOfEnergy.KILO_WATT_HOUR, 1, SensorDeviceClass.ENERGY, None, 0, "mdi:lightning-bolt"),
+    12: WidgetUnit(UnitOfElectricPotential.VOLT, 1, SensorDeviceClass.VOLTAGE, SensorStateClass.MEASUREMENT, 1, "mdi:flash"),
+    13: WidgetUnit(None, 1, None, None, None, "mdi:clock-outline", enabled_default=False),  # hours:minutes, see widget_hours_and_minutes
+    14: WidgetUnit(UnitOfTime.DAYS, 1, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, 0, "mdi:calendar"),
+    15: WidgetUnit(None, 1, None, None, 0, "mdi:play-circle-outline"),  # run
+    16: WidgetUnit(UnitOfTime.SECONDS, 1, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, 0, "mdi:timer-outline"),
+    17: WidgetUnit(UnitOfTime.MINUTES, 1, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, 0, "mdi:timer-outline"),
+    18: WidgetUnit(None, 1, None, None, 0, "mdi:fire"),  # flame brightness
+    19: WidgetUnit(UnitOfEnergy.KILO_WATT_HOUR, 10, SensorDeviceClass.ENERGY, None, 1, "mdi:lightning-bolt"),
+    20: WidgetUnit(UnitOfEnergy.MEGA_WATT_HOUR, 1, SensorDeviceClass.ENERGY, None, 1, "mdi:lightning-bolt"),
+    21: WidgetUnit(UnitOfEnergy.MEGA_WATT_HOUR, 10, SensorDeviceClass.ENERGY, None, 2, "mdi:lightning-bolt"),
+    22: WidgetUnit(UnitOfVolumeFlowRate.LITERS_PER_MINUTE, 10, SensorDeviceClass.VOLUME_FLOW_RATE, SensorStateClass.MEASUREMENT, 2, "mdi:waves"),
+    23: WidgetUnit(UnitOfPressure.BAR, 10, SensorDeviceClass.PRESSURE, SensorStateClass.MEASUREMENT, 1, "mdi:gauge"),
+    24: WidgetUnit(None, 1, None, None, 0, "mdi:clock-outline"),  # epoch
+    25: WidgetUnit(UnitOfTime.SECONDS, 1, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, 0, "mdi:timer-outline"),
+    26: WidgetUnit(UnitOfPower.KILO_WATT, 10, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT, 1, "mdi:flash"),
+    27: WidgetUnit("rpm", 1, None, SensorStateClass.MEASUREMENT, 0, "mdi:rotate-right"),
+    28: WidgetUnit(None, 1, None, None, 0, "mdi:toggle-switch-outline"),  # enabled/disabled
+    29: WidgetUnit(UnitOfPower.WATT, 1, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT, 0, "mdi:flash"),
+    30: WidgetUnit(UnitOfVolumeFlowRate.LITERS_PER_HOUR, 100, SensorDeviceClass.VOLUME_FLOW_RATE, SensorStateClass.MEASUREMENT, 2, "mdi:waves"),
+    31: WidgetUnit(UnitOfTime.HOURS, 1, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, 0, "mdi:timer-outline"),
+    32: WidgetUnit(UnitOfTemperature.KELVIN, 1, None, SensorStateClass.MEASUREMENT, 1, "mdi:thermometer"),
+    33: WidgetUnit(PERCENTAGE, 10, None, SensorStateClass.MEASUREMENT, 1, "mdi:percent"),
+    34: WidgetUnit(UnitOfEnergy.WATT_HOUR, 1, SensorDeviceClass.ENERGY, None, 1, "mdi:lightning-bolt"),
+    35: WidgetUnit(None, 1, None, None, 0, "mdi:numeric"),  # hexadecimal
+    36: WidgetUnit(UnitOfEnergy.KILO_WATT_HOUR, 100, SensorDeviceClass.ENERGY, None, 2, "mdi:lightning-bolt"),
+    37: WidgetUnit(None, 1, None, None, 0, "mdi:calendar"),  # years/days
+    38: WidgetUnit(None, 10, None, SensorStateClass.MEASUREMENT, 1, "mdi:numeric"),  # COP
+    # 39 is "Value l / m" in the API prose, and the eModul app labels it with the
+    # same "l/godz." string as value type 30: a flow rate in litres per hour. The
+    # app transforms neither its value nor its decimals, so the raw integer is
+    # published as-is; the scale is unverified (issue #221 only has zero readings).
+    39: WidgetUnit(UnitOfVolumeFlowRate.LITERS_PER_HOUR, 1, SensorDeviceClass.VOLUME_FLOW_RATE, SensorStateClass.MEASUREMENT, 0, "mdi:waves"),
+    40: WidgetUnit(UnitOfEnergy.KILO_WATT_HOUR, 1000, SensorDeviceClass.ENERGY, None, 3, "mdi:lightning-bolt"),
+    41: WidgetUnit(UnitOfVolume.LITERS, 1, SensorDeviceClass.VOLUME, SensorStateClass.MEASUREMENT, 1, "mdi:water"),
+    42: WidgetUnit(UnitOfVolume.CUBIC_METERS, 1, SensorDeviceClass.VOLUME, SensorStateClass.MEASUREMENT, 1, "mdi:water"),
 }
+
+
+def widget_unit(code: int | None) -> WidgetUnit:
+    """Return the Home Assistant metadata for an eModul value type.
+
+    Args:
+        code: The widget's ``unit`` field, which is the API's value type.
+
+    Returns:
+        The matching entry, or the ordinary-value entry for a missing or
+        undocumented code, so an unknown type keeps behaving as it does today.
+
+    """
+    return WIDGET_UNITS.get(code, WIDGET_UNITS[0])
+
+
+def widget_hours_and_minutes(value: Any) -> str | None:
+    """Render a value type 13 reading, which is a two-field time or duration.
+
+    The API documents value type 13 as "Time written as hours * 60 + min, shown
+    as 00:00 - 23:59", and the eModul app's formatter splits the raw value the
+    same way (``minutes = t % 60; hours = (t - minutes) / 60``) without bounding
+    the first field. Both the app and the controller therefore render a raw
+    count as ``total // 60`` and ``total % 60``.
+
+    Which unit that count is in is per field, not per type. The API's own prose
+    is minutes, which makes the reading a time of day (``1041`` is 17:21). The
+    Kołton ST-5305 uses the same type for its compressor run-time counters, and
+    the reporter measured those counting *seconds* -- his history shows 205:00
+    to 226:00 over about twenty minutes, one per second, so ``2190`` is 36
+    minutes 30 seconds (issue #221). Both readings render as the same two-field
+    string, so the entity shows what the controller shows either way; the
+    payload does not say which unit applies.
+
+    Values the format cannot express - negative, fractional, or not a number at
+    all - return ``None`` (unknown) rather than a nonsense reading; the same
+    payload's ``-29536`` sentinel is one of those.
+
+    Args:
+        value: The widget's raw ``value`` field.
+
+    Returns:
+        ``"MM:SS"`` or ``"HH:MM"`` (the first field may exceed 59), or ``None``
+        for an unusable value.
+
+    """
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    first, second = divmod(value, 60)
+    return f"{first:02d}:{second:02d}"
 
 # ---------------------------------------------------------------------------
 # Icon mapping tables
