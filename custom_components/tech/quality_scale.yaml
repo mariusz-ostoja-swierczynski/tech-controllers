@@ -1,0 +1,89 @@
+# Integration quality scale declaration.
+# https://developers.home-assistant.io/docs/core/integration-quality-scale/rules/
+#
+# This is a custom component distributed through HACS, so nothing validates or
+# displays this file: hassfest skips the quality scale for anything that is not
+# built into Home Assistant, HACS does not read it, and the frontend only shows
+# the tier badge for built-in integrations. It is kept as the project's own
+# record of the rules it meets and of the ones it cannot meet.
+#
+# Only the Bronze tier is tracked for now -- the rules of the tiers above are
+# not listed until work on them starts. Phase tracker: the remaining `todo`
+# entries are the work needed for full Bronze.
+rules:
+  action_setup:
+    status: exempt
+    comment: The integration registers no service actions.
+  appropriate_polling:
+    status: done
+    comment: >-
+      One DataUpdateCoordinator per controller polling the cloud API every 60
+      seconds (const.SCAN_INTERVAL), which is inside the interval the API and
+      its rate limiting allow.
+  brands:
+    status: todo
+    comment: Needs the eight brand images in custom_components/tech/brand/.
+  common_modules:
+    status: done
+    comment: >-
+      The coordinator lives in coordinator.py and the shared base entities in
+      entity.py; every platform derives from them.
+  config_flow:
+    status: todo
+    comment: >-
+      The flow exists, but the rule is not met yet: no data_description in
+      strings.json, no selectors, the naming option is stored in data instead
+      of options, and entries are created inside the step instead of through
+      async_create_entry (one entry per flow run).
+  config_flow_test_coverage:
+    status: todo
+    comment: >-
+      Only the selection helper is covered today; the flow steps, the error
+      branches, the aborts and the created entry's unique id are not.
+  dependency_transparency:
+    status: exempt
+    comment: The manifest declares no external requirements; the API client is part of this repository.
+  docs_actions:
+    status: exempt
+    comment: The integration registers no service actions.
+  docs_conditions:
+    status: exempt
+    comment: The integration registers no conditions.
+  docs_high_level_description:
+    status: done
+    comment: The README opens with what the integration integrates and links the eModul API and services.
+  docs_installation_instructions:
+    status: done
+    comment: README installation covers HACS and manual installation, step by step and with screenshots.
+  docs_removal_instructions:
+    status: todo
+    comment: The README has no removal section yet.
+  docs_triggers:
+    status: exempt
+    comment: The integration registers no triggers.
+  entity_event_setup:
+    status: exempt
+    comment: >-
+      No entity subscribes to events; every entity is a CoordinatorEntity and
+      updates through its coordinator.
+  entity_unique_id:
+    status: done
+    comment: Every entity derives its unique id from the controller UDID and the tile, zone or menu item.
+  has_entity_name:
+    status: done
+    comment: The base entities and every platform entity set _attr_has_entity_name = True.
+  runtime_data:
+    status: done
+    comment: The coordinator is the config entry's runtime_data; every platform reads it from there.
+  test_before_configure:
+    status: done
+    comment: The flow authenticates against the API and lists the modules before it stores anything.
+  test_before_setup:
+    status: done
+    comment: >-
+      async_config_entry_first_refresh raises ConfigEntryNotReady when the
+      controller cannot be reached and ConfigEntryAuthFailed when the token is
+      no longer valid.
+  unique_config_entry:
+    status: done
+    comment: The flow sets the controller UDID as unique id and aborts when that controller is already configured.

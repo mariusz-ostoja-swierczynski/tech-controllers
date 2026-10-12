@@ -18,6 +18,12 @@ _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
+# The runtime data of a Tech config entry is the coordinator that polls the
+# controller. Platforms reach it through ``config_entry.runtime_data`` instead
+# of a shared ``hass.data`` mapping: it is typed, and there is nothing left to
+# unwind when the entry unloads.
+type TechConfigEntry = ConfigEntry[TechCoordinator]
+
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # pylint: disable=unused-argument
     """Set up the Tech Controllers integration via YAML configuration.
@@ -37,7 +43,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # pylin
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: TechConfigEntry) -> bool:
     """Initialize Tech Controllers from a config entry.
 
     The method creates a :class:`TechCoordinator`, refreshes the initial
@@ -64,12 +70,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     language_code = hass.config.language
     user_id = entry.data[USER_ID]
     token = entry.data[CONF_TOKEN]
-    # Store an API object for your platforms to access
-    hass.data.setdefault(DOMAIN, {})
     websession = async_get_clientsession(hass)
 
     coordinator = TechCoordinator(hass, websession, user_id, token)
-    hass.data[DOMAIN][entry.entry_id] = coordinator
+    entry.runtime_data = coordinator
 
     await coordinator.async_config_entry_first_refresh()
 
@@ -82,7 +86,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: TechConfigEntry) -> bool:
     """Unload a config entry.
 
     Args:
@@ -93,9 +97,4 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ``True`` if all platforms were unloaded successfully.
 
     """
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-
-    if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id)
-
-    return unload_ok
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)

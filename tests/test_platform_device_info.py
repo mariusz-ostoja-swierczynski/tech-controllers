@@ -445,6 +445,9 @@ class _Entry:
             const.CONTROLLER: {const.UDID: _UDID},
             const.INCLUDE_HUB_IN_NAME: include_hub_in_name,
         }
+        # The coordinator lives on the entry (``runtime_data``) rather than in a
+        # ``hass.data`` mapping; a platform setup reads it from here.
+        self.runtime_data: Any = None
 
 
 def _item() -> dict[str, Any]:

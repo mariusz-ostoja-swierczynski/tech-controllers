@@ -50,7 +50,7 @@ async def async_setup_entry(
 
     """
     controller = config_entry.data[CONTROLLER]
-    coordinator: TechCoordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator: TechCoordinator = config_entry.runtime_data
     controller_udid = controller[UDID]
 
     menus = await coordinator.api.get_module_menus(controller_udid)

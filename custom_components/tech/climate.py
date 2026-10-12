@@ -53,7 +53,7 @@ async def async_setup_entry(
 
     """
     udid = config_entry.data[CONTROLLER][UDID]
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator = config_entry.runtime_data
     _LOGGER.debug("Setting up entry, controller udid: %s", udid)
     # Only usable zone payloads: a controller without zones, or one whose payload
     # carries entries that are not zone payloads, must not take the whole climate

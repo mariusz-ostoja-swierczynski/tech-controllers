@@ -55,7 +55,6 @@ from homeassistant.helpers.typing import StateType, UndefinedType
 from . import TechCoordinator, assets
 from .const import (
     CONTROLLER,
-    DOMAIN,
     TYPE_ADDITIONAL_PUMP,
     TYPE_FIRE_SENSOR,
     TYPE_RELAY,
@@ -180,7 +179,7 @@ async def async_setup_entry(
     """
     _LOGGER.debug("Setting up entry for sensors…")
     controller = config_entry.data[CONTROLLER]
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator = config_entry.runtime_data
 
     entities = []
     # for controller in controllers:

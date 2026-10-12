@@ -140,7 +140,7 @@ async def async_setup_entry(
     controller_udid = config_entry.data[CONTROLLER][UDID]
     _LOGGER.debug("Setting up sensor entry, controller udid: %s", controller_udid)
 
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator = config_entry.runtime_data
     zones = await coordinator.api.get_module_zones(controller_udid)
     tiles = await coordinator.api.get_module_tiles(controller_udid)
 
