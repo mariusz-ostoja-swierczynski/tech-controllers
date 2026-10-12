@@ -78,12 +78,22 @@ class _Entity:
 
 
 class CoordinatorEntity(_Entity):
-    """Stand-in for ``CoordinatorEntity``; only stores the coordinator."""
+    """Stand-in for ``CoordinatorEntity``; stores the coordinator, reports its state."""
 
     def __init__(self, coordinator: Any = None, *args: Any, **kwargs: Any) -> None:
         """Store the coordinator the way the real base class does."""
         super().__init__(*args, **kwargs)
         self.coordinator = coordinator
+
+    @property
+    def available(self) -> bool:
+        """Report availability the way the real base class does.
+
+        The real ``CoordinatorEntity`` overrides ``Entity.available`` with the
+        coordinator's last poll result, which is also why an entity cannot
+        express its own availability by assigning ``_attr_available``.
+        """
+        return self.coordinator.last_update_success
 
 
 class SensorEntity(_Entity):
@@ -432,6 +442,8 @@ class _Coordinator:
         self.translations = _Translations()
         self.udid = _UDID
         self.data: dict = {}
+        # What ``CoordinatorEntity.available`` reports; a failed poll flips it.
+        self.last_update_success = True
 
 
 class _Entry:
@@ -1135,3 +1147,65 @@ class TestDeprecatedFlagSensorSelection:
 
         assert unlabelled == []
         assert temperature == []
+
+
+# ---------------------------------------------------------------------------
+# Availability -- entity-unavailable
+# ---------------------------------------------------------------------------
+
+
+def _menu_entity(
+    module_name: str,
+    class_name: str,
+    coordinator: _Coordinator,
+    item: dict[str, Any],
+):
+    """Build one menu entity around the given item and coordinator."""
+    return getattr(_modules[module_name], class_name)(
+        item, "MU_3550", coordinator, _Entry(), {}, depth=0
+    )
+
+
+def test_menu_entity_is_unavailable_while_the_controller_is() -> None:
+    """A failed poll marks menu entities unavailable.
+
+    Every entity of this integration is a ``CoordinatorEntity``, whose
+    ``available`` follows the coordinator's ``last_update_success``, so the
+    entities stop offering themselves while the controller cannot be reached
+    instead of showing their last state.
+    """
+    coordinator = _Coordinator()
+    entity = _menu_entity("switch", "MenuSwitchEntity", coordinator, _item())
+
+    assert entity.available
+
+    coordinator.last_update_success = False
+
+    assert not entity.available
+
+    coordinator.last_update_success = True
+
+    assert entity.available
+
+
+def test_dialogue_button_is_unavailable_while_the_controller_withdraws_it() -> None:
+    """An accessible dialogue is unavailable too when the controller drops it.
+
+    The controller offers a dialogue only while it can be used -- a
+    clear-lockout control exists while there is a lockout to clear -- and says so
+    through the item's ``access`` flag. Storing that flag in ``_attr_available``
+    was dead code, because ``CoordinatorEntity.available`` overrides
+    ``Entity.available`` without reading it.
+    """
+    coordinator = _Coordinator()
+    item = _item()
+    item["access"] = False
+    entity = _menu_entity("button", "MenuButtonEntity", coordinator, item)
+
+    assert not entity.available
+
+    item["access"] = True
+    # This is what the coordinator update callback runs to refresh the flags.
+    entity._update_from_item(item)
+
+    assert entity.available

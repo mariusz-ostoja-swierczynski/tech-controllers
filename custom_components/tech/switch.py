@@ -31,6 +31,11 @@ from .coordinator import TechCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
+# All the entities of one controller write to the same cloud account, so this
+# platform serialises their calls instead of letting a scene fire them all at
+# once. Home Assistant reads PARALLEL_UPDATES from the platform module.
+PARALLEL_UPDATES = 1
+
 
 async def async_setup_entry(
     hass: HomeAssistant,

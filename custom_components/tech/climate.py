@@ -34,6 +34,11 @@ from .coordinator import TechCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
+# Climate changes (mode, setpoint) go to the same cloud account as the menu
+# writes, so they are serialised with them. Home Assistant reads
+# PARALLEL_UPDATES from the platform module.
+PARALLEL_UPDATES = 1
+
 DEFAULT_MIN_TEMP = 5
 DEFAULT_MAX_TEMP = 35
 SUPPORT_HVAC = [HVACMode.HEAT, HVACMode.OFF]

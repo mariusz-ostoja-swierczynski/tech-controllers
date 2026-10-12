@@ -3,7 +3,7 @@
 import asyncio
 import logging
 
-from aiohttp import ClientSession
+from aiohttp import ClientError, ClientSession
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME
@@ -19,7 +19,14 @@ _LOGGER = logging.getLogger(__package__)
 
 
 class TechCoordinator(DataUpdateCoordinator):
-    """Coordinate periodic refreshes from the Tech HTTP API."""
+    """Coordinate periodic refreshes from the Tech HTTP API.
+
+    This class does not log the controller going away or coming back: Home
+    Assistant's coordinator already does that, once per transition, for as long
+    as the failures it sees are ``UpdateFailed``. The entities report themselves
+    unavailable in between, because ``CoordinatorEntity.available`` follows
+    ``last_update_success``.
+    """
 
     config_entry: ConfigEntry
 
@@ -56,7 +63,8 @@ class TechCoordinator(DataUpdateCoordinator):
 
         Raises:
             ConfigEntryAuthFailed: If the API indicates that the token expired.
-            UpdateFailed: If any other API error occurs during refresh.
+            UpdateFailed: If the controller cannot be reached or the API
+                answers with an error.
 
         """
 
@@ -72,6 +80,15 @@ class TechCoordinator(DataUpdateCoordinator):
                     self.config_entry.data[CONTROLLER][UDID], force=True
                 )
         except TechLoginError as err:
+            # A dead token is not the controller being unreachable: the user has
+            # to act, and Home Assistant starts the reauthentication flow for
+            # this one.
             raise ConfigEntryAuthFailed from err
-        except TechError as err:
+        except (TechError, ClientError, TimeoutError) as err:
+            # ``ClientError`` is a connection problem (name resolution,
+            # refused, reset) and ``TimeoutError`` is the API taking longer than
+            # API_TIMEOUT. Both mean "not reachable right now", which is why
+            # they are raised as UpdateFailed: Home Assistant's coordinator logs
+            # that transition once and the recovery once, and any other
+            # exception would be logged as an unexpected error on every poll.
             raise UpdateFailed(f"Error communicating with API: {err}") from err

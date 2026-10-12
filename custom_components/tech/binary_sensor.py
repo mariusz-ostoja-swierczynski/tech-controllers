@@ -70,6 +70,10 @@ from .entity import TileEntity
 
 _LOGGER = logging.getLogger(__name__)
 
+# The coordinator owns fetching, so there is no per-entity call to throttle
+# here. Home Assistant reads PARALLEL_UPDATES from the platform module.
+PARALLEL_UPDATES = 0
+
 
 def _sibling_widget(tile_params: dict, widget_key: str) -> dict | None:
     """Return the tile's other widget payload, when it carries one.

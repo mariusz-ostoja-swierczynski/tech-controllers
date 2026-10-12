@@ -123,6 +123,10 @@ from .entity import TileEntity
 
 _LOGGER = logging.getLogger(__name__)
 
+# The coordinator owns fetching, so there is no per-entity call to throttle
+# here. Home Assistant reads PARALLEL_UPDATES from the platform module.
+PARALLEL_UPDATES = 0
+
 
 async def async_setup_entry(
     hass: HomeAssistant,

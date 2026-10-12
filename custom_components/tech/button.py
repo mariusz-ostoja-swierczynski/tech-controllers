@@ -31,6 +31,11 @@ from .coordinator import TechCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
+# A dialogue writes to the same cloud account as everything else this
+# controller exposes, so its presses are serialised. Home Assistant reads
+# PARALLEL_UPDATES from the platform module.
+PARALLEL_UPDATES = 1
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -158,6 +163,17 @@ class MenuButtonEntity(CoordinatorEntity, ButtonEntity):
         return not self._disabled
 
     @property
+    def available(self) -> bool:
+        """Return whether the entity is available.
+
+        ``CoordinatorEntity`` reports whether the last poll reached the
+        controller; a dialogue the controller has withdrawn is unavailable on
+        top of that, so that Home Assistant never offers an action the
+        controller would refuse.
+        """
+        return super().available and self._item_accessible
+
+    @property
     def device_info(self) -> DeviceInfo | None:
         """Return device info for the zone or controller this entity belongs to."""
         if self._zone_id is not None:
@@ -179,7 +195,10 @@ class MenuButtonEntity(CoordinatorEntity, ButtonEntity):
             item: Menu item dictionary with the most recent values.
 
         """
-        self._attr_available = item.get("access", False)
+        # The controller offers or withdraws a dialogue -- a lockout control is
+        # only there while there is a lockout to clear -- so the flag is kept
+        # beside the coordinator's own state and combined in ``available``.
+        self._item_accessible = item.get("access", False)
         # Dialogue type determines the API payload format
         params = item.get("params", {})
         self._dialogue_type = params.get("type", 0)
