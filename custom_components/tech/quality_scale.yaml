@@ -7,9 +7,10 @@
 # the tier badge for built-in integrations. It is kept as the project's own
 # record of the rules it meets and of the ones it cannot meet.
 #
-# Only the Bronze tier is tracked for now -- the rules of the tiers above are
-# not listed until work on them starts. Phase tracker: the remaining `todo`
-# entries are the work needed for full Bronze.
+# Bronze and Silver are tracked. The rules of the tiers above them are not
+# listed until work on them starts, and the manifest announces the highest tier
+# whose rules are all met: a `todo` anywhere under it would make that claim
+# untrue.
 rules:
   action_setup:
     status: exempt
@@ -97,3 +98,69 @@ rules:
   unique_config_entry:
     status: done
     comment: The flow sets the controller UDID as unique id and aborts when that controller is already configured.
+
+  # ---------------------------------------------------------------------------
+  # Silver
+  # ---------------------------------------------------------------------------
+  action_exceptions:
+    status: exempt
+    comment: The integration registers no service actions to raise from.
+  config_entry_unloading:
+    status: done
+    comment: >-
+      async_unload_entry unloads every platform. The coordinator picks the
+      config entry up from the setup context, so Home Assistant registers its
+      shutdown on the entry and stops its 60-second timer on unload; a reload
+      does not leave a second poller behind.
+      tests_ha/test_setup_with_a_controller.py unloads an entry, fires a poll
+      interval past it and asserts nothing was fetched.
+  docs_configuration_parameters:
+    status: done
+    comment: >-
+      The README's Configuration section describes the entry's one option: what
+      including the hub name does to a zone's entity names, when it is worth
+      enabling, and that changing it reloads the entry.
+  docs_installation_parameters:
+    status: done
+    comment: >-
+      The README's Parameters section lists what the setup form asks for: the
+      account name, its password, the controller to add and the naming
+      preference.
+  entity_unavailable:
+    status: done
+    comment: >-
+      Every entity is a CoordinatorEntity, so all of them report unavailable
+      while a poll is failing and available again once it succeeds, instead of
+      serving stale values. The entities the controller can withdraw -- the
+      dialogue buttons -- combine that with the menu item's access flag in an
+      available property.
+  integration_owner:
+    status: done
+    comment: The manifest names two code owners, who are the integration's owners.
+  log_when_unavailable:
+    status: done
+    comment: >-
+      The coordinator raises UpdateFailed and adds no logging of its own: Home
+      Assistant's coordinator logs the failure once when the controller stops
+      answering and the recovery once when it answers again. tests_ha asserts
+      exactly one line of each over three failed polls.
+  parallel_updates:
+    status: done
+    comment: >-
+      PARALLEL_UPDATES is 1 where entities write to the controller (button,
+      climate, number, select, switch), because the API serialises menu and zone
+      writes, and 0 where entities only read (binary_sensor, sensor).
+  reauthentication_flow:
+    status: done
+    comment: >-
+      async_step_reauth asks for the account's credentials again, keeps the
+      controller, stores the refreshed user id and token and reloads the entry;
+      credentials of another account abort with their own reason. The
+      coordinator raises ConfigEntryAuthFailed for a rejected login and for a
+      401 on a data request, which is what starts the flow in the UI.
+  test_coverage:
+    status: done
+    comment: >-
+      The two suites together cover 97.7% of custom_components.tech, with every
+      module at or above 95%. CI and the devenv scripts measure the whole
+      package across both suites with --cov-fail-under=95.

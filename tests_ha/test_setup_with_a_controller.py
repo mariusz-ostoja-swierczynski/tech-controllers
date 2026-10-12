@@ -15,13 +15,18 @@ climate platform, while the ST-491's menus cover the menu platforms.
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
+from unittest.mock import AsyncMock
 
 from common import EMPTY_MENU, entity_counts, entry_for, set_up
 import pytest
+from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
+from custom_components.tech.const import SCAN_INTERVAL
 from custom_components.tech.tech import Tech
 from homeassistant.core import HomeAssistant
+from homeassistant.util import dt as dt_util
 
 # What each recorded controller produces, per entity domain. Pinned so that a
 # change in what a payload builds shows up as a failing count rather than as a
@@ -88,3 +93,28 @@ async def test_a_poll_hands_the_payload_to_every_entity_again(
 
     assert entry.runtime_data.last_update_success
     assert entity_counts(hass) == _EXPECTED[fixture]
+
+
+async def test_unloading_the_entry_stops_the_polling(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Unloading leaves nothing polling the controller behind it.
+
+    Home Assistant reloads an entry whenever its options change, and every
+    reload builds a fresh coordinator. A coordinator that kept its 60-second
+    timer through the unload would leave one more poller behind on each change.
+    """
+    entry = await set_up(hass, "st491", monkeypatch)
+    get = AsyncMock(return_value=EMPTY_MENU)
+    monkeypatch.setattr(Tech, "get", get)
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+    get.reset_mock()
+    async_fire_time_changed(
+        hass, dt_util.utcnow() + SCAN_INTERVAL + timedelta(seconds=1)
+    )
+    await hass.async_block_till_done()
+
+    get.assert_not_awaited()
