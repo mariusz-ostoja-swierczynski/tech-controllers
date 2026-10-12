@@ -1,4 +1,11 @@
-"""Platform for button entities backed by Tech menu dialogue parameters."""
+"""Platform for button entities backed by Tech menu dialogue parameters.
+
+A dialogue item (menu item type 20) is a one-shot action, so it becomes a
+button. Its ``params.type`` picks the shape of the confirm payload: the type
+goes back untouched and the value comes from
+:data:`const.MENU_DIALOGUE_CONFIRM_VALUES`, which mirrors what the eModul app
+sends for each sub-type.
+"""
 
 import logging
 from typing import Any
@@ -24,6 +31,8 @@ from .const import (
     MANUFACTURER,
     MENU_DEPTH_DEFAULT_ENABLED_LIMIT,
     MENU_DEPTH_REGISTRATION_LIMIT,
+    MENU_DIALOGUE_CONFIRM_FALLBACK,
+    MENU_DIALOGUE_CONFIRM_VALUES,
     MENU_ITEM_TYPE_DIALOGUE,
     UDID,
 )
@@ -180,9 +189,13 @@ class MenuButtonEntity(CoordinatorEntity, ButtonEntity):
 
         """
         self._attr_available = item.get("access", False)
-        # Dialogue type determines the API payload format
+        # Dialogue sub-type selects the payload: the type goes back to the
+        # controller untouched, while the confirming value depends on it.
         params = item.get("params", {})
         self._dialogue_type = params.get("type", 0)
+        self._confirm_value = MENU_DIALOGUE_CONFIRM_VALUES.get(
+            self._dialogue_type, MENU_DIALOGUE_CONFIRM_FALLBACK
+        )
 
     async def async_press(self) -> None:
         """Handle the button press by triggering the dialogue action."""
@@ -190,7 +203,7 @@ class MenuButtonEntity(CoordinatorEntity, ButtonEntity):
             self._udid,
             self._menu_type,
             self._item_id,
-            {"type": self._dialogue_type, "value": 1},
+            {"type": self._dialogue_type, "value": self._confirm_value},
         )
         await self.coordinator.async_request_refresh()
 

@@ -385,7 +385,7 @@ def _load_tech_module(name: str) -> types.ModuleType:
 _install_stubs()
 const = _load_tech_module("const")
 assets = _load_tech_module("assets")
-_load_tech_module("tech")
+_tech_module = _load_tech_module("tech")
 _load_tech_module("coordinator")
 sensor = _load_tech_module("sensor")
 
@@ -433,13 +433,14 @@ class _Api:
     a platform sends to the controller.
     """
 
-    def __init__(self) -> None:
-        """Start with no writes recorded."""
+    def __init__(self, menus: dict[str, dict[str, Any]] | None = None) -> None:
+        """Start with no writes recorded and the given menu tree to serve."""
         self.calls: list[tuple[str, int, dict]] = []
+        self._menus = menus or {}
 
     async def get_module_menus(self, udid: str) -> dict:
-        """Return an empty menu tree."""
-        return {}
+        """Return the menu tree this stub was built with (empty by default)."""
+        return self._menus
 
     async def get_module_zones(self, udid: str) -> dict:
         """Return an empty zone payload."""
@@ -456,12 +457,15 @@ class _Api:
 class _Coordinator:
     """Stand-in for ``TechCoordinator``."""
 
-    def __init__(self) -> None:
+    def __init__(self, menus: dict[str, dict[str, Any]] | None = None) -> None:
         """Wire up the API, translation catalog and cache."""
-        self.api = _Api()
+        self.api = _Api(menus)
         self.translations = _Translations()
         self.udid = _UDID
         self.data: dict = {}
+
+    async def async_request_refresh(self) -> None:
+        """Pretend to ask for a poll after a write; nothing is fetched."""
 
 
 class _Entry:
@@ -1285,13 +1289,17 @@ async def test_turning_one_option_keeps_the_other_options() -> None:
     assert (first.is_on, second.is_on) == (False, True)
 
 
-def test_clear_lockout_is_already_mapped_as_a_button() -> None:
-    """The user menu's single dialogue item is already exposed as a button.
+async def test_user_menu_dialogue_is_the_factory_reset_not_a_lockout() -> None:
+    """The user menu's only dialogue is factory settings, not a clear-lockout.
 
-    Issue #222 also asked for the clear-lockout control. It is menu type 20,
-    which :mod:`button` already maps, and the reporter's menu carries exactly one
-    such item -- so it needs no new platform support; it is only as visible as
-    the controller's own ``access`` flag makes it.
+    Issue #222 asked for the clear-lockout control, and this item was read as
+    it: menu type 20, so :mod:`button` maps it, and the one dialogue in his
+    user menu. The eModul subtitle catalog says otherwise -- text 839 is
+    "Ustawienia fabryczne" and the question it confirms, 838 ("Czy przywrócić
+    ustawienia fabryczne?"), is a factory reset. A button named after 839 is
+    therefore that reset; the clear-lockout control the reporter still misses
+    is not in this tree at all, see
+    :func:`test_service_menu_dialogue_becomes_a_button`.
     """
     menus = _kolton_menus()
     dialogues = [
@@ -1302,8 +1310,243 @@ def test_clear_lockout_is_already_mapped_as_a_button() -> None:
 
     assert [item["id"] for item in dialogues] == [10000]
 
+    item = dialogues[0]
+    assert (item["txtId"], item["params"]["txtId"], item["params"]["type"]) == (
+        839,
+        838,
+        1,
+    )
+
+    coordinator = _Coordinator()
     entity = _modules["button"].MenuButtonEntity(
-        dialogues[0], "MU_10000", _Coordinator(), _Entry(), {}, depth=0
+        item, "MU_10000", coordinator, _Entry(), {}, depth=0
     )
 
     assert (entity.name, entity.unique_id) == ("label-839", f"{_UDID}_menu_MU_10000")
+
+    await entity.async_press()
+
+    # A Yes/No dialogue: confirming it sends 1, the app's "Tak".
+    assert coordinator.api.calls == [("MU", 10000, {"type": 1, "value": 1})]
+
+
+# ---------------------------------------------------------------------------
+# Menu trees -- the clear-lockout control lives in the service tree (#222)
+# ---------------------------------------------------------------------------
+
+# Text ids from the public eModul catalog, read straight off emodul.eu:
+# 391 "Menu serwis" (the root group every service tree carries), 4764 "Blokada
+# presostatu", 8396 "Czas blokady presostatu", 8395 "Zdjęcie blokady" and
+# 10018 "Brak blokady" -- the body the reporter's own dialog shows while there
+# is nothing to clear. His trailing slash in #222 traced that dialog's confirm
+# request to item 1537, so that item id is real; the group id is a stand-in.
+_SERVICE_GROUP_ID = 30000
+_SERVICE_LOCKOUT_ID = 1537
+
+
+def _service_menu() -> dict[str, dict[str, Any]]:
+    """Return the service tree of a heat pump, keyed the way the client keys it.
+
+    This is the shape the reporter's eModul app shows under "Menu serwis >
+    Blokada presostatu": a group holding the lockout time and the
+    clear-lockout dialogue, whose sub-type is 2 -- the dialog he traced sends
+    ``{"value": 3, "type": 2}``. The text ids are the catalog's own and the
+    item id is his; the group id is a stand-in until his ``/menu/MS/`` dump can
+    be pinned as a fixture the way his user menu already is.
+    """
+    elements = [
+        {
+            "menuType": "MS",
+            "type": 0,
+            "id": 0,
+            "parentId": 0,
+            "access": True,
+            "txtId": 391,
+            "iconId": 0,
+            "params": {"description": "Element gruping menu"},
+        },
+        {
+            "menuType": "MS",
+            "type": 0,
+            "id": _SERVICE_GROUP_ID,
+            "parentId": 0,
+            "access": True,
+            "txtId": 4764,
+            "iconId": 10,
+            "params": {"description": "Element gruping menu"},
+        },
+        {
+            "menuType": "MS",
+            "type": 1,
+            "id": 1001,
+            "parentId": _SERVICE_GROUP_ID,
+            "access": True,
+            "txtId": 8396,
+            "iconId": 87,
+            "params": {
+                "format": 1,
+                "value": 30,
+                "min": 0,
+                "max": 240,
+                "default": 0,
+                "txtId": 728,
+                "description": "Number value control",
+            },
+        },
+        {
+            "menuType": "MS",
+            "type": 20,
+            "id": _SERVICE_LOCKOUT_ID,
+            "parentId": _SERVICE_GROUP_ID,
+            "access": True,
+            "txtId": 8395,
+            "iconId": 97,
+            "params": {
+                "txtId": 10018,
+                "type": 2,
+                "value": -1,
+                "blockHide": 0,
+                "description": "Dialogue control - Yes/No",
+            },
+        },
+    ]
+    return {f"{item['menuType']}_{item['id']}": item for item in elements}
+
+
+class _MenuTrees:
+    """Stub for ``Tech.get`` serving one element per menu tree.
+
+    A tree can be refused the way the API refuses one the account may not read,
+    which is the case for the manufacturer tree of a consumer account.
+    """
+
+    def __init__(self, refused: str | None = None) -> None:
+        """Record the refused tree, if any, and start with no requests made."""
+        self.paths: list[str] = []
+        self._refused = refused
+
+    async def __call__(self, path: str) -> dict[str, Any]:
+        """Record the request and answer it, or raise where the tree is refused."""
+        self.paths.append(path)
+        menu_type = path.rstrip("/").rsplit("/", 1)[-1]
+        if menu_type == self._refused:
+            raise _tech_module.TechError(403, "menu not available")
+        element = {"menuType": menu_type, "id": len(self.paths), "type": 0}
+        return {"data": {"elements": [element]}}
+
+
+def _menu_client(refused: str | None = None) -> tuple[Any, _MenuTrees]:
+    """Return a ``Tech`` client whose only stub is the menu tree transport."""
+    tech = _tech_module.Tech.__new__(_tech_module.Tech)
+    tech.user_id = 7
+    transport = _MenuTrees(refused)
+    tech.get = transport
+    return tech, transport
+
+
+async def test_every_menu_tree_is_fetched() -> None:
+    """The controller is asked for all four of its menu trees.
+
+    The service tree is where a heat pump keeps the clear-lockout control, so
+    not asking for it left the reporter of #222 with the lockout on a sensor and
+    no way to clear it. Items are keyed by tree, so the same item id in two trees
+    cannot collide.
+    """
+    tech, transport = _menu_client()
+
+    items = await tech._fetch_menu_data("abcd")
+
+    assert transport.paths == [
+        f"users/7/modules/abcd/menu/{menu_type}/" for menu_type in const.MENU_TYPES
+    ]
+    assert sorted(items) == ["MI_2", "MP_4", "MS_3", "MU_1"]
+
+
+async def test_a_refused_menu_tree_leaves_the_others_alone() -> None:
+    """One unreadable tree does not cost the controller the remaining three.
+
+    The API answers a tree the account may not read with ``TechError`` -- the
+    manufacturer tree of a consumer account is locked on the controllers we have
+    dumps of. That used to be harmless because only two trees were requested;
+    now it has to be contained per tree.
+    """
+    tech, transport = _menu_client(refused="MP")
+
+    items = await tech._fetch_menu_data("abcd")
+
+    assert transport.paths == [
+        f"users/7/modules/abcd/menu/{menu_type}/" for menu_type in const.MENU_TYPES
+    ]
+    assert sorted(items) == ["MI_2", "MS_3", "MU_1"]
+
+
+async def test_service_menu_dialogue_becomes_a_working_button() -> None:
+    """The clear-lockout dialogue of the service tree reaches Home Assistant.
+
+    The button is named after its group and label ("Blokada presostatu -
+    Zdjęcie blokady" with the real catalog), registered enabled because the
+    group is top level, and pressing it sends the payload the reporter traced in
+    the app for this very item: ``{"value": 3, "type": 2}`` on ido 1537.
+    """
+    entry = _Entry()
+    coordinator = _Coordinator(_service_menu())
+    added: list[Any] = []
+    hass = types.SimpleNamespace(data={const.DOMAIN: {entry.entry_id: coordinator}})
+
+    await _modules["button"].async_setup_entry(
+        hass, entry, lambda entities, update: added.extend(entities)
+    )
+
+    lockout = f"{_UDID}_menu_MS_{_SERVICE_LOCKOUT_ID}"
+    assert [entity.unique_id for entity in added] == [lockout]
+
+    button = added[0]
+    assert button.name == "label-4764 - label-8395"
+    assert button.entity_registry_enabled_default
+    assert button._attr_available  # access: true while there is a lockout
+
+    await button.async_press()
+
+    assert coordinator.api.calls == [
+        ("MS", _SERVICE_LOCKOUT_ID, {"type": 2, "value": 3})
+    ]
+
+
+@pytest.mark.parametrize(
+    ("params", "expected"),
+    [
+        ({"type": 0}, {"type": 0, "value": 2}),
+        ({"type": 1}, {"type": 1, "value": 1}),
+        ({"type": 2}, {"type": 2, "value": 3}),
+        # A sub-type the app draws no control for: keep the value this platform
+        # has always sent rather than invent one.
+        ({"type": 9}, {"type": 9, "value": 1}),
+        # No sub-type at all reads as 0, which the app shows as its OK button.
+        ({}, {"type": 0, "value": 2}),
+    ],
+    ids=["ok", "yes-no", "traced", "unmapped", "absent"],
+)
+async def test_dialogue_press_value_follows_the_item_sub_type(
+    params: dict[str, int], expected: dict[str, int]
+) -> None:
+    """The confirm value comes from the sub-type, as the app's control sends it.
+
+    The app's dialogue template switches on ``params.type``: 1 is Yes/No, where
+    its two buttons send 1 ("Tak") and 0 ("Nie") and a Home Assistant press
+    confirms; 0 draws one OK button sending 2; and 2, the clear-lockout
+    dialogue, draws one cancel-styled button sending 3. Only the value varies --
+    the sub-type itself goes back to the controller untouched.
+    """
+    item = dict(_service_menu()[f"MS_{_SERVICE_LOCKOUT_ID}"])
+    item["parentId"] = 0
+    # Built from scratch rather than merged over the lockout item's params, so
+    # that the "absent" case really has no sub-type to fall back on.
+    item["params"] = {"txtId": 8395, "value": -1, "blockHide": 0, **params}
+    coordinator = _Coordinator()
+    entity = _modules["button"].MenuButtonEntity(
+        item, f"MS_{_SERVICE_LOCKOUT_ID}", coordinator, _Entry(), {}, depth=0
+    )
+
+    await entity.async_press()
+
+    assert coordinator.api.calls == [("MS", _SERVICE_LOCKOUT_ID, expected)]

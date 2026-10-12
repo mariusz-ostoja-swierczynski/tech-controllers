@@ -411,14 +411,28 @@ OPENTHERM_MODULATION = {"txt_id": 428, "state_key": "modulationPercentage"}
 # Menu trees and item types
 # ---------------------------------------------------------------------------
 # The Tech API exposes four hierarchical menu trees per controller. Each is
-# fetched from /users/{uid}/modules/{udid}/menu/{TYPE}/. Only USER and
-# INSTALLER menus are loaded by default -- SERVICE and MANUFACTURER menus
-# are deeply nested, frequently locked, and not currently mapped to entities.
+# fetched from /users/{uid}/modules/{udid}/menu/{TYPE}/, and all four are read:
+# the eModul app derives the same four from its own routes ("menu",
+# "fitters_menu", "service_menu", "manufacturer_menu") and a controller may
+# keep a control in any of them. The pressure-switch lockout requested in #222
+# is one such case -- its clear-lockout dialogue and lockout time live in the
+# service tree, not in the user menu the reporter first looked at, so the tree
+# has to be asked for before that control can exist.
+#
+# Reading a tree is not the same as publishing it: items the account cannot use
+# arrive with ``access: false``, which the value/choice/switch platforms skip
+# (a dialogue still registers, and reports itself ``unavailable``), and the
+# depth limits below keep the deep per-zone subgroups off the registry.
 MENU_TYPE_USER = "MU"
 MENU_TYPE_INSTALLER = "MI"
 MENU_TYPE_SERVICE = "MS"
 MENU_TYPE_MANUFACTURER = "MP"
-MENU_TYPES = [MENU_TYPE_USER, MENU_TYPE_INSTALLER]
+MENU_TYPES = [
+    MENU_TYPE_USER,
+    MENU_TYPE_INSTALLER,
+    MENU_TYPE_SERVICE,
+    MENU_TYPE_MANUFACTURER,
+]
 
 # A menu item's ``type`` field decides which HA platform it is mapped to:
 #   - GROUP             -> not an entity (organisational header)
@@ -437,6 +451,22 @@ MENU_ITEM_TYPE_CHOICE = {11, 111, 112}
 MENU_ITEM_TYPE_CHECKBOX = 15
 MENU_ITEM_TYPE_DIALOGUE = 20
 MENU_ITEM_TYPE_UNIVERSAL_VALUE = 106
+
+# A DIALOGUE item carries a sub-type in ``params.type``, and the value that
+# confirms it depends on that sub-type -- not on the item. The eModul app's
+# dialogue control switches on it and sends a fixed value, always pairing it
+# with ``params.type`` as the payload's ``type``:
+#   - 1 -- Yes/No: the two buttons send 1 ("Tak") and 0 ("Nie"), so a press
+#          from Home Assistant confirms with 1.
+#   - 0 -- one confirm button, value 2.
+#   - 2 -- one button styled as a cancel, value 3. This is the service menu's
+#          clear-lockout control of #222, whose press was traced to
+#          ``{"value": 3, "type": 2}`` on the reporter's controller.
+# A sub-type outside this table draws no control in the app, so no observed
+# value exists for it; the button keeps the value this platform has always
+# sent rather than inventing another.
+MENU_DIALOGUE_CONFIRM_VALUES: Final[dict[int, int]] = {0: 2, 1: 1, 2: 3}
+MENU_DIALOGUE_CONFIRM_FALLBACK: Final = 1
 
 # Menu depth filtering thresholds. Tech menus on multi-zone controllers
 # (notably L-12 with ~4100 MI items) are deeply nested and exposing every
