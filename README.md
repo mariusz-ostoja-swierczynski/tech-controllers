@@ -56,6 +56,15 @@ and community reported controllers.
 - The controller reachable from the Internet: the integration talks to the eModul cloud service, not to the controller directly.
 - A Home Assistant version this release supports. HACS warns when your version is older than the one declared in [`hacs.json`](./hacs.json).
 
+### Parameters
+
+The setup form asks for:
+
+- **Username** — the account name (or email address) you use on <https://emodul.eu> or <https://emodul.pl>.
+- **Password** — the password for that account.
+- **Controller to import** — the controller to add, chosen from the ones the account holds. One controller is added per run of the flow, so repeat it for the next one.
+- **Include hub (controller) name in entity names** — the naming preference described under Configuration below, so it can be answered while the controller is being added.
+
 ### HACS
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mariusz-ostoja-swierczynski&repository=tech-controllers&category=integration)
@@ -66,7 +75,7 @@ and community reported controllers.
 1. Download `tech.zip` asset from [latest release](https://github.com/mariusz-ostoja-swierczynski/tech-controllers/releases/latest)
 1. Unzip into `custom_components/` directory (folder), if directory doesnt exist, create it.
 1. Restart Home Assistant
-1. In the HA UI go to `Configuration` -> `Integrations` click `+` and search for `Tech Controllers`
+1. In the HA UI go to `Settings` -> `Devices & services` click `+` and search for `Tech Controllers`
    ![Tech Controllers Setup 1](./images/ha-tech-add-integration-1.png)
 1. Enter your username (could be email) and password for your eModule account and click "Submit" button.
    ![Tech Controllers Setup 2](./images/ha-tech-add-integration-2.png)
@@ -77,6 +86,14 @@ and community reported controllers.
 
 1. Now you should have controllers and entities representing your home zones available in Home Assistant. Go to your UI Lovelace configuration and add Thermostat card with your Climate entities.
    ![Tech Controllers Setup 4](./images/ha-tech-2.png)
+
+## :gear: Configuration
+
+Each controller entry has one option, reached through the gear button on the entry in `Settings` -> `Devices & services`:
+
+- **Include hub (controller) name in entity names** — prefixes the entity names of the controller's zones with the name of the integration, so a zone reads `L-8 DEMO Strefa 1` instead of `Strefa 1`. Useful when several controllers are set up and their zone names would otherwise be identical; leave it off when only one controller is configured.
+
+The same preference is asked during setup, it belongs to one controller entry at a time, and changing it afterwards reloads the entry so the renamed entities follow immediately.
 
 ## :wastebasket: Removal
 
