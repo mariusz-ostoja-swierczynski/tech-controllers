@@ -6,7 +6,7 @@
 
 [![Project Maintenance][maintenance-shield]][maintainer]
 
-This is an integration of heating controllers from Polish company TECH Sterowniki Sp. z o.o. It uses [API](https://api-documentation.emodul.eu/) to their web control application eModul.eu, therefore your controller needs to be accessible from the Internet and you need an account either on <https://emodul.eu> or <https://emodul.pl>.
+This is an integration of heating controllers from Polish company [TECH Sterowniki Sp. z o.o.](https://techsterowniki.pl/). It uses [API](https://api-documentation.emodul.eu/) to their web control application eModul.eu, therefore your controller needs to be accessible from the Internet and you need an account either on <https://emodul.eu> or <https://emodul.pl>.
 
 The integration is based on API provided by TECH which supports the [list of compatible controllers](https://github.com/mariusz-ostoja-swierczynski/tech-controllers?tab=readme-ov-file#rocket-list-of-reported-working-tech-controllers)
 
@@ -50,6 +50,12 @@ and community reported controllers.
 
 ## :building_construction: Installation
 
+### Prerequisites
+
+- An account on <https://emodul.eu> or <https://emodul.pl> with the controller already added to it.
+- The controller reachable from the Internet: the integration talks to the eModul cloud service, not to the controller directly.
+- A Home Assistant version this release supports. HACS warns when your version is older than the one declared in [`hacs.json`](./hacs.json).
+
 ### HACS
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mariusz-ostoja-swierczynski&repository=tech-controllers&category=integration)
@@ -71,6 +77,14 @@ and community reported controllers.
 
 1. Now you should have controllers and entities representing your home zones available in Home Assistant. Go to your UI Lovelace configuration and add Thermostat card with your Climate entities.
    ![Tech Controllers Setup 4](./images/ha-tech-2.png)
+
+## :wastebasket: Removal
+
+1. In Home Assistant go to `Settings` -> `Devices & services`, open `Tech Controllers` and use the three-dot menu of each controller entry to delete it. Deleting an entry removes the devices and entities that belong to that controller.
+1. Remove the integration itself:
+   - HACS: open HACS, find `Tech Controllers` among the installed integrations and remove it there.
+   - Manual installation: delete the `custom_components/tech` directory (folder) from your Home Assistant configuration directory.
+1. Restart Home Assistant.
 
 ## :rocket: List of reported working TECH Controllers
 

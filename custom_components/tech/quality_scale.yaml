@@ -21,8 +21,14 @@ rules:
       seconds (const.SCAN_INTERVAL), which is inside the interval the API and
       its rate limiting allow.
   brands:
-    status: todo
-    comment: Needs the eight brand images in custom_components/tech/brand/.
+    status: done
+    comment: >-
+      The eight images (icon, logo and their dark and @2x versions) are in the
+      brands repository under custom_integrations/tech/, added by
+      https://github.com/home-assistant/brands/pull/5278 and served for this
+      domain. A local custom_components/tech/brand/ directory would take
+      precedence over them and feed the Marketplace listing before install, but
+      it is not needed for this rule.
   common_modules:
     status: done
     comment: >-
@@ -58,8 +64,10 @@ rules:
     status: done
     comment: README installation covers HACS and manual installation, step by step and with screenshots.
   docs_removal_instructions:
-    status: todo
-    comment: The README has no removal section yet.
+    status: done
+    comment: >-
+      The README has a removal section: delete the controller entries in the UI,
+      remove the integration through HACS or by deleting its directory, restart.
   docs_triggers:
     status: exempt
     comment: The integration registers no triggers.
