@@ -424,6 +424,10 @@ class _Translations:
 class _Api:
     """Async API stub; the menu payload is irrelevant to these tests."""
 
+    def __init__(self) -> None:
+        """Record the writes an entity makes, so a test can inspect them."""
+        self.menu_writes: list[tuple[str, str, int, dict]] = []
+
     async def get_module_menus(self, udid: str) -> dict:
         """Return an empty menu tree."""
         return {}
@@ -431,6 +435,13 @@ class _Api:
     async def get_module_zones(self, udid: str) -> dict:
         """Return an empty zone payload."""
         return {}
+
+    async def set_menu_value(
+        self, udid: str, menu_type: str, item_id: int, value: dict
+    ) -> dict:
+        """Record a menu write; what the API answers is irrelevant here."""
+        self.menu_writes.append((udid, menu_type, item_id, value))
+        return {"status": "success"}
 
 
 class _Coordinator:
@@ -511,7 +522,9 @@ def _build(
 
 
 @pytest.mark.parametrize(("module_name", "class_name"), PLATFORMS, ids=_PLATFORM_IDS)
-def test_zone_entity_uses_the_zone_device_name(module_name: str, class_name: str) -> None:
+def test_zone_entity_uses_the_zone_device_name(
+    module_name: str, class_name: str
+) -> None:
     """A zone-attached entity names the zone device from the resolved mapping."""
     entity = _build(
         module_name, class_name, zone_id=101, zone_names={101: "L-8 DEMO Strefa 1"}
@@ -777,7 +790,15 @@ def test_kolton_st5305_widget_entities() -> None:
         (2223, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 4274),
         (2232, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 0),
         # 39 -- "Value l / m" in the API prose, labelled l/godz. by the app
-        (1096, "widget2", 39, "TileWidgetTemperatureSensor", flow, "volume_flow_rate", 0),
+        (
+            1096,
+            "widget2",
+            39,
+            "TileWidgetTemperatureSensor",
+            flow,
+            "volume_flow_rate",
+            0,
+        ),
         # 13 -- hours and minutes
         (1664, "widget2", 13, "TileWidgetTemperatureSensor", None, None, "00:00"),
         (1666, "widget2", 13, "TileWidgetTemperatureSensor", None, None, "17:21"),
@@ -1147,6 +1168,44 @@ class TestDeprecatedFlagSensorSelection:
 
         assert unlabelled == []
         assert temperature == []
+
+
+async def test_menu_select_maps_its_options_and_refuses_an_unknown_one() -> None:
+    """The option map skips malformed entries, keeps labels apart, and guards.
+
+    The labels are what Home Assistant shows and what a service call hands back,
+    so two options translating to the same text need telling apart, an option
+    without a label falls back to its value, and an option the entity was never
+    told about is refused rather than sent to the API.
+    """
+    item = _item()
+    item["params"]["options"] = [
+        {"value": 0, "txtId": 1},
+        {"value": 1, "txtId": 1},
+        {"value": 2, "txtId": 0},
+        "not a mapping",
+    ]
+    coordinator = _Coordinator()
+    entity = _modules["select"].MenuSelectEntity(
+        item, "MU_3550", coordinator, _Entry(), {}, depth=0
+    )
+    # The stub base class carries no state machine, so the write callback the
+    # entity makes after a successful option change has nothing to reach.
+    entity.async_write_ha_state = lambda *args, **kwargs: None
+
+    assert entity._attr_options == ["label-1", "label-1 (1)", "2"]
+    assert entity._attr_current_option == "label-1 (1)"
+
+    await entity.async_select_option("no such option")
+
+    assert entity._attr_current_option == "label-1 (1)"
+    assert coordinator.api.menu_writes == []
+
+    await entity.async_select_option("2")
+
+    assert entity._attr_current_option == "2"
+    # The value behind the label is what the API is told, not the label.
+    assert coordinator.api.menu_writes[-1][3] == {"value": 2}
 
 
 # ---------------------------------------------------------------------------

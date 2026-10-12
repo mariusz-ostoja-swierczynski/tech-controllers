@@ -8,42 +8,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  tests:
     name: Run tests
     runs-on: ubuntu-latest
     env:
       TZ: "Europe/Berlin"
-    strategy:
-      matrix:
-        python-version: ["3.14"]
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-      - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install requirements
-        run: |
-          python -m pip install --upgrade "pip>=25.1"
-          pip install -e .
-          pip install --group test_api
-      - name: Run tests
-        uses: pavelzw/pytest-action@v2
-        with:
-          emoji: true
-          verbose: true
-          job-summary: true
-          custom-arguments: "tests/ --cov-report=term-missing --cov=custom_components.tech.tech"
-          click-to-expand: true
-          report-title: "Tech API test report"
-
-  home-assistant:
-    name: Run Home Assistant tests
-    runs-on: ubuntu-latest
-    env:
-      TZ: "Europe/Berlin"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -55,7 +25,25 @@ jobs:
         run: |
           python -m pip install --upgrade "pip>=25.1"
           pip install -e .
-          # pytest-homeassistant-custom-component lives in the `test` group.
-          pip install --group test
-      - name: Run tests
-        run: pytest tests_ha/ --cov-report=term-missing --cov=custom_components.tech.config_flow
+          # The API tests need the `test_api` group; the Home Assistant suite
+          # needs `test`, which pins the Home Assistant version it runs on.
+          pip install --group test_api --group test
+      - name: Run the API and integration tests
+        uses: pavelzw/pytest-action@v2
+        with:
+          emoji: true
+          verbose: true
+          job-summary: true
+          # No report here: the Home Assistant suite appends its own data to
+          # this run and prints the combined table below.
+          custom-arguments: "tests/ --cov=custom_components.tech --cov-report="
+          click-to-expand: true
+          report-title: "Tech API test report"
+      - name: Run the Home Assistant tests
+        # The two suites are separate pytest processes (this one has a real
+        # Home Assistant, the one above stubs it), so their coverage is
+        # combined with --cov-append. The floor is on the combined total, and
+        # the table it prints is where each module is read.
+        run: >
+          pytest tests_ha/ --cov=custom_components.tech --cov-append
+          --cov-report=term-missing --cov-fail-under=95

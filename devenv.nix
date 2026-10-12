@@ -64,9 +64,9 @@
   scripts.tests = {
     exec = ''
       echo '🧪 Running tests'
-      pytest tests/ --cov-report=term-missing --cov=custom_components.tech.tech
+      pytest tests/ --cov-report= --cov=custom_components.tech
       echo '🧪 Running Home Assistant tests'
-      pytest tests_ha/ --cov-report=term-missing --cov=custom_components.tech.config_flow
+      pytest tests_ha/ --cov-report=term-missing --cov=custom_components.tech --cov-append --cov-fail-under=95
     '';
     description = "Test integration";
   };
@@ -110,6 +110,7 @@
   # https://devenv.sh/tests/
   enterTest = ''
     echo '🧪 Running tests'
-    pytest tests/ --cov-report=term-missing --cov=custom_components.tech.tech
+    pytest tests/ --cov-report= --cov=custom_components.tech
+    pytest tests_ha/ --cov-report=term-missing --cov=custom_components.tech --cov-append --cov-fail-under=95
   '';
 }

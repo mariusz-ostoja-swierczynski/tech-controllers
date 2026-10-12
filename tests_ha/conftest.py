@@ -23,11 +23,23 @@ if str(_REPO_ROOT) not in sys.path:
 
 from custom_components.tech.tech import Tech  # noqa: E402
 
+# The client's own transport, kept before ``offline_integration`` replaces it,
+# so a test that exercises the client can put the real one back.
+_REAL_GET = Tech.get
+_REAL_POST = Tech.post
+
 
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations):
     """Let Home Assistant load ``custom_components.tech``."""
     yield
+
+
+@pytest.fixture
+def real_transport(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Run a test against the client's real transport rather than the stub."""
+    monkeypatch.setattr(Tech, "get", _REAL_GET)
+    monkeypatch.setattr(Tech, "post", _REAL_POST)
 
 
 @pytest.fixture(autouse=True)
