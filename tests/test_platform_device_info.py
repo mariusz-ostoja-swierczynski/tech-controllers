@@ -43,6 +43,7 @@ _FAKE_MODULES = (
     "homeassistant.components",
     "homeassistant.components.automation",
     "homeassistant.components.binary_sensor",
+    "homeassistant.components.binary_sensor.const",
     "homeassistant.components.button",
     "homeassistant.components.number",
     "homeassistant.components.script",
@@ -79,6 +80,15 @@ class _Entity:
 
 class CoordinatorEntity(_Entity):
     """Stand-in for ``CoordinatorEntity``; stores the coordinator, reports its state."""
+
+    def __class_getitem__(cls, item: Any) -> type[CoordinatorEntity]:
+        """Accept the coordinator type the real base is parameterised with.
+
+        ``entity.py`` derives from ``CoordinatorEntity[TechCoordinator]``, the way
+        Home Assistant's generic base is meant to be used; this stub only has to
+        keep that subscription working.
+        """
+        return cls
 
     def __init__(self, coordinator: Any = None, *args: Any, **kwargs: Any) -> None:
         """Store the coordinator the way the real base class does."""
@@ -284,6 +294,10 @@ def _fake_module(name: str) -> types.ModuleType:
         module.automations_with_entity = _automations_with_entity
     elif name == "homeassistant.components.binary_sensor":
         module.BinarySensorEntity = BinarySensorEntity
+        module.BinarySensorDeviceClass = _AutoNamespace()
+    elif name == "homeassistant.components.binary_sensor.const":
+        # The device classes live in the component's own const module, the way
+        # the sensor ones do; sensor.py imports them from there.
         module.BinarySensorDeviceClass = _AutoNamespace()
     elif name == "homeassistant.components.script":
         module.scripts_with_entity = _scripts_with_entity

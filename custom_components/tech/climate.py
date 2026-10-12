@@ -1,7 +1,7 @@
 """Climate platform for the Tech Controllers integration."""
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
@@ -9,7 +9,6 @@ from homeassistant.components.climate.const import (
     HVACAction,
     HVACMode,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_IDENTIFIERS,
     ATTR_MANUFACTURER,
@@ -30,7 +29,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import assets
 from .const import CONTROLLER, DOMAIN, INCLUDE_HUB_IN_NAME, MANUFACTURER, UDID, VER
-from .coordinator import TechCoordinator
+from .coordinator import TechConfigEntry, TechCoordinator
 from .entity import ReportedEntity, add_later
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,7 +46,7 @@ SUPPORT_HVAC = [HVACMode.HEAT, HVACMode.OFF]
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: TechConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Tech climate entities for the provided config entry.
@@ -76,14 +75,17 @@ async def async_setup_entry(
     add_later(config_entry, coordinator, async_add_entities, _build)
 
 
-class TechThermostat(ReportedEntity, ClimateEntity, CoordinatorEntity):
+class TechThermostat(ReportedEntity, ClimateEntity, CoordinatorEntity[TechCoordinator]):
     """Representation of a Tech climate."""
 
     _attr_has_entity_name = True
     _attr_name = None
 
     def __init__(
-        self, device, coordinator: TechCoordinator, config_entry: ConfigEntry
+        self,
+        device: dict[str, Any],
+        coordinator: TechCoordinator,
+        config_entry: TechConfigEntry,
     ) -> None:
         """Initialise a thermostat entity backed by a Tech zone payload.
 
@@ -138,7 +140,7 @@ class TechThermostat(ReportedEntity, ClimateEntity, CoordinatorEntity):
             **assets.via_controller(self.coordinator),
         }
 
-    def update_properties(self, device):
+    def update_properties(self, device: dict[str, Any]) -> None:
         """Populate state attributes from the latest zone payload.
 
         Args:
@@ -254,7 +256,7 @@ class TechThermostat(ReportedEntity, ClimateEntity, CoordinatorEntity):
     @property
     def current_humidity(self) -> float | None:
         """Return current humidity."""
-        return self._humidity
+        return cast("float | None", self._humidity)
 
     @property
     def min_temp(self) -> float:

@@ -33,7 +33,6 @@ from collections.abc import Callable
 import logging
 from typing import Any
 
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_IDENTIFIERS,
     ATTR_MANUFACTURER,
@@ -58,12 +57,12 @@ from .const import (
     UDID,
     VER,
 )
-from .coordinator import TechCoordinator
+from .coordinator import TechConfigEntry, TechCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class ReportedEntity:
+class ReportedEntity(entity.Entity):
     """An entity that knows which payload entry it was built from.
 
     A controller can stop reporting a tile, a zone or a menu item -- the user
@@ -74,7 +73,17 @@ class ReportedEntity:
     :func:`custom_components.tech._drop_unreported_entities`.
     """
 
-    source_key: str
+    coordinator: TechCoordinator
+
+    @property
+    def source_key(self) -> str:
+        """Return the payload entry this entity was built from.
+
+        Every platform that builds entities from the payload answers this: a tile
+        entity with ``tile_<id>``, a zone entity with ``zone_<id>``, a menu entity
+        with ``menu_<type>_<id>``.
+        """
+        raise NotImplementedError
 
     async def async_added_to_hass(self) -> None:
         """Record this entity under its source key while it is registered."""
@@ -107,7 +116,7 @@ class ReportedEntity:
 
 class TileEntity(
     ReportedEntity,
-    CoordinatorEntity,
+    CoordinatorEntity[TechCoordinator],
     entity.Entity,
 ):
     """Base class for every Tech tile-derived Home Assistant entity.
@@ -128,7 +137,12 @@ class TileEntity(
     # this integration spent considerable effort eliminating.
     _attr_has_entity_name = True
 
-    def __init__(self, device, coordinator: TechCoordinator, config_entry) -> None:
+    def __init__(
+        self,
+        device: dict[str, Any],
+        coordinator: TechCoordinator,
+        config_entry: TechConfigEntry,
+    ) -> None:
         """Initialise common attributes for a Tech tile entity.
 
         Args:
@@ -149,9 +163,19 @@ class TileEntity(
         # ``_unique_id`` is the *root* identifier; subclasses append a
         # discriminator suffix (e.g. ``_tile_temperature_widget1``) when a
         # single tile produces multiple entities.
-        self._unique_id = f"{self._udid}_{device[CONF_ID]}"
+        self._unique_id: str = f"{self._udid}_{device[CONF_ID]}"
+        # Home Assistant reads the entity's unique id from _attr_unique_id, and
+        # declares unique_id itself as a writable cached property, so no subclass
+        # may answer it with a read-only property. _unique_id stays as the prefix
+        # subclasses append their own discriminator to.
+        self._attr_unique_id = self._unique_id
         self._model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
         self._state = self.get_state(device)
+        # Home Assistant reads a sensor's state from native_value and a binary
+        # sensor's from is_on, and declares state itself as final, so the value
+        # a tile reports goes into the field the platform reads as well as into
+        # _state, which subclasses use.
+        self._attr_native_value = self._state
         self.manufacturer = MANUFACTURER
 
         # ``_attr_has_entity_name = True`` makes Home Assistant prepend the
@@ -189,26 +213,16 @@ class TileEntity(
         }
 
     @property
-    def unique_id(self) -> str:
-        """Return a unique ID."""
-        return self._unique_id
-
-    @property
     def source_key(self) -> str:
         """Return the tile this entity was built from."""
         return f"tile_{self._id}"
 
-    @property
-    def state(self):
-        """Return the cached state reported by the Tech API."""
-        return self._state
-
     @abstractmethod
-    def get_state(self, device):
+    def get_state(self, device: dict[str, Any]) -> Any:
         """Extract the integration-specific state from ``device`` data."""
         raise NotImplementedError("Must override get_state")
 
-    def update_properties(self, device):
+    def update_properties(self, device: dict[str, Any]) -> None:
         """Refresh entity attributes using the latest tile payload.
 
         Args:
@@ -217,6 +231,7 @@ class TileEntity(
         """
         # Update _state property
         self._state = self.get_state(device)
+        self._attr_native_value = self._state
 
     @callback
     def _handle_coordinator_update(self, *args: Any) -> None:
@@ -226,7 +241,7 @@ class TileEntity(
 
 
 def add_later(
-    config_entry: ConfigEntry,
+    config_entry: TechConfigEntry,
     coordinator: TechCoordinator,
     async_add_entities: AddEntitiesCallback,
     build: Callable[[], list[Any]],
@@ -252,8 +267,9 @@ def add_later(
     """
     registered: set[str] = set()
 
-    def _forget(unique_id: str) -> None:
-        registered.discard(unique_id)
+    def _forget(unique_id: str | None) -> None:
+        if unique_id is not None:
+            registered.discard(unique_id)
 
     coordinator.forget_callbacks.append(_forget)
 

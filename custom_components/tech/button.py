@@ -4,7 +4,6 @@ import logging
 from typing import Any
 
 from homeassistant.components.button import ButtonEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_IDENTIFIERS,
     ATTR_MANUFACTURER,
@@ -27,7 +26,7 @@ from .const import (
     MENU_ITEM_TYPE_DIALOGUE,
     UDID,
 )
-from .coordinator import TechCoordinator
+from .coordinator import TechConfigEntry, TechCoordinator
 from .entity import ReportedEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -40,7 +39,7 @@ PARALLEL_UPDATES = 1
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: TechConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Tech button entities from menu dialogue parameters.
@@ -88,7 +87,9 @@ async def async_setup_entry(
     async_add_entities(entities, True)
 
 
-class MenuButtonEntity(ReportedEntity, CoordinatorEntity, ButtonEntity):
+class MenuButtonEntity(
+    ReportedEntity, CoordinatorEntity[TechCoordinator], ButtonEntity
+):
     """A dialogue menu parameter exposed as a Home Assistant button entity."""
 
     _attr_has_entity_name = True
@@ -99,7 +100,7 @@ class MenuButtonEntity(ReportedEntity, CoordinatorEntity, ButtonEntity):
         item: dict[str, Any],
         menu_key: str,
         coordinator: TechCoordinator,
-        config_entry: ConfigEntry,
+        config_entry: TechConfigEntry,
         group_names: dict[tuple[str, int], str],
         depth: int = 0,
         zone_id: int | None = None,

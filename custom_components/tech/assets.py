@@ -9,7 +9,10 @@ from typing import TYPE_CHECKING, Any
 from homeassistant.const import CONF_DESCRIPTION, CONF_NAME, CONF_ZONE
 
 if TYPE_CHECKING:
+    from homeassistant.helpers.device_registry import DeviceInfo
+
     from .coordinator import TechCoordinator
+    from .tech import Tech
 
 from .const import (
     DEFAULT_ICON,
@@ -42,7 +45,7 @@ class Translations:
         self._texts: dict[str, str] = (data or {}).get("data", {})
 
     @classmethod
-    async def load(cls, language: str, api) -> Translations:
+    async def load(cls, language: str, api: Tech) -> Translations:
         """Fetch the subtitle catalog for ``language`` from the API.
 
         Args:
@@ -138,7 +141,7 @@ def compute_menu_depths(
     depths: dict[str, int] = {}
     for menu_key, item in menus.items():
         depth = 0
-        cur = item
+        cur: dict[str, Any] | None = item
         seen: set[tuple[str, int]] = set()
         while cur is not None and cur.get("parentId", 0) != 0:
             cur_key = (cur["menuType"], cur["id"])
@@ -177,7 +180,7 @@ def build_menu_group_names(
     return groups
 
 
-def via_controller(coordinator: TechCoordinator) -> dict[str, Any]:
+def via_controller(coordinator: TechCoordinator) -> DeviceInfo:
     """Return the device-info entry that names the controller as a parent.
 
     The device registry resolves a parent by device id, and the controller's

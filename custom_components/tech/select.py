@@ -4,7 +4,6 @@ import logging
 from typing import Any
 
 from homeassistant.components.select import SelectEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_IDENTIFIERS,
     ATTR_MANUFACTURER,
@@ -27,7 +26,7 @@ from .const import (
     MENU_ITEM_TYPE_CHOICE,
     UDID,
 )
-from .coordinator import TechCoordinator
+from .coordinator import TechConfigEntry, TechCoordinator
 from .entity import ReportedEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -40,7 +39,7 @@ PARALLEL_UPDATES = 1
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: TechConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Tech select entities from menu choice parameters.
@@ -93,7 +92,9 @@ async def async_setup_entry(
     async_add_entities(entities, True)
 
 
-class MenuSelectEntity(ReportedEntity, CoordinatorEntity, SelectEntity):
+class MenuSelectEntity(
+    ReportedEntity, CoordinatorEntity[TechCoordinator], SelectEntity
+):
     """A choice menu parameter exposed as a Home Assistant select entity."""
 
     _attr_has_entity_name = True
@@ -104,7 +105,7 @@ class MenuSelectEntity(ReportedEntity, CoordinatorEntity, SelectEntity):
         item: dict[str, Any],
         menu_key: str,
         coordinator: TechCoordinator,
-        config_entry: ConfigEntry,
+        config_entry: TechConfigEntry,
         group_names: dict[tuple[str, int], str],
         depth: int = 0,
         zone_id: int | None = None,

@@ -161,9 +161,14 @@ rules:
   test_coverage:
     status: done
     comment: >-
-      The two suites together cover 97.7% of custom_components.tech, with every
-      module at or above 95%. CI and the devenv scripts measure the whole
-      package across both suites with --cov-fail-under=95.
+      The two suites together cover 98% of custom_components.tech, and every
+      module is at or above 95% -- sensor.py 96%, __init__.py, assets.py,
+      coordinator.py and select.py 97%, climate.py and tech.py 98%, the rest 99
+      to 100%, as the term-missing table shows. CI and the devenv scripts run
+      both suites over the whole package with --cov-fail-under=95 for the total,
+      and then script/check_module_coverage.py reads the JSON report and fails on
+      any module under the floor, so the per-module half of this rule is gated
+      rather than read by eye.
 
   # ---------------------------------------------------------------------------
   # Gold
@@ -330,3 +335,32 @@ rules:
       async_remove_config_entry_device is implemented as well, so a device can be
       deleted by hand; only the controller's own device refuses, because
       removing it would be undone by the next setup.
+  async_dependency:
+    status: exempt
+    comment: >-
+      There is no external dependency to be async: the integration speaks to the
+      eModul API through its own client on Home Assistant's aiohttp session, and
+      the manifest declares no requirements. The rule's own exception covers
+      this -- it does not apply when an integration has no external dependency.
+  inject_websession:
+    status: done
+    comment: >-
+      The API client is handed the session it uses rather than making one:
+      Tech.__init__ takes a ClientSession, and both places that build one pass in
+      Home Assistant's shared session (async_get_clientsession, in __init__.py
+      and in config_flow.py). Nothing in the integration constructs a session of
+      its own.
+  strict_typing:
+    status: done
+    comment: >-
+      The component is fully annotated and passes mypy in strict mode: fifteen
+      source files, no issues. The package carries a py.typed marker, [tool.mypy]
+      in pyproject.toml targets it with strict = true, and a bare mypy is a gate
+      in the CI workflow and in the devenv scripts. Config entries are typed with
+      TechConfigEntry (ConfigEntry[TechCoordinator]) and that alias is used in
+      every signature that takes an entry, which is this rule's runtime-data
+      clause. Reaching it fixed conformance problems rather than only adding
+      hints: the entity mixin derives from Entity and the entities parameterise
+      CoordinatorEntity[TechCoordinator], the redundant state property became
+      native_value and is_on (Home Assistant declares state final), and the flow
+      schemas moved to probatio, which is what the platform types data_schema as.

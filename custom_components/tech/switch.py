@@ -4,7 +4,6 @@ import logging
 from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_IDENTIFIERS,
     ATTR_MANUFACTURER,
@@ -27,7 +26,7 @@ from .const import (
     MENU_ITEM_TYPE_ON_OFF,
     UDID,
 )
-from .coordinator import TechCoordinator
+from .coordinator import TechConfigEntry, TechCoordinator
 from .entity import ReportedEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -40,7 +39,7 @@ PARALLEL_UPDATES = 1
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: TechConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Tech switch entities from menu on/off parameters.
@@ -90,7 +89,9 @@ async def async_setup_entry(
     async_add_entities(entities, True)
 
 
-class MenuSwitchEntity(ReportedEntity, CoordinatorEntity, SwitchEntity):
+class MenuSwitchEntity(
+    ReportedEntity, CoordinatorEntity[TechCoordinator], SwitchEntity
+):
     """An on/off menu parameter exposed as a Home Assistant switch entity."""
 
     _attr_has_entity_name = True
@@ -101,7 +102,7 @@ class MenuSwitchEntity(ReportedEntity, CoordinatorEntity, SwitchEntity):
         item: dict[str, Any],
         menu_key: str,
         coordinator: TechCoordinator,
-        config_entry: ConfigEntry,
+        config_entry: TechConfigEntry,
         group_names: dict[tuple[str, int], str],
         depth: int = 0,
         zone_id: int | None = None,

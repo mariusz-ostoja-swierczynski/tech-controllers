@@ -3,7 +3,6 @@
 import logging
 from typing import Any
 
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, CONF_TOKEN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import (
@@ -26,7 +25,7 @@ from .const import (
     USER_ID,
     VER,
 )
-from .coordinator import TechCoordinator
+from .coordinator import TechConfigEntry, TechCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,7 +35,6 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 # controller. Platforms reach it through ``config_entry.runtime_data`` instead
 # of a shared ``hass.data`` mapping: it is typed, and there is nothing left to
 # unwind when the entry unloads.
-type TechConfigEntry = ConfigEntry[TechCoordinator]
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # pylint: disable=unused-argument

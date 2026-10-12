@@ -4,7 +4,6 @@ import logging
 from typing import Any
 
 from homeassistant.components.number import NumberEntity, NumberMode
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_IDENTIFIERS,
     ATTR_MANUFACTURER,
@@ -29,7 +28,7 @@ from .const import (
     UDID,
     VALUE_FORMAT_TENTH,
 )
-from .coordinator import TechCoordinator
+from .coordinator import TechConfigEntry, TechCoordinator
 from .entity import ReportedEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,7 +43,7 @@ _EDITABLE_TYPES = MENU_ITEM_TYPE_VALUE | {MENU_ITEM_TYPE_UNIVERSAL_VALUE}
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: TechConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Tech number entities from menu parameters.
@@ -95,7 +94,9 @@ async def async_setup_entry(
     async_add_entities(entities, True)
 
 
-class MenuNumberEntity(ReportedEntity, CoordinatorEntity, NumberEntity):
+class MenuNumberEntity(
+    ReportedEntity, CoordinatorEntity[TechCoordinator], NumberEntity
+):
     """A numeric menu parameter exposed as a Home Assistant number entity."""
 
     _attr_has_entity_name = True
@@ -106,7 +107,7 @@ class MenuNumberEntity(ReportedEntity, CoordinatorEntity, NumberEntity):
         item: dict[str, Any],
         menu_key: str,
         coordinator: TechCoordinator,
-        config_entry: ConfigEntry,
+        config_entry: TechConfigEntry,
         group_names: dict[tuple[str, int], str],
         depth: int = 0,
         zone_id: int | None = None,

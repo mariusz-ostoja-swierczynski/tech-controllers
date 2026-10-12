@@ -66,7 +66,9 @@
       echo '🧪 Running tests'
       pytest tests/ --cov-report= --cov=custom_components.tech
       echo '🧪 Running Home Assistant tests'
-      pytest tests_ha/ --cov-report=term-missing --cov=custom_components.tech --cov-append --cov-fail-under=95
+      pytest tests_ha/ --cov-report=term-missing --cov-report=json --cov=custom_components.tech --cov-append --cov-fail-under=95
+      echo '🧪 Checking every module'
+      python script/check_module_coverage.py
     '';
     description = "Test integration";
   };
@@ -77,6 +79,14 @@
       ruff check . --fix
     '';
     description = "Run lint";
+  };
+
+  scripts.typecheck = {
+    exec = ''
+      echo '🔍 Typecheck the integration'
+      mypy
+    '';
+    description = "Typecheck the integration";
   };
 
   enterShell = ''
@@ -111,6 +121,7 @@
   enterTest = ''
     echo '🧪 Running tests'
     pytest tests/ --cov-report= --cov=custom_components.tech
-    pytest tests_ha/ --cov-report=term-missing --cov=custom_components.tech --cov-append --cov-fail-under=95
+    pytest tests_ha/ --cov-report=term-missing --cov-report=json --cov=custom_components.tech --cov-append --cov-fail-under=95
+    python script/check_module_coverage.py
   '';
 }

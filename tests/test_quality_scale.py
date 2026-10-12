@@ -30,7 +30,7 @@ _QUALITY_SCALE_FILE = _TECH_DIR / "quality_scale.yaml"
 _MANIFEST_FILE = _TECH_DIR / "manifest.json"
 
 # The highest tier the project claims; the manifest announces the same one.
-_TIER = "gold"
+_TIER = "platinum"
 
 # The tiers below and including that one, from the rules index page. Pinned on
 # purpose: adding a rule here (or dropping one) is a deliberate statement about
@@ -104,11 +104,21 @@ _GOLD_RULES = frozenset(
     }
 )
 
-_ALL_RULES = _BRONZE_RULES | _SILVER_RULES | _GOLD_RULES
+# Platinum is tracked in full: the tiers above it are not listed until work on
+# them starts.
+_PLATINUM_RULES = frozenset(
+    {
+        "async_dependency",
+        "inject_websession",
+        "strict_typing",
+    }
+)
+
+_ALL_RULES = _BRONZE_RULES | _SILVER_RULES | _GOLD_RULES | _PLATINUM_RULES
 
 # The tiers the manifest announces, which therefore may hold no open work: the
-# tiers are cumulative, so claiming Gold claims Bronze and Silver with it.
-_CLAIMED_RULES = _BRONZE_RULES | _SILVER_RULES | _GOLD_RULES
+# tiers are cumulative, so claiming Platinum claims every tier below it.
+_CLAIMED_RULES = _ALL_RULES
 
 _STATUSES = frozenset({"todo", "done", "exempt"})
 
@@ -184,7 +194,7 @@ def test_only_rules_of_an_unclaimed_tier_may_be_todos() -> None:
     """
     todos = {rule for rule, entry in _entries().items() if entry["status"] == "todo"}
 
-    assert todos <= _GOLD_RULES
+    assert todos <= (_ALL_RULES - _CLAIMED_RULES)
 
 
 def test_manifest_declares_the_same_tier() -> None:

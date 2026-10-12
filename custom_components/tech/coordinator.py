@@ -19,6 +19,12 @@ from .tech import Tech, TechError, TechLoginError
 
 _LOGGER = logging.getLogger(__package__)
 
+# The config entry this integration runs on, typed with the coordinator it
+# carries in runtime_data. Platinum's strict-typing rule asks for the custom
+# entry to be used throughout, not only where runtime_data is read, so every
+# signature that takes an entry names this rather than the bare ConfigEntry.
+type TechConfigEntry = ConfigEntry[TechCoordinator]
+
 # Translation keys for what the entry shows while it cannot reach the API or the
 # token is rejected; the sentences around them are the fallbacks and the detail
 # the log carries.
@@ -76,9 +82,9 @@ class TechCoordinator(DataUpdateCoordinator):
         # here, to be told by an entity when it leaves Home Assistant. An entity
         # that has left may be registered again, which is what lets a payload
         # that brings its source entry back rebuild it.
-        self.forget_callbacks: list[Callable[[str], None]] = []
+        self.forget_callbacks: list[Callable[[str | None], None]] = []
 
-    async def _async_update_data(self) -> dict:
+    async def _async_update_data(self) -> dict[str, Any]:
         """Fetch the latest module data for the configured controller.
 
         Returns:

@@ -6,7 +6,7 @@ from collections.abc import Mapping
 import logging
 from typing import Any
 
-import voluptuous as vol
+import probatio
 
 from homeassistant import config_entries, core, exceptions
 from homeassistant.config_entries import (
@@ -44,16 +44,17 @@ from .const import (
     USER_ID,
     VER,
 )
+from .coordinator import TechConfigEntry
 from .tech import Tech, TechError, TechLoginError
 
 _LOGGER = logging.getLogger(__name__)
 
-DATA_SCHEMA = vol.Schema(
+DATA_SCHEMA = probatio.Schema(
     {
-        vol.Required(CONF_USERNAME): TextSelector(
+        probatio.Required(CONF_USERNAME): TextSelector(
             TextSelectorConfig(autocomplete="username")
         ),
-        vol.Required(CONF_PASSWORD): TextSelector(
+        probatio.Required(CONF_PASSWORD): TextSelector(
             TextSelectorConfig(
                 type=TextSelectorType.PASSWORD,
                 autocomplete="current-password",
@@ -65,7 +66,7 @@ DATA_SCHEMA = vol.Schema(
 
 def controllers_schema(
     controllers: list[dict[str, Any]], *, with_naming: bool = True
-) -> vol.Schema:
+) -> probatio.Schema:
     """Build the selection form for the provided controller list.
 
     One controller per flow run: the user repeats the flow for the next one, so
@@ -86,7 +87,7 @@ def controllers_schema(
 
     """
     fields: dict[Any, Any] = {
-        vol.Required(CONTROLLERS): SelectSelector(
+        probatio.Required(CONTROLLERS): SelectSelector(
             SelectSelectorConfig(
                 options=[
                     SelectOptionDict(
@@ -101,9 +102,11 @@ def controllers_schema(
     }
 
     if with_naming:
-        fields[vol.Required(INCLUDE_HUB_IN_NAME, default=False)] = BooleanSelector()
+        fields[probatio.Required(INCLUDE_HUB_IN_NAME, default=False)] = (
+            BooleanSelector()
+        )
 
-    return vol.Schema(fields)
+    return probatio.Schema(fields)
 
 
 async def validate_input(
@@ -169,7 +172,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry: ConfigEntry) -> TechOptionsFlow:
+    def async_get_options_flow(config_entry: TechConfigEntry) -> TechOptionsFlow:
         """Return the options flow that edits this entry's settings."""
         return TechOptionsFlow()
 
@@ -483,9 +486,9 @@ class TechOptionsFlow(OptionsFlowWithReload):
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema(
+            data_schema=probatio.Schema(
                 {
-                    vol.Required(
+                    probatio.Required(
                         INCLUDE_HUB_IN_NAME,
                         default=self.config_entry.options.get(
                             INCLUDE_HUB_IN_NAME, False
