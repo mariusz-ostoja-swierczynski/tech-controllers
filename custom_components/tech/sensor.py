@@ -39,9 +39,9 @@ from homeassistant.components.sensor.const import SensorDeviceClass, SensorState
 from homeassistant.const import (
     ATTR_IDENTIFIERS,
     ATTR_MANUFACTURER,
+    ATTR_SW_VERSION,
     CONF_DESCRIPTION,
     CONF_ID,
-    CONF_MODEL,
     CONF_NAME,
     CONF_PARAMS,
     CONF_TYPE,
@@ -103,7 +103,6 @@ from .const import (
     VALVE_SENSOR_CURRENT_TEMPERATURE,
     VALVE_SENSOR_RETURN_TEMPERATURE,
     VALVE_SENSOR_SET_TEMPERATURE,
-    VER,
     VISIBILITY,
     WIDGET_COLLECTOR_PUMP,
     WIDGET_DHW_PUMP,
@@ -667,11 +666,6 @@ class ZoneSensor(ReportedEntity, CoordinatorEntity[TechCoordinator], SensorEntit
             if not self._config_entry.options.get(INCLUDE_HUB_IN_NAME, False)
             else f"{self._config_entry.title} {device[CONF_DESCRIPTION][CONF_NAME]}"
         )
-        self._model = (
-            config_entry.data[CONTROLLER][CONF_NAME]
-            + ": "
-            + config_entry.data[CONTROLLER][VER]
-        )
         self._manufacturer = MANUFACTURER
         self._attr_translation_placeholders = {"entity_name": ""}
         self.update_properties(device)
@@ -716,7 +710,8 @@ class ZoneSensor(ReportedEntity, CoordinatorEntity[TechCoordinator], SensorEntit
                 (DOMAIN, self._unique_id)
             },  # Unique identifiers for the device
             CONF_NAME: self._device_name,  # Name of the device
-            CONF_MODEL: self._model,  # Model of the device
+            "model": assets.controller_model(self._config_entry),
+            ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
             ATTR_MANUFACTURER: self._manufacturer,  # Manufacturer of the device
             # A zone is part of the controller, so its device belongs under it.
             **assets.via_controller(self.coordinator),
@@ -1173,7 +1168,6 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
         self.state_class = SensorStateClass.MEASUREMENT
         # self.device_name = device[CONF_DESCRIPTION][CONF_NAME]
         self.manufacturer = MANUFACTURER
-        self.model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
         self._attr_translation_key = "temperature_entity"
         self._attr_translation_placeholders = (
             {"entity_name": ""} if create_device else {"entity_name": f"{self._name}"}
@@ -1199,7 +1193,8 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
                     (DOMAIN, self._unique_id)
                 },  # Unique identifiers for the device
                 CONF_NAME: self._name,  # Name of the device
-                CONF_MODEL: self.model,  # Model of the device
+                "model": assets.controller_model(self._config_entry),
+                ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
                 ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
                 # The tile this entity belongs to is part of the controller.
                 **assets.via_controller(self.coordinator),
@@ -1228,7 +1223,6 @@ class TileTemperatureBatterySensor(TileSensor, SensorEntity):
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
         self.manufacturer = MANUFACTURER
-        self.model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
         self._attr_translation_key = "battery_entity"
         self._attr_translation_placeholders = (
             {"entity_name": ""} if create_device else {"entity_name": f"{self._name}"}
@@ -1254,7 +1248,8 @@ class TileTemperatureBatterySensor(TileSensor, SensorEntity):
                     (DOMAIN, self._unique_id)
                 },  # Unique identifiers for the device
                 CONF_NAME: self._name,  # Name of the device
-                CONF_MODEL: self.model,  # Model of the device
+                "model": assets.controller_model(self._config_entry),
+                ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
                 ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
                 **assets.via_controller(self.coordinator),
             }
@@ -1281,7 +1276,6 @@ class TileTemperatureSignalSensor(TileSensor, SensorEntity):
         """Initialize the sensor."""
         TileSensor.__init__(self, device, coordinator, config_entry)
         self.manufacturer = MANUFACTURER
-        self.model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
         self._attr_translation_key = "signal_strength_entity"
         self._attr_translation_placeholders = (
             {"entity_name": ""} if create_device else {"entity_name": f"{self._name}"}
@@ -1311,7 +1305,8 @@ class TileTemperatureSignalSensor(TileSensor, SensorEntity):
                     (DOMAIN, self._unique_id)
                 },  # Unique identifiers for the device
                 CONF_NAME: self._name,  # Name of the device
-                CONF_MODEL: self.model,  # Model of the device
+                "model": assets.controller_model(self._config_entry),
+                ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
                 ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
                 **assets.via_controller(self.coordinator),
             }
@@ -1774,11 +1769,6 @@ class TileGenericOpenThermSensor(TileSensor, SensorEntity):
             f"{self._config_entry.title} "
             f"{coordinator.translations.get_text_by_type(device[CONF_TYPE])}"
         )
-        self.model = (
-            config_entry.data[CONTROLLER][CONF_NAME]
-            + ": "
-            + config_entry.data[CONTROLLER][VER]
-        )
         self._name = coordinator.translations.get_text(self._txt_id)
 
         self.attrs: dict[str, Any] = {}
@@ -1801,8 +1791,12 @@ class TileGenericOpenThermSensor(TileSensor, SensorEntity):
                 (DOMAIN, self._unique_id)
             },  # Unique identifiers for the device
             CONF_NAME: self.device_name,  # Name of the device
-            CONF_MODEL: self.model,  # Model of the device
+            "model": assets.controller_model(self._config_entry),
+            ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
             ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+            # This sensor's tile is part of the controller, so its device
+            # belongs under it like the other tile devices.
+            **assets.via_controller(self.coordinator),
         }
 
 

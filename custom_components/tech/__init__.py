@@ -3,7 +3,7 @@
 import logging
 from typing import Any
 
-from homeassistant.const import CONF_NAME, CONF_TOKEN
+from homeassistant.const import CONF_TOKEN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import (
     config_validation as cv,
@@ -23,7 +23,6 @@ from .const import (
     PLATFORMS,
     UDID,
     USER_ID,
-    VER,
 )
 from .coordinator import TechConfigEntry, TechCoordinator
 
@@ -97,8 +96,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: TechConfigEntry) -> bool
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, controller[UDID])},
         name=entry.title,
-        model=controller.get(CONF_NAME, ""),
-        sw_version=controller.get(VER, ""),
+        # The API's descriptor carries the model and the firmware in one string,
+        # so both are read from it: the model gives the device its heading in the
+        # UI, sw_version its firmware. A model field of its own does not exist,
+        # and the entry's title would only repeat the device name.
+        model=assets.controller_model(entry),
+        sw_version=assets.controller_firmware(entry),
         manufacturer=MANUFACTURER,
     )
     coordinator.controller_device_id = controller_device.id

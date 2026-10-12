@@ -12,10 +12,10 @@ from homeassistant.components.climate.const import (
 from homeassistant.const import (
     ATTR_IDENTIFIERS,
     ATTR_MANUFACTURER,
+    ATTR_SW_VERSION,
     ATTR_TEMPERATURE,
     CONF_DESCRIPTION,
     CONF_ID,
-    CONF_MODEL,
     CONF_NAME,
     CONF_ZONE,
     STATE_OFF,
@@ -28,7 +28,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import assets
-from .const import CONTROLLER, DOMAIN, INCLUDE_HUB_IN_NAME, MANUFACTURER, UDID, VER
+from .const import CONTROLLER, DOMAIN, INCLUDE_HUB_IN_NAME, MANUFACTURER, UDID
 from .coordinator import TechConfigEntry, TechCoordinator
 from .entity import ReportedEntity, add_later
 
@@ -109,11 +109,6 @@ class TechThermostat(ReportedEntity, ClimateEntity, CoordinatorEntity[TechCoordi
         )
 
         self.manufacturer = MANUFACTURER
-        self.model = (
-            config_entry.data[CONTROLLER][CONF_NAME]
-            + ": "
-            + config_entry.data[CONTROLLER][VER]
-        )
         self._temperature = None
         self._target_temperature = None
         self.update_properties(device)
@@ -133,7 +128,8 @@ class TechThermostat(ReportedEntity, ClimateEntity, CoordinatorEntity[TechCoordi
                 (DOMAIN, self._unique_id)
             },  # Unique identifiers for the device
             CONF_NAME: self.device_name,  # Name of the device
-            CONF_MODEL: self.model,  # Model of the device
+            "model": assets.controller_model(self._config_entry),
+            ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
             ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
             # A thermostat is a zone of the controller, so it belongs under it
             # in the device tree rather than beside it.

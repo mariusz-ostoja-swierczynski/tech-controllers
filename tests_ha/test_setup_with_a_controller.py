@@ -24,7 +24,7 @@ from common import EMPTY_MENU, UDID, entity_counts, entry_for, set_up
 import pytest
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
-from custom_components.tech.const import DOMAIN, SCAN_INTERVAL
+from custom_components.tech.const import CONTROLLER, DOMAIN, SCAN_INTERVAL, VER
 from custom_components.tech.tech import Tech
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
@@ -144,6 +144,20 @@ async def test_the_zone_devices_hang_under_the_controller(
 
     assert children
     assert {device.via_device_id for device in children} == {controller.id}
+    # Every device reports the firmware of the controller it belongs to, and no
+    # model: the API describes a controller with one string that carries its
+    # version, and a model would only repeat the device's name.
+    firmware = entry.data[CONTROLLER][VER]
+    assert firmware
+    assert controller.sw_version == firmware
+    assert {device.sw_version for device in children} == {firmware}
+    assert controller.model is None
+    assert {device.model for device in children} == {None}
+    # Every device keeps its name: the controller is named after the entry and a
+    # child after the zone it stands for, and neither is emptied by the model
+    # being cleared.
+    assert controller.name == entry.title
+    assert all(device.name for device in children)
     assert "deprecated `via_device`" not in caplog.text
 
 

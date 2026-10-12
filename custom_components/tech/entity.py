@@ -36,6 +36,7 @@ from typing import Any
 from homeassistant.const import (
     ATTR_IDENTIFIERS,
     ATTR_MANUFACTURER,
+    ATTR_SW_VERSION,
     CONF_DESCRIPTION,
     CONF_ID,
     CONF_NAME,
@@ -48,6 +49,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from . import assets
 from .const import (
     CONTROLLER,
     DOMAIN,
@@ -55,7 +57,6 @@ from .const import (
     TXT_ID_BY_TYPE,
     TXT_ID_IS_STATUS_FOR_TYPES,
     UDID,
-    VER,
 )
 from .coordinator import TechConfigEntry, TechCoordinator
 
@@ -203,12 +204,11 @@ class TileEntity(
         controllers (ST-491, ST-505, ST-976...) still produce a single
         device with grouped entities instead of orphaned, ungrouped entries.
         """
-        controller = self._config_entry.data[CONTROLLER]
         return {
             ATTR_IDENTIFIERS: {(DOMAIN, self._udid)},
             CONF_NAME: self._config_entry.title,
-            "model": controller.get(CONF_NAME, ""),
-            "sw_version": controller.get(VER, ""),
+            "model": assets.controller_model(self._config_entry),
+            ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
             ATTR_MANUFACTURER: MANUFACTURER,
         }
 

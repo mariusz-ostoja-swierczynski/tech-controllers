@@ -31,6 +31,11 @@ _TECH_DIR = _REPO_ROOT / "custom_components" / "tech"
 
 _UDID = "d" * 32
 _HUB = "L-8 DEMO"
+# What the API reports for a controller: one string carrying its model and its
+# firmware, which every device under it is described from.
+_TECH_VERSION = "TECH: L8 (v.2.1.19)"
+_TECH_MODEL = "L8"
+_TECH_FIRMWARE = "v.2.1.19"
 
 # ---------------------------------------------------------------------------
 # Home Assistant stubs. Only what the platform modules, const.py and
@@ -239,6 +244,7 @@ def _fake_module(name: str) -> types.ModuleType:
         module.ATTR_ID = "id"
         module.ATTR_IDENTIFIERS = "identifiers"
         module.ATTR_MANUFACTURER = "manufacturer"
+        module.ATTR_SW_VERSION = "sw_version"
         module.CONF_DESCRIPTION = "description"
         module.CONF_ID = "id"
         module.CONF_MODEL = "model"
@@ -481,7 +487,7 @@ class _Entry:
         self.title = title
         self.entry_id = "entry-id"
         self.data = {
-            const.CONTROLLER: {const.UDID: _UDID},
+            const.CONTROLLER: {const.UDID: _UDID, const.VER: _TECH_VERSION},
             const.INCLUDE_HUB_IN_NAME: include_hub_in_name,
         }
         # The coordinator lives on the entry (``runtime_data``) rather than in a
@@ -555,6 +561,10 @@ def test_zone_entity_uses_the_zone_device_name(
     # The zone belongs to the controller, which the device tree shows by
     # hanging the zone device under the controller's own device id.
     assert info["via_device_id"] == "controller-device"
+    # A zone has no firmware or model of its own: both come from the controller's
+    # descriptor.
+    assert info["sw_version"] == _TECH_FIRMWARE
+    assert info["model"] == _TECH_MODEL
 
 
 @pytest.mark.parametrize(("module_name", "class_name"), PLATFORMS, ids=_PLATFORM_IDS)
@@ -570,6 +580,10 @@ def test_unzoned_entity_stays_on_the_controller_device(
     assert info["identifiers"] == {(const.DOMAIN, _UDID)}
     assert info["name"] == _HUB
     assert info["manufacturer"] == const.MANUFACTURER
+    # The controller's own device reports the model and the firmware the API's
+    # descriptor carries, so it has both a heading and a version.
+    assert info["sw_version"] == _TECH_FIRMWARE
+    assert info["model"] == _TECH_MODEL
     # The controller is the top of this integration's device tree.
     assert "via_device_id" not in info
 
@@ -592,6 +606,36 @@ def test_zone_entity_falls_back_to_the_hub_title(
     assert info["identifiers"] == {(const.DOMAIN, f"{_UDID}_101")}
     assert info["name"] == _HUB
     assert info["via_device_id"] == "controller-device"
+
+
+@pytest.mark.parametrize(
+    ("descriptor", "model", "firmware"),
+    [
+        # The shapes the recorded payloads carry, wall controllers and boilers.
+        ("TECH: L8 (v.2.1.19)", "L8", "v.2.1.19"),
+        ("TECH: ST-402N PWM  (v.1.1.2)", "ST-402N PWM", "v.1.1.2"),
+        ("TECH: ST-970 1.4.0 P01 (v.1.5.0)", "ST-970 1.4.0 P01", "v.1.5.0"),
+        # A controller that says nothing, and one whose shape we do not know:
+        # neither loses whatever it did report.
+        ("", None, ""),
+        ("1.0.0", None, "1.0.0"),
+    ],
+)
+def test_the_descriptor_yields_a_model_and_a_firmware(
+    descriptor: str, model: str | None, firmware: str
+) -> None:
+    """The model and the firmware both come from the controller's descriptor.
+
+    The modules list has no model field of its own, so the descriptor is the only
+    source there is: everything before the trailing parenthesised version is the
+    model, with the vendor prefix dropped because the device reports its
+    manufacturer separately.
+    """
+    entry = _Entry()
+    entry.data[const.CONTROLLER][const.VER] = descriptor
+
+    assert assets.controller_model(entry) == model
+    assert assets.controller_firmware(entry) == firmware
 
 
 def test_a_zone_entity_without_a_known_controller_device_has_no_parent() -> None:

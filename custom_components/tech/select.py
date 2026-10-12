@@ -7,6 +7,7 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.const import (
     ATTR_IDENTIFIERS,
     ATTR_MANUFACTURER,
+    ATTR_SW_VERSION,
     CONF_NAME,
     EntityCategory,
 )
@@ -183,12 +184,16 @@ class MenuSelectEntity(
             return {
                 ATTR_IDENTIFIERS: {(DOMAIN, f"{self._udid}_{self._zone_id}")},
                 CONF_NAME: self._zone_name,
+                "model": assets.controller_model(self._config_entry),
+                ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
                 ATTR_MANUFACTURER: self.manufacturer,
                 **assets.via_controller(self.coordinator),
             }
         return {
             ATTR_IDENTIFIERS: {(DOMAIN, self._udid)},
             CONF_NAME: self._config_entry.title,
+            "model": assets.controller_model(self._config_entry),
+            ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
             ATTR_MANUFACTURER: self.manufacturer,
         }
 

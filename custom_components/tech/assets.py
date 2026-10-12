@@ -9,17 +9,20 @@ from typing import TYPE_CHECKING, Any
 from homeassistant.const import CONF_DESCRIPTION, CONF_NAME, CONF_ZONE
 
 if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
     from homeassistant.helpers.device_registry import DeviceInfo
 
     from .coordinator import TechCoordinator
     from .tech import Tech
 
 from .const import (
+    CONTROLLER,
     DEFAULT_ICON,
     ICON_BY_ID,
     ICON_BY_TYPE,
     MENU_ITEM_TYPE_GROUP,
     TXT_ID_BY_TYPE,
+    VER,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -178,6 +181,59 @@ def build_menu_group_names(
         name = translations.get_text(txt_id) if txt_id else ""
         groups[(item["menuType"], item["id"])] = name
     return groups
+
+
+def controller_descriptor(config_entry: ConfigEntry) -> str:
+    """Return the string the API uses to describe the controller.
+
+    It carries the hardware model and the firmware in one field -- the modules
+    list has no model of its own -- in the shape ``TECH: L8 (v.2.1.19)``, and the
+    recorded payloads show the same shape for the boiler controllers:
+    ``TECH: ST-402N PWM  (v.1.1.2)`` and ``TECH: ST-970 1.4.0 P01 (v.1.5.0)``.
+
+    Args:
+        config_entry: The entry of the controller the device is under.
+
+    Returns:
+        The descriptor, or an empty string when the controller carries none.
+
+    """
+    return str(config_entry.data[CONTROLLER].get(VER, "")).strip()
+
+
+def _controller_parts(config_entry: ConfigEntry) -> tuple[str | None, str]:
+    """Split a controller descriptor into its model and its firmware.
+
+    Everything before the trailing parenthesised version is the model, with the
+    vendor prefix dropped because the device already reports its manufacturer. A
+    descriptor that does not follow that shape has no model to give, and its
+    whole text stands as the firmware rather than being lost.
+
+    Args:
+        config_entry: The entry of the controller the device is under.
+
+    Returns:
+        The model, or ``None`` when the descriptor does not name one, and the
+        firmware.
+
+    """
+    descriptor = controller_descriptor(config_entry)
+    model, separator, tail = descriptor.rpartition(" (")
+    if not separator or not tail.endswith(")"):
+        return None, descriptor
+
+    firmware = tail[:-1].strip()
+    return model.strip().removeprefix("TECH:").strip() or None, firmware
+
+
+def controller_model(config_entry: ConfigEntry) -> str | None:
+    """Return the hardware model of the controller a device belongs to."""
+    return _controller_parts(config_entry)[0]
+
+
+def controller_firmware(config_entry: ConfigEntry) -> str:
+    """Return the firmware of the controller a device belongs to."""
+    return _controller_parts(config_entry)[1]
 
 
 def via_controller(coordinator: TechCoordinator) -> DeviceInfo:
