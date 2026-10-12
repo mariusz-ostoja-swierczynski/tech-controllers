@@ -495,3 +495,152 @@ async def test_selecting_a_controller_the_account_lost_aborts(
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "no_modules"
     assert not hass.config_entries.async_entries(DOMAIN)
+
+
+# ---------------------------------------------------------------------------
+# Reauthentication -- reauthentication-flow
+# ---------------------------------------------------------------------------
+
+
+async def _loaded_entry(hass: HomeAssistant) -> MockConfigEntry:
+    """Return an entry Home Assistant has set up, so it can be reauthenticated."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="L-8 DEMO",
+        version=ConfigFlow.VERSION,
+        unique_id="a" * 32,
+        data={
+            USER_ID: "42",
+            CONF_TOKEN: "expired-token",
+            CONTROLLER: _MODULES[0],
+            VER: "3.0.14: L-8 DEMO",
+        },
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    return entry
+
+
+async def _start_reauth(hass: HomeAssistant, entry: MockConfigEntry) -> dict[str, Any]:
+    """Start the reauthentication flow for ``entry`` and return its form."""
+    entry.async_start_reauth(hass)
+    await hass.async_block_till_done()
+
+    (progress,) = hass.config_entries.flow.async_progress_by_handler(DOMAIN)
+    assert progress["step_id"] == "reauth_confirm"
+    return progress
+
+
+async def test_reauthentication_stores_the_new_token(hass: HomeAssistant) -> None:
+    """New credentials refresh the entry's token and reload the entry.
+
+    Home Assistant starts this flow when the coordinator reports that the stored
+    token is no longer accepted, so the user does not have to remove the
+    controller and add it again.
+    """
+    entry = await _loaded_entry(hass)
+    progress = await _start_reauth(hass, entry)
+
+    with _patched_validation():
+        result = await hass.config_entries.flow.async_configure(
+            progress["flow_id"], _CREDENTIALS
+        )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reauth_successful"
+    assert entry.data[USER_ID] == "42"
+    assert entry.data[CONF_TOKEN] == _VALIDATED[CONF_TOKEN]
+    assert entry.data[CONTROLLER] == _MODULES[0]
+
+    await hass.async_block_till_done()
+
+
+async def test_reauthentication_refuses_a_different_account(
+    hass: HomeAssistant,
+) -> None:
+    """Credentials of another account are refused, and the entry is left alone.
+
+    A controller belongs to the account it was set up with: repointing the entry
+    at whatever account those credentials open would leave it describing a
+    controller that account may not even hold.
+    """
+    entry = await _loaded_entry(hass)
+    progress = await _start_reauth(hass, entry)
+
+    with patch(
+        "custom_components.tech.config_flow.validate_input",
+        AsyncMock(
+            return_value={
+                USER_ID: "99",
+                CONF_TOKEN: "other-account-token",
+                CONTROLLERS: _MODULES,
+            }
+        ),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            progress["flow_id"], _CREDENTIALS
+        )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "wrong_account"
+    assert entry.data[USER_ID] == "42"
+    assert entry.data[CONF_TOKEN] == "expired-token"
+
+
+async def test_reauthentication_reports_bad_credentials(hass: HomeAssistant) -> None:
+    """Wrong credentials keep the form open, with the reason shown."""
+    entry = await _loaded_entry(hass)
+    progress = await _start_reauth(hass, entry)
+
+    with patch(
+        "custom_components.tech.config_flow.validate_input",
+        AsyncMock(side_effect=InvalidAuth),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            progress["flow_id"], _CREDENTIALS
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "reauth_confirm"
+    assert result["errors"] == {"base": "invalid_auth"}
+
+
+async def test_reauthentication_reports_an_unreachable_api(
+    hass: HomeAssistant,
+) -> None:
+    """An API that cannot be reached is reported as a connection problem."""
+    entry = await _loaded_entry(hass)
+    progress = await _start_reauth(hass, entry)
+
+    with patch(
+        "custom_components.tech.config_flow.validate_input",
+        AsyncMock(side_effect=CannotConnect),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            progress["flow_id"], _CREDENTIALS
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "reauth_confirm"
+    assert result["errors"] == {"base": "cannot_connect"}
+
+
+async def test_reauthentication_reports_unexpected_errors(
+    hass: HomeAssistant,
+) -> None:
+    """Anything else is reported as an unknown error rather than crashing."""
+    entry = await _loaded_entry(hass)
+    progress = await _start_reauth(hass, entry)
+
+    with patch(
+        "custom_components.tech.config_flow.validate_input",
+        AsyncMock(side_effect=RuntimeError("boom")),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            progress["flow_id"], _CREDENTIALS
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "reauth_confirm"
+    assert result["errors"] == {"base": "unknown"}

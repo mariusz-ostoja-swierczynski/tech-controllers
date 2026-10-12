@@ -12,7 +12,9 @@
     "config": {
         "abort": {
             "already_configured": "Seade on juba konfigureeritud",
-            "no_modules": "Ühtegi moodulit ei tuvastatud ega valitud"
+            "no_modules": "Ühtegi moodulit ei tuvastatud ega valitud",
+            "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+            "wrong_account": "Need volitused kuuluvad teisele eModul kontole. Kasutage kontot, millega see kontroller seadistati."
         },
         "error": {
             "cannot_connect": "Ei saa ühendust Tech API-ga.",
@@ -43,7 +45,23 @@
                     "controllers": "Lisatav kontroller. Iga järgmise kontrolleri jaoks lisage integratsioon uuesti.",
                     "include_hub_in_name": "Lisa integratsiooni nimi selle kontrolleri tsoonide üksuste nimede ette. Kasulik, kui on seadistatud mitu kontrollerit."
                 }
+            },
+            "reauth_confirm": {
+                "description": "Teie eModul volitused ei kehti enam. Sisestage need uuesti, et seda kontrollerit edasi kasutada.",
+                "data": {
+                    "password": "Parool",
+                    "username": "Kasutajanimi"
+                },
+                "data_description": {
+                    "username": "Konto nimi (või e-posti aadress), mida kasutate emodul.eu või emodul.pl keskkonnas.",
+                    "password": "Selle konto parool."
+                }
             }
+        }
+    },
+    "exceptions": {
+        "token_rejected": {
+            "message": "eModul tokenit ei enam aktsepteerita. Logige uuesti sisse."
         }
     },
     "options": {

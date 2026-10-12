@@ -12,7 +12,9 @@
     "config": {
         "abort": {
             "already_configured": "Dispozitiv deja configurat",
-            "no_modules": "Nu au fost detectate sau selectate module"
+            "no_modules": "Nu au fost detectate sau selectate module",
+            "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+            "wrong_account": "Aceste date de autentificare aparțin altui cont eModul. Folosiți contul cu care a fost configurat acest controler."
         },
         "error": {
             "cannot_connect": "Nu se poate conecta la API-ul Tech.",
@@ -43,7 +45,23 @@
                     "controllers": "Controlerul de adăugat. Adăugați din nou integrarea pentru fiecare controler suplimentar.",
                     "include_hub_in_name": "Adăugați numele integrării înaintea numelor entităților zonelor acestui controler. Este util când sunt configurate mai multe controlere."
                 }
+            },
+            "reauth_confirm": {
+                "description": "Datele de autentificare eModul nu mai sunt valide. Introduceți-le din nou pentru a continua să folosiți acest controler.",
+                "data": {
+                    "password": "Parolă",
+                    "username": "Nume de utilizator"
+                },
+                "data_description": {
+                    "username": "Numele contului (sau adresa de e-mail) pe care îl utilizați pe emodul.eu sau emodul.pl.",
+                    "password": "Parola acelui cont."
+                }
             }
+        }
+    },
+    "exceptions": {
+        "token_rejected": {
+            "message": "Tokenul eModul nu mai este acceptat. Autentificați-vă din nou."
         }
     },
     "options": {

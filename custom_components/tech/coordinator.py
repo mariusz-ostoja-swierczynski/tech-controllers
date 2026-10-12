@@ -17,6 +17,17 @@ from .tech import Tech, TechError, TechLoginError
 
 _LOGGER = logging.getLogger(__package__)
 
+# Home Assistant shows this as the entry's error while the reauthentication flow
+# waits. The text the user reads comes from the ``exceptions.token_rejected``
+# message below/beside it in each translation file; this sentence is the
+# fallback (and the detail in the log line "could not authenticate: <this>").
+TOKEN_REJECTED = "the eModul token is no longer accepted"
+
+# Translation key for that message; the frontend resolves it as
+# ``component.<domain>.exceptions.<key>.message``, which is why it is a key and
+# not just a sentence.
+TOKEN_REJECTED_KEY = "token_rejected"
+
 
 class TechCoordinator(DataUpdateCoordinator):
     """Coordinate periodic refreshes from the Tech HTTP API.
@@ -80,11 +91,27 @@ class TechCoordinator(DataUpdateCoordinator):
                     self.config_entry.data[CONTROLLER][UDID], force=True
                 )
         except TechLoginError as err:
-            # A dead token is not the controller being unreachable: the user has
-            # to act, and Home Assistant starts the reauthentication flow for
-            # this one.
-            raise ConfigEntryAuthFailed from err
-        except (TechError, ClientError, TimeoutError) as err:
+            # A rejected login: the user has to act, and Home Assistant starts
+            # the reauthentication flow for this one.
+            raise ConfigEntryAuthFailed(
+                TOKEN_REJECTED,
+                translation_domain=DOMAIN,
+                translation_key=TOKEN_REJECTED_KEY,
+            ) from err
+        except TechError as err:
+            if err.status_code == 401:
+                # The API answers a request made with a token it no longer
+                # accepts with 401 -- the same situation as a rejected login.
+                # It has to reach Home Assistant as an authentication failure,
+                # or the entry would retry setup forever instead of asking the
+                # user for their credentials again.
+                raise ConfigEntryAuthFailed(
+                    TOKEN_REJECTED,
+                    translation_domain=DOMAIN,
+                    translation_key=TOKEN_REJECTED_KEY,
+                ) from err
+            raise UpdateFailed(f"Error communicating with API: {err}") from err
+        except (ClientError, TimeoutError) as err:
             # ``ClientError`` is a connection problem (name resolution,
             # refused, reset) and ``TimeoutError`` is the API taking longer than
             # API_TIMEOUT. Both mean "not reachable right now", which is why

@@ -12,7 +12,9 @@
     "config": {
         "abort": {
             "already_configured": "Naprava je že konfigurirana",
-            "no_modules": "Ni zaznanih ali izbranih modulov"
+            "no_modules": "Ni zaznanih ali izbranih modulov",
+            "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+            "wrong_account": "Te poverilnice pripadajo drugemu računu eModul. Uporabite račun, s katerim je bil ta krmilnik nastavljen."
         },
         "error": {
             "cannot_connect": "Ne morem se povezati s Tech API.",
@@ -43,7 +45,23 @@
                     "controllers": "Krmilnik, ki ga želite dodati. Za vsak naslednji krmilnik znova dodajte integracijo.",
                     "include_hub_in_name": "Dodajte ime integracije pred imena entitet con tega krmilnika. Koristno, kadar je nastavljenih več krmilnikov."
                 }
+            },
+            "reauth_confirm": {
+                "description": "Vaše poverilnice za eModul niso več veljavne. Vnesite jih znova, da boste lahko še naprej uporabljali ta krmilnik.",
+                "data": {
+                    "password": "Geslo",
+                    "username": "Uporabniško ime"
+                },
+                "data_description": {
+                    "username": "Ime računa (ali e-poštni naslov), ki ga uporabljate na emodul.eu ali emodul.pl.",
+                    "password": "Geslo za ta račun."
+                }
             }
+        }
+    },
+    "exceptions": {
+        "token_rejected": {
+            "message": "Žeton eModul ni več sprejet. Prijavite se znova."
         }
     },
     "options": {

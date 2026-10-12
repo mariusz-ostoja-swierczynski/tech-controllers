@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import logging
 from typing import Any
 
@@ -254,6 +255,69 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             options={
                 INCLUDE_HUB_IN_NAME: user_input.get(INCLUDE_HUB_IN_NAME, False),
             },
+        )
+
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
+        """Handle a reauthentication request from Home Assistant.
+
+        Home Assistant starts this flow when the coordinator reports that the
+        stored token is no longer accepted, so that the user can enter the
+        account's credentials again instead of removing the entry and adding the
+        controller all over.
+
+        Args:
+            entry_data: Data of the config entry being reauthenticated.
+
+        Returns:
+            The credentials form.
+
+        """
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Ask for the account credentials and store the fresh token.
+
+        Args:
+            user_input: Optional mapping with username and password.
+
+        Returns:
+            The credentials form, or the result of updating and reloading the
+            entry.
+
+        """
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            try:
+                info = await validate_input(self.hass, user_input)
+            except InvalidAuth:
+                errors["base"] = "invalid_auth"
+            except CannotConnect:
+                errors["base"] = "cannot_connect"
+            except Exception:  # pylint: disable=broad-except
+                _LOGGER.exception("Unexpected exception")
+                errors["base"] = "unknown"
+            else:
+                entry = self._get_reauth_entry()
+                if info[USER_ID] != entry.data.get(USER_ID):
+                    # A controller belongs to the account it was set up with:
+                    # pointing the entry at another account would leave it
+                    # describing a controller that account may not even hold.
+                    return self.async_abort(reason="wrong_account")
+                return self.async_update_reload_and_abort(
+                    entry,
+                    data_updates={
+                        USER_ID: info[USER_ID],
+                        CONF_TOKEN: info[CONF_TOKEN],
+                    },
+                )
+
+        return self.async_show_form(
+            step_id="reauth_confirm", data_schema=DATA_SCHEMA, errors=errors
         )
 
     def _create_controllers_array(

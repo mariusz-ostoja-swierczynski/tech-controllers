@@ -12,7 +12,9 @@
     "config": {
         "abort": {
             "already_configured": "Zařízení již nakonfigurováno",
-            "no_modules": "Nebyly detekovány žádné moduly nebo nebyly vybrány"
+            "no_modules": "Nebyly detekovány žádné moduly nebo nebyly vybrány",
+            "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+            "wrong_account": "Tyto údaje patří k jinému účtu eModul. Použijte účet, se kterým byl tento ovladač nastaven."
         },
         "error": {
             "cannot_connect": "Nelze se připojit k Tech API.",
@@ -43,7 +45,23 @@
                     "controllers": "Ovladač, který chcete přidat. Pro každý další ovladač přidejte integraci znovu.",
                     "include_hub_in_name": "Před názvy entit zón tohoto ovladače přidejte název integrace. Hodí se, když je nastaveno několik ovladačů."
                 }
+            },
+            "reauth_confirm": {
+                "description": "Vaše přihlašovací údaje k eModul už neplatí. Zadejte je znovu, abyste mohli tento ovladač dále používat.",
+                "data": {
+                    "password": "Heslo",
+                    "username": "Uživatelské jméno"
+                },
+                "data_description": {
+                    "username": "Název účtu (nebo e-mailová adresa), který používáte v emodul.eu nebo emodul.pl.",
+                    "password": "Heslo k tomuto účtu."
+                }
             }
+        }
+    },
+    "exceptions": {
+        "token_rejected": {
+            "message": "Token eModul již není akceptován. Přihlaste se znovu."
         }
     },
     "options": {

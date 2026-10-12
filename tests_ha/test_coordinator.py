@@ -16,11 +16,18 @@ from unittest.mock import AsyncMock
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.tech.const import CONTROLLER, DOMAIN, USER_ID
-from custom_components.tech.coordinator import TechCoordinator
-from custom_components.tech.tech import TechError
-from homeassistant.const import CONF_NAME
+from custom_components.tech.config_flow import ConfigFlow
+from custom_components.tech.const import CONTROLLER, DOMAIN, USER_ID, VER
+from custom_components.tech.coordinator import (
+    TOKEN_REJECTED,
+    TOKEN_REJECTED_KEY,
+    TechCoordinator,
+)
+from custom_components.tech.tech import Tech, TechError
+from homeassistant.config_entries import ConfigEntryState
+from homeassistant.const import CONF_NAME, CONF_TOKEN
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 _LOGGER_NAME = "custom_components.tech"
@@ -101,3 +108,75 @@ async def test_a_timeout_is_an_unreachable_controller_not_an_unexpected_error(
     assert "Unexpected error" not in caplog.text
 
     await coordinator.async_shutdown()
+
+
+_EXPIRED = '{"error": {"authenticated": false}}'
+
+
+async def test_an_expired_token_is_an_authentication_failure(
+    hass: HomeAssistant, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A 401 means the token is dead, not that the controller is away.
+
+    Home Assistant asks for credentials again on an authentication failure, so
+    the entry goes to "authentication expired" with the reauthentication flow
+    waiting; as an unreachable controller it would instead retry setup forever,
+    which is what the reporter saw in the UI.
+    """
+    caplog.set_level(logging.INFO, logger=_LOGGER_NAME)
+    coordinator = await _coordinator(
+        hass, AsyncMock(side_effect=TechError(401, _EXPIRED))
+    )
+
+    await coordinator.async_refresh()
+
+    assert not coordinator.last_update_success
+    assert isinstance(coordinator.last_exception, ConfigEntryAuthFailed)
+    assert str(coordinator.last_exception) == TOKEN_REJECTED
+    # The key is what makes Home Assistant show the message in the user's
+    # language; the sentence above is only the fallback.
+    assert coordinator.last_exception.translation_key == TOKEN_REJECTED_KEY
+    assert coordinator.last_exception.translation_domain == DOMAIN
+    assert "Authentication failed while fetching tech data" in caplog.text
+    assert "Error fetching tech data" not in caplog.text
+
+    await coordinator.async_shutdown()
+
+
+async def test_an_expired_token_starts_the_reauthentication_flow(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Setup that meets a 401 leaves the entry asking for credentials.
+
+    This is the reporter's case end to end: with a token the API no longer
+    accepts, the entry ends up in the "authentication expired" state with the
+    reauthentication flow in progress, instead of "failed, retrying".
+    """
+    monkeypatch.setattr(Tech, "get", AsyncMock(side_effect=TechError(401, _EXPIRED)))
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="L-8 DEMO",
+        version=ConfigFlow.VERSION,
+        unique_id="a" * 32,
+        data={
+            USER_ID: "42",
+            CONF_TOKEN: "expired-token",
+            CONTROLLER: _MODULE,
+            VER: "3.0.14: L-8 DEMO",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    assert not await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert entry.state is ConfigEntryState.SETUP_ERROR
+    # What the frontend reads to render the entry's error: the translation key
+    # resolves to this integration's ``exceptions.token_rejected`` message in
+    # the user's language, with the sentence below as the fallback.
+    assert entry.error_reason_translation_key == TOKEN_REJECTED_KEY
+    assert entry.error_reason_translation_domain == DOMAIN
+    assert entry.reason == TOKEN_REJECTED
+
+    (progress,) = hass.config_entries.flow.async_progress_by_handler(DOMAIN)
+    assert progress["step_id"] == "reauth_confirm"

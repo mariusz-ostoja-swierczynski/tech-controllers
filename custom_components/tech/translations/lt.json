@@ -12,7 +12,9 @@
     "config": {
         "abort": {
             "already_configured": "Įrenginys jau sukonfigūruotas",
-            "no_modules": "Nerasta modulių arba nepasirinkta"
+            "no_modules": "Nerasta modulių arba nepasirinkta",
+            "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+            "wrong_account": "Šie prisijungimo duomenys priklauso kitai eModul paskyrai. Naudokite paskyrą, su kuria buvo sukonfigūruotas šis valdiklis."
         },
         "error": {
             "cannot_connect": "Nepavyksta prisijungti prie Tech API.",
@@ -43,7 +45,23 @@
                     "controllers": "Valdiklis, kurį norite pridėti. Kiekvienam kitam valdikliui pridėkite integraciją iš naujo.",
                     "include_hub_in_name": "Pridėkite integracijos pavadinimą prieš šio valdiklio zonų sąvybių pavadinimus. Naudinga, kai sukonfigūruoti keli valdikliai."
                 }
+            },
+            "reauth_confirm": {
+                "description": "Jūsų eModul prisijungimo duomenys nebegalioja. Įveskite juos iš naujo, kad galėtumėte toliau naudoti šį valdiklį.",
+                "data": {
+                    "password": "Slaptažodis",
+                    "username": "Prisijungimo vardas"
+                },
+                "data_description": {
+                    "username": "Paskyros pavadinimas (arba el. pašto adresas), kurį naudojate emodul.eu arba emodul.pl.",
+                    "password": "Šios paskyros slaptažodis."
+                }
             }
+        }
+    },
+    "exceptions": {
+        "token_rejected": {
+            "message": "eModul prieigos raktas nebepriimamas. Prisijunkite iš naujo."
         }
     },
     "options": {

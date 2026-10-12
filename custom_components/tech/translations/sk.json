@@ -12,7 +12,9 @@
   "config": {
     "abort": {
       "already_configured": "Zariadenie už bolo nakonfigurované",
-      "no_modules": "Neboli nájdené alebo vybrané žiadne moduly"
+      "no_modules": "Neboli nájdené alebo vybrané žiadne moduly",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+      "wrong_account": "Tieto prihlasovacie údaje patria k inému účtu eModul. Použite účet, s ktorým bol tento modul nastavený."
     },
     "error": {
       "cannot_connect": "Nie je možné pripojiť sa k Tech API.",
@@ -43,7 +45,23 @@
           "controllers": "Modul, ktorý chcete pridať. Pre každý ďalší modul pridajte integráciu znova.",
           "include_hub_in_name": "Pred názvy entít zón tohto modulu pridajte názov integrácie. Hodí sa, ak je nastavených viac modulov."
         }
+      },
+      "reauth_confirm": {
+        "description": "Vaše prihlasovacie údaje do eModul už nie sú platné. Zadajte ich znova, aby ste mohli tento modul ďalej používať.",
+        "data": {
+          "password": "Heslo",
+          "username": "Používateľské meno"
+        },
+        "data_description": {
+          "username": "Názov účtu (alebo e-mailová adresa), ktorý používate v emodul.eu alebo emodul.pl.",
+          "password": "Heslo k tomuto účtu."
+        }
       }
+    }
+  },
+  "exceptions": {
+    "token_rejected": {
+      "message": "Token eModul už nie je prijímaný. Prihláste sa znova."
     }
   },
   "options": {

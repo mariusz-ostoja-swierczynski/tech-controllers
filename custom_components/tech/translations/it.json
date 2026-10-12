@@ -12,7 +12,9 @@
     "config": {
         "abort": {
             "already_configured": "Dispositivo già configurato",
-            "no_modules": "Nessun modulo rilevato o selezionato"
+            "no_modules": "Nessun modulo rilevato o selezionato",
+            "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+            "wrong_account": "Queste credenziali appartengono a un altro account eModul. Usa l'account con cui è stato configurato questo controller."
         },
         "error": {
             "cannot_connect": "Impossibile connettersi all'API di Tech.",
@@ -43,7 +45,23 @@
                     "controllers": "Il controller da aggiungere. Aggiungi di nuovo l'integrazione per ogni altro controller.",
                     "include_hub_in_name": "Aggiungi il nome dell'integrazione davanti ai nomi delle entità delle zone di questo controller. È utile quando sono configurati più controller."
                 }
+            },
+            "reauth_confirm": {
+                "description": "Le tue credenziali eModul non sono più valide. Inseriscile di nuovo per continuare a usare questo controller.",
+                "data": {
+                    "password": "Password",
+                    "username": "Nome utente"
+                },
+                "data_description": {
+                    "username": "Il nome dell'account (o l'indirizzo e-mail) che usi su emodul.eu o emodul.pl.",
+                    "password": "La password di quell'account."
+                }
             }
+        }
+    },
+    "exceptions": {
+        "token_rejected": {
+            "message": "Il token eModul non è più accettato. Accedi di nuovo."
         }
     },
     "options": {

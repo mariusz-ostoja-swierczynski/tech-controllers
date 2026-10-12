@@ -12,7 +12,9 @@
     "config": {
         "abort": {
             "already_configured": "Apparaat is al geconfigureerd",
-            "no_modules": "Geen modules gedetecteerd of geselecteerd"
+            "no_modules": "Geen modules gedetecteerd of geselecteerd",
+            "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+            "wrong_account": "Deze inloggegevens horen bij een ander eModul-account. Gebruik het account waarmee deze controller is ingesteld."
         },
         "error": {
             "cannot_connect": "Kan geen verbinding maken met Tech API.",
@@ -43,7 +45,23 @@
                     "controllers": "De controller die u wilt toevoegen. Voeg de integratie opnieuw toe voor elke volgende controller.",
                     "include_hub_in_name": "Zet de naam van de integratie voor de entiteitnamen van de zones van deze controller. Handig wanneer meerdere controllers zijn ingesteld."
                 }
+            },
+            "reauth_confirm": {
+                "description": "Uw eModul-inloggegevens zijn niet meer geldig. Voer ze opnieuw in om deze controller te blijven gebruiken.",
+                "data": {
+                    "password": "Wachtwoord",
+                    "username": "Gebruikersnaam"
+                },
+                "data_description": {
+                    "username": "De accountnaam (of het e-mailadres) die u gebruikt op emodul.eu of emodul.pl.",
+                    "password": "Het wachtwoord van dat account."
+                }
             }
+        }
+    },
+    "exceptions": {
+        "token_rejected": {
+            "message": "Het eModul-token wordt niet meer geaccepteerd. Meld u opnieuw aan."
         }
     },
     "options": {

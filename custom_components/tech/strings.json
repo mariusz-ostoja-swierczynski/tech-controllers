@@ -35,6 +35,17 @@
           "controllers": "The controller to add. Run the flow again for each further controller.",
           "include_hub_in_name": "Prefix the entity names of this controller's zones with the name of the integration, which helps when several controllers are set up."
         }
+      },
+      "reauth_confirm": {
+        "description": "Your eModul credentials are no longer valid. Enter them again to keep using this controller.",
+        "data": {
+          "username": "[%key:common::config_flow::data::username%]",
+          "password": "[%key:common::config_flow::data::password%]"
+        },
+        "data_description": {
+          "username": "The account name (or email address) you use on emodul.eu or emodul.pl.",
+          "password": "The password for that account."
+        }
       }
     },
     "error": {
@@ -44,7 +55,14 @@
     },
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
-      "no_modules": "No modules detected or selected"
+      "no_modules": "No modules detected or selected",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+      "wrong_account": "These credentials belong to a different eModul account. Use the account this controller was set up with."
+    }
+  },
+  "exceptions": {
+    "token_rejected": {
+      "message": "The eModul token is no longer accepted. Sign in again."
     }
   },
   "options": {
