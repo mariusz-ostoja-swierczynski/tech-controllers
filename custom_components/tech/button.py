@@ -28,6 +28,7 @@ from .const import (
     UDID,
 )
 from .coordinator import TechCoordinator
+from .entity import ReportedEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,7 +88,7 @@ async def async_setup_entry(
     async_add_entities(entities, True)
 
 
-class MenuButtonEntity(CoordinatorEntity, ButtonEntity):
+class MenuButtonEntity(ReportedEntity, CoordinatorEntity, ButtonEntity):
     """A dialogue menu parameter exposed as a Home Assistant button entity."""
 
     _attr_has_entity_name = True
@@ -174,6 +175,11 @@ class MenuButtonEntity(CoordinatorEntity, ButtonEntity):
         return super().available and self._item_accessible
 
     @property
+    def source_key(self) -> str:
+        """Return the menu item this entity was built from."""
+        return f"menu_{self._menu_key}"
+
+    @property
     def device_info(self) -> DeviceInfo | None:
         """Return device info for the zone or controller this entity belongs to."""
         if self._zone_id is not None:
@@ -181,6 +187,7 @@ class MenuButtonEntity(CoordinatorEntity, ButtonEntity):
                 ATTR_IDENTIFIERS: {(DOMAIN, f"{self._udid}_{self._zone_id}")},
                 CONF_NAME: self._zone_name,
                 ATTR_MANUFACTURER: self.manufacturer,
+                **assets.via_controller(self.coordinator),
             }
         return {
             ATTR_IDENTIFIERS: {(DOMAIN, self._udid)},

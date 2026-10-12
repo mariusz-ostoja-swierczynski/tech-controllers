@@ -21,6 +21,7 @@ from homeassistant.const import CONF_DESCRIPTION, CONF_NAME, CONF_ZONE
 from homeassistant.core import HomeAssistant
 
 _ACTUATOR = {const.BATTERY_LEVEL: 80, const.SIGNAL_STRENGTH: 60}
+
 _WINDOW = {
     const.WINDOW_STATE: "open",
     const.BATTERY_LEVEL: 70,

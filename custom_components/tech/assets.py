@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.const import CONF_DESCRIPTION, CONF_NAME, CONF_ZONE
+
+if TYPE_CHECKING:
+    from .coordinator import TechCoordinator
 
 from .const import (
     DEFAULT_ICON,
@@ -172,6 +175,50 @@ def build_menu_group_names(
         name = translations.get_text(txt_id) if txt_id else ""
         groups[(item["menuType"], item["id"])] = name
     return groups
+
+
+def via_controller(coordinator: TechCoordinator) -> dict[str, Any]:
+    """Return the device-info entry that names the controller as a parent.
+
+    The device registry resolves a parent by device id, and the controller's
+    device is created while the entry sets up, so the id is read from the
+    coordinator rather than looked up per entity. An id that is not known yet --
+    an entity built outside a running entry, as the unit tests do -- yields
+    nothing, so the entity simply has no parent.
+
+    Args:
+        coordinator: The entry's coordinator.
+
+    Returns:
+        A ``{"via_device_id": ...}`` mapping, or an empty one.
+
+    """
+    device_id = coordinator.controller_device_id
+    return {"via_device_id": device_id} if device_id else {}
+
+
+def reported_keys(data: dict[str, Any]) -> set[str]:
+    """Return the payload entries the controller reported on its last poll.
+
+    The keys are the ``source_key`` of the entities built from each entry, so a
+    poll can tell which of them the controller has stopped reporting. They come
+    from what the API client recorded for the last fetch rather than from its
+    caches, which accumulate: an entry the controller drops stays there so its
+    entities keep their last values.
+
+    Args:
+        data: The coordinator's cached payload.
+
+    Returns:
+        One key per tile, zone and menu item, prefixed by what it is.
+
+    """
+    reported = data.get("reported") or {}
+    return (
+        {f"tile_{key}" for key in reported.get("tiles", ())}
+        | {f"zone_{key}" for key in reported.get("zones", ())}
+        | {f"menu_{key}" for key in reported.get("menus", ())}
+    )
 
 
 def zone_payloads(zones: dict[int, Any] | None) -> dict[int, dict[str, Any]]:

@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from typing import Any
 
 from aiohttp import ClientError, ClientSession
 
@@ -17,16 +18,12 @@ from .tech import Tech, TechError, TechLoginError
 
 _LOGGER = logging.getLogger(__package__)
 
-# Home Assistant shows this as the entry's error while the reauthentication flow
-# waits. The text the user reads comes from the ``exceptions.token_rejected``
-# message below/beside it in each translation file; this sentence is the
-# fallback (and the detail in the log line "could not authenticate: <this>").
+# Translation keys for what the entry shows while it cannot reach the API or the
+# token is rejected; the sentences around them are the fallbacks and the detail
+# the log carries.
 TOKEN_REJECTED = "the eModul token is no longer accepted"
-
-# Translation key for that message; the frontend resolves it as
-# ``component.<domain>.exceptions.<key>.message``, which is why it is a key and
-# not just a sentence.
 TOKEN_REJECTED_KEY = "token_rejected"
+API_UNREACHABLE_KEY = "cannot_connect"
 
 
 class TechCoordinator(DataUpdateCoordinator):
@@ -65,6 +62,15 @@ class TechCoordinator(DataUpdateCoordinator):
         # Replaced with the fetched catalog in ``async_setup_entry`` before
         # any platform is set up; the empty default keeps lookups safe.
         self.translations = Translations()
+        # The registry id of the controller's device, set while the entry sets
+        # up. Entities that belong to a zone or a sensor name it as their
+        # ``via_device_id``, and the registry needs the id, not the identifier.
+        self.controller_device_id: str | None = None
+        # The entities of each payload entry, by source key, and how many polls
+        # in a row the controller has left that entry out. See
+        # ``__init__._drop_unreported_entities``.
+        self.reported: dict[str, set[Any]] = {}
+        self.reported_misses: dict[str, int] = {}
 
     async def _async_update_data(self) -> dict:
         """Fetch the latest module data for the configured controller.
@@ -110,7 +116,11 @@ class TechCoordinator(DataUpdateCoordinator):
                     translation_domain=DOMAIN,
                     translation_key=TOKEN_REJECTED_KEY,
                 ) from err
-            raise UpdateFailed(f"Error communicating with API: {err}") from err
+            raise UpdateFailed(
+                f"Error communicating with API: {err}",
+                translation_domain=DOMAIN,
+                translation_key=API_UNREACHABLE_KEY,
+            ) from err
         except (ClientError, TimeoutError) as err:
             # ``ClientError`` is a connection problem (name resolution,
             # refused, reset) and ``TimeoutError`` is the API taking longer than
@@ -118,4 +128,11 @@ class TechCoordinator(DataUpdateCoordinator):
             # they are raised as UpdateFailed: Home Assistant's coordinator logs
             # that transition once and the recovery once, and any other
             # exception would be logged as an unexpected error on every poll.
-            raise UpdateFailed(f"Error communicating with API: {err}") from err
+            # The key is what the entry shows while it retries -- Home Assistant
+            # carries it over to the ConfigEntryNotReady it wraps this in -- and
+            # the sentence is the fallback plus the detail in the log.
+            raise UpdateFailed(
+                f"Error communicating with API: {err}",
+                translation_domain=DOMAIN,
+                translation_key=API_UNREACHABLE_KEY,
+            ) from err

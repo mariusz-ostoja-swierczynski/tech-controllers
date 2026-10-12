@@ -14,7 +14,8 @@
             "already_configured": "Устройство уже настроено",
             "no_modules": "Не обнаружено модулей или выбрано",
             "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
-            "wrong_account": "Эти учётные данные принадлежат другой учётной записи eModul. Используйте ту, с которой был настроен этот контроллер."
+            "wrong_account": "Эти учётные данные принадлежат другой учётной записи eModul. Используйте ту, с которой был настроен этот контроллер.",
+            "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
         },
         "error": {
             "cannot_connect": "Не удалось подключиться к Tech API.",
@@ -56,12 +57,25 @@
                     "username": "Имя учётной записи (или адрес электронной почты), которое вы используете на emodul.eu или emodul.pl.",
                     "password": "Пароль для этой учётной записи."
                 }
+            },
+            "reconfigure": {
+                "title": "Выбор контроллера",
+                "description": "Выберите контроллер, который должно представлять эту запись.",
+                "data": {
+                    "controllers": "Контроллеры для импорта"
+                },
+                "data_description": {
+                    "controllers": "Контроллер, который нужно добавить. Для каждого следующего контроллера добавьте интеграцию заново."
+                }
             }
         }
     },
     "exceptions": {
         "token_rejected": {
             "message": "Токен eModul больше не принимается. Войдите снова."
+        },
+        "cannot_connect": {
+            "message": "API eModul недоступен. Home Assistant продолжит попытки."
         }
     },
     "options": {

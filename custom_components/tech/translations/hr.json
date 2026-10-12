@@ -14,7 +14,8 @@
             "already_configured": "Uređaj već konfiguriran",
             "no_modules": "Nisu otkriveni ili odabrani moduli",
             "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
-            "wrong_account": "Ovi podaci pripadaju drugom eModul računu. Upotrijebite račun s kojim je ovaj kontroler postavljen."
+            "wrong_account": "Ovi podaci pripadaju drugom eModul računu. Upotrijebite račun s kojim je ovaj kontroler postavljen.",
+            "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
         },
         "error": {
             "cannot_connect": "Nemoguće povezivanje s Tech API-jem.",
@@ -56,12 +57,25 @@
                     "username": "Naziv računa (ili adresa e-pošte) koji koristite na emodul.eu ili emodul.pl.",
                     "password": "Lozinka za taj račun."
                 }
+            },
+            "reconfigure": {
+                "title": "Odabir kontrolera",
+                "description": "Odaberite regulator koji ova stavka treba predstavljati.",
+                "data": {
+                    "controllers": "Kontroleri za uvoz"
+                },
+                "data_description": {
+                    "controllers": "Kontroler koji želite dodati. Za svaki sljedeći kontroler ponovno dodajte integraciju."
+                }
             }
         }
     },
     "exceptions": {
         "token_rejected": {
             "message": "eModul token više nije prihvaćen. Prijavite se ponovno."
+        },
+        "cannot_connect": {
+            "message": "eModul API nije dostupan. Home Assistant će nastaviti pokušavati."
         }
     },
     "options": {

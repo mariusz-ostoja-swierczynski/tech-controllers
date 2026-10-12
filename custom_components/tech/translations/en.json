@@ -14,7 +14,8 @@
       "already_configured": "Device already configured",
       "no_modules": "No modules detected or selected",
       "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
-      "wrong_account": "These credentials belong to a different eModul account. Use the account this controller was set up with."
+      "wrong_account": "These credentials belong to a different eModul account. Use the account this controller was set up with.",
+      "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
     },
     "error": {
       "cannot_connect": "Cannot connect to Tech API.",
@@ -56,12 +57,25 @@
           "username": "The account name (or email address) you use on emodul.eu or emodul.pl.",
           "password": "The password for that account."
         }
+      },
+      "reconfigure": {
+        "title": "Controller selection",
+        "description": "Choose the controller this entry should stand for instead.",
+        "data": {
+          "controllers": "Controller to import"
+        },
+        "data_description": {
+          "controllers": "The controller to add. Run the flow again for each further controller."
+        }
       }
     }
   },
   "exceptions": {
     "token_rejected": {
       "message": "The eModul token is no longer accepted. Sign in again."
+    },
+    "cannot_connect": {
+      "message": "The eModul API cannot be reached. Home Assistant will keep trying."
     }
   },
   "options": {

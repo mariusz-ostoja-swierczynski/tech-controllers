@@ -36,6 +36,7 @@ without that agreement the same widget could be emitted twice (or not at all).
 """
 
 import logging
+from typing import Any
 
 from homeassistant.components import binary_sensor
 from homeassistant.components.sensor.const import SensorDeviceClass
@@ -54,19 +55,17 @@ from homeassistant.helpers.typing import StateType, UndefinedType
 
 from . import TechCoordinator, assets
 from .const import (
-    CONTROLLER,
     TYPE_ADDITIONAL_PUMP,
     TYPE_FIRE_SENSOR,
     TYPE_RELAY,
     TYPE_WIDGET,
-    UDID,
     VALUE,
     VISIBILITY,
     WIDGET_COLLECTOR_PUMP,
     WIDGET_DHW_PUMP,
     widget_unit,
 )
-from .entity import TileEntity
+from .entity import TileEntity, add_later
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -182,64 +181,66 @@ async def async_setup_entry(
 
     """
     _LOGGER.debug("Setting up entry for sensors…")
-    controller = config_entry.data[CONTROLLER]
     coordinator = config_entry.runtime_data
 
-    entities = []
-    # for controller in controllers:
-    controller_udid = controller[UDID]
-    tiles = await coordinator.api.get_module_tiles(controller_udid)
-    # _LOGGER.debug("Setting up entry for binary sensors...tiles: %s", tiles)
-    for t in tiles:
-        tile = tiles[t]
-        if tile[VISIBILITY] is False:
-            continue
-        if tile[CONF_TYPE] == TYPE_RELAY:
-            entities.append(RelaySensor(tile, coordinator, config_entry))
-        if tile[CONF_TYPE] == TYPE_FIRE_SENSOR:
-            entities.append(
-                RelaySensor(
-                    tile,
-                    coordinator,
-                    config_entry,
-                    binary_sensor.BinarySensorDeviceClass.MOTION,
-                )
-            )
-        if tile[CONF_TYPE] == TYPE_ADDITIONAL_PUMP:
-            entities.append(RelaySensor(tile, coordinator, config_entry))
-        if tile[CONF_TYPE] == TYPE_WIDGET:
-            params = tile.get(CONF_PARAMS, {})
-            for widget_key in ("widget1", "widget2"):
-                widget = params.get(widget_key)
-                if not widget:
-                    continue
-                sibling = _sibling_widget(params, widget_key)
-                if _is_flag_widget(widget, sibling):
-                    entities.append(
-                        TileWidgetFlagSensor(
-                            tile, coordinator, config_entry, widget_key
-                        )
-                    )
-                if _is_contact_widget(widget, sibling):
-                    entities.append(
-                        TileWidgetContactSensor(
-                            tile, coordinator, config_entry, widget_key
-                        )
-                    )
-            # TYPE_WIDGET tiles with statusId 0 or 1 carry ON/OFF state for
-            # PWM-controlled pumps (e.g. solar collector). Only emit the binary
-            # sensor when the tile carries a pump widget that reads a pump
-            # quantity -- a temperature or a percentage -- so that a pressure,
-            # energy or runtime tile does not raise a phantom ON/OFF entity
-            # (issue #221). Pure temperature or contact widgets always report
-            # statusId=1 and never toggle.
-            status_id = tile.get(CONF_PARAMS, {}).get("statusId")
-            if status_id in (0, 1) and _has_pump_widget(tile.get(CONF_PARAMS, {})):
-                entities.append(
-                    TileWidgetStatusSensor(tile, coordinator, config_entry)
-                )
+    def _build() -> list[Any]:
+        # Read from the coordinator's payload rather than fetching: this runs
+        # again on every poll, to pick up a tile the controller adds.
+        tiles = coordinator.data.get("tiles") or {}
 
-    async_add_entities(entities, True)
+        entities = []
+        for t in tiles:
+            tile = tiles[t]
+            if tile[VISIBILITY] is False:
+                continue
+            if tile[CONF_TYPE] == TYPE_RELAY:
+                entities.append(RelaySensor(tile, coordinator, config_entry))
+            if tile[CONF_TYPE] == TYPE_FIRE_SENSOR:
+                entities.append(
+                    RelaySensor(
+                        tile,
+                        coordinator,
+                        config_entry,
+                        binary_sensor.BinarySensorDeviceClass.MOTION,
+                    )
+                )
+            if tile[CONF_TYPE] == TYPE_ADDITIONAL_PUMP:
+                entities.append(RelaySensor(tile, coordinator, config_entry))
+            if tile[CONF_TYPE] == TYPE_WIDGET:
+                params = tile.get(CONF_PARAMS, {})
+                for widget_key in ("widget1", "widget2"):
+                    widget = params.get(widget_key)
+                    if not widget:
+                        continue
+                    sibling = _sibling_widget(params, widget_key)
+                    if _is_flag_widget(widget, sibling):
+                        entities.append(
+                            TileWidgetFlagSensor(
+                                tile, coordinator, config_entry, widget_key
+                            )
+                        )
+                    if _is_contact_widget(widget, sibling):
+                        entities.append(
+                            TileWidgetContactSensor(
+                                tile, coordinator, config_entry, widget_key
+                            )
+                        )
+                # TYPE_WIDGET tiles with statusId 0 or 1 carry ON/OFF state for
+                # PWM-controlled pumps (e.g. solar collector). Only emit the
+                # binary sensor when the tile carries a pump widget that reads a
+                # pump quantity -- a temperature or a percentage -- so that a
+                # pressure, energy or runtime tile does not raise a phantom
+                # ON/OFF entity (issue #221). Pure temperature or contact widgets
+                # always report statusId=1 and never toggle.
+                status_id = tile.get(CONF_PARAMS, {}).get("statusId")
+                if status_id in (0, 1) and _has_pump_widget(tile.get(CONF_PARAMS, {})):
+                    entities.append(
+                        TileWidgetStatusSensor(tile, coordinator, config_entry)
+                    )
+
+        return entities
+
+    add_later(config_entry, coordinator, async_add_entities, _build)
 
 
 class TileBinarySensor(TileEntity, binary_sensor.BinarySensorEntity):

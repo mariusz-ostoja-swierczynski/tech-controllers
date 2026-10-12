@@ -14,7 +14,8 @@
             "already_configured": "Dispositivo já configurado",
             "no_modules": "Nenhum módulo detetado ou selecionado",
             "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
-            "wrong_account": "Estas credenciais pertencem a outra conta eModul. Utilize a conta com que este controlador foi configurado."
+            "wrong_account": "Estas credenciais pertencem a outra conta eModul. Utilize a conta com que este controlador foi configurado.",
+            "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
         },
         "error": {
             "cannot_connect": "Não é possível ligar à API da Tech.",
@@ -56,12 +57,25 @@
                     "username": "O nome da conta (ou o endereço de e-mail) que utiliza em emodul.eu ou emodul.pl.",
                     "password": "A palavra-passe dessa conta."
                 }
+            },
+            "reconfigure": {
+                "title": "Seleção de Controladores",
+                "description": "Escolha o controlador que esta entrada deve representar.",
+                "data": {
+                    "controllers": "Controladores a importar"
+                },
+                "data_description": {
+                    "controllers": "O controlador a adicionar. Adicione a integração novamente para cada controlador adicional."
+                }
             }
         }
     },
     "exceptions": {
         "token_rejected": {
             "message": "O token eModul já não é aceite. Inicie sessão novamente."
+        },
+        "cannot_connect": {
+            "message": "A API eModul está inacessível. O Home Assistant continuará a tentar."
         }
     },
     "options": {

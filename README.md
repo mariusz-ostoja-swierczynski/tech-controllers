@@ -48,6 +48,8 @@ and community reported controllers.
 
 ![Tech Thermostat Cards](./images/ha-tech-1.png)
 
+Anything the eModul app offers beyond the platforms listed above is not exposed here: what the integration provides is what its entities provide.
+
 ## :building_construction: Installation
 
 ### Prerequisites
@@ -119,6 +121,73 @@ The same preference is asked during setup, it belongs to one controller entry at
 - ST-491 (v.2.1.9) -- RS-bridged boiler controllers; CH/DHW/room temperatures, valve, fuel feeder, fan, pumps, disinfection cycle and relays exposed
 - ST-505 -- same RS-bridged-boiler family as ST-491; supported via the shared TYPE_WIDGET tile parser
 - WiFi 8S (v.2.1.8)
+
+Controllers that are not on this list may well work: the eModul module API is the same one, and the controller only has to appear in the account. One that does not work is worth an issue with the controller's JSON attached, which is what the list is built from.
+
+## :arrows_counterclockwise: How the data updates
+
+Home Assistant polls the eModul service every 60 seconds, one request per controller, and never the other way around: eModul offers no push, so a change shows up here at the next poll.
+
+- A poll that fails marks that controller's entities unavailable, and one that succeeds makes them available again; the entry says it is retrying until then.
+- A write -- a thermostat, a menu switch, a number, a select or a dialogue button -- is sent to the API and shown straight away. eModul reports the previous value for a short window while it applies the change, so the integration leaves the optimistic value in place and lets the next poll reconcile it.
+- A tile, a zone or a menu item the controller starts reporting becomes an entity on the next poll. One it stops reporting for an hour is removed, together with the device that held it.
+
+## :bulb: Examples
+
+A night setback for the zones of a controller:
+
+```yaml
+automation:
+  - alias: "Tech: night setback"
+    triggers:
+      - trigger: time
+        at: "22:30:00"
+    actions:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.l_8_demo_strefa_1
+        data:
+          temperature: 18
+```
+
+A reminder when a wireless sensor's battery runs low:
+
+```yaml
+automation:
+  - alias: "Tech: low battery"
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.l_8_demo_zone_battery
+        below: 20
+    actions:
+      - action: notify.persistent_notification
+        data:
+          title: "Sensor battery"
+          message: "{{ trigger.to_state.name }} is at {{ trigger.to_state.state }}%"
+```
+
+## :no_entry: Known limitations
+
+- eModul is a cloud service. The integration talks to it and not to the controller, so the controller has to be online in the eModul app and this Home Assistant needs an internet connection.
+- Data arrives by polling every 60 seconds, so a state can lag up to a minute behind the app.
+- One account at a time, and only the controllers that account holds; each controller is added as its own entry.
+- Tile names, menu labels and the icon a tile carries come from eModul's own data, in the language the account is set to.
+- Menu items are read when their platform sets up, so one added in the app appears after Home Assistant reloads that entry.
+- History is eModul's and Home Assistant's; this integration does not backfill it.
+
+## :wrench: Troubleshooting
+
+- Every entity of a controller is unavailable: the service could not be reached, or the controller is offline. Check the controller in the eModul app and the entry's state under `Settings` -> `Devices & services`.
+- The entry says "Authentication expired": the account's token is no longer accepted. Authenticate again from the entry's menu; the controller and its entities are kept.
+- The entry says "Failed, retrying setup: the eModul API cannot be reached": the service or the connection is down. Home Assistant retries by itself, and nothing has to be done.
+- A controller is missing from the list while setting up: the account has to hold it, and the credentials you enter are the ones whose controllers are listed.
+- Anything else: download the entry's diagnostics from its menu and attach them to an issue. They describe the controller and never carry the account's token.
+
+## :house_with_garden: Use cases
+
+- Heat with the thermostats: schedules, setbacks and away automations drive the zones like any other climate entity.
+- Watch the boiler: the sensors follow the tiles eModul reports, so a pump, a valve or a fan can be put on a dashboard and alerted on.
+- React to alarms: window sensors, the zone state and the controller's own status tiles are entities an automation can act on.
 
 ## :pray: Thanks
 

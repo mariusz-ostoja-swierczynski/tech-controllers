@@ -119,7 +119,7 @@ from .const import (
     widget_unit,
 )
 from .coordinator import TechCoordinator
-from .entity import TileEntity
+from .entity import ReportedEntity, TileEntity, add_later
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -145,28 +145,32 @@ async def async_setup_entry(
     _LOGGER.debug("Setting up sensor entry, controller udid: %s", controller_udid)
 
     coordinator = config_entry.runtime_data
-    zones = await coordinator.api.get_module_zones(controller_udid)
-    tiles = await coordinator.api.get_module_tiles(controller_udid)
 
-    zone_entities = [
-        entity
-        for zone in _iter_mapping(zones)
-        for entity in _build_zone_entities(zone, coordinator, config_entry)
-    ]
+    def _build() -> list[Any]:
+        # Read from the coordinator's payload rather than fetching: this runs
+        # again on every poll, to pick up a tile or a zone the controller adds.
+        zones = coordinator.data.get("zones") or {}
+        tiles = coordinator.data.get("tiles") or {}
 
-    tile_entities = [
-        entity
-        for tile in _iter_mapping(tiles)
-        for entity in _build_tile_entities(tile, coordinator, config_entry)
-    ]
+        zone_entities = [
+            entity
+            for zone in _iter_mapping(zones)
+            for entity in _build_zone_entities(zone, coordinator, config_entry)
+        ]
 
-    deprecated_entities = _build_deprecated_flag_sensors(
-        hass, tiles, coordinator, config_entry
-    )
+        tile_entities = [
+            entity
+            for tile in _iter_mapping(tiles)
+            for entity in _build_tile_entities(tile, coordinator, config_entry)
+        ]
 
-    async_add_entities(
-        [*tile_entities, *zone_entities, *deprecated_entities], True
-    )
+        deprecated_entities = _build_deprecated_flag_sensors(
+            hass, tiles, coordinator, config_entry
+        )
+
+        return [*tile_entities, *zone_entities, *deprecated_entities]
+
+    add_later(config_entry, coordinator, async_add_entities, _build)
 
 
 def _iter_mapping(mapping: dict[Any, Any] | Iterable[Any]) -> Iterable[Any]:
@@ -633,7 +637,7 @@ _TILE_ENTITY_BUILDERS: dict[int, TileBuilder] = {
 }
 
 
-class ZoneSensor(CoordinatorEntity, SensorEntity):
+class ZoneSensor(ReportedEntity, CoordinatorEntity, SensorEntity):
     """Representation of a Zone Sensor."""
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -692,6 +696,11 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
         self.async_write_ha_state()
 
     @property
+    def source_key(self) -> str:
+        """Return the zone this entity was built from."""
+        return f"zone_{self._id}"
+
+    @property
     def device_info(self) -> DeviceInfo | None:
         """Return Home Assistant ``DeviceInfo`` for the associated controller."""
         return {
@@ -701,6 +710,8 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
             CONF_NAME: self._device_name,  # Name of the device
             CONF_MODEL: self._model,  # Model of the device
             ATTR_MANUFACTURER: self._manufacturer,  # Manufacturer of the device
+            # A zone is part of the controller, so its device belongs under it.
+            **assets.via_controller(self.coordinator),
         }
 
     @property
@@ -775,7 +786,6 @@ class ZoneSignalStrengthSensor(ZoneSensor):
 
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_icon = "mdi:signal"
 
     @property
     def translation_key(self):
@@ -845,7 +855,6 @@ class ZoneActuatorSensor(ZoneSensor):
 
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_icon = assets.get_icon_by_type(TYPE_VALVE)
 
     def __init__(self, device, coordinator, config_entry, actuator_index) -> None:
         """Initialize the sensor.
@@ -1157,6 +1166,8 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
                 CONF_NAME: self._name,  # Name of the device
                 CONF_MODEL: self.model,  # Model of the device
                 ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+                # The tile this entity belongs to is part of the controller.
+                **assets.via_controller(self.coordinator),
             }
         # Fall back to the controller-level device defined in TileEntity so
         # tile-derived entities still get grouped on zone-less controllers.
@@ -1210,6 +1221,7 @@ class TileTemperatureBatterySensor(TileSensor, SensorEntity):
                 CONF_NAME: self._name,  # Name of the device
                 CONF_MODEL: self.model,  # Model of the device
                 ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+                **assets.via_controller(self.coordinator),
             }
         # Fall back to the controller-level device defined in TileEntity so
         # tile-derived entities still get grouped on zone-less controllers.
@@ -1223,7 +1235,6 @@ class TileTemperatureSignalSensor(TileSensor, SensorEntity):
 
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_icon = "mdi:signal"
 
     def __init__(
         self,
@@ -1267,6 +1278,7 @@ class TileTemperatureSignalSensor(TileSensor, SensorEntity):
                 CONF_NAME: self._name,  # Name of the device
                 CONF_MODEL: self.model,  # Model of the device
                 ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+                **assets.via_controller(self.coordinator),
             }
         return None
 

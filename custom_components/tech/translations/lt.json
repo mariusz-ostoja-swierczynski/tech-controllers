@@ -14,7 +14,8 @@
             "already_configured": "Įrenginys jau sukonfigūruotas",
             "no_modules": "Nerasta modulių arba nepasirinkta",
             "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
-            "wrong_account": "Šie prisijungimo duomenys priklauso kitai eModul paskyrai. Naudokite paskyrą, su kuria buvo sukonfigūruotas šis valdiklis."
+            "wrong_account": "Šie prisijungimo duomenys priklauso kitai eModul paskyrai. Naudokite paskyrą, su kuria buvo sukonfigūruotas šis valdiklis.",
+            "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
         },
         "error": {
             "cannot_connect": "Nepavyksta prisijungti prie Tech API.",
@@ -56,12 +57,25 @@
                     "username": "Paskyros pavadinimas (arba el. pašto adresas), kurį naudojate emodul.eu arba emodul.pl.",
                     "password": "Šios paskyros slaptažodis."
                 }
+            },
+            "reconfigure": {
+                "title": "Valdiklių pasirinkimas",
+                "description": "Pasirinkite valdiklį, kurį turėtų atstovauti šis įrašas.",
+                "data": {
+                    "controllers": "Valdikliai importavimui"
+                },
+                "data_description": {
+                    "controllers": "Valdiklis, kurį norite pridėti. Kiekvienam kitam valdikliui pridėkite integraciją iš naujo."
+                }
             }
         }
     },
     "exceptions": {
         "token_rejected": {
             "message": "eModul prieigos raktas nebepriimamas. Prisijunkite iš naujo."
+        },
+        "cannot_connect": {
+            "message": "eModul API nepasiekiama. Home Assistant bandys toliau."
         }
     },
     "options": {

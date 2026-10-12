@@ -455,6 +455,8 @@ class _Coordinator:
         self.data: dict = {}
         # What ``CoordinatorEntity.available`` reports; a failed poll flips it.
         self.last_update_success = True
+        # The controller's device id, which the entry's setup sets in production.
+        self.controller_device_id: str | None = "controller-device"
 
 
 class _Entry:
@@ -536,6 +538,9 @@ def test_zone_entity_uses_the_zone_device_name(
     assert info["identifiers"] == {(const.DOMAIN, f"{_UDID}_101")}
     assert info["name"] == "L-8 DEMO Strefa 1"
     assert info["manufacturer"] == const.MANUFACTURER
+    # The zone belongs to the controller, which the device tree shows by
+    # hanging the zone device under the controller's own device id.
+    assert info["via_device_id"] == "controller-device"
 
 
 @pytest.mark.parametrize(("module_name", "class_name"), PLATFORMS, ids=_PLATFORM_IDS)
@@ -551,6 +556,8 @@ def test_unzoned_entity_stays_on_the_controller_device(
     assert info["identifiers"] == {(const.DOMAIN, _UDID)}
     assert info["name"] == _HUB
     assert info["manufacturer"] == const.MANUFACTURER
+    # The controller is the top of this integration's device tree.
+    assert "via_device_id" not in info
 
 
 @pytest.mark.parametrize(("module_name", "class_name"), PLATFORMS, ids=_PLATFORM_IDS)
@@ -570,6 +577,25 @@ def test_zone_entity_falls_back_to_the_hub_title(
     info = entity.device_info
     assert info["identifiers"] == {(const.DOMAIN, f"{_UDID}_101")}
     assert info["name"] == _HUB
+    assert info["via_device_id"] == "controller-device"
+
+
+def test_a_zone_entity_without_a_known_controller_device_has_no_parent() -> None:
+    """An entity built before the controller's device id is known has no parent.
+
+    The device id is set while the entry sets up, so an entity built outside a
+    running entry -- as these tests do -- must still produce a usable device
+    instead of naming a parent that does not exist.
+    """
+    coordinator = _Coordinator()
+    coordinator.controller_device_id = None
+    entity = _modules["switch"].MenuSwitchEntity(
+        _item(), "MU_3550", coordinator, _Entry(), {}, depth=0, zone_id=101
+    )
+
+    info = entity.device_info
+    assert info["identifiers"] == {(const.DOMAIN, f"{_UDID}_101")}
+    assert "via_device_id" not in info
 
 
 @pytest.mark.parametrize(("module_name", "class_name"), PLATFORMS, ids=_PLATFORM_IDS)

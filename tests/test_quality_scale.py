@@ -7,9 +7,10 @@ Nothing in Home Assistant checks it for a custom component -- hassfest skips the
 quality scale for anything that is not built in, HACS does not read it, and the
 frontend shows the tier badge only for built-in integrations -- so these tests
 are what keeps the file honest: the rule sets are pinned to the tiers the
-project claims, the statuses are the ones the schema allows, every rule that is
-not plainly ``done`` carries the reason it is not, and no rule of a claimed tier
-is left as a ``todo``.
+project tracks, the statuses are the ones the schema allows, every rule that is
+not plainly ``done`` carries the reason it is not, no rule of a tier the
+manifest claims is left as a ``todo``, and no rule outside the tier being worked
+on is open at all.
 
 The rule ids are the docs slugs with underscores, which is the naming the
 quality scale file uses.
@@ -29,7 +30,7 @@ _QUALITY_SCALE_FILE = _TECH_DIR / "quality_scale.yaml"
 _MANIFEST_FILE = _TECH_DIR / "manifest.json"
 
 # The highest tier the project claims; the manifest announces the same one.
-_TIER = "silver"
+_TIER = "gold"
 
 # The tiers below and including that one, from the rules index page. Pinned on
 # purpose: adding a rule here (or dropping one) is a deliberate statement about
@@ -75,7 +76,39 @@ _SILVER_RULES = frozenset(
     }
 )
 
-_ALL_RULES = _BRONZE_RULES | _SILVER_RULES
+# Gold is tracked in full: the tiers above it are not listed until work on them
+# starts.
+_GOLD_RULES = frozenset(
+    {
+        "devices",
+        "diagnostics",
+        "discovery",
+        "discovery_update_info",
+        "docs_data_update",
+        "docs_examples",
+        "docs_known_limitations",
+        "docs_supported_devices",
+        "docs_supported_functions",
+        "docs_troubleshooting",
+        "docs_use_cases",
+        "dynamic_devices",
+        "entity_category",
+        "entity_device_class",
+        "entity_disabled_by_default",
+        "entity_translations",
+        "exception_translations",
+        "icon_translations",
+        "reconfiguration_flow",
+        "repair_issues",
+        "stale_devices",
+    }
+)
+
+_ALL_RULES = _BRONZE_RULES | _SILVER_RULES | _GOLD_RULES
+
+# The tiers the manifest announces, which therefore may hold no open work: the
+# tiers are cumulative, so claiming Gold claims Bronze and Silver with it.
+_CLAIMED_RULES = _BRONZE_RULES | _SILVER_RULES | _GOLD_RULES
 
 _STATUSES = frozenset({"todo", "done", "exempt"})
 
@@ -99,11 +132,11 @@ def _entries() -> dict[str, dict[str, str]]:
     return entries
 
 
-def test_declaration_covers_the_bronze_and_silver_tiers() -> None:
-    """The file declares exactly the rules of the claimed tiers.
+def test_declaration_covers_the_tracked_tiers() -> None:
+    """The file declares exactly the rules of the tiers the project tracks.
 
-    Listing a tier above the one the manifest announces would claim we track
-    rules nobody has looked at yet.
+    Listing a tier nobody has looked at yet would claim work that has not been
+    started.
     """
     assert set(_declaration()["rules"]) == set(_ALL_RULES)
 
@@ -135,10 +168,23 @@ def test_a_claimed_tier_has_no_rule_left_as_a_todo() -> None:
     done yet has to either be finished or keep the manifest a tier lower.
     """
     todos = sorted(
-        rule for rule, entry in _entries().items() if entry["status"] == "todo"
+        rule
+        for rule, entry in _entries().items()
+        if entry["status"] == "todo" and rule in _CLAIMED_RULES
     )
 
     assert todos == []
+
+
+def test_only_rules_of_an_unclaimed_tier_may_be_todos() -> None:
+    """Work left open belongs to the tier being worked on, and nowhere else.
+
+    A ``todo`` inside a claimed tier is a false claim, and one in a tier that is
+    not tracked at all would mean a rule was declared without being listed.
+    """
+    todos = {rule for rule, entry in _entries().items() if entry["status"] == "todo"}
+
+    assert todos <= _GOLD_RULES
 
 
 def test_manifest_declares_the_same_tier() -> None:

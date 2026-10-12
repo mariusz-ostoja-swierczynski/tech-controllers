@@ -29,9 +29,11 @@ becomes the single source of "Wisniowa 13 X" naming.
 """
 
 from abc import abstractmethod
+from collections.abc import Callable
 import logging
 from typing import Any
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_IDENTIFIERS,
     ATTR_MANUFACTURER,
@@ -44,6 +46,7 @@ from homeassistant.const import (
 from homeassistant.core import callback
 from homeassistant.helpers import entity
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
@@ -60,7 +63,36 @@ from .coordinator import TechCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 
+class ReportedEntity:
+    """An entity that knows which payload entry it was built from.
+
+    A controller can stop reporting a tile, a zone or a menu item -- the user
+    removed it in the eModul app, or replaced the hardware -- and the entities
+    built from it have to go with it. The coordinator keeps them under that
+    source key (``tile_42``, ``zone_3``, ``menu_MU_3550``), so a poll can tell
+    which of them the controller no longer reports. See
+    :func:`custom_components.tech._drop_unreported_entities`.
+    """
+
+    source_key: str
+
+    async def async_added_to_hass(self) -> None:
+        """Record this entity under its source key while it is registered."""
+        await super().async_added_to_hass()
+        self.coordinator.reported.setdefault(self.source_key, set()).add(self)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Forget this entity, so that a returning payload can bring it back."""
+        entities = self.coordinator.reported.get(self.source_key)
+        if entities is not None:
+            entities.discard(self)
+            if not entities:
+                self.coordinator.reported.pop(self.source_key, None)
+        await super().async_will_remove_from_hass()
+
+
 class TileEntity(
+    ReportedEntity,
     CoordinatorEntity,
     entity.Entity,
 ):
@@ -148,6 +180,11 @@ class TileEntity(
         return self._unique_id
 
     @property
+    def source_key(self) -> str:
+        """Return the tile this entity was built from."""
+        return f"tile_{self._id}"
+
+    @property
     def state(self):
         """Return the cached state reported by the Tech API."""
         return self._state
@@ -172,3 +209,60 @@ class TileEntity(
         """Handle updated data from the coordinator."""
         self.update_properties(self.coordinator.data["tiles"][self._id])
         self.async_write_ha_state()
+
+
+def add_later(
+    config_entry: ConfigEntry,
+    coordinator: TechCoordinator,
+    async_add_entities: AddEntitiesCallback,
+    build: Callable[[], list[Any]],
+) -> None:
+    """Register the entities a payload produces now, and any a later one adds.
+
+    A controller's configuration changes while Home Assistant runs: a sensor is
+    paired, a zone is created in the app, a module gains a tile. A platform
+    builds its entities once, so instead of that it builds them from the
+    coordinator's latest payload every time the data updates and registers what
+    it has not registered before -- what a controller *stops* reporting is
+    handled centrally, because a payload that is merely incomplete must not
+    remove anything.
+
+    Args:
+        config_entry: The entry being set up, used to unregister again.
+        coordinator: The entry's coordinator, and the payload each build reads.
+        async_add_entities: The platform's registration callback.
+        build: Builds the entities of the coordinator's current payload.
+
+    """
+    registered: dict[str, str] = {}
+    missing: set[str] = set()
+
+    def _add_new() -> None:
+        # A source key is shared by every entity built from that payload entry,
+        # across platforms -- a zone carries a thermostat and its sensors -- so
+        # what tells an entity apart is its own unique id, not that key.
+        live = set(coordinator.reported)
+        for unique_id, key in list(registered.items()):
+            if key in live:
+                missing.discard(key)
+            elif key in missing:
+                # Absent twice running, so the removal pass took that entity out
+                # and a payload that brings its entry back may add it again. One
+                # absence proves nothing: an entity reaches coordinator.reported
+                # only when Home Assistant calls it back, which can be later than
+                # the pass that added it, and forgetting it then would add it a
+                # second time -- which Home Assistant answers with a duplicate
+                # unique id and an ignored entity.
+                del registered[unique_id]
+                missing.discard(key)
+            else:
+                missing.add(key)
+
+        fresh = [entity for entity in build() if entity.unique_id not in registered]
+        if not fresh:
+            return
+        registered.update({entity.unique_id: entity.source_key for entity in fresh})
+        async_add_entities(fresh, True)
+
+    _add_new()
+    config_entry.async_on_unload(coordinator.async_add_listener(_add_new))

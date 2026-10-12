@@ -164,3 +164,169 @@ rules:
       The two suites together cover 97.7% of custom_components.tech, with every
       module at or above 95%. CI and the devenv scripts measure the whole
       package across both suites with --cov-fail-under=95.
+
+  # ---------------------------------------------------------------------------
+  # Gold
+  # ---------------------------------------------------------------------------
+  # The rules marked `todo` here are the Gold work list: the manifest may only
+  # announce this tier once none of them is left. A rule moves to `done` with
+  # the code, the tests and the docs behind it, the way the tiers below did.
+  devices:
+    status: done
+    comment: >-
+      Every entity carries device_info: the controller device with its
+      identifiers, name, model, manufacturer and sw_version, a device per zone
+      for the zone-attached entities, and one per wireless sensor or tile that
+      owns sub-entities. The zone and sensor devices name the controller as
+      their parent by device id (via_device_id), and the controller's device is
+      created while the entry sets up so that there is one to name.
+  diagnostics:
+    status: done
+    comment: >-
+      diagnostics.py implements async_get_config_entry_diagnostics: the entry's
+      data with the token, the account id and any credentials redacted, its
+      options, and a summary of what the controller last reported.
+      tests_ha/test_diagnostics.py pins those counts against a recorded
+      controller and asserts that the token value can never appear in a dump.
+  discovery:
+    status: exempt
+    comment: >-
+      The controllers are reached through the eModul cloud and expose no local
+      interface -- no DHCP, mDNS, SSDP, USB or Bluetooth surface to discover
+      them on. The account's controllers come back from the API as soon as the
+      user has entered their credentials.
+  discovery_update_info:
+    status: exempt
+    comment: >-
+      Nothing is discovered and no address is stored, so there is no discovery
+      information to update network data from.
+  docs_data_update:
+    status: done
+    comment: >-
+      The README's "How the data updates" section says that the integration polls
+      the eModul service every 60 seconds per controller, that eModul offers no
+      push, what a failed poll does to the entities, why a write is shown
+      optimistically, and when an entry the controller stops reporting is
+      removed.
+  docs_examples:
+    status: done
+    comment: >-
+      The README's Examples section carries two automations: a night setback for
+      a controller's zones, and a notification when a wireless sensor's battery
+      runs low.
+  docs_known_limitations:
+    status: done
+    comment: >-
+      The README's Known limitations section lists the cloud dependency, the
+      60-second polling, one account per entry, the names and icons that come
+      from eModul's own data, menu items appearing only after their entry
+      reloads, and that history is not backfilled.
+  docs_supported_devices:
+    status: done
+    comment: >-
+      The README lists the controllers reported as working, with a note that
+      the list reflects user reports rather than the vendor's own.
+  docs_supported_functions:
+    status: done
+    comment: >-
+      The README describes what the integration provides, bullet by bullet, and
+      the platforms it sets up with what each is for.
+  docs_troubleshooting:
+    status: done
+    comment: >-
+      The README's Troubleshooting section covers unavailable entities, the
+      "Authentication expired" state and what to do about it, the retrying state
+      after the API could not be reached, a controller that is missing from the
+      list, and where to download an entry's diagnostics.
+  docs_use_cases:
+    status: done
+    comment: >-
+      The README's Use cases section shows heating with the zone thermostats,
+      watching the boiler through the tiles eModul reports, and reacting to
+      alarms.
+  dynamic_devices:
+    status: done
+    comment: >-
+      The platforms that own devices -- sensor, binary_sensor and climate --
+      rebuild their entities from the coordinator's payload on every poll and
+      register what is not registered yet (entity.add_later), so a tile or a
+      zone the controller starts reporting appears as a device with its
+      entities. Menu items are rebuilt when their platform next sets up, which
+      is where they belong: they live on devices that already exist.
+  entity_category:
+    status: done
+    comment: >-
+      The entities that write to a menu are CONFIG (button, number, select,
+      switch) and the diagnostic readings are DIAGNOSTIC (the zone and tile
+      battery, signal strength, window and zone-state sensors).
+  entity_device_class:
+    status: done
+    comment: >-
+      The sensors and binary sensors carry their classes -- temperature,
+      humidity, battery, window, problem, power factor -- and the tile readings
+      take the class the widget metadata names. The menu numbers carry no unit
+      in the API payload, only a format and a range, so no class is possible for
+      them.
+  entity_disabled_by_default:
+    status: done
+    comment: >-
+      Menu items deeper than the registration limit are disabled by default
+      (button, number, select, switch), and the tile readings carry the widget
+      metadata's own enabled_default, so a reading the API marks as secondary
+      stays out of the way until it is wanted.
+  entity_translations:
+    status: done
+    comment: >-
+      The entities the integration names itself have translation keys with
+      placeholders (actuator, window, zone state, temperature, battery, signal
+      strength). Everything else is named from the controller's own text ids
+      through the eModul translation catalog, which the controller translates
+      itself -- the integration fetches it per language.
+  exception_translations:
+    status: done
+    comment: >-
+      The messages this integration shows are translation keys: the expired
+      token and the unreachable API both carry translation_domain and a key
+      (exceptions.token_rejected, exceptions.cannot_connect) with the sentence
+      kept as the fallback and as the detail in the log, in every translation
+      file. The flow uses the core keys for its own errors, and Home Assistant
+      carries a key onto the ConfigEntryNotReady it wraps a failed first poll
+      in, so the entry reads in the user's language.
+  icon_translations:
+    status: done
+    comment: >-
+      icons.json names the icons this integration chooses for the entities it
+      also keys itself -- the zone actuator's valve, which used to be set in
+      code. What else sets an icon does so for a reason a file cannot express:
+      the entity carries a device class and Home Assistant derives the icon from
+      it, the icon depends on the entity's state (the signal-strength readings),
+      or the controller itself sends the icon for a tile. A test keeps the file
+      and the keys in step, and the two dead static signal icons it replaced are
+      gone.
+  reconfiguration_flow:
+    status: done
+    comment: >-
+      async_step_reconfigure asks which of the account's controllers the entry
+      should stand for, reading the account with the entry's own token, and
+      leaves the entry's id alone while its unique id moves with the controller.
+      Credentials stay in reauthentication and the naming preference in the
+      options flow, so the flow asks one question. A controller another entry
+      already holds aborts, and an account that cannot be read keeps the form
+      usable with the reason on it.
+  repair_issues:
+    status: done
+    comment: >-
+      The one situation the user has to act on -- a flag sensor that the API no
+      longer reports and that has a replacement entity -- raises a repair issue
+      with translated text pointing at the replacement.
+  stale_devices:
+    status: done
+    comment: >-
+      An entity whose payload entry the controller stops reporting is removed,
+      and its device with it once nothing is left on it, after that entry has
+      been missing for an hour of polls (REMOVAL_MISSES): a controller being
+      reconfigured reports nothing for a while, and removing an entity loses its
+      name, its history and every automation that points at it.
+      async_remove_config_entry_device is implemented as well, so a device can be
+      deleted by hand; only the controller's own device refuses, because
+      removing it would be undone by the next setup.

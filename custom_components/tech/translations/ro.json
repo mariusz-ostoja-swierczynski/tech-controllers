@@ -14,7 +14,8 @@
             "already_configured": "Dispozitiv deja configurat",
             "no_modules": "Nu au fost detectate sau selectate module",
             "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
-            "wrong_account": "Aceste date de autentificare aparțin altui cont eModul. Folosiți contul cu care a fost configurat acest controler."
+            "wrong_account": "Aceste date de autentificare aparțin altui cont eModul. Folosiți contul cu care a fost configurat acest controler.",
+            "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
         },
         "error": {
             "cannot_connect": "Nu se poate conecta la API-ul Tech.",
@@ -56,12 +57,25 @@
                     "username": "Numele contului (sau adresa de e-mail) pe care îl utilizați pe emodul.eu sau emodul.pl.",
                     "password": "Parola acelui cont."
                 }
+            },
+            "reconfigure": {
+                "title": "Selectare controlere",
+                "description": "Alegeți controlerul pe care să îl reprezinte această intrare.",
+                "data": {
+                    "controllers": "Controlere de importat"
+                },
+                "data_description": {
+                    "controllers": "Controlerul de adăugat. Adăugați din nou integrarea pentru fiecare controler suplimentar."
+                }
             }
         }
     },
     "exceptions": {
         "token_rejected": {
             "message": "Tokenul eModul nu mai este acceptat. Autentificați-vă din nou."
+        },
+        "cannot_connect": {
+            "message": "API-ul eModul nu poate fi accesat. Home Assistant va continua să încerce."
         }
     },
     "options": {

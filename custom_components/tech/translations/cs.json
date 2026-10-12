@@ -14,7 +14,8 @@
             "already_configured": "Zařízení již nakonfigurováno",
             "no_modules": "Nebyly detekovány žádné moduly nebo nebyly vybrány",
             "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
-            "wrong_account": "Tyto údaje patří k jinému účtu eModul. Použijte účet, se kterým byl tento ovladač nastaven."
+            "wrong_account": "Tyto údaje patří k jinému účtu eModul. Použijte účet, se kterým byl tento ovladač nastaven.",
+            "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
         },
         "error": {
             "cannot_connect": "Nelze se připojit k Tech API.",
@@ -56,12 +57,25 @@
                     "username": "Název účtu (nebo e-mailová adresa), který používáte v emodul.eu nebo emodul.pl.",
                     "password": "Heslo k tomuto účtu."
                 }
+            },
+            "reconfigure": {
+                "title": "Výběr ovladačů",
+                "description": "Vyberte ovladač, který má tento záznam nyní zastupovat.",
+                "data": {
+                    "controllers": "Ovladače k importu"
+                },
+                "data_description": {
+                    "controllers": "Ovladač, který chcete přidat. Pro každý další ovladač přidejte integraci znovu."
+                }
             }
         }
     },
     "exceptions": {
         "token_rejected": {
             "message": "Token eModul již není akceptován. Přihlaste se znovu."
+        },
+        "cannot_connect": {
+            "message": "API eModul je nedostupné. Home Assistant to bude zkoušet dál."
         }
     },
     "options": {

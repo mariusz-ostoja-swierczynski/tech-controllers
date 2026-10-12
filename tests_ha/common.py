@@ -18,7 +18,13 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.tech.config_flow import ConfigFlow
-from custom_components.tech.const import CONTROLLER, DOMAIN, USER_ID, VER
+from custom_components.tech.const import (
+    CONTROLLER,
+    DOMAIN,
+    INCLUDE_HUB_IN_NAME,
+    USER_ID,
+    VER,
+)
 from custom_components.tech.tech import Tech
 from homeassistant.const import CONF_TOKEN, STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
@@ -34,8 +40,12 @@ def controller_payload(name: str) -> dict[str, Any]:
     return {"id": 1, "name": name, "udid": UDID, "version": "1.0.0"}
 
 
-def entry_for(name: str) -> MockConfigEntry:
-    """Return an entry for one controller, not yet added to Home Assistant."""
+def entry_for(name: str, *, token: str = "token") -> MockConfigEntry:
+    """Return an entry for one controller, not yet added to Home Assistant.
+
+    The options mirror what the config flow stores, and the token is a parameter
+    so a test can tell a secret apart from the word "token" in a dump.
+    """
     return MockConfigEntry(
         domain=DOMAIN,
         title=name,
@@ -43,10 +53,11 @@ def entry_for(name: str) -> MockConfigEntry:
         unique_id=UDID,
         data={
             USER_ID: "42",
-            CONF_TOKEN: "token",
+            CONF_TOKEN: token,
             CONTROLLER: controller_payload(name),
             VER: "1.0.0: " + name,
         },
+        options={INCLUDE_HUB_IN_NAME: False},
     )
 
 
@@ -56,6 +67,7 @@ async def set_up(
     monkeypatch: pytest.MonkeyPatch,
     *,
     post: AsyncMock | None = None,
+    token: str = "token",
 ) -> MockConfigEntry:
     """Set an entry up while the API answers with the recorded payloads.
 
@@ -65,6 +77,8 @@ async def set_up(
         monkeypatch: Test fixture used to replace the API transport.
         post: Optional stub for the write path, so a test can see what an
             entity's action sent; the shared offline stub answers otherwise.
+        token: Bearer token the entry holds, distinctive where a test needs to
+            spot a leak of it.
 
     Returns:
         The config entry, now set up.
@@ -85,7 +99,7 @@ async def set_up(
     if post is not None:
         monkeypatch.setattr(Tech, "post", post)
 
-    entry = entry_for(fixture)
+    entry = entry_for(fixture, token=token)
     entry.add_to_hass(hass)
 
     assert await hass.config_entries.async_setup(entry.entry_id)

@@ -63,40 +63,47 @@ DATA_SCHEMA = vol.Schema(
 )
 
 
-def controllers_schema(controllers: list[dict[str, Any]]) -> vol.Schema:
+def controllers_schema(
+    controllers: list[dict[str, Any]], *, with_naming: bool = True
+) -> vol.Schema:
     """Build the selection form for the provided controller list.
 
     One controller per flow run: the user repeats the flow for the next one, so
     every entry stands for exactly one controller. The naming preference is
-    asked here too, because it is about the controller being added, and a
-    setting is easiest to answer while the user is looking at it; it is stored
-    in the entry's options rather than its data.
+    asked when a controller is being added, because it is about the controller
+    being added, and a setting is easiest to answer while the user is looking at
+    it; it is stored in the entry's options rather than its data. Reconfiguring
+    an entry asks for the controller alone: its naming preference belongs to
+    that entry, and the options flow is where it is changed.
 
     Args:
         controllers: Sequence returned by the Tech API describing modules.
+        with_naming: Whether the form also asks for the naming preference.
 
     Returns:
-        Voluptuous schema with a dropdown of the account's controllers and the
-        naming preference.
+        Voluptuous schema with a dropdown of the account's controllers, and the
+        naming preference when it was asked for.
 
     """
-    return vol.Schema(
-        {
-            vol.Required(CONTROLLERS): SelectSelector(
-                SelectSelectorConfig(
-                    options=[
-                        SelectOptionDict(
-                            value=str(controller[CONTROLLER][ATTR_ID]),
-                            label=controller[CONTROLLER][CONF_NAME],
-                        )
-                        for controller in controllers
-                    ],
-                    mode=SelectSelectorMode.DROPDOWN,
-                )
-            ),
-            vol.Required(INCLUDE_HUB_IN_NAME, default=False): BooleanSelector(),
-        }
-    )
+    fields: dict[Any, Any] = {
+        vol.Required(CONTROLLERS): SelectSelector(
+            SelectSelectorConfig(
+                options=[
+                    SelectOptionDict(
+                        value=str(controller[CONTROLLER][ATTR_ID]),
+                        label=controller[CONTROLLER][CONF_NAME],
+                    )
+                    for controller in controllers
+                ],
+                mode=SelectSelectorMode.DROPDOWN,
+            )
+        ),
+    }
+
+    if with_naming:
+        fields[vol.Required(INCLUDE_HUB_IN_NAME, default=False)] = BooleanSelector()
+
+    return vol.Schema(fields)
 
 
 async def validate_input(
@@ -255,6 +262,116 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             options={
                 INCLUDE_HUB_IN_NAME: user_input.get(INCLUDE_HUB_IN_NAME, False),
             },
+        )
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Point this entry at another of the account's controllers.
+
+        Home Assistant offers this from the entry's menu, which is where a user
+        looks after replacing a controller in the eModul app. Only the
+        controller is asked for: the credentials belong to the account and
+        reauthentication handles them, while the naming preference is a setting
+        of this entry, which the options flow changes. The entry keeps its id,
+        so its history and everything that refers to it survive; the unique id
+        moves with the controller, since being unique per controller is what
+        stops the same one being added twice.
+
+        Args:
+            user_input: Optional mapping naming the controller to switch to.
+
+        Returns:
+            The selection form, the reconfigured entry, or an abort when the
+            account has no controller to choose from.
+
+        """
+        entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
+
+        if not self._controllers:
+            listed = await self._async_account_controllers(entry)
+            if listed is None:
+                # The account could not be read at all -- an expired token, most
+                # likely. Offer the controller the entry already has, with the
+                # reason on the form: reauthenticating, or reconfiguring again
+                # once the API answers, is what fixes it.
+                errors["base"] = "cannot_connect"
+                self._controllers = [dict(entry.data)]
+            elif not listed:
+                return self.async_abort(reason="no_modules")
+            else:
+                self._controllers = listed
+
+        if user_input is not None:
+            controllers_by_id = {
+                str(controller[CONTROLLER][ATTR_ID]): controller
+                for controller in self._controllers
+            }
+            controller = controllers_by_id.get(str(user_input.get(CONTROLLERS)))
+            if controller is None:
+                return self.async_abort(reason="no_modules")
+
+            taken = [
+                configured
+                for configured in self._async_current_entries()
+                if configured.entry_id != entry.entry_id
+                and configured.unique_id == controller[CONTROLLER][UDID]
+            ]
+            if taken:
+                return self.async_abort(reason="already_configured")
+
+            _LOGGER.debug(
+                "Reconfiguring entry %s for controller: %s",
+                entry.entry_id,
+                async_redact_data(controller, ["token"]),
+            )
+
+            return self.async_update_reload_and_abort(
+                entry,
+                unique_id=controller[CONTROLLER][UDID],
+                data_updates={
+                    CONTROLLER: controller[CONTROLLER],
+                    VER: controller[VER],
+                },
+            )
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=controllers_schema(self._controllers, with_naming=False),
+            errors=errors,
+        )
+
+    async def _async_account_controllers(
+        self, entry: ConfigEntry
+    ) -> list[dict[str, Any]] | None:
+        """Return the account's controllers, read with the entry's own token.
+
+        The reconfigure step has no credentials to validate: the account is the
+        one the entry was set up with, and that entry's client is the one that
+        lists its controllers.
+
+        Args:
+            entry: The entry being reconfigured.
+
+        Returns:
+            The controllers the account holds, or ``None`` when the API could
+            not be asked.
+
+        """
+        api = entry.runtime_data.api
+        try:
+            modules = await api.list_modules()
+        except TechError, TechLoginError:
+            _LOGGER.debug(
+                "Could not list the account's controllers for %s",
+                entry.entry_id,
+                exc_info=True,
+            )
+            return None
+
+        return self._create_controllers_array(
+            {USER_ID: api.user_id, CONF_TOKEN: api.token, CONTROLLERS: modules}
         )
 
     async def async_step_reauth(

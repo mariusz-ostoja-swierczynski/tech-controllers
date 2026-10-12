@@ -14,7 +14,8 @@
             "already_configured": "Az eszköz már konfigurálva van",
             "no_modules": "Nem találhatóak modulok vagy nincsenek kiválasztva",
             "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
-            "wrong_account": "Ezek a hitelesítő adatok egy másik eModul-fiókhoz tartoznak. Használja azt a fiókot, amellyel ezt a vezérlőt beállította."
+            "wrong_account": "Ezek a hitelesítő adatok egy másik eModul-fiókhoz tartoznak. Használja azt a fiókot, amellyel ezt a vezérlőt beállította.",
+            "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
         },
         "error": {
             "cannot_connect": "Nem sikerült kapcsolódni a Tech API-hoz.",
@@ -56,12 +57,25 @@
                     "username": "A fiók neve (vagy e-mail-címe), amelyet az emodul.eu vagy emodul.pl oldalon használ.",
                     "password": "A fiók jelszava."
                 }
+            },
+            "reconfigure": {
+                "title": "Válassza ki a vezérlőket",
+                "description": "Válassza ki, melyik vezérlőt képviselje ez a bejegyzés.",
+                "data": {
+                    "controllers": "Importálni kívánt vezérlők"
+                },
+                "data_description": {
+                    "controllers": "A hozzáadni kívánt vezérlő. Minden további vezérlőhöz adja hozzá újra az integrációt."
+                }
             }
         }
     },
     "exceptions": {
         "token_rejected": {
             "message": "Az eModul token már nem elfogadott. Jelentkezzen be újra."
+        },
+        "cannot_connect": {
+            "message": "Az eModul API nem érhető el. A Home Assistant tovább próbálkozik."
         }
     },
     "options": {

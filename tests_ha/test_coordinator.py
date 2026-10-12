@@ -19,6 +19,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.tech.config_flow import ConfigFlow
 from custom_components.tech.const import CONTROLLER, DOMAIN, USER_ID, VER
 from custom_components.tech.coordinator import (
+    API_UNREACHABLE_KEY,
     TOKEN_REJECTED,
     TOKEN_REJECTED_KEY,
     TechCoordinator,
@@ -180,3 +181,39 @@ async def test_an_expired_token_starts_the_reauthentication_flow(
 
     (progress,) = hass.config_entries.flow.async_progress_by_handler(DOMAIN)
     assert progress["step_id"] == "reauth_confirm"
+
+
+async def test_an_unreachable_api_retries_with_a_reason_the_frontend_can_translate(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A controller that cannot be reached leaves the entry retrying, in the user's language.
+
+    Home Assistant wraps the coordinator's UpdateFailed in a ConfigEntryNotReady
+    and carries the translation key over to it, so the entry reads as a sentence
+    the frontend translates rather than as a raw API error.
+    """
+    monkeypatch.setattr(
+        Tech, "get", AsyncMock(side_effect=TechError(500, "the API is down"))
+    )
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="L-8 DEMO",
+        version=ConfigFlow.VERSION,
+        unique_id="a" * 32,
+        data={
+            USER_ID: "42",
+            CONF_TOKEN: "token",
+            CONTROLLER: _MODULE,
+            VER: "3.0.14: L-8 DEMO",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    assert not await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert entry.state is ConfigEntryState.SETUP_RETRY
+    assert entry.error_reason_translation_key == API_UNREACHABLE_KEY
+    assert entry.error_reason_translation_domain == DOMAIN
+    # The text the frontend falls back to when a language lacks the key.
+    assert entry.reason

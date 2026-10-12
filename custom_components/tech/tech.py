@@ -267,7 +267,13 @@ class Tech:
         async with self.update_lock:
             cache = self.modules.setdefault(
                 module_udid,
-                {"last_update": None, "zones": {}, "tiles": {}, "menus": {}},
+                {
+                    "last_update": None,
+                    "zones": {},
+                    "tiles": {},
+                    "menus": {},
+                    "reported": {"zones": set(), "tiles": set(), "menus": set()},
+                },
             )
 
             last_update = cache.get("last_update")
@@ -323,6 +329,16 @@ class Tech:
                     module_udid,
                 )
                 cache.setdefault("menus", {}).update(menu_items)
+
+            # What the controller reported *this* poll, as opposed to what the
+            # cache has accumulated: a zone or tile it stops reporting stays in
+            # the cache, so that its entities keep their last values, while
+            # being absent here -- which is what tells the removal to happen.
+            cache["reported"] = {
+                "zones": {zone["zone"]["id"] for zone in visible_zones},
+                "tiles": {tile["id"] for tile in visible_tiles},
+                "menus": set(menu_items),
+            }
 
             cache["last_update"] = time.monotonic()
             return cache

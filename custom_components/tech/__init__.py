@@ -1,17 +1,31 @@
 """The Tech Controllers integration."""
 
 import logging
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_TOKEN
+from homeassistant.const import CONF_NAME, CONF_TOKEN
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import (
+    config_validation as cv,
+    device_registry as dr,
+    entity_registry as er,
+)
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.redact import async_redact_data
 from homeassistant.helpers.typing import ConfigType
 
 from . import assets
-from .const import DOMAIN, INCLUDE_HUB_IN_NAME, PLATFORMS, USER_ID
+from .const import (
+    CONTROLLER,
+    DOMAIN,
+    INCLUDE_HUB_IN_NAME,
+    MANUFACTURER,
+    PLATFORMS,
+    UDID,
+    USER_ID,
+    VER,
+)
 from .coordinator import TechCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -77,11 +91,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: TechConfigEntry) -> bool
 
     await coordinator.async_config_entry_first_refresh()
 
+    # The controller's own device is created before the platforms run, because
+    # the registry names a parent device by its id and an entity of one of the
+    # controller's zones or sensors can only point at a device that exists.
+    controller = entry.data[CONTROLLER]
+    controller_device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, controller[UDID])},
+        name=entry.title,
+        model=controller.get(CONF_NAME, ""),
+        sw_version=controller.get(VER, ""),
+        manufacturer=MANUFACTURER,
+    )
+    coordinator.controller_device_id = controller_device.id
+
     coordinator.translations = await assets.Translations.load(
         language_code, coordinator.api
     )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # A controller stops reporting a tile, a zone or a menu item eventually, and
+    # the platforms only ever add entities: the removal side lives here, where
+    # the entry and the registries are at hand.
+    def _watch_reported() -> None:
+        _drop_unreported_entities(hass, coordinator)
+
+    entry.async_on_unload(coordinator.async_add_listener(_watch_reported))
 
     return True
 
@@ -132,3 +168,89 @@ async def async_migrate_entry(hass: HomeAssistant, entry: TechConfigEntry) -> bo
         _LOGGER.debug("Migrated config entry %s to version 4", entry.entry_id)
 
     return True
+
+
+# How many polls in a row a controller has to leave a payload entry out before
+# its entities are removed: an hour at the 60-second interval. A controller
+# being reconfigured reports nothing for a while, and removing an entity loses
+# its name, its history and every automation that points at it, so the absence
+# has to be long enough to mean something.
+REMOVAL_MISSES = 60
+
+
+def _drop_unreported_entities(
+    hass: HomeAssistant, coordinator: TechCoordinator
+) -> None:
+    """Remove the entities of the payload entries a controller stopped reporting.
+
+    Called on every poll. An entry the controller still reports clears its
+    count; one it has left out counts up, and at :data:`REMOVAL_MISSES` its
+    entities are removed from the registry, along with the device that held
+    them.
+
+    Args:
+        hass: Home Assistant instance.
+        coordinator: The entry's coordinator, holding the entities by source key.
+
+    """
+    reported = assets.reported_keys(coordinator.data or {})
+
+    for key in list(coordinator.reported):
+        if key in reported:
+            coordinator.reported_misses.pop(key, None)
+            continue
+
+        misses = coordinator.reported_misses.get(key, 0) + 1
+        coordinator.reported_misses[key] = misses
+        if misses < REMOVAL_MISSES:
+            continue
+
+        coordinator.reported_misses.pop(key, None)
+        for entity in list(coordinator.reported.get(key, ())):
+            _forget_entity(hass, entity)
+
+
+def _forget_entity(hass: HomeAssistant, entity: Any) -> None:
+    """Remove one entity, and its device once nothing is left on it.
+
+    Args:
+        hass: Home Assistant instance.
+        entity: The entity to remove.
+
+    """
+    entity_id = entity.entity_id
+    if not entity_id:
+        return
+
+    registry = er.async_get(hass)
+    registered = registry.async_get(entity_id)
+    device_id = registered.device_id if registered else None
+
+    _LOGGER.debug("Removing %s: the controller no longer reports it", entity_id)
+    registry.async_remove(entity_id)
+
+    if device_id and not er.async_entries_for_device(registry, device_id):
+        dr.async_get(hass).async_remove_device(device_id)
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, config_entry: TechConfigEntry, device_entry: dr.DeviceEntry
+) -> bool:
+    """Allow removing a device the controller no longer reports.
+
+    Home Assistant asks this before it deletes a device from the registry by
+    hand. The controller's own device is the entry itself -- deleting it would
+    be undone by the next setup, and removing the entry is what the user means
+    -- so that one is refused; every other device is theirs to delete.
+
+    Args:
+        hass: Home Assistant instance.
+        config_entry: The entry the device belongs to.
+        device_entry: The device the user is deleting.
+
+    Returns:
+        ``True`` when the device may be removed.
+
+    """
+    controller = config_entry.data[CONTROLLER]
+    return (DOMAIN, controller[UDID]) not in device_entry.identifiers

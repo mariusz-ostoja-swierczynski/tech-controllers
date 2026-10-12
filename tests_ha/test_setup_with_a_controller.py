@@ -16,16 +16,18 @@ climate platform, while the ST-491's menus cover the menu platforms.
 from __future__ import annotations
 
 from datetime import timedelta
+import logging
 from typing import Any
 from unittest.mock import AsyncMock
 
-from common import EMPTY_MENU, entity_counts, entry_for, set_up
+from common import EMPTY_MENU, UDID, entity_counts, entry_for, set_up
 import pytest
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
-from custom_components.tech.const import SCAN_INTERVAL
+from custom_components.tech.const import DOMAIN, SCAN_INTERVAL
 from custom_components.tech.tech import Tech
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.util import dt as dt_util
 
 # What each recorded controller produces, per entity domain. Pinned so that a
@@ -44,6 +46,7 @@ _EXPECTED = {
     "l12": {"climate": 5, "sensor": 19},
     "st521": {"binary_sensor": 65, "sensor": 84},
     "st2801": {"binary_sensor": 3, "sensor": 8},
+    "pellet": {"binary_sensor": 4, "sensor": 12},
 }
 
 
@@ -55,6 +58,26 @@ async def test_the_recorded_payload_builds_its_entities(
     await set_up(hass, fixture, monkeypatch)
 
     assert entity_counts(hass) == _EXPECTED[fixture]
+
+
+async def test_a_platform_never_claims_the_same_unique_id_twice(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A pass that finds an entity again does not register it a second time.
+
+    Pellet DEMO's relay tiles exposed a race in the per-poll registration: an
+    entity reaches the coordinator's bookkeeping only once Home Assistant has
+    called it back, which can be after the pass that added it, and a pass that
+    forgot it in the meantime added it again. Home Assistant ignores the second
+    claim and says so with an error in the log, which the live instance showed
+    for tile 1002 of that controller.
+    """
+    await set_up(hass, "pellet", monkeypatch)
+
+    assert "does not generate unique IDs" not in caplog.text
+    assert entity_counts(hass) == {"binary_sensor": 4, "sensor": 12}
 
 
 async def test_a_controller_that_reports_nothing_builds_nothing(
@@ -93,6 +116,35 @@ async def test_a_poll_hands_the_payload_to_every_entity_again(
 
     assert entry.runtime_data.last_update_success
     assert entity_counts(hass) == _EXPECTED[fixture]
+
+
+async def test_the_zone_devices_hang_under_the_controller(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Every device of the entry names the controller's device as its parent.
+
+    Home Assistant resolves a parent by device id, which is why the controller's
+    device is created while the entry sets up; the deprecated tuple form would
+    say so in the log instead.
+    """
+    caplog.set_level(logging.WARNING, logger="homeassistant.helpers.frame")
+    entry = await set_up(hass, "l12", monkeypatch)
+
+    registry = dr.async_get(hass)
+    controller = registry.async_get_device_by_identifier((DOMAIN, UDID), entry.entry_id)
+    assert controller is not None
+
+    children = [
+        device
+        for device in dr.async_entries_for_config_entry(registry, entry.entry_id)
+        if device.id != controller.id
+    ]
+
+    assert children
+    assert {device.via_device_id for device in children} == {controller.id}
+    assert "deprecated `via_device`" not in caplog.text
 
 
 async def test_unloading_the_entry_stops_the_polling(

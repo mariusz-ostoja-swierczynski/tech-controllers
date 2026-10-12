@@ -31,6 +31,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import assets
 from .const import CONTROLLER, DOMAIN, INCLUDE_HUB_IN_NAME, MANUFACTURER, UDID, VER
 from .coordinator import TechCoordinator
+from .entity import ReportedEntity, add_later
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -60,18 +61,22 @@ async def async_setup_entry(
     udid = config_entry.data[CONTROLLER][UDID]
     coordinator = config_entry.runtime_data
     _LOGGER.debug("Setting up entry, controller udid: %s", udid)
+
     # Only usable zone payloads: a controller without zones, or one whose payload
     # carries entries that are not zone payloads, must not take the whole climate
     # platform down with it.
-    zones = assets.zone_payloads(await coordinator.api.get_module_zones(udid))
-    thermostats = [
-        TechThermostat(zone, coordinator, config_entry) for zone in zones.values()
-    ]
+    def _build() -> list[TechThermostat]:
+        # Read from the coordinator's payload rather than fetching: this runs
+        # again on every poll, to pick up a zone the controller starts reporting.
+        zones = assets.zone_payloads(coordinator.data.get("zones"))
+        return [
+            TechThermostat(zone, coordinator, config_entry) for zone in zones.values()
+        ]
 
-    async_add_entities(thermostats, True)
+    add_later(config_entry, coordinator, async_add_entities, _build)
 
 
-class TechThermostat(ClimateEntity, CoordinatorEntity):
+class TechThermostat(ReportedEntity, ClimateEntity, CoordinatorEntity):
     """Representation of a Tech climate."""
 
     _attr_has_entity_name = True
@@ -114,6 +119,11 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         self._enable_turn_on_off_backwards_compatibility = False
 
     @property
+    def source_key(self) -> str:
+        """Return the zone this thermostat was built from."""
+        return f"zone_{self._id}"
+
+    @property
     def device_info(self) -> DeviceInfo | None:
         """Return Home Assistant ``DeviceInfo`` describing the controller."""
         return {
@@ -123,6 +133,9 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
             CONF_NAME: self.device_name,  # Name of the device
             CONF_MODEL: self.model,  # Model of the device
             ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+            # A thermostat is a zone of the controller, so it belongs under it
+            # in the device tree rather than beside it.
+            **assets.via_controller(self.coordinator),
         }
 
     def update_properties(self, device):

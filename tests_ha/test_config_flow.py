@@ -10,6 +10,7 @@ paths, every error branch and both aborts -- plus ``async_migrate_entry``.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -31,6 +32,7 @@ from custom_components.tech.const import (
     CONTROLLERS,
     DOMAIN,
     INCLUDE_HUB_IN_NAME,
+    UDID,
     USER_ID,
     VER,
 )
@@ -644,3 +646,135 @@ async def test_reauthentication_reports_unexpected_errors(
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "reauth_confirm"
     assert result["errors"] == {"base": "unknown"}
+
+
+# ---------------------------------------------------------------------------
+# Reconfiguration -- reconfiguration-flow
+# ---------------------------------------------------------------------------
+
+
+def _serve_modules(entry: MockConfigEntry, modules: list[dict]) -> None:
+    """Make the entry's account hold ``modules``.
+
+    The reconfigure step reads the account through the entry's own client, so a
+    test replaces that client rather than the transport: what the step asks of
+    it is the module list and nothing else.
+    """
+    entry.runtime_data.api = SimpleNamespace(
+        list_modules=AsyncMock(return_value=modules),
+        user_id="42",
+        token="token",
+    )
+
+
+async def _start_reconfigure(hass: HomeAssistant, entry: MockConfigEntry) -> dict:
+    """Start the reconfigure flow for ``entry`` and return its first form."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": config_entries.SOURCE_RECONFIGURE,
+            "entry_id": entry.entry_id,
+        },
+    )
+    assert result["step_id"] == "reconfigure"
+    return result
+
+
+def _options(result: dict) -> list[str]:
+    """Return the controller values the returned form offers."""
+    for key, value in result["data_schema"].schema.items():
+        if str(key) == CONTROLLERS:
+            return [option["value"] for option in value.config["options"]]
+    raise AssertionError("the form does not offer a controller")
+
+
+async def test_reconfiguring_points_the_entry_at_another_controller(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The entry keeps its id and moves to the controller that was chosen.
+
+    Home Assistant asks a reconfigure flow to keep the entry's unique id, but
+    this integration is unique *per controller*, so the id moves with the
+    controller: leaving it behind would block adding the new one later.
+    """
+    entry = await _loaded_entry(hass)
+    entry_id = entry.entry_id
+    _serve_modules(entry, _MODULES)
+    form = await _start_reconfigure(hass, entry)
+
+    assert _options(form) == ["1", "2"]
+
+    result = await hass.config_entries.flow.async_configure(
+        form["flow_id"], {CONTROLLERS: "2"}
+    )
+    await hass.async_block_till_done()
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.entry_id == entry_id
+    assert entry.data[CONTROLLER][UDID] == "b" * 32
+    assert entry.data[CONTROLLER][CONF_NAME] == "ST-491 DEMO"
+    assert entry.unique_id == "b" * 32
+    assert entry.state is config_entries.ConfigEntryState.LOADED
+
+
+async def test_reconfiguring_refuses_a_controller_another_entry_has(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Two entries never stand for the same controller."""
+    first = await _loaded_entry(hass)
+    second = MockConfigEntry(
+        domain=DOMAIN,
+        title="Other DEMO",
+        version=ConfigFlow.VERSION,
+        unique_id="c" * 32,
+        data={
+            USER_ID: "42",
+            CONF_TOKEN: "token",
+            CONTROLLER: {
+                "id": 7,
+                "name": "Other DEMO",
+                "udid": "c" * 32,
+                "version": "3.0.14",
+            },
+            VER: "3.0.14: Other DEMO",
+        },
+    )
+    second.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(second.entry_id)
+    await hass.async_block_till_done()
+    _serve_modules(second, _MODULES)
+    form = await _start_reconfigure(hass, second)
+
+    result = await hass.config_entries.flow.async_configure(
+        form["flow_id"], {CONTROLLERS: str(_MODULES[0]["id"])}
+    )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    assert second.data[CONTROLLER][UDID] == "c" * 32
+    assert second.unique_id == "c" * 32
+    assert first.unique_id == _MODULES[0][UDID]
+
+
+async def test_reconfiguring_an_unreadable_account_offers_the_current_controller(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A listing that fails keeps the form usable and says why.
+
+    The entry's token may have expired, which reauthentication fixes; until
+    then the form offers the controller the entry already has, with the reason
+    on it rather than an empty dropdown.
+    """
+    entry = await _loaded_entry(hass)
+    entry.runtime_data.api = SimpleNamespace(
+        list_modules=AsyncMock(side_effect=TechError(401, "no")),
+        user_id="42",
+        token="token",
+    )
+
+    result = await _start_reconfigure(hass, entry)
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "cannot_connect"}
+    assert _options(result) == [str(_MODULES[0]["id"])]
