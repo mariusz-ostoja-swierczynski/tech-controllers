@@ -648,7 +648,7 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
         )
         self._device_name = (
             device[CONF_DESCRIPTION][CONF_NAME]
-            if not self._config_entry.data.get(INCLUDE_HUB_IN_NAME, False)
+            if not self._config_entry.options.get(INCLUDE_HUB_IN_NAME, False)
             else f"{self._config_entry.title} {device[CONF_DESCRIPTION][CONF_NAME]}"
         )
         self._model = (

@@ -12,8 +12,7 @@
     "config": {
         "abort": {
             "already_configured": "Zařízení již nakonfigurováno",
-            "no_modules": "Nebyly detekovány žádné moduly nebo nebyly vybrány",
-            "controllers_configured": "Vybrané ovladače byly přidány"
+            "no_modules": "Nebyly detekovány žádné moduly nebo nebyly vybrány"
         },
         "error": {
             "cannot_connect": "Nelze se připojit k Tech API.",
@@ -27,6 +26,10 @@
                 "data": {
                     "password": "Heslo",
                     "username": "Uživatelské jméno"
+                },
+                "data_description": {
+                    "username": "Název účtu (nebo e-mailová adresa), který používáte v emodul.eu nebo emodul.pl.",
+                    "password": "Heslo k tomuto účtu."
                 }
             },
             "select_controllers": {
@@ -35,6 +38,22 @@
                 "data": {
                     "controllers": "Ovladače k importu",
                     "include_hub_in_name": "Zahrnout název hubu (ovladače) do názvů entit"
+                },
+                "data_description": {
+                    "controllers": "Ovladač, který chcete přidat. Pro každý další ovladač přidejte integraci znovu.",
+                    "include_hub_in_name": "Před názvy entit zón tohoto ovladače přidejte název integrace. Hodí se, když je nastaveno několik ovladačů."
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "include_hub_in_name": "Zahrnout název hubu (ovladače) do názvů entit"
+                },
+                "data_description": {
+                    "include_hub_in_name": "Před názvy entit zón tohoto ovladače přidejte název integrace. Hodí se, když je nastaveno několik ovladačů."
                 }
             }
         }

@@ -12,8 +12,7 @@
     "config": {
         "abort": {
             "already_configured": "Dispozitiv deja configurat",
-            "no_modules": "Nu au fost detectate sau selectate module",
-            "controllers_configured": "Controlerele selectate au fost adăugate"
+            "no_modules": "Nu au fost detectate sau selectate module"
         },
         "error": {
             "cannot_connect": "Nu se poate conecta la API-ul Tech.",
@@ -27,6 +26,10 @@
                 "data": {
                     "password": "Parolă",
                     "username": "Nume de utilizator"
+                },
+                "data_description": {
+                    "username": "Numele contului (sau adresa de e-mail) pe care îl utilizați pe emodul.eu sau emodul.pl.",
+                    "password": "Parola acelui cont."
                 }
             },
             "select_controllers": {
@@ -35,6 +38,22 @@
                 "data": {
                     "controllers": "Controlere de importat",
                     "include_hub_in_name": "Includere nume hub (controller) în numele entităților"
+                },
+                "data_description": {
+                    "controllers": "Controlerul de adăugat. Adăugați din nou integrarea pentru fiecare controler suplimentar.",
+                    "include_hub_in_name": "Adăugați numele integrării înaintea numelor entităților zonelor acestui controler. Este util când sunt configurate mai multe controlere."
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "include_hub_in_name": "Includere nume hub (controller) în numele entităților"
+                },
+                "data_description": {
+                    "include_hub_in_name": "Adăugați numele integrării înaintea numelor entităților zonelor acestui controler. Este util când sunt configurate mai multe controlere."
                 }
             }
         }

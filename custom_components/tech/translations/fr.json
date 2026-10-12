@@ -12,8 +12,7 @@
     "config": {
         "abort": {
             "already_configured": "Appareil déjà configuré",
-            "no_modules": "Aucun module détecté ou sélectionné",
-            "controllers_configured": "Les contrôleurs sélectionnés ont été ajoutés"
+            "no_modules": "Aucun module détecté ou sélectionné"
         },
         "error": {
             "cannot_connect": "Impossible de se connecter à l'API Tech.",
@@ -27,6 +26,10 @@
                 "data": {
                     "password": "Mot de passe",
                     "username": "Nom d'utilisateur"
+                },
+                "data_description": {
+                    "username": "Le nom du compte (ou l'adresse e-mail) que vous utilisez sur emodul.eu ou emodul.pl.",
+                    "password": "Le mot de passe de ce compte."
                 }
             },
             "select_controllers": {
@@ -35,6 +38,22 @@
                 "data": {
                     "controllers": "Contrôleurs à importer",
                     "include_hub_in_name": "Inclure le nom du hub (contrôleur) dans les noms des entités"
+                },
+                "data_description": {
+                    "controllers": "Le contrôleur à ajouter. Ajoutez l'intégration à nouveau pour chaque contrôleur supplémentaire.",
+                    "include_hub_in_name": "Ajoutez le nom de l'intégration devant les noms des entités des zones de ce contrôleur. Utile lorsque plusieurs contrôleurs sont configurés."
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "include_hub_in_name": "Inclure le nom du hub (contrôleur) dans les noms des entités"
+                },
+                "data_description": {
+                    "include_hub_in_name": "Ajoutez le nom de l'intégration devant les noms des entités des zones de ce contrôleur. Utile lorsque plusieurs contrôleurs sont configurés."
                 }
             }
         }

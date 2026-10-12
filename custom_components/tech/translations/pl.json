@@ -12,8 +12,7 @@
   "config": {
     "abort": {
       "already_configured": "Urządzenie jest już skonfigurowane",
-      "no_modules": "Nie wykryto lub nie dodano żadnych sterowników",
-      "controllers_configured": "Wybrane sterowniki zostały dodane"
+      "no_modules": "Nie wykryto lub nie dodano żadnych sterowników"
     },
     "error": {
       "cannot_connect": "Nie można się połączyć z Tech API.",
@@ -27,6 +26,10 @@
         "data": {
           "password": "Hasło",
           "username": "Użytkownik"
+        },
+        "data_description": {
+          "username": "Nazwa konta (lub adres e-mail), którego używasz w emodul.eu lub emodul.pl.",
+          "password": "Hasło do tego konta."
         }
       },
       "select_controllers": {
@@ -35,6 +38,22 @@
         "data": {
           "controllers": "Sterowniki do zintegrowania",
           "include_hub_in_name": "Umieść nazwę hub'a (kontrolera) w nazwach encji"
+        },
+        "data_description": {
+          "controllers": "Sterownik do dodania. Aby dodać kolejny sterownik, uruchom tę konfigurację ponownie.",
+          "include_hub_in_name": "Umieść nazwę integracji (hub'a) przed nazwami encji stref tego sterownika. Przydaje się, gdy skonfigurowanych jest kilka sterowników."
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "include_hub_in_name": "Umieść nazwę hub'a (kontrolera) w nazwach encji"
+        },
+        "data_description": {
+          "include_hub_in_name": "Umieść nazwę integracji (hub'a) przed nazwami encji stref tego sterownika. Przydaje się, gdy skonfigurowanych jest kilka sterowników."
         }
       }
     }

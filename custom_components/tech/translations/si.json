@@ -12,8 +12,7 @@
     "config": {
         "abort": {
             "already_configured": "Naprava je že konfigurirana",
-            "no_modules": "Ni zaznanih ali izbranih modulov",
-            "controllers_configured": "Izbrani krmilniki so bili dodani"
+            "no_modules": "Ni zaznanih ali izbranih modulov"
         },
         "error": {
             "cannot_connect": "Ne morem se povezati s Tech API.",
@@ -27,6 +26,10 @@
                 "data": {
                     "password": "Geslo",
                     "username": "Uporabniško ime"
+                },
+                "data_description": {
+                    "username": "Ime računa (ali e-poštni naslov), ki ga uporabljate na emodul.eu ali emodul.pl.",
+                    "password": "Geslo za ta račun."
                 }
             },
             "select_controllers": {
@@ -35,6 +38,22 @@
                 "data": {
                     "controllers": "Krmilniki za uvoz",
                     "include_hub_in_name": "Vključi ime glavnega krmilnika v imena entitet"
+                },
+                "data_description": {
+                    "controllers": "Krmilnik, ki ga želite dodati. Za vsak naslednji krmilnik znova dodajte integracijo.",
+                    "include_hub_in_name": "Dodajte ime integracije pred imena entitet con tega krmilnika. Koristno, kadar je nastavljenih več krmilnikov."
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "include_hub_in_name": "Vključi ime glavnega krmilnika v imena entitet"
+                },
+                "data_description": {
+                    "include_hub_in_name": "Dodajte ime integracije pred imena entitet con tega krmilnika. Koristno, kadar je nastavljenih več krmilnikov."
                 }
             }
         }

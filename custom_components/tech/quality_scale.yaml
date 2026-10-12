@@ -29,17 +29,19 @@ rules:
       The coordinator lives in coordinator.py and the shared base entities in
       entity.py; every platform derives from them.
   config_flow:
-    status: todo
+    status: done
     comment: >-
-      The flow exists, but the rule is not met yet: no data_description in
-      strings.json, no selectors, the naming option is stored in data instead
-      of options, and entries are created inside the step instead of through
-      async_create_entry (one entry per flow run).
+      Two steps with selectors and data_description: the credentials are
+      validated before anything is stored, one entry per flow run is created
+      through async_create_entry, and the hub-name preference is asked with the
+      controller and stored in the entry's options, where the options flow can
+      change it later.
   config_flow_test_coverage:
-    status: todo
+    status: done
     comment: >-
-      Only the selection helper is covered today; the flow steps, the error
-      branches, the aborts and the created entry's unique id are not.
+      tests_ha/test_config_flow.py covers config_flow.py completely -- both
+      steps, every error branch, both aborts, the options flow and the version 3
+      migration.
   dependency_transparency:
     status: exempt
     comment: The manifest declares no external requirements; the API client is part of this repository.

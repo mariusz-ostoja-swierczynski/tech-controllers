@@ -12,8 +12,7 @@
     "config": {
         "abort": {
             "already_configured": "Seade on juba konfigureeritud",
-            "no_modules": "Ühtegi moodulit ei tuvastatud ega valitud",
-            "controllers_configured": "Valitud kontrollerid on lisatud"
+            "no_modules": "Ühtegi moodulit ei tuvastatud ega valitud"
         },
         "error": {
             "cannot_connect": "Ei saa ühendust Tech API-ga.",
@@ -27,6 +26,10 @@
                 "data": {
                     "password": "Parool",
                     "username": "Kasutajanimi"
+                },
+                "data_description": {
+                    "username": "Konto nimi (või e-posti aadress), mida kasutate emodul.eu või emodul.pl keskkonnas.",
+                    "password": "Selle konto parool."
                 }
             },
             "select_controllers": {
@@ -35,6 +38,22 @@
                 "data": {
                     "controllers": "Imporditavad kontrollerid",
                     "include_hub_in_name": "Kaasa hubi (kontrolleri) nimi üksuste nimedes"
+                },
+                "data_description": {
+                    "controllers": "Lisatav kontroller. Iga järgmise kontrolleri jaoks lisage integratsioon uuesti.",
+                    "include_hub_in_name": "Lisa integratsiooni nimi selle kontrolleri tsoonide üksuste nimede ette. Kasulik, kui on seadistatud mitu kontrollerit."
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "include_hub_in_name": "Kaasa hubi (kontrolleri) nimi üksuste nimedes"
+                },
+                "data_description": {
+                    "include_hub_in_name": "Lisa integratsiooni nimi selle kontrolleri tsoonide üksuste nimede ette. Kasulik, kui on seadistatud mitu kontrollerit."
                 }
             }
         }

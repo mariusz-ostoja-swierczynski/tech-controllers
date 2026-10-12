@@ -92,7 +92,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         self._unique_id = f"{self._udid}_{device[CONF_ZONE][CONF_ID]}"
         self.device_name = (
             device[CONF_DESCRIPTION][CONF_NAME]
-            if not self._config_entry.data.get(INCLUDE_HUB_IN_NAME, False)
+            if not self._config_entry.options.get(INCLUDE_HUB_IN_NAME, False)
             else f"{self._config_entry.title} {device[CONF_DESCRIPTION][CONF_NAME]}"
         )
 

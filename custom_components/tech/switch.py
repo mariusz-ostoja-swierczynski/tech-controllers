@@ -55,7 +55,7 @@ async def async_setup_entry(
     zone_names = assets.build_zone_names(
         zones,
         config_entry.title,
-        config_entry.data.get(INCLUDE_HUB_IN_NAME, False),
+        config_entry.options.get(INCLUDE_HUB_IN_NAME, False),
     )
 
     entities: list[MenuSwitchEntity] = []

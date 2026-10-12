@@ -12,8 +12,7 @@
     "config": {
         "abort": {
             "already_configured": "Gerät bereits konfiguriert",
-            "no_modules": "Keine Module erkannt oder ausgewählt",
-            "controllers_configured": "Ausgewählte Controller wurden hinzugefügt"
+            "no_modules": "Keine Module erkannt oder ausgewählt"
         },
         "error": {
             "cannot_connect": "Keine Verbindung zur Tech API möglich.",
@@ -27,6 +26,10 @@
                 "data": {
                     "password": "Passwort",
                     "username": "Benutzername"
+                },
+                "data_description": {
+                    "username": "Der Kontoname (oder die E-Mail-Adresse), den Sie bei emodul.eu oder emodul.pl verwenden.",
+                    "password": "Das Passwort für dieses Konto."
                 }
             },
             "select_controllers": {
@@ -35,6 +38,22 @@
                 "data": {
                     "controllers": "Zu importierende Controller",
                     "include_hub_in_name": "Hub (Controller) Namen in Entitätsnamen einbeziehen"
+                },
+                "data_description": {
+                    "controllers": "Der Controller, der hinzugefügt werden soll. Fügen Sie die Integration für jeden weiteren Controller erneut hinzu.",
+                    "include_hub_in_name": "Stellen Sie den Entitätsnamen der Zonen dieses Controllers den Namen der Integration voran. Hilfreich, wenn mehrere Controller eingerichtet sind."
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "include_hub_in_name": "Hub (Controller) Namen in Entitätsnamen einbeziehen"
+                },
+                "data_description": {
+                    "include_hub_in_name": "Stellen Sie den Entitätsnamen der Zonen dieses Controllers den Namen der Integration voran. Hilfreich, wenn mehrere Controller eingerichtet sind."
                 }
             }
         }

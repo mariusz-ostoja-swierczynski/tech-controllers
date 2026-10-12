@@ -12,8 +12,7 @@
     "config": {
         "abort": {
             "already_configured": "Dispositivo già configurato",
-            "no_modules": "Nessun modulo rilevato o selezionato",
-            "controllers_configured": "I controller selezionati sono stati aggiunti"
+            "no_modules": "Nessun modulo rilevato o selezionato"
         },
         "error": {
             "cannot_connect": "Impossibile connettersi all'API di Tech.",
@@ -27,6 +26,10 @@
                 "data": {
                     "password": "Password",
                     "username": "Nome utente"
+                },
+                "data_description": {
+                    "username": "Il nome dell'account (o l'indirizzo e-mail) che usi su emodul.eu o emodul.pl.",
+                    "password": "La password di quell'account."
                 }
             },
             "select_controllers": {
@@ -35,6 +38,22 @@
                 "data": {
                     "controllers": "Controller da importare",
                     "include_hub_in_name": "Includi il nome dell'hub (controller) nei nomi delle entità"
+                },
+                "data_description": {
+                    "controllers": "Il controller da aggiungere. Aggiungi di nuovo l'integrazione per ogni altro controller.",
+                    "include_hub_in_name": "Aggiungi il nome dell'integrazione davanti ai nomi delle entità delle zone di questo controller. È utile quando sono configurati più controller."
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "include_hub_in_name": "Includi il nome dell'hub (controller) nei nomi delle entità"
+                },
+                "data_description": {
+                    "include_hub_in_name": "Aggiungi il nome dell'integrazione davanti ai nomi delle entità delle zone di questo controller. È utile quando sono configurati più controller."
                 }
             }
         }

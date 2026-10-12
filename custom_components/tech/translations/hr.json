@@ -12,8 +12,7 @@
     "config": {
         "abort": {
             "already_configured": "Uređaj već konfiguriran",
-            "no_modules": "Nisu otkriveni ili odabrani moduli",
-            "controllers_configured": "Odabrani kontroleri su dodani"
+            "no_modules": "Nisu otkriveni ili odabrani moduli"
         },
         "error": {
             "cannot_connect": "Nemoguće povezivanje s Tech API-jem.",
@@ -27,6 +26,10 @@
                 "data": {
                     "password": "Lozinka",
                     "username": "Korisničko ime"
+                },
+                "data_description": {
+                    "username": "Naziv računa (ili adresa e-pošte) koji koristite na emodul.eu ili emodul.pl.",
+                    "password": "Lozinka za taj račun."
                 }
             },
             "select_controllers": {
@@ -35,6 +38,22 @@
                 "data": {
                     "controllers": "Kontroleri za uvoz",
                     "include_hub_in_name": "Uključi naziv glavnog uređaja (kontrolera) u nazive entiteta"
+                },
+                "data_description": {
+                    "controllers": "Kontroler koji želite dodati. Za svaki sljedeći kontroler ponovno dodajte integraciju.",
+                    "include_hub_in_name": "Dodajte naziv integracije ispred naziva entiteta zona ovog kontrolera. Korisno kada je postavljeno više kontrolera."
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "include_hub_in_name": "Uključi naziv glavnog uređaja (kontrolera) u nazive entiteta"
+                },
+                "data_description": {
+                    "include_hub_in_name": "Dodajte naziv integracije ispred naziva entiteta zona ovog kontrolera. Korisno kada je postavljeno više kontrolera."
                 }
             }
         }

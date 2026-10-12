@@ -12,8 +12,7 @@
     "config": {
         "abort": {
             "already_configured": "Az eszköz már konfigurálva van",
-            "no_modules": "Nem találhatóak modulok vagy nincsenek kiválasztva",
-            "controllers_configured": "A kiválasztott vezérlők hozzáadva"
+            "no_modules": "Nem találhatóak modulok vagy nincsenek kiválasztva"
         },
         "error": {
             "cannot_connect": "Nem sikerült kapcsolódni a Tech API-hoz.",
@@ -27,6 +26,10 @@
                 "data": {
                     "password": "Jelszó",
                     "username": "Felhasználónév"
+                },
+                "data_description": {
+                    "username": "A fiók neve (vagy e-mail-címe), amelyet az emodul.eu vagy emodul.pl oldalon használ.",
+                    "password": "A fiók jelszava."
                 }
             },
             "select_controllers": {
@@ -35,6 +38,22 @@
                 "data": {
                     "controllers": "Importálni kívánt vezérlők",
                     "include_hub_in_name": "A hub (vezérlő) nevének belefoglalása az entitásnevekbe"
+                },
+                "data_description": {
+                    "controllers": "A hozzáadni kívánt vezérlő. Minden további vezérlőhöz adja hozzá újra az integrációt.",
+                    "include_hub_in_name": "Szúrja be az integráció nevét a vezérlő zónáinak entitásnevei elé. Akkor hasznos, ha több vezérlő van beállítva."
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "include_hub_in_name": "A hub (vezérlő) nevének belefoglalása az entitásnevekbe"
+                },
+                "data_description": {
+                    "include_hub_in_name": "Szúrja be az integráció nevét a vezérlő zónáinak entitásnevei elé. Akkor hasznos, ha több vezérlő van beállítva."
                 }
             }
         }

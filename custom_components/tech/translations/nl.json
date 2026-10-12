@@ -12,8 +12,7 @@
     "config": {
         "abort": {
             "already_configured": "Apparaat is al geconfigureerd",
-            "no_modules": "Geen modules gedetecteerd of geselecteerd",
-            "controllers_configured": "Geselecteerde controllers zijn toegevoegd"
+            "no_modules": "Geen modules gedetecteerd of geselecteerd"
         },
         "error": {
             "cannot_connect": "Kan geen verbinding maken met Tech API.",
@@ -27,6 +26,10 @@
                 "data": {
                     "password": "Wachtwoord",
                     "username": "Gebruikersnaam"
+                },
+                "data_description": {
+                    "username": "De accountnaam (of het e-mailadres) die u gebruikt op emodul.eu of emodul.pl.",
+                    "password": "Het wachtwoord van dat account."
                 }
             },
             "select_controllers": {
@@ -35,6 +38,22 @@
                 "data": {
                     "controllers": "Te importeren controllers",
                     "include_hub_in_name": "Inclusief hub (controller) naam in entiteitnamen"
+                },
+                "data_description": {
+                    "controllers": "De controller die u wilt toevoegen. Voeg de integratie opnieuw toe voor elke volgende controller.",
+                    "include_hub_in_name": "Zet de naam van de integratie voor de entiteitnamen van de zones van deze controller. Handig wanneer meerdere controllers zijn ingesteld."
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "include_hub_in_name": "Inclusief hub (controller) naam in entiteitnamen"
+                },
+                "data_description": {
+                    "include_hub_in_name": "Zet de naam van de integratie voor de entiteitnamen van de zones van deze controller. Handig wanneer meerdere controllers zijn ingesteld."
                 }
             }
         }

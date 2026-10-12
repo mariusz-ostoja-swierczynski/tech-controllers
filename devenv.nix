@@ -33,7 +33,8 @@
     exec = ''
       echo '🛠️ Running setup'
       # Sync with pyproject.toml via pip
-      uv sync --group test_api
+      # The Home Assistant suite needs the `test` group on top of `test_api`.
+      uv sync --group test_api --group test
     '';
     description = "Install dependencies";
   };
@@ -64,6 +65,8 @@
     exec = ''
       echo '🧪 Running tests'
       pytest tests/ --cov-report=term-missing --cov=custom_components.tech.tech
+      echo '🧪 Running Home Assistant tests'
+      pytest tests_ha/ --cov-report=term-missing --cov=custom_components.tech.config_flow
     '';
     description = "Test integration";
   };

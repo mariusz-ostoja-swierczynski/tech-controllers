@@ -448,6 +448,8 @@ class _Entry:
         # The coordinator lives on the entry (``runtime_data``) rather than in a
         # ``hass.data`` mapping; a platform setup reads it from here.
         self.runtime_data: Any = None
+        # The settings that are not needed to connect live in the options.
+        self.options: dict = {}
 
 
 def _item() -> dict[str, Any]:

@@ -11,7 +11,7 @@ from homeassistant.helpers.redact import async_redact_data
 from homeassistant.helpers.typing import ConfigType
 
 from . import assets
-from .const import DOMAIN, PLATFORMS, USER_ID
+from .const import DOMAIN, INCLUDE_HUB_IN_NAME, PLATFORMS, USER_ID
 from .coordinator import TechCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -98,3 +98,37 @@ async def async_unload_entry(hass: HomeAssistant, entry: TechConfigEntry) -> boo
 
     """
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: TechConfigEntry) -> bool:
+    """Migrate an entry written by an older version of this integration.
+
+    Version 3 stored the hub-name setting among the entry's data; version 4
+    keeps it in the entry's options, where the settings that are not needed to
+    connect belong.
+
+    Args:
+        hass: Home Assistant instance.
+        entry: Configuration entry to migrate.
+
+    Returns:
+        ``True`` when the entry can be set up, ``False`` to refuse it.
+
+    """
+    if entry.version > 4:
+        # A newer version wrote this entry, and it may carry data this version
+        # cannot interpret: refusing it is safer than setting it up halfway.
+        return False
+
+    if entry.version < 4:
+        data = dict(entry.data)
+        options = dict(entry.options)
+        include_hub = data.pop(INCLUDE_HUB_IN_NAME, None)
+        if include_hub is not None:
+            options.setdefault(INCLUDE_HUB_IN_NAME, include_hub)
+        hass.config_entries.async_update_entry(
+            entry, data=data, options=options, version=4
+        )
+        _LOGGER.debug("Migrated config entry %s to version 4", entry.entry_id)
+
+    return True

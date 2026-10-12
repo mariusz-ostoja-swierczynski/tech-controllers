@@ -12,8 +12,7 @@
   "config": {
     "abort": {
       "already_configured": "Device already configured",
-      "no_modules": "No modules detected or selected",
-      "controllers_configured": "Selected controllers have been added"
+      "no_modules": "No modules detected or selected"
     },
     "error": {
       "cannot_connect": "Cannot connect to Tech API.",
@@ -27,14 +26,34 @@
         "data": {
           "password": "Password",
           "username": "Username"
+        },
+        "data_description": {
+          "username": "The account name (or email address) you use on emodul.eu or emodul.pl.",
+          "password": "The password for that account."
         }
       },
       "select_controllers": {
         "title": "Controller selection",
         "description": "Please select the controllers you want to integrate.",
         "data": {
-          "controllers": "Controllers to import",
+          "controllers": "Controller to import",
           "include_hub_in_name": "Include hub (controller) name in entity names"
+        },
+        "data_description": {
+          "controllers": "The controller to add. Run the flow again for each further controller.",
+          "include_hub_in_name": "Prefix the entity names of this controller's zones with the name of the integration, which helps when several controllers are set up."
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "include_hub_in_name": "Include hub (controller) name in entity names"
+        },
+        "data_description": {
+          "include_hub_in_name": "Prefix the entity names of this controller's zones with the name of the integration, which helps when several controllers are set up."
         }
       }
     }
