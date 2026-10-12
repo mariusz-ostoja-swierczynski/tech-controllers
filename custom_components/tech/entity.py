@@ -88,7 +88,21 @@ class ReportedEntity:
             entities.discard(self)
             if not entities:
                 self.coordinator.reported.pop(self.source_key, None)
+        self._tell_the_platform_it_left()
         await super().async_will_remove_from_hass()
+
+    def _tell_the_platform_it_left(self) -> None:
+        """Let the platform that built this entity stop counting it as registered.
+
+        This is the only signal that says an entity has left, and it is a
+        positive one: it fires when Home Assistant removes an entity, whether the
+        removal pass dropped it or the user deleted it, and never while one is
+        merely being added. A platform that instead *inferred* the same thing
+        from the payload bookkeeping saw the window between asking for an entity
+        and Home Assistant calling it back, and registered it twice.
+        """
+        for forget in self.coordinator.forget_callbacks:
+            forget(self.unique_id)
 
 
 class TileEntity(
@@ -223,45 +237,36 @@ def add_later(
     paired, a zone is created in the app, a module gains a tile. A platform
     builds its entities once, so instead of that it builds them from the
     coordinator's latest payload every time the data updates and registers what
-    it has not registered before -- what a controller *stops* reporting is
-    handled centrally, because a payload that is merely incomplete must not
-    remove anything.
+    it has not registered before. What a controller *stops* reporting is handled
+    centrally, because a payload that is merely incomplete must not remove
+    anything, and an entity that leaves Home Assistant reports back here, so that
+    a payload bringing its entry back registers it again.
 
     Args:
         config_entry: The entry being set up, used to unregister again.
-        coordinator: The entry's coordinator, and the payload each build reads.
+        coordinator: The entry's coordinator, the payload each build reads, and
+            where the callback that hears about a departing entity is kept.
         async_add_entities: The platform's registration callback.
         build: Builds the entities of the coordinator's current payload.
 
     """
-    registered: dict[str, str] = {}
-    missing: set[str] = set()
+    registered: set[str] = set()
+
+    def _forget(unique_id: str) -> None:
+        registered.discard(unique_id)
+
+    coordinator.forget_callbacks.append(_forget)
 
     def _add_new() -> None:
         # A source key is shared by every entity built from that payload entry,
         # across platforms -- a zone carries a thermostat and its sensors -- so
-        # what tells an entity apart is its own unique id, not that key.
-        live = set(coordinator.reported)
-        for unique_id, key in list(registered.items()):
-            if key in live:
-                missing.discard(key)
-            elif key in missing:
-                # Absent twice running, so the removal pass took that entity out
-                # and a payload that brings its entry back may add it again. One
-                # absence proves nothing: an entity reaches coordinator.reported
-                # only when Home Assistant calls it back, which can be later than
-                # the pass that added it, and forgetting it then would add it a
-                # second time -- which Home Assistant answers with a duplicate
-                # unique id and an ignored entity.
-                del registered[unique_id]
-                missing.discard(key)
-            else:
-                missing.add(key)
-
+        # what tells an entity apart is its own unique id, not that key. An
+        # entity that leaves Home Assistant says so through the callback above,
+        # which is what lets a payload bring its entry back.
         fresh = [entity for entity in build() if entity.unique_id not in registered]
         if not fresh:
             return
-        registered.update({entity.unique_id: entity.source_key for entity in fresh})
+        registered.update(entity.unique_id for entity in fresh)
         async_add_entities(fresh, True)
 
     _add_new()

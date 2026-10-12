@@ -1,6 +1,7 @@
 """Tech DataUpdateCoordinator."""
 
 import asyncio
+from collections.abc import Callable
 import logging
 from typing import Any
 
@@ -71,6 +72,11 @@ class TechCoordinator(DataUpdateCoordinator):
         # ``__init__._drop_unreported_entities``.
         self.reported: dict[str, set[Any]] = {}
         self.reported_misses: dict[str, int] = {}
+        # Platforms that register entities from the payload append a callback
+        # here, to be told by an entity when it leaves Home Assistant. An entity
+        # that has left may be registered again, which is what lets a payload
+        # that brings its source entry back rebuild it.
+        self.forget_callbacks: list[Callable[[str], None]] = []
 
     async def _async_update_data(self) -> dict:
         """Fetch the latest module data for the configured controller.

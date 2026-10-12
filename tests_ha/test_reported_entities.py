@@ -167,6 +167,32 @@ async def test_a_zone_gone_for_an_hour_takes_its_entities_and_device_with_it(
     assert _device_ids(hass, entry) < before_devices
 
 
+async def test_a_zone_the_controller_reports_again_comes_back(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A payload that brings an entry back rebuilds its entities.
+
+    The removal pass is the only thing that takes entities away, and an entity
+    that leaves says so, so its platform stops counting it as registered. That is
+    what lets the next payload reporting that zone build it again, rather than
+    leaving the registry without it until a reload.
+    """
+    payload = _payload("l12")
+    entry = await _set_up(hass, monkeypatch, payload)
+
+    before_entities = _entity_ids(hass, entry)
+    removed = payload["zones"]["elements"].pop(0)
+
+    for _ in range(REMOVAL_MISSES):
+        await _poll(hass, entry)
+    assert _entity_ids(hass, entry) < before_entities
+
+    payload["zones"]["elements"].append(removed)
+    await _poll(hass, entry)
+
+    assert _entity_ids(hass, entry) == before_entities
+
+
 async def test_the_controller_device_cannot_be_removed_by_hand(
     hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
 ) -> None:
