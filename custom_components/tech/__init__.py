@@ -11,7 +11,7 @@ from homeassistant.helpers.redact import async_redact_data
 from homeassistant.helpers.typing import ConfigType
 
 from . import assets
-from .const import DOMAIN, PLATFORMS, USER_ID
+from .const import CONF_MENU_CODES, DOMAIN, PLATFORMS, USER_ID
 from .coordinator import TechCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -57,18 +57,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug(
         "Entry -> title: %s, data: %s, id: %s, domain: %s",
         entry.title,
-        async_redact_data(dict(entry.data), ["token"]),
+        # The menu codes are credentials like the token, and sit under one key,
+        # so redacting that key hides all of them: nothing here may log a code.
+        async_redact_data(dict(entry.data), ["token", CONF_MENU_CODES]),
         entry.entry_id,
         entry.domain,
     )
     language_code = hass.config.language
     user_id = entry.data[USER_ID]
     token = entry.data[CONF_TOKEN]
+    # An entry without the key, or with an empty mapping, has no codes: that is
+    # what every entry configured before codes existed looks like.
+    menu_codes = dict(entry.data.get(CONF_MENU_CODES) or {})
     # Store an API object for your platforms to access
     hass.data.setdefault(DOMAIN, {})
     websession = async_get_clientsession(hass)
 
-    coordinator = TechCoordinator(hass, websession, user_id, token)
+    coordinator = TechCoordinator(
+        hass, websession, user_id, token, menu_codes=menu_codes
+    )
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
     await coordinator.async_config_entry_first_refresh()

@@ -7,6 +7,10 @@
         "deprecated_flag_sensor_used": {
             "title": "Zaznan zastarel senzor",
             "description": "Senzor `{entity_id}` je zastarel: gradniki vrste vrednosti 28, ki poročajo Omogočeno/Onemogočeno, so zdaj izpostavljeni kot binarni senzorji z istim imenom.\n\nUporablja se v naslednjih avtomatizacijah ali skriptah:\n{items}\n\nPosodobite te skupaj z nadzornimi ploščami in predlogami, ki ga uporabljajo, da uporabljajo binarni senzor, nato onemogočite zastarel senzor in znova zaženite Home Assistant."
+        },
+        "menu_code_rejected": {
+            "title": "Koda menija ni bila sprejeta",
+            "description": "Koda, nastavljena za meni ({menu_type}) regulatorja, ni bila sprejeta, zato elementi tega menija manjkajo. Odstranite integracijo in jo znova dodajte, da kodo vnesete znova. Napačna koda je videti popolnoma enako kot nobena koda."
         }
     },
     "config": {
@@ -35,6 +39,15 @@
                 "data": {
                     "controllers": "Krmilniki za uvoz",
                     "include_hub_in_name": "Vključi ime glavnega krmilnika v imena entitet"
+                }
+            },
+            "menu_codes": {
+                "title": "Kode menijev",
+                "description": "Nekateri regulatorji hranijo namestitveni in servisni meni za kodo. Vnesite kodo za vsak meni, ki naj ga Home Assistant bere, ali pustite polja prazna. Napačna koda se obnaša popolnoma enako kot nobena koda.",
+                "data": {
+                    "menu_code_mu": "Koda uporabniškega menija (MU)",
+                    "menu_code_mi": "Koda namestitvenega menija (MI)",
+                    "menu_code_ms": "Koda servisnega menija (MS)"
                 }
             }
         }

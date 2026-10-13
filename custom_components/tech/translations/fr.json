@@ -7,6 +7,10 @@
         "deprecated_flag_sensor_used": {
             "title": "Capteur obsolète détecté",
             "description": "Le capteur `{entity_id}` est obsolète : les widgets de type de valeur 28, qui signalent Activé/Désactivé, sont désormais exposés comme capteurs binaires portant le même nom.\n\nIl est utilisé dans les automatisations ou scripts suivants :\n{items}\n\nMettez à jour ceux-ci, ainsi que les tableaux de bord et modèles qui l'utilisent, pour utiliser le capteur binaire à la place, puis désactivez le capteur obsolète et redémarrez Home Assistant."
+        },
+        "menu_code_rejected": {
+            "title": "Code de menu non accepté",
+            "description": "Le code configuré pour le menu ({menu_type}) du régulateur n'a pas été accepté, c'est pourquoi les commandes de ce menu sont absentes. Supprimez l'intégration et rajoutez-la pour saisir à nouveau le code. Un mauvais code ressemble exactement à l'absence de code."
         }
     },
     "config": {
@@ -35,6 +39,15 @@
                 "data": {
                     "controllers": "Contrôleurs à importer",
                     "include_hub_in_name": "Inclure le nom du hub (contrôleur) dans les noms des entités"
+                }
+            },
+            "menu_codes": {
+                "title": "Codes des menus",
+                "description": "Certains régulateurs gardent leurs menus installateur et service derrière un code. Saisissez le code de chaque menu que Home Assistant doit lire, ou laissez les champs vides. Un mauvais code se comporte exactement comme aucun code.",
+                "data": {
+                    "menu_code_mu": "Code du menu utilisateur (MU)",
+                    "menu_code_mi": "Code du menu installateur (MI)",
+                    "menu_code_ms": "Code du menu service (MS)"
                 }
             }
         }

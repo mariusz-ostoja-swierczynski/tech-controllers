@@ -7,6 +7,10 @@
     "deprecated_flag_sensor_used": {
       "title": "Wykryto przestarzały czujnik",
       "description": "Czujnik `{entity_id}` jest przestarzały: widżety typu wartości 28, które zgłaszają Włączone/Wyłączone, są teraz udostępniane jako czujniki binarne o tej samej nazwie.\n\nJest używany w następujących automatyzacjach lub skryptach:\n{items}\n\nZaktualizuj je wraz z pulpitami i szablonami, które go używają, aby korzystały z czujnika binarnego, następnie wyłącz przestarzały czujnik i uruchom ponownie Home Assistant."
+    },
+    "menu_code_rejected": {
+      "title": "Kod menu nie został zaakceptowany",
+      "description": "Kod skonfigurowany dla menu ({menu_type}) sterownika nie został zaakceptowany, dlatego brakuje elementów tego menu. Usuń integrację i dodaj ją ponownie, aby wpisać kod ponownie. Błędny kod wygląda dokładnie tak samo jak brak kodu."
     }
   },
   "config": {
@@ -35,6 +39,15 @@
         "data": {
           "controllers": "Sterowniki do zintegrowania",
           "include_hub_in_name": "Umieść nazwę hub'a (kontrolera) w nazwach encji"
+        }
+      },
+      "menu_codes": {
+        "title": "Kody menu",
+        "description": "Niektóre sterowniki trzymają menu instalatora i serwisowe za kodem. Wpisz kod dla każdego menu, które Home Assistant ma odczytywać, albo pozostaw pola puste. Błędny kod działa dokładnie tak samo jak brak kodu.",
+        "data": {
+          "menu_code_mu": "Kod menu użytkownika (MU)",
+          "menu_code_mi": "Kod menu instalatora (MI)",
+          "menu_code_ms": "Kod menu serwisowego (MS)"
         }
       }
     }

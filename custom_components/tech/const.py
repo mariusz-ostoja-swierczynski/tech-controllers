@@ -434,6 +434,52 @@ MENU_TYPES = [
     MENU_TYPE_MANUFACTURER,
 ]
 
+# A tree can be gated behind a code the user has to supply (#222). A refusal is
+# HTTP 200 with body ``{"message": "missing items in <TYPE> menu"}`` and no
+# elements, so the code cannot be discovered from it -- only supplied by the
+# user. A wrong code and no code are indistinguishable, which is why the UI can
+# honestly say no more than "not accepted".
+#
+# The code travels in the path as ``<element id>:<code>`` pairs separated by
+# commas. The documented convention pairs it with id 0, the tree root, which is
+# the element carrying ``params.password`` in the dumps we have; a controller
+# that gated a non-root element would name it in the same segment. Pairing with
+# the root also sidesteps the ``type: 35`` "Menu password" *setting* item, whose
+# ``params.password`` is placeholder text rather than a credential.
+MENU_ROOT_ELEMENT_ID = 0
+
+# The trees the config flow offers a code for. Not all four: the manufacturer
+# tree is refused on every consumer account seen and no code is likely to help,
+# so asking for one there would be a field nobody can fill in. Its manifest
+# names it ``manufacturer_menu`` and it stays fetched -- an installer account may
+# read it -- it is just never asked about.
+MENU_CODE_TREES = [
+    MENU_TYPE_USER,
+    MENU_TYPE_INSTALLER,
+    MENU_TYPE_SERVICE,
+]
+
+# Where the supplied codes live in the config entry's ``data``: a mapping of
+# menu type to code, holding only the trees the user gave a code for. An absent
+# key or an empty mapping means "no codes", which is exactly the behaviour of
+# every entry configured before this existed -- so there is no migration to
+# run and VERSION does not move.
+CONF_MENU_CODES = "menu_codes"
+
+
+def menu_code_field(menu_type: str) -> str:
+    """Return the config-flow field name that holds ``menu_type``'s code.
+
+    Args:
+        menu_type: One of :data:`MENU_CODE_TREES`, e.g. ``"MS"``.
+
+    Returns:
+        The schema key for that tree's code, e.g. ``"menu_code_ms"``.
+
+    """
+    return f"menu_code_{menu_type.lower()}"
+
+
 # A menu item's ``type`` field decides which HA platform it is mapped to:
 #   - GROUP             -> not an entity (organisational header)
 #   - VALUE / UNIVERSAL -> NumberEntity (set integer/decimal value)

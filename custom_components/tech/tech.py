@@ -17,6 +17,7 @@ else:  # pragma: no cover
 
 from .const import (
     API_TIMEOUT,
+    MENU_ROOT_ELEMENT_ID,
     MENU_TYPES,
     MODULE_DATA_CACHE_TTL,
     TECH_SUPPORTED_LANGUAGES,
@@ -36,6 +37,7 @@ class Tech:
         user_id=None,
         token=None,
         base_url=TECH_API_URL,
+        menu_codes: dict[str, str] | None = None,
     ) -> None:
         """Initialise the Tech API client.
 
@@ -44,6 +46,10 @@ class Tech:
             user_id: Optional user identifier returned by authentication.
             token: Optional bearer token returned by authentication.
             base_url: Base URL for the Tech API endpoints.
+            menu_codes: Optional mapping of menu type (``MU``, ``MI``, ``MS``,
+                ``MP``) to the code the user supplied for that tree. A tree
+                whose code is absent is simply not retried; an empty mapping is
+                the behaviour of every entry configured before codes existed.
 
         """
         _LOGGER.debug("Init Tech")
@@ -53,6 +59,15 @@ class Tech:
         # Bound every request so a stalled cloud connection cannot hang the
         # config flow or entry setup, which run outside the coordinator timeout.
         self.timeout = ClientTimeout(total=API_TIMEOUT)
+        # The codes are read here rather than passed per call so that one place
+        # holds them for both the read path (a refused tree) and the write path
+        # (a locked item's ``pin``), whatever platform issued the write.
+        self.menu_codes: dict[str, str] = dict(menu_codes or {})
+        # The trees whose configured code the controller would not accept during
+        # the last fetch. Only these are worth telling the user about: a tree
+        # nobody gave a code for is refused like any other unavailable menu, and
+        # has been since long before codes existed.
+        self.menu_code_rejections: set[str] = set()
         if user_id and token:
             self.user_id = user_id
             self.token = token
@@ -267,7 +282,13 @@ class Tech:
         async with self.update_lock:
             cache = self.modules.setdefault(
                 module_udid,
-                {"last_update": None, "zones": {}, "tiles": {}, "menus": {}},
+                {
+                    "last_update": None,
+                    "zones": {},
+                    "tiles": {},
+                    "menus": {},
+                    "menu_code_rejections": set(),
+                },
             )
 
             last_update = cache.get("last_update")
@@ -316,6 +337,10 @@ class Tech:
                 cache["tiles"].update({tile["id"]: tile for tile in visible_tiles})
 
             menu_items = await self._fetch_menu_data(module_udid)
+            # Recorded whatever the outcome: a tree whose code starts being
+            # accepted has to lose its notice, so the empty case matters as much
+            # as the populated one.
+            cache["menu_code_rejections"] = set(self.menu_code_rejections)
             if menu_items:
                 _LOGGER.debug(
                     "Updating %s menu items for controller: %s",
@@ -330,6 +355,14 @@ class Tech:
     async def _fetch_menu_data(self, module_udid: str) -> dict[str, dict[str, Any]]:
         """Fetch menu items from all configured menu types.
 
+        A tree the account may not read answers with a message instead of
+        elements, and the code cannot be read out of that refusal. Where the user
+        supplied a code for that tree the request is retried once with the code
+        in the path; a tree with no code is never retried, and nothing is
+        retried in a loop. A tree whose code did not unlock it is recorded on
+        :attr:`menu_code_rejections`, which is the only refusal worth reporting:
+        the rest are menus that were unavailable before codes existed.
+
         Args:
             module_udid: Tech module identifier.
 
@@ -338,23 +371,43 @@ class Tech:
 
         """
         items: dict[str, dict[str, Any]] = {}
+        rejections: set[str] = set()
         for menu_type in MENU_TYPES:
             try:
                 path = f"users/{self.user_id}/modules/{module_udid}/menu/{menu_type}/"
                 result = await self.get(path)
                 elements = result.get("data", {}).get("elements")
                 if elements is None:
-                    # A tree the account may not read can answer with a message
-                    # rather than elements -- "missing items in MP menu" is what
-                    # it says for a manufacturer tree -- which is worth seeing in
-                    # a debug log beside the trees that do answer.
-                    _LOGGER.debug(
-                        "Menu tree %s of module %s answered without elements: %s",
-                        menu_type,
-                        module_udid,
-                        result,
-                    )
-                    continue
+                    code = self.menu_codes.get(menu_type)
+                    if code is None:
+                        # A tree the account may not read can answer with a
+                        # message rather than elements -- "missing items in MP
+                        # menu" is what it says for a manufacturer tree -- which
+                        # is worth seeing in a debug log beside the trees that do
+                        # answer. Nothing is reported for it: this is how those
+                        # menus have always behaved.
+                        _LOGGER.debug(
+                            "Menu tree %s of module %s answered without elements: %s",
+                            menu_type,
+                            module_udid,
+                            result,
+                        )
+                        continue
+                    # The documented pairing is the tree root, so the segment is
+                    # ``0:<code>``. Nothing prompts for the code here: a refusal
+                    # carries no trace of it, and a wrong code is
+                    # indistinguishable from none.
+                    result = await self.get(f"{path}{MENU_ROOT_ELEMENT_ID}:{code}")
+                    elements = result.get("data", {}).get("elements")
+                    if elements is None:
+                        _LOGGER.warning(
+                            "The %s menu of module %s stayed hidden with the "
+                            "configured code",
+                            menu_type,
+                            module_udid,
+                        )
+                        rejections.add(menu_type)
+                        continue
                 for element in elements:
                     if not isinstance(element, dict):
                         continue
@@ -374,6 +427,7 @@ class Tech:
                     menu_type,
                     module_udid,
                 )
+        self.menu_code_rejections = rejections
         return items
 
     async def get_module_menus(self, module_udid: str) -> dict[str, dict[str, Any]]:
@@ -408,12 +462,29 @@ class Tech:
             Parsed JSON response from the API.
 
         """
-        _LOGGER.debug("Setting menu value for %s/%s: %s", menu_type, ido, data)
+        code = self.menu_codes.get(menu_type)
+        # The write path carries the code as a body field rather than a path
+        # segment: "when a menu item is locked you need to attach a pin", as
+        # {"pin": 1234, "value": 25}, and a pin the controller rejects is the
+        # documented 422 that ``post`` raises as a TechError. Attaching it here
+        # covers every platform that writes a menu item, so a control in a
+        # gated tree works the same as one in a served tree.
+        payload = {**data, "pin": code} if code is not None else data
+        # Deliberately logs ``data`` and not ``payload``: the code is a
+        # credential and must not reach a log line, so only its presence is
+        # recorded.
+        _LOGGER.debug(
+            "Setting menu value for %s/%s%s: %s",
+            menu_type,
+            ido,
+            " with a menu code" if code is not None else "",
+            data,
+        )
         if self.authenticated:
             path = (
                 f"users/{self.user_id}/modules/{module_udid}/menu/{menu_type}/ido/{ido}"
             )
-            result = await self.post(path, json.dumps(data))
+            result = await self.post(path, json.dumps(payload))
             _LOGGER.debug(result)
         else:
             raise TechError(401, "Unauthorized")

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import logging
 import pathlib
 import sys
 import types
@@ -216,6 +217,10 @@ def _async_create_issue(hass: Any, domain: str, issue_id: str, **kwargs: Any) ->
     """Accept a repair issue without registering one; tests install their own."""
 
 
+def _async_delete_issue(hass: Any, domain: str, issue_id: str) -> None:
+    """Accept the removal of a repair issue; tests install their own."""
+
+
 def _automations_with_entity(hass: Any, entity_id: str) -> list[str]:
     """Report no automations referencing an entity."""
     return []
@@ -310,6 +315,7 @@ def _fake_module(name: str) -> types.ModuleType:
     elif name == "homeassistant.helpers.issue_registry":
         module.IssueSeverity = _AutoNamespace()
         module.async_create_issue = _async_create_issue
+        module.async_delete_issue = _async_delete_issue
     elif name == "homeassistant.helpers.typing":
         module.UndefinedType = type("UndefinedType", (), {})
     return module
@@ -386,7 +392,7 @@ _install_stubs()
 const = _load_tech_module("const")
 assets = _load_tech_module("assets")
 _tech_module = _load_tech_module("tech")
-_load_tech_module("coordinator")
+_coordinator = _load_tech_module("coordinator")
 sensor = _load_tech_module("sensor")
 
 # binary_sensor.py imports TechCoordinator and assets from the package rather
@@ -1371,40 +1377,90 @@ def _menus_of(menu_type: str) -> dict[str, dict[str, Any]]:
 class _MenuTrees:
     """Stub for ``Tech.get`` serving one element per menu tree.
 
-    A tree can be refused the way the API refuses one the account may not read
-    -- that is the case for the manufacturer tree of a consumer account, which
-    raises ``TechError`` -- or it can answer with a message instead of elements,
-    which is what a real controller's manufacturer tree does ("missing items in
-    MP menu"). Both have to leave the other trees alone.
+    A tree can be refused in the three ways the API refuses one, and the
+    difference matters to the caller:
+
+    - ``refused``: a ``TechError``, which is not a gate at all.
+    - ``messaged``: an answer with a message instead of elements -- HTTP 200,
+      body ``{"message": "missing items in <TYPE> menu"}``, no ``data``. This is
+      what a gated tree answers, and what a real controller's manufacturer tree
+      answers at all times.
+    - ``gated``: a ``(tree, code)`` pair. The same message until the request
+      carries ``0:<code>`` in its path segment, then the tree arrives -- the
+      shape the live API is documented to have, which no controller we have
+      access to can demonstrate.
+
+    ``bodies`` serves recorded refusal payloads verbatim, so the gated path can
+    be tested against what the API really sent rather than a stand-in.
     """
 
-    def __init__(self, refused: str | None = None, messaged: str | None = None) -> None:
-        """Record the refused and messaged trees, and start with no requests."""
+    def __init__(
+        self,
+        refused: str | None = None,
+        messaged: str | None = None,
+        gated: tuple[str, str] | None = None,
+        bodies: dict[str, dict[str, Any]] | None = None,
+    ) -> None:
+        """Record how each tree answers, and start with no requests."""
         self.paths: list[str] = []
         self._refused = refused
         self._messaged = messaged
+        self._gated = gated
+        self._bodies = bodies or {}
+
+    @staticmethod
+    def _refusal(menu_type: str) -> dict[str, Any]:
+        """Return the refusal body the API answers a gated tree with."""
+        return {"message": f"missing items in {menu_type} menu"}
+
+    def _served(self, menu_type: str) -> dict[str, Any]:
+        """Return one element for a tree the stub is willing to serve."""
+        element = {"menuType": menu_type, "id": len(self.paths), "type": 0}
+        return {"data": {"elements": [element]}}
 
     async def __call__(self, path: str) -> dict[str, Any]:
         """Record the request and answer it, or raise where the tree is refused."""
         self.paths.append(path)
-        menu_type = path.rstrip("/").rsplit("/", 1)[-1]
+        # "/MU/", "/MU/" and "/MS/0:1989" are the three shapes a menu request
+        # has: the tree alone, and the tree with the code's path segment.
+        menu_type, _, segment = path.rsplit("/menu/", 1)[-1].partition("/")
         if menu_type == self._refused:
             raise _tech_module.TechError(403, "menu not available")
+        if menu_type in self._bodies:
+            return self._bodies[menu_type]
+        if self._gated is not None and menu_type == self._gated[0]:
+            if segment == f"0:{self._gated[1]}":
+                return self._served(menu_type)
+            return self._refusal(menu_type)
         if menu_type == self._messaged:
-            return {"message": f"missing items in {menu_type} menu"}
-        element = {"menuType": menu_type, "id": len(self.paths), "type": 0}
-        return {"data": {"elements": [element]}}
+            return self._refusal(menu_type)
+        return self._served(menu_type)
 
 
 def _menu_client(
-    refused: str | None = None, messaged: str | None = None
+    menu_codes: dict[str, str] | None = None, **transport: Any
 ) -> tuple[Any, _MenuTrees]:
     """Return a ``Tech`` client whose only stub is the menu tree transport."""
     tech = _tech_module.Tech.__new__(_tech_module.Tech)
     tech.user_id = 7
-    transport = _MenuTrees(refused, messaged)
-    tech.get = transport
-    return tech, transport
+    # The real constructor sets this; ``__new__`` skips it.
+    tech.menu_codes = dict(menu_codes or {})
+    transport_stub = _MenuTrees(**transport)
+    tech.get = transport_stub
+    return tech, transport_stub
+
+
+def _refused_bodies() -> dict[str, dict[str, Any]]:
+    """Return the refusal bodies the API sent the demo account, as recorded.
+
+    The demo account is refused the three trees a consumer account cannot read,
+    so this fixture holds both sides of the gate: the message a refusal is made
+    of, and the trees a served controller answers with, which are in
+    ``tests/fixtures/kolton_st5305/menus.json``.
+    """
+    return json.loads(
+        (_REPO_ROOT / "tests/fixtures/demo_refused_menus.json").read_text()
+    )
 
 
 async def test_every_menu_tree_is_fetched() -> None:
@@ -1538,3 +1594,244 @@ async def test_dialogue_press_value_follows_the_item_sub_type(
     await entity.async_press()
 
     assert coordinator.api.calls == [("MS", _SERVICE_LOCKOUT_ID, expected)]
+
+
+# ---------------------------------------------------------------------------
+# The gate: a tree the account may not read until it is given a code (#222)
+# ---------------------------------------------------------------------------
+
+
+def test_the_recorded_refusal_is_a_message_and_not_an_error() -> None:
+    """Pin down the shape of a refusal, which is the only signal there is.
+
+    The body is recorded from the demo account, which is refused the three trees
+    a consumer account cannot read. There is no ``data``, no elements and no
+    ``status``: HTTP 200 with a message is what a gated tree answers, so the
+    status code says nothing and the body has to be read.
+    """
+    bodies = _refused_bodies()
+
+    assert sorted(bodies) == ["MP", "MS", "MU"]
+    for menu_type, body in bodies.items():
+        assert body == {"message": f"missing items in {menu_type} menu"}
+        assert "data" not in body
+        assert "status" not in body
+
+
+async def test_a_recorded_refusal_costs_only_its_own_tree() -> None:
+    """The recorded bodies are handled as refusals, and cost no other tree.
+
+    This is the gated path tested against what the API actually sent rather than
+    a hand-built payload, and it is why a controller that answers for two trees
+    can still lose three of them silently: each refusal costs its own tree and
+    nothing else, and leaves no error behind for anyone to notice.
+    """
+    tech, _ = _menu_client(bodies=_refused_bodies())
+
+    items = await tech._fetch_menu_data("abcd")
+
+    assert sorted(key.split("_")[0] for key in items) == ["MI"]
+    # And nothing is reported for them: a menu the account may not read is how
+    # those trees have always behaved, so a refusal on its own is not news.
+    assert tech.menu_code_rejections == set()
+
+
+async def test_a_tree_configured_with_a_code_is_retried_once_and_arrives() -> None:
+    """A code the user supplied turns a refused tree into a served one.
+
+    The retry is the same GET with ``0:<code>`` appended, which is the documented
+    pairing: the code belongs to the tree root. It happens once, right after the
+    refusal that prompted it, and the tree's items then reach the controller's
+    cache like any other tree's.
+    """
+    tech, transport = _menu_client(gated=("MS", "1989"), menu_codes={"MS": "1989"})
+
+    items = await tech._fetch_menu_data("abcd")
+
+    assert list(transport.paths) == [
+        "users/7/modules/abcd/menu/MU/",
+        "users/7/modules/abcd/menu/MI/",
+        "users/7/modules/abcd/menu/MS/",
+        "users/7/modules/abcd/menu/MS/0:1989",
+        "users/7/modules/abcd/menu/MP/",
+    ]
+    assert "MS_4" in items
+    assert tech.menu_code_rejections == set()
+
+
+async def test_a_code_the_controller_rejects_is_tried_once_and_recorded() -> None:
+    """A code that does not unlock the tree is not retried, only reported.
+
+    A wrong code and no code are indistinguishable to the API -- same status,
+    same message -- so the caller can honestly say no more than "not accepted",
+    and must not keep asking in the hope of a different answer.
+    """
+    tech, transport = _menu_client(gated=("MS", "1989"), menu_codes={"MS": "0000"})
+
+    items = await tech._fetch_menu_data("abcd")
+
+    assert transport.paths.count("users/7/modules/abcd/menu/MS/0:0000") == 1
+    assert sorted(key.split("_")[0] for key in items) == ["MI", "MP", "MU"]
+    assert tech.menu_code_rejections == {"MS"}
+
+
+async def test_a_tree_with_no_code_is_never_retried() -> None:
+    """Nothing is asked of a tree the user gave no code for.
+
+    Four trees are requested once each: the retry is driven by a code the user
+    supplied, never by an empty one, so the request count stays predictable and
+    an account with no codes is untouched by this feature.
+    """
+    tech, transport = _menu_client(gated=("MS", "1989"))
+
+    await tech._fetch_menu_data("abcd")
+
+    assert list(transport.paths) == [
+        f"users/7/modules/abcd/menu/{menu_type}/" for menu_type in const.MENU_TYPES
+    ]
+    assert tech.menu_code_rejections == set()
+
+
+def _writing_client(menu_codes: dict[str, str]) -> tuple[Any, list[tuple[str, str]]]:
+    """Return a ``Tech`` client recording what it would POST."""
+    tech = _tech_module.Tech.__new__(_tech_module.Tech)
+    tech.user_id = 7
+    tech.authenticated = True
+    tech.menu_codes = dict(menu_codes)
+    sent: list[tuple[str, str]] = []
+
+    async def _post(path: str, payload: str) -> dict[str, Any]:
+        sent.append((path, payload))
+        return {"status": "success"}
+
+    tech.post = _post
+    return tech, sent
+
+
+async def test_a_menu_write_carries_the_code_in_the_body() -> None:
+    """A write into a gated tree attaches the code as a body field.
+
+    The spec is explicit that an item behind a lock needs the code attached --
+    "when a menu item is locked you need to attach a pin", as ``{"pin": 1234,
+    "value": 25}`` -- and lists a ``422 Invalid parameter pin`` for one it
+    rejects. Without this the reporter's clear-lockout button would reach a tree
+    it can read and still be refused the write.
+    """
+    tech, sent = _writing_client({"MS": "1989"})
+
+    await tech.set_menu_value(
+        "abcd", "MS", _SERVICE_LOCKOUT_ID, {"type": 2, "value": 3}
+    )
+
+    (path, payload) = sent[0]
+    assert path == f"users/7/modules/abcd/menu/MS/ido/{_SERVICE_LOCKOUT_ID}"
+    assert json.loads(payload) == {"type": 2, "value": 3, "pin": "1989"}
+
+
+async def test_a_menu_write_without_a_code_sends_no_pin() -> None:
+    """An entry with no codes writes exactly what it always wrote.
+
+    The key is absent rather than empty, so a controller that never needed a code
+    cannot be sent a stray field by this feature.
+    """
+    tech, sent = _writing_client({})
+
+    await tech.set_menu_value("abcd", "MU", 3550, {"value": 1})
+
+    assert json.loads(sent[0][1]) == {"value": 1}
+
+
+async def test_the_menu_code_never_reaches_the_log(caplog: Any) -> None:
+    """The code is sent, never logged.
+
+    It is a credential of the same kind as the token, and the write path logs its
+    payload at debug level, which is exactly where a code would leak into a
+    diagnostic download.
+    """
+    tech, _ = _writing_client({"MS": "1989"})
+
+    with caplog.at_level(logging.DEBUG):
+        await tech.set_menu_value("abcd", "MS", _SERVICE_LOCKOUT_ID, {"type": 2})
+
+    assert "1989" not in caplog.text
+
+
+def _install_issue_recorder() -> tuple[list[dict[str, Any]], list[str]]:
+    """Point the issue registry at recording fakes and return what it saw.
+
+    Patched on the module object ``coordinator.py`` actually bound rather than
+    through ``sys.modules``: the stub harness and a real Home Assistant install
+    both live in this interpreter, and which of the two that import resolved to
+    depends on the order the test modules were collected in.
+    """
+    created: list[dict[str, Any]] = []
+    deleted: list[str] = []
+
+    def _create(hass: Any, domain: str, issue_id: str, **kwargs: Any) -> None:
+        created.append({"domain": domain, "issue_id": issue_id, **kwargs})
+
+    def _delete(hass: Any, domain: str, issue_id: str) -> None:
+        deleted.append(issue_id)
+
+    _coordinator.ir.async_create_issue = _create
+    _coordinator.ir.async_delete_issue = _delete
+    return created, deleted
+
+
+def _menu_coordinator() -> Any:
+    """Return a coordinator carrying only what the issue sync reads.
+
+    Built with ``__new__`` the way this module builds its ``Tech`` clients. The
+    test modules here share the interpreter's import cache, so which
+    ``DataUpdateCoordinator`` the real class ends up deriving from depends on
+    collection order; the method under test needs neither the base class nor its
+    constructor, only ``hass`` and the entry it scopes the issue ids by.
+    """
+    coordinator = _coordinator.TechCoordinator.__new__(_coordinator.TechCoordinator)
+    coordinator.hass = object()
+    coordinator.config_entry = types.SimpleNamespace(
+        data={const.CONTROLLER: {const.UDID: _UDID}}
+    )
+    return coordinator
+
+
+def test_a_rejected_code_is_the_only_refusal_worth_reporting() -> None:
+    """A code the controller refused is reported; nothing else is.
+
+    A refused menu is not news in itself: on a consumer account the manufacturer
+    menu is refused on every controller and the user menu on some, so reporting
+    each refusal would leave a permanent, unactionable notice on almost every
+    installation. A code the user supplied and the controller would not accept is
+    different -- it is specific, and they can act on it.
+    """
+    created, deleted = _install_issue_recorder()
+    coordinator = _menu_coordinator()
+
+    coordinator._async_sync_menu_code_issues({"MS"})
+
+    assert [issue["issue_id"] for issue in created] == [
+        f"menu_code_rejected_{_UDID}_MS"
+    ]
+    assert created[0]["translation_key"] == "menu_code_rejected"
+    assert created[0]["translation_placeholders"] == {"menu_type": "MS"}
+    assert created[0]["is_fixable"] is False
+    # Every other tree's notice is swept in the same pass.
+    assert f"menu_code_rejected_{_UDID}_MU" in deleted
+    assert len(deleted) == len(const.MENU_TYPES) - 1
+
+
+def test_nothing_is_reported_and_stale_notices_are_cleared() -> None:
+    """With no rejected code there is nothing to raise, and the old one goes.
+
+    The same pass clears the notices of trees that are no longer rejected, so a
+    code that starts being accepted -- retyped, or after the controller is reset
+    -- does not leave the user looking for a problem that is gone.
+    """
+    created, deleted = _install_issue_recorder()
+    coordinator = _menu_coordinator()
+
+    coordinator._async_sync_menu_code_issues(set())
+
+    assert created == []
+    assert f"menu_code_rejected_{_UDID}_MS" in deleted
+    assert len(deleted) == len(const.MENU_TYPES)

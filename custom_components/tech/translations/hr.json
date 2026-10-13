@@ -7,6 +7,10 @@
         "deprecated_flag_sensor_used": {
             "title": "Otkriven zastarjeli senzor",
             "description": "Senzor `{entity_id}` je zastario: widgeti tipa vrijednosti 28, koji prijavljuju Omogućeno/Onemogućeno, sada se izlažu kao binarni senzori s istim nazivom.\n\nKoristi se u sljedećim automatizacijama ili skriptama:\n{items}\n\nAžurirajte ih, zajedno s nadzornim pločama i predlošcima koji ga koriste, da koriste binarni senzor, zatim onemogućite zastarjeli senzor i ponovno pokrenite Home Assistant."
+        },
+        "menu_code_rejected": {
+            "title": "Kod izbornika nije prihvaćen",
+            "description": "Kod postavljen za izbornik ({menu_type}) regulatora nije prihvaćen, zato nedostaju elementi tog izbornika. Uklonite integraciju i ponovno je dodajte kako biste ponovno unijeli kod. Pogrešan kod izgleda točno kao da koda nema."
         }
     },
     "config": {
@@ -35,6 +39,15 @@
                 "data": {
                     "controllers": "Kontroleri za uvoz",
                     "include_hub_in_name": "Uključi naziv glavnog uređaja (kontrolera) u nazive entiteta"
+                }
+            },
+            "menu_codes": {
+                "title": "Kodovi izbornika",
+                "description": "Neki regulatori drže instalaterski i servisni izbornik iza koda. Unesite kod za svaki izbornik koji Home Assistant treba čitati ili ostavite polja praznima. Pogrešan kod ponaša se točno kao da koda nema.",
+                "data": {
+                    "menu_code_mu": "Kod korisničkog izbornika (MU)",
+                    "menu_code_mi": "Kod instalaterskog izbornika (MI)",
+                    "menu_code_ms": "Kod servisnog izbornika (MS)"
                 }
             }
         }
