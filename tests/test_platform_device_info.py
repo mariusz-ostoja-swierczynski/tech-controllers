@@ -528,7 +528,9 @@ def _build(
 
 
 @pytest.mark.parametrize(("module_name", "class_name"), PLATFORMS, ids=_PLATFORM_IDS)
-def test_zone_entity_uses_the_zone_device_name(module_name: str, class_name: str) -> None:
+def test_zone_entity_uses_the_zone_device_name(
+    module_name: str, class_name: str
+) -> None:
     """A zone-attached entity names the zone device from the resolved mapping."""
     entity = _build(
         module_name, class_name, zone_id=101, zone_names={101: "L-8 DEMO Strefa 1"}
@@ -794,7 +796,15 @@ def test_kolton_st5305_widget_entities() -> None:
         (2223, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 4274),
         (2232, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 0),
         # 39 -- "Value l / m" in the API prose, labelled l/godz. by the app
-        (1096, "widget2", 39, "TileWidgetTemperatureSensor", flow, "volume_flow_rate", 0),
+        (
+            1096,
+            "widget2",
+            39,
+            "TileWidgetTemperatureSensor",
+            flow,
+            "volume_flow_rate",
+            0,
+        ),
         # 13 -- hours and minutes
         (1664, "widget2", 13, "TileWidgetTemperatureSensor", None, None, "00:00"),
         (1666, "widget2", 13, "TileWidgetTemperatureSensor", None, None, "17:21"),
@@ -1173,13 +1183,7 @@ class TestDeprecatedFlagSensorSelection:
 
 def _kolton_menus() -> dict[str, dict[str, Any]]:
     """Return the reporter's user menu, keyed the way the API client keys it."""
-    payload = json.loads(
-        (_REPO_ROOT / "tests/fixtures/kolton_st5305/menus.json").read_text()
-    )
-    return {
-        f"{item['menuType']}_{item['id']}": item
-        for item in payload["data"]["elements"]
-    }
+    return _menus_of("MU")
 
 
 def _kolton_switches() -> list[Any]:
@@ -1232,9 +1236,7 @@ def test_checkbox_option_switches_are_named_after_their_option() -> None:
     """
     switches = _kolton_checkbox_switches()
 
-    assert [
-        (entity.name, entity.unique_id) for entity in switches.values()
-    ] == [
+    assert [(entity.name, entity.unique_id) for entity in switches.values()] == [
         ("label-128", f"{_UDID}_menu_MU_30029_option_128"),
         ("label-3645", f"{_UDID}_menu_MU_30029_option_3645"),
     ]
@@ -1334,96 +1336,53 @@ async def test_user_menu_dialogue_is_the_factory_reset_not_a_lockout() -> None:
 # Menu trees -- the clear-lockout control lives in the service tree (#222)
 # ---------------------------------------------------------------------------
 
-# Text ids from the public eModul catalog, read straight off emodul.eu:
-# 391 "Menu serwis" (the root group every service tree carries), 4764 "Blokada
-# presostatu", 8396 "Czas blokady presostatu", 8395 "Zdjęcie blokady" and
-# 10018 "Brak blokady" -- the body the reporter's own dialog shows while there
-# is nothing to clear. His trailing slash in #222 traced that dialog's confirm
-# request to item 1537, so that item id is real; the group id is a stand-in.
-_SERVICE_GROUP_ID = 30000
+# The item the reporter traced in #222: "Zdjęcie blokady", the clear-lockout
+# dialogue of his heat pump's service tree, whose sub-type 2 is what makes a
+# press send {"type": 2, "value": 3}. The item id is his, and the tree it lives
+# in is now his own dump rather than a stand-in.
 _SERVICE_LOCKOUT_ID = 1537
 
 
 def _service_menu() -> dict[str, dict[str, Any]]:
-    """Return the service tree of a heat pump, keyed the way the client keys it.
+    """Return the reporter's service tree, keyed the way the API client keys it.
 
-    This is the shape the reporter's eModul app shows under "Menu serwis >
-    Blokada presostatu": a group holding the lockout time and the
-    clear-lockout dialogue, whose sub-type is 2 -- the dialog he traced sends
-    ``{"value": 3, "type": 2}``. The text ids are the catalog's own and the
-    item id is his; the group id is a stand-in until his ``/menu/MS/`` dump can
-    be pinned as a fixture the way his user menu already is.
+    This is his own ``/menu/MS/`` dump, committed as a fixture with the service
+    password replaced by a placeholder: the tree under "Menu serwis" that holds
+    "Blokada presostatu", whose clear-lockout dialogue is item 1537 with
+    sub-type 2 -- the control #222 is about. The dump also pins the nesting depth
+    that the enabled-by-default rule is measured against, which the synthetic
+    tree this replaces could only approximate.
     """
-    elements = [
-        {
-            "menuType": "MS",
-            "type": 0,
-            "id": 0,
-            "parentId": 0,
-            "access": True,
-            "txtId": 391,
-            "iconId": 0,
-            "params": {"description": "Element gruping menu"},
-        },
-        {
-            "menuType": "MS",
-            "type": 0,
-            "id": _SERVICE_GROUP_ID,
-            "parentId": 0,
-            "access": True,
-            "txtId": 4764,
-            "iconId": 10,
-            "params": {"description": "Element gruping menu"},
-        },
-        {
-            "menuType": "MS",
-            "type": 1,
-            "id": 1001,
-            "parentId": _SERVICE_GROUP_ID,
-            "access": True,
-            "txtId": 8396,
-            "iconId": 87,
-            "params": {
-                "format": 1,
-                "value": 30,
-                "min": 0,
-                "max": 240,
-                "default": 0,
-                "txtId": 728,
-                "description": "Number value control",
-            },
-        },
-        {
-            "menuType": "MS",
-            "type": 20,
-            "id": _SERVICE_LOCKOUT_ID,
-            "parentId": _SERVICE_GROUP_ID,
-            "access": True,
-            "txtId": 8395,
-            "iconId": 97,
-            "params": {
-                "txtId": 10018,
-                "type": 2,
-                "value": -1,
-                "blockHide": 0,
-                "description": "Dialogue control - Yes/No",
-            },
-        },
-    ]
-    return {f"{item['menuType']}_{item['id']}": item for item in elements}
+    return _menus_of("MS")
+
+
+def _menus_of(menu_type: str) -> dict[str, dict[str, Any]]:
+    """Return one tree of the reporter's controller, keyed as the client keys it."""
+    payload = json.loads(
+        (_REPO_ROOT / "tests/fixtures/kolton_st5305/menus.json").read_text()
+    )
+    return {
+        f"{item['menuType']}_{item['id']}": item
+        for item in payload[menu_type]["data"]["elements"]
+        if isinstance(item, dict) and item.get("id") is not None
+    }
 
 
 class _MenuTrees:
     """Stub for ``Tech.get`` serving one element per menu tree.
 
-    A tree can be refused the way the API refuses one the account may not read,
-    which is the case for the manufacturer tree of a consumer account.
+    A tree can be refused the way the API refuses one the account may not read
+    -- that is the case for the manufacturer tree of a consumer account, which
+    raises ``TechError`` -- or it can answer with a message instead of elements,
+    which is what a real controller's manufacturer tree does ("missing items in
+    MP menu"). Both have to leave the other trees alone.
     """
 
-    def __init__(self, refused: str | None = None) -> None:
-        """Record the refused tree, if any, and start with no requests made."""
+    def __init__(self, refused: str | None = None, messaged: str | None = None) -> None:
+        """Record the refused and messaged trees, and start with no requests."""
         self.paths: list[str] = []
         self._refused = refused
+        self._messaged = messaged
 
     async def __call__(self, path: str) -> dict[str, Any]:
         """Record the request and answer it, or raise where the tree is refused."""
@@ -1431,15 +1390,19 @@ class _MenuTrees:
         menu_type = path.rstrip("/").rsplit("/", 1)[-1]
         if menu_type == self._refused:
             raise _tech_module.TechError(403, "menu not available")
+        if menu_type == self._messaged:
+            return {"message": f"missing items in {menu_type} menu"}
         element = {"menuType": menu_type, "id": len(self.paths), "type": 0}
         return {"data": {"elements": [element]}}
 
 
-def _menu_client(refused: str | None = None) -> tuple[Any, _MenuTrees]:
+def _menu_client(
+    refused: str | None = None, messaged: str | None = None
+) -> tuple[Any, _MenuTrees]:
     """Return a ``Tech`` client whose only stub is the menu tree transport."""
     tech = _tech_module.Tech.__new__(_tech_module.Tech)
     tech.user_id = 7
-    transport = _MenuTrees(refused)
+    transport = _MenuTrees(refused, messaged)
     tech.get = transport
     return tech, transport
 
@@ -1480,6 +1443,26 @@ async def test_a_refused_menu_tree_leaves_the_others_alone() -> None:
     assert sorted(items) == ["MI_2", "MS_3", "MU_1"]
 
 
+async def test_a_menu_tree_answered_with_a_message_loses_nothing() -> None:
+    """A tree that answers with a message instead of elements is not an error.
+
+    A real controller's manufacturer tree answers ``{"message": "missing items
+    in MP menu"}`` -- no ``data``, no elements -- and that is not a ``TechError``,
+    so only the shape of the answer tells it apart from a served tree. It must
+    cost that tree alone, leaving the other three and the rest of the poll
+    intact; it is also why the item count logged for a controller can be far
+    below what its dumps hold.
+    """
+    tech, transport = _menu_client(messaged="MP")
+
+    items = await tech._fetch_menu_data("abcd")
+
+    assert transport.paths == [
+        f"users/7/modules/abcd/menu/{menu_type}/" for menu_type in const.MENU_TYPES
+    ]
+    assert sorted(items) == ["MI_2", "MS_3", "MU_1"]
+
+
 async def test_service_menu_dialogue_becomes_a_working_button() -> None:
     """The clear-lockout dialogue of the service tree reaches Home Assistant.
 
@@ -1498,9 +1481,14 @@ async def test_service_menu_dialogue_becomes_a_working_button() -> None:
     )
 
     lockout = f"{_UDID}_menu_MS_{_SERVICE_LOCKOUT_ID}"
-    assert [entity.unique_id for entity in added] == [lockout]
+    # The service tree carries four dialogues and the clear-lockout is one of
+    # them: all four register from that tree, and this one is the control #222
+    # asks for.
+    assert len(added) == 4
+    by_id = {entity.unique_id: entity for entity in added}
+    assert lockout in by_id
 
-    button = added[0]
+    button = by_id[lockout]
     assert button.name == "label-4764 - label-8395"
     assert button.entity_registry_enabled_default
     assert button._attr_available  # access: true while there is a lockout

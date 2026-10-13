@@ -342,12 +342,32 @@ class Tech:
             try:
                 path = f"users/{self.user_id}/modules/{module_udid}/menu/{menu_type}/"
                 result = await self.get(path)
-                elements = result.get("data", {}).get("elements", [])
+                elements = result.get("data", {}).get("elements")
+                if elements is None:
+                    # A tree the account may not read can answer with a message
+                    # rather than elements -- "missing items in MP menu" is what
+                    # it says for a manufacturer tree -- which is worth seeing in
+                    # a debug log beside the trees that do answer.
+                    _LOGGER.debug(
+                        "Menu tree %s of module %s answered without elements: %s",
+                        menu_type,
+                        module_udid,
+                        result,
+                    )
+                    continue
                 for element in elements:
+                    if not isinstance(element, dict):
+                        continue
                     item_id = element.get("id")
                     if item_id is not None:
                         key = f"{menu_type}_{item_id}"
                         items[key] = element
+                _LOGGER.debug(
+                    "Menu tree %s of module %s carries %s items",
+                    menu_type,
+                    module_udid,
+                    len(elements),
+                )
             except TechError:
                 _LOGGER.debug(
                     "Menu type %s not available for module %s",
