@@ -1385,10 +1385,12 @@ class _MenuTrees:
       body ``{"message": "missing items in <TYPE> menu"}``, no ``data``. This is
       what a gated tree answers, and what a real controller's manufacturer tree
       answers at all times.
-    - ``gated``: a ``(tree, code)`` pair. The same message until the request
-      carries ``0:<code>`` in its path segment, then the tree arrives -- the
-      shape the live API is documented to have, which no controller we have
-      access to can demonstrate.
+    - ``gated``: a ``(tree, code)`` pair. The tree answers with its root alone,
+      whose ``params.password`` marks it as needing a code, and the rest arrives
+      only for the request that carries ``0:<code>``. A code that does not match is
+      answered with the API's documented ``422 Invalid parameter pin`` -- or, with
+      ``empty_pin``, with a 2xx whose element list is empty, the other shape a
+      refused code has been seen in.
 
     ``bodies`` serves recorded refusal payloads verbatim, so the gated path can
     be tested against what the API really sent rather than a stand-in.
@@ -1400,6 +1402,7 @@ class _MenuTrees:
         messaged: str | None = None,
         gated: tuple[str, str] | None = None,
         bodies: dict[str, dict[str, Any]] | None = None,
+        empty_pin: bool = False,
     ) -> None:
         """Record how each tree answers, and start with no requests."""
         self.paths: list[str] = []
@@ -1407,10 +1410,11 @@ class _MenuTrees:
         self._messaged = messaged
         self._gated = gated
         self._bodies = bodies or {}
+        self._empty_pin = empty_pin
 
     @staticmethod
     def _refusal(menu_type: str) -> dict[str, Any]:
-        """Return the refusal body the API answers a gated tree with."""
+        """Return the message a tree the account may not read answers with."""
         return {"message": f"missing items in {menu_type} menu"}
 
     def _served(self, menu_type: str) -> dict[str, Any]:
@@ -1418,20 +1422,54 @@ class _MenuTrees:
         element = {"menuType": menu_type, "id": len(self.paths), "type": 0}
         return {"data": {"elements": [element]}}
 
+    def _gated_answer(self, menu_type: str, segment: str) -> dict[str, Any]:
+        """Answer a tree held behind a code the way the live API does.
+
+        Its root alone without a code, and the root carries ``params.password``;
+        the rest only once the segment names that root and the code it wants; and
+        an empty element list for a segment that does not match. All three shapes
+        were observed live, and the last one is what the eModul app reads as a
+        wrong code.
+        """
+        root = {
+            "menuType": menu_type,
+            "id": 0,
+            "parentId": 0,
+            "type": 0,
+            "access": True,
+            "txtId": 391,
+            "params": {"description": "Element gruping menu", "password": "password"},
+        }
+        if segment == f"0:{self._gated[1]}":
+            child = {
+                "menuType": menu_type,
+                "id": 7,
+                "parentId": 0,
+                "type": 20,
+                "access": True,
+                "params": {"type": 2, "value": -1},
+            }
+            return {"data": {"elements": [root, child]}}
+        if segment:
+            if self._empty_pin:
+                # The other shape a refused code was seen in: a 2xx whose element
+                # list is simply empty, which is what the eModul app checks for.
+                return {"data": {"elements": []}}
+            raise _tech_module.TechError(422, '{"error":"Invalid parameter pin"}')
+        return {"data": {"elements": [root]}}
+
     async def __call__(self, path: str) -> dict[str, Any]:
         """Record the request and answer it, or raise where the tree is refused."""
         self.paths.append(path)
-        # "/MU/", "/MU/" and "/MS/0:1989" are the three shapes a menu request
-        # has: the tree alone, and the tree with the code's path segment.
+        # A menu request has two shapes: the tree alone (".../MS/"), and the tree
+        # with the code's path segment (".../MS/0:1989").
         menu_type, _, segment = path.rsplit("/menu/", 1)[-1].partition("/")
         if menu_type == self._refused:
             raise _tech_module.TechError(403, "menu not available")
         if menu_type in self._bodies:
             return self._bodies[menu_type]
         if self._gated is not None and menu_type == self._gated[0]:
-            if segment == f"0:{self._gated[1]}":
-                return self._served(menu_type)
-            return self._refusal(menu_type)
+            return self._gated_answer(menu_type, segment)
         if menu_type == self._messaged:
             return self._refusal(menu_type)
         return self._served(menu_type)
@@ -1655,41 +1693,151 @@ async def test_a_tree_configured_with_a_code_is_retried_once_and_arrives() -> No
         "users/7/modules/abcd/menu/MS/0:1989",
         "users/7/modules/abcd/menu/MP/",
     ]
-    assert "MS_4" in items
+    # The tree opened: its child arrived beside the root that was all it would
+    # give away without the code.
+    assert "MS_7" in items
     assert tech.menu_code_rejections == set()
 
 
 async def test_a_code_the_controller_rejects_is_tried_once_and_recorded() -> None:
-    """A code that does not unlock the tree is not retried, only reported.
+    """A code the controller will not accept is tried once and reported.
 
-    A wrong code and no code are indistinguishable to the API -- same status,
-    same message -- so the caller can honestly say no more than "not accepted",
-    and must not keep asking in the hope of a different answer.
+    The refusal is the API's documented ``422 Invalid parameter pin`` -- the same
+    answer the write path gives for a bad pin -- so the tree keeps the root it
+    handed over and the code is recorded rather than retried.
     """
     tech, transport = _menu_client(gated=("MS", "1989"), menu_codes={"MS": "0000"})
 
     items = await tech._fetch_menu_data("abcd")
 
     assert transport.paths.count("users/7/modules/abcd/menu/MS/0:0000") == 1
-    assert sorted(key.split("_")[0] for key in items) == ["MI", "MP", "MU"]
+    # The tree stayed shut: all it gave away is the root, and the child the right
+    # code would have brought never arrived.
+    assert "MS_7" not in items
+    assert "MS_0" in items
     assert tech.menu_code_rejections == {"MS"}
 
 
-async def test_a_tree_with_no_code_is_never_retried() -> None:
-    """Nothing is asked of a tree the user gave no code for.
+async def test_an_unlock_answered_with_nothing_is_not_an_unlock() -> None:
+    """An empty element list is the other shape a refused code has been seen in.
 
-    Four trees are requested once each: the retry is driven by a code the user
-    supplied, never by an empty one, so the request count stays predictable and
-    an account with no codes is untouched by this feature.
+    The eModul app reads exactly this as a wrong code, so it is treated as the 422
+    is: the tree keeps its root and the code is recorded.
+    """
+    tech, _ = _menu_client(
+        gated=("MS", "1989"), menu_codes={"MS": "0000"}, empty_pin=True
+    )
+
+    items = await tech._fetch_menu_data("abcd")
+
+    assert "MS_7" not in items
+    assert "MS_0" in items
+    assert tech.menu_code_rejections == {"MS"}
+
+
+async def test_a_tree_left_shut_keeps_the_root_it_gave_away() -> None:
+    """A gated tree with no code contributes exactly what it handed over.
+
+    Its root is a group, so it becomes no entity at all -- which is the silent
+    absence the reporter saw.
     """
     tech, transport = _menu_client(gated=("MS", "1989"))
 
-    await tech._fetch_menu_data("abcd")
+    items = await tech._fetch_menu_data("abcd")
 
     assert list(transport.paths) == [
         f"users/7/modules/abcd/menu/{menu_type}/" for menu_type in const.MENU_TYPES
     ]
+    assert "MS_0" in items
+    assert "MS_7" not in items
     assert tech.menu_code_rejections == set()
+
+
+async def test_a_tree_the_account_may_not_read_is_never_retried() -> None:
+    """A message refusal is not a gate, and must not be sent a code.
+
+    The two blocked shapes differ: a gated tree hands over its root and can be
+    opened, while a menu the account may not read answers with a message and has
+    no password element to pair a code with. Retrying the second would be asking
+    the wrong question, and would read as a rejected code.
+    """
+    tech, transport = _menu_client(messaged="MS", menu_codes={"MS": "1989"})
+
+    await tech._fetch_menu_data("abcd")
+
+    assert transport.paths.count("users/7/modules/abcd/menu/MS/0:1989") == 0
+    assert tech.menu_code_rejections == set()
+
+
+class _FakeResponse:
+    """Minimal stand-in for an aiohttp response, for the real ``Tech.get``."""
+
+    status = 200
+
+    async def json(self) -> dict[str, Any]:
+        """Return an empty element list."""
+        return {"data": {"elements": []}}
+
+    async def text(self) -> str:
+        """Return nothing; only read on an error status."""
+        return ""
+
+    async def __aenter__(self) -> _FakeResponse:
+        """Enter the response context."""
+        return self
+
+    async def __aexit__(self, *exc: Any) -> bool:
+        """Leave the response context."""
+        return False
+
+
+class _FakeSession:
+    """Stand-in for the aiohttp session, recording the URLs requested."""
+
+    def __init__(self) -> None:
+        """Start with no requests recorded."""
+        self.urls: list[str] = []
+
+    def get(self, url: str, **kwargs: Any) -> _FakeResponse:
+        """Record the request and return a response."""
+        self.urls.append(url)
+        return _FakeResponse()
+
+
+async def test_a_menu_code_is_masked_out_of_the_request_log(caplog: Any) -> None:
+    """The code travels in the request path, and the path is logged.
+
+    ``.../menu/MS/0:<code>`` would put the credential in the log and in any
+    diagnostic download made of it, so the request line masks it. This drives the
+    real ``get``, because a stubbed transport never reaches the log line.
+    """
+    tech = _tech_module.Tech.__new__(_tech_module.Tech)
+    tech.base_url = _tech_module.Tech.TECH_API_URL
+    tech.headers = {}
+    tech.timeout = None
+    tech.session = _FakeSession()
+
+    with caplog.at_level(logging.DEBUG):
+        await tech.get("users/7/modules/abcd/menu/MS/0:1989")
+
+    assert "1989" not in caplog.text
+    assert "/menu/MS/0:**REDACTED**" in caplog.text
+
+
+def test_only_a_menu_code_is_masked_in_a_path() -> None:
+    """A path with no code keeps its shape, and every code in one is masked."""
+    assert (
+        _tech_module._redact_menu_pin("users/7/modules/abcd") == "users/7/modules/abcd"
+    )
+    assert (
+        _tech_module._redact_menu_pin("users/7/modules/abcd/menu/MS/0:1989")
+        == "users/7/modules/abcd/menu/MS/0:**REDACTED**"
+    )
+    # The documented multi-element form carries one code per element.
+    assert (
+        _tech_module._redact_menu_pin("users/7/modules/abcd/menu/MS/0:1234,33:4321")
+        == "users/7/modules/abcd/menu/MS/0:**REDACTED**,33:**REDACTED**"
+    )
 
 
 def _writing_client(menu_codes: dict[str, str]) -> tuple[Any, list[tuple[str, str]]]:
@@ -1790,7 +1938,8 @@ def _menu_coordinator() -> Any:
     coordinator = _coordinator.TechCoordinator.__new__(_coordinator.TechCoordinator)
     coordinator.hass = object()
     coordinator.config_entry = types.SimpleNamespace(
-        data={const.CONTROLLER: {const.UDID: _UDID}}
+        # "name" is ``CONF_NAME``: the controller the coordinator logs for.
+        data={const.CONTROLLER: {const.UDID: _UDID, "name": _HUB}}
     )
     return coordinator
 
@@ -1835,3 +1984,97 @@ def test_nothing_is_reported_and_stale_notices_are_cleared() -> None:
     assert created == []
     assert f"menu_code_rejected_{_UDID}_MS" in deleted
     assert len(deleted) == len(const.MENU_TYPES)
+
+
+# ---------------------------------------------------------------------------
+# The subtitle catalog cannot take the entry down with it
+# ---------------------------------------------------------------------------
+
+
+def _catalog_coordinator(
+    *, catalog: Any = None, error: Exception | None = None
+) -> tuple[Any, list[str]]:
+    """Return a coordinator whose catalog and module fetches are stubbed.
+
+    ``_async_update_data`` reads the entry's controller name and calls
+    ``module_data``, so those are the only two stubs it needs to run for real.
+    """
+    coordinator = _menu_coordinator()
+    coordinator.hass = types.SimpleNamespace(
+        config=types.SimpleNamespace(language="pl")
+    )
+    coordinator.translations = _coordinator.Translations()
+    coordinator.translations_loaded = False
+    calls: list[str] = []
+
+    async def _get_translations(language: str) -> Any:
+        calls.append(language)
+        if error is not None:
+            raise error
+        return catalog
+
+    async def _module_data(udid: str, force: bool = False) -> dict:
+        return {"menu_code_rejections": set()}
+
+    coordinator.api = types.SimpleNamespace(
+        get_translations=_get_translations, module_data=_module_data
+    )
+    return coordinator, calls
+
+
+async def test_a_failing_subtitle_catalog_costs_names_not_entities() -> None:
+    """An i18n outage must not cost the user everything.
+
+    On 2026-10-13 the API's ``i18n`` endpoint answered 400 for every language,
+    and the catalog is loaded inside ``async_setup_entry``: letting that escape
+    failed the whole entry, and with it every zone, tile and menu control the
+    user had. The catalog only names things, and ``Translations`` was written to
+    degrade to the raw text ids, so the failure is logged and nothing else.
+    """
+    coordinator, calls = _catalog_coordinator(
+        error=_tech_module.TechError(400, "Bad Request")
+    )
+
+    await coordinator.async_load_translations()
+
+    assert calls == ["pl"]
+    assert coordinator.translations_loaded is False
+    assert coordinator.translations.get_text(8395) == "txtId 8395"
+
+
+async def test_the_catalog_is_adopted_when_the_api_serves_it() -> None:
+    """A served catalog is used, and its labels resolve as before."""
+    coordinator, _ = _catalog_coordinator(catalog={"data": {"8395": "Zdjęcie blokady"}})
+
+    await coordinator.async_load_translations()
+
+    assert coordinator.translations_loaded is True
+    assert coordinator.translations.get_text(8395) == "Zdjęcie blokady"
+
+
+async def test_a_failed_catalog_is_retried_on_the_next_refresh() -> None:
+    """The fetch is retried until it lands, so a repaired API needs no restart."""
+    _install_issue_recorder()
+    coordinator, calls = _catalog_coordinator(
+        error=_tech_module.TechError(400, "Bad Request")
+    )
+
+    await coordinator._async_update_data()
+    await coordinator._async_update_data()
+
+    assert calls == ["pl", "pl"]
+
+
+async def test_a_loaded_catalog_is_never_fetched_again() -> None:
+    """Once the catalog is in, later refreshes stop asking for it.
+
+    The retry rides on the polling cadence, so it has to stop the moment it
+    succeeds: otherwise every poll pays for a request it does not need.
+    """
+    _install_issue_recorder()
+    coordinator, calls = _catalog_coordinator(catalog={"data": {"8395": "x"}})
+
+    await coordinator._async_update_data()
+    await coordinator._async_update_data()
+
+    assert calls == ["pl"]

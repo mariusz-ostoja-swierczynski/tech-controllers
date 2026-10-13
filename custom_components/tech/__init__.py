@@ -10,7 +10,6 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.redact import async_redact_data
 from homeassistant.helpers.typing import ConfigType
 
-from . import assets
 from .const import CONF_MENU_CODES, DOMAIN, PLATFORMS, USER_ID
 from .coordinator import TechCoordinator
 
@@ -63,7 +62,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.entry_id,
         entry.domain,
     )
-    language_code = hass.config.language
     user_id = entry.data[USER_ID]
     token = entry.data[CONF_TOKEN]
     # An entry without the key, or with an empty mapping, has no codes: that is
@@ -80,9 +78,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await coordinator.async_config_entry_first_refresh()
 
-    coordinator.translations = await assets.Translations.load(
-        language_code, coordinator.api
-    )
+    # The catalog names things; it is not needed to run, and the coordinator
+    # retries it on each refresh if the API will not serve it.
+    await coordinator.async_load_translations()
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

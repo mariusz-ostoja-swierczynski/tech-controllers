@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -17,6 +18,7 @@ else:  # pragma: no cover
 
 from .const import (
     API_TIMEOUT,
+    MENU_PIN_REJECTION_STATUS,
     MENU_ROOT_ELEMENT_ID,
     MENU_TYPES,
     MODULE_DATA_CACHE_TTL,
@@ -24,6 +26,25 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# A menu code travels in the request path, as ``.../menu/MS/0:<code>``, and the
+# path is logged. The code is a credential of the same kind as the token, so it
+# is masked out of anything logged here -- the element id stays, it is not
+# secret, and the documented multi-element form has one code per pair.
+_MENU_PIN_SEGMENT = re.compile(r"(?<=\d:)[^,/]+")
+
+
+def _redact_menu_pin(path: str) -> str:
+    """Mask any menu code carried in a path.
+
+    Args:
+        path: Request path, possibly holding an ``<element id>:<code>`` segment.
+
+    Returns:
+        The path with every such segment's code replaced by a placeholder.
+
+    """
+    return _MENU_PIN_SEGMENT.sub("**REDACTED**", path)
 
 
 class Tech:
@@ -94,7 +115,7 @@ class Tech:
 
         """
         url = self.base_url + request_path
-        _LOGGER.debug("Sending GET request: %s", url)
+        _LOGGER.debug("Sending GET request: %s", _redact_menu_pin(url))
         async with self.session.get(
             url, headers=self.headers, timeout=self.timeout
         ) as response:
@@ -352,16 +373,110 @@ class Tech:
             cache["last_update"] = time.monotonic()
             return cache
 
+    @staticmethod
+    def _menu_tree_is_gated(elements: list[Any]) -> bool:
+        """Return whether a menu answer is a tree held back behind a code.
+
+        A gated tree is answered with its root alone, and that root carries
+        ``params.password``. The value there is a marker rather than the code --
+        the demo controllers answer ``"password"``, and the eModul app overwrites
+        it with ``"validate"`` before prompting -- so it says "this menu needs a
+        code", not which one. It is the signal the app reads to decide to ask,
+        mirrored here.
+
+        Args:
+            elements: The elements the tree answered with.
+
+        Returns:
+            ``True`` when the tree's root is holding the rest of the tree back.
+
+        """
+        for element in elements:
+            if not isinstance(element, dict):
+                continue
+            if element.get("id") != MENU_ROOT_ELEMENT_ID:
+                continue
+            params = element.get("params")
+            if isinstance(params, dict) and params.get("password"):
+                return True
+        return False
+
+    async def _unlock_menu_tree(
+        self,
+        menu_type: str,
+        module_udid: str,
+        path: str,
+        elements: list[Any],
+    ) -> tuple[list[Any], bool]:
+        """Retry a gated tree with the code the user supplied for it.
+
+        The request is the documented one, ``.../{tree}/0:<code>``, which is also
+        exactly what the eModul app builds. A code the controller does not accept
+        is answered with the documented ``422 Invalid parameter pin`` -- the same
+        answer the write path gives for one -- and since ``Tech.get`` raises on it,
+        it is caught here: nothing else about the tree changes, so it keeps the
+        root it handed over and the code is reported.
+
+        Args:
+            menu_type: Menu tree being fetched, e.g. ``"MS"``.
+            module_udid: Tech module identifier, for the log line.
+            path: The tree's request path, which ends in a slash.
+            elements: The root-only answer the tree gave without a code.
+
+        Returns:
+            The unlocked elements, or the ones given when there is no code to
+            try, and whether the code was rejected.
+
+        """
+        code = self.menu_codes.get(menu_type)
+        if code is None:
+            _LOGGER.debug(
+                "Menu tree %s of module %s is behind a code and none is "
+                "configured for it",
+                menu_type,
+                module_udid,
+            )
+            return elements, False
+        try:
+            result = await self.get(f"{path}{MENU_ROOT_ELEMENT_ID}:{code}")
+        except TechError as err:
+            # 422 is the API's "the pin is wrong"; anything else is a fault of a
+            # different kind and belongs to the caller's own handling.
+            if getattr(err, "status_code", None) != MENU_PIN_REJECTION_STATUS:
+                raise
+            _LOGGER.warning(
+                "The %s menu of module %s did not accept the configured code",
+                menu_type,
+                module_udid,
+            )
+            return elements, True
+        unlocked = result.get("data", {}).get("elements")
+        if not unlocked:
+            # An answer with no elements is not an unlock either.
+            _LOGGER.warning(
+                "The %s menu of module %s stayed locked with the configured code",
+                menu_type,
+                module_udid,
+            )
+            return elements, True
+        _LOGGER.debug(
+            "The %s menu of module %s opened with the configured code",
+            menu_type,
+            module_udid,
+        )
+        return unlocked, False
+
     async def _fetch_menu_data(self, module_udid: str) -> dict[str, dict[str, Any]]:
         """Fetch menu items from all configured menu types.
 
         A tree the account may not read answers with a message instead of
-        elements, and the code cannot be read out of that refusal. Where the user
-        supplied a code for that tree the request is retried once with the code
-        in the path; a tree with no code is never retried, and nothing is
-        retried in a loop. A tree whose code did not unlock it is recorded on
-        :attr:`menu_code_rejections`, which is the only refusal worth reporting:
-        the rest are menus that were unavailable before codes existed.
+        elements, and there is nothing to retry for it. A tree held behind a code
+        answers differently: with its root alone, and the root carries
+        ``params.password`` -- the marker the eModul app reads to decide to ask
+        for the code. Where the user supplied a code for such a tree the request
+        is retried once with the code in the path; a tree with no code is never
+        retried, and nothing is retried in a loop. A code the controller rejects
+        is recorded on :attr:`menu_code_rejections`.
 
         Args:
             module_udid: Tech module identifier.
@@ -378,36 +493,26 @@ class Tech:
                 result = await self.get(path)
                 elements = result.get("data", {}).get("elements")
                 if elements is None:
-                    code = self.menu_codes.get(menu_type)
-                    if code is None:
-                        # A tree the account may not read can answer with a
-                        # message rather than elements -- "missing items in MP
-                        # menu" is what it says for a manufacturer tree -- which
-                        # is worth seeing in a debug log beside the trees that do
-                        # answer. Nothing is reported for it: this is how those
-                        # menus have always behaved.
-                        _LOGGER.debug(
-                            "Menu tree %s of module %s answered without elements: %s",
-                            menu_type,
-                            module_udid,
-                            result,
-                        )
-                        continue
-                    # The documented pairing is the tree root, so the segment is
-                    # ``0:<code>``. Nothing prompts for the code here: a refusal
-                    # carries no trace of it, and a wrong code is
-                    # indistinguishable from none.
-                    result = await self.get(f"{path}{MENU_ROOT_ELEMENT_ID}:{code}")
-                    elements = result.get("data", {}).get("elements")
-                    if elements is None:
-                        _LOGGER.warning(
-                            "The %s menu of module %s stayed hidden with the "
-                            "configured code",
-                            menu_type,
-                            module_udid,
-                        )
+                    # A tree the account may not read can answer with a message
+                    # rather than elements -- "missing items in MP menu" is what
+                    # it says for a manufacturer tree -- which is worth seeing in
+                    # a debug log beside the trees that do answer. There is no
+                    # password element to pair a code with, so nothing is retried
+                    # and nothing is reported: this is how those menus have always
+                    # behaved.
+                    _LOGGER.debug(
+                        "Menu tree %s of module %s answered without elements: %s",
+                        menu_type,
+                        module_udid,
+                        result,
+                    )
+                    continue
+                if self._menu_tree_is_gated(elements):
+                    elements, rejected = await self._unlock_menu_tree(
+                        menu_type, module_udid, path, elements
+                    )
+                    if rejected:
                         rejections.add(menu_type)
-                        continue
                 for element in elements:
                     if not isinstance(element, dict):
                         continue

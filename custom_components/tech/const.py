@@ -448,6 +448,10 @@ MENU_TYPES = [
 # ``params.password`` is placeholder text rather than a credential.
 MENU_ROOT_ELEMENT_ID = 0
 
+# The API's answer to a menu code it will not accept: "Invalid parameter pin",
+# on the read path as well as the write one.
+MENU_PIN_REJECTION_STATUS = 422
+
 # The trees the config flow offers a code for. Not all four: the manufacturer
 # tree is refused on every consumer account seen and no code is likely to help,
 # so asking for one there would be a field nobody can fill in. Its manifest

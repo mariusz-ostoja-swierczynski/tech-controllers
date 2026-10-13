@@ -62,6 +62,10 @@ class TechCoordinator(DataUpdateCoordinator):
         # Replaced with the fetched catalog in ``async_setup_entry`` before
         # any platform is set up; the empty default keeps lookups safe.
         self.translations = Translations()
+        # Tracked separately because an empty catalog is a state in its own
+        # right, not a signal that the fetch has not run: see
+        # :meth:`async_load_translations`.
+        self.translations_loaded = False
 
     def _async_sync_menu_code_issues(self, rejected: set[str]) -> None:
         """Report every tree whose configured code was not accepted.
@@ -95,6 +99,30 @@ class TechCoordinator(DataUpdateCoordinator):
                 translation_placeholders={"menu_type": menu_type},
             )
 
+    async def async_load_translations(self) -> None:
+        """Fetch the subtitle catalog, tolerating an API that will not serve it.
+
+        The catalog only names things: without it a menu item is called ``txtId
+        8395`` rather than "Zdjęcie blokady", and ``Translations`` was written to
+        degrade exactly that way. Everything else -- zones, tiles, the menu trees
+        and their controls -- is unaffected, so one decorative fetch must not
+        cost the user every entity they have. It is retried on each refresh until
+        it arrives, which is how the labels come back by themselves once the API
+        serves them again.
+        """
+        try:
+            self.translations = await Translations.load(
+                self.hass.config.language, self.api
+            )
+        except TechError as err:
+            _LOGGER.warning(
+                "Could not fetch the Tech subtitle catalog, entity names fall "
+                "back to their text ids: %s",
+                err,
+            )
+            return
+        self.translations_loaded = True
+
     async def _async_update_data(self) -> dict:
         """Fetch the latest module data for the configured controller.
 
@@ -122,6 +150,9 @@ class TechCoordinator(DataUpdateCoordinator):
             raise ConfigEntryAuthFailed from err
         except TechError as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
+
+        if not self.translations_loaded:
+            await self.async_load_translations()
 
         self._async_sync_menu_code_issues(data.get("menu_code_rejections") or set())
         return data
