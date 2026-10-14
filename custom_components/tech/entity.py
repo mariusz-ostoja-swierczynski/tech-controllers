@@ -49,7 +49,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import assets
+from . import assets, identity
 from .const import (
     CONTROLLER,
     DOMAIN,
@@ -90,6 +90,11 @@ class ReportedEntity(entity.Entity):
         """Record this entity under its source key while it is registered."""
         await super().async_added_to_hass()
         self.coordinator.reported.setdefault(self.source_key, set()).add(self)
+        # An entity built to replace one the controller stopped reporting is the
+        # same entity as far as the user is concerned, so what they made of the
+        # old one -- its entity id, name, icon, area -- is put back here, which
+        # is the first moment its registry row is there to take it.
+        await identity.async_restore(self.hass, self.coordinator, self)
 
     async def async_will_remove_from_hass(self) -> None:
         """Forget this entity, so that a returning payload can bring it back."""

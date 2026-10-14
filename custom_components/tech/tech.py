@@ -352,9 +352,26 @@ class Tech:
             # cache has accumulated: a zone or tile it stops reporting stays in
             # the cache, so that its entities keep their last values, while
             # being absent here -- which is what tells the removal to happen.
+            #
+            # What counts is what the controller sent, not what the builders
+            # chose to show. ``visibility`` is the eModul app's presentation
+            # choice, and a zone can be unregistered while it is still the
+            # controller's own, so neither means the entry has gone: both are
+            # reversible, from the app or from the controller, and reading them
+            # as an absence is what used to remove entities that then came back.
+            # Home Assistant has its own way to hide an entity, and the user can
+            # use it.
             cache["reported"] = {
-                "zones": {zone["zone"]["id"] for zone in visible_zones},
-                "tiles": {tile["id"] for tile in visible_tiles},
+                "zones": {
+                    zone["zone"]["id"]
+                    for zone in raw_zones
+                    if zone and zone.get("zone") and zone["zone"].get("id") is not None
+                },
+                "tiles": {
+                    tile["id"]
+                    for tile in raw_tiles
+                    if tile and tile.get("id") is not None
+                },
                 "menus": set(menu_items),
             }
 

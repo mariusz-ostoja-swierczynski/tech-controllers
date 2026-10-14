@@ -130,7 +130,7 @@ Home Assistant polls the eModul service every 60 seconds, one request per contro
 
 - A poll that fails marks that controller's entities unavailable, and one that succeeds makes them available again; the entry says it is retrying until then.
 - A write -- a thermostat, a menu switch, a number, a select or a dialogue button -- is sent to the API and shown straight away. eModul reports the previous value for a short window while it applies the change, so the integration leaves the optimistic value in place and lets the next poll reconcile it.
-- A tile, a zone or a menu item the controller starts reporting becomes an entity on the next poll. One it stops reporting for an hour is removed, together with the device that held it.
+- A tile, a zone or a menu item the controller starts reporting becomes an entity on the next poll. One the controller genuinely stops reporting is removed after an hour, together with the device that held it -- but hiding an entry in the eModul app, or a zone being unregistered while its sensors are quiet, is not the controller stopping, so nothing is removed then. If an entry does come back, it comes back as itself: the entity id your automations point at, its name, its icon and its area are restored.
 
 ## :bulb: Examples
 

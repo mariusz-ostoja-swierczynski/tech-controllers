@@ -14,7 +14,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.redact import async_redact_data
 from homeassistant.helpers.typing import ConfigType
 
-from . import assets
+from . import assets, identity
 from .const import (
     CONTROLLER,
     DOMAIN,
@@ -109,6 +109,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: TechConfigEntry) -> bool
     coordinator.translations = await assets.Translations.load(
         language_code, coordinator.api
     )
+
+    # What the user made of an entity the removal pass takes away is kept across
+    # the removal, so that an entry the controller reports again is the same
+    # entity: the same id, name, icon and area.
+    await identity.async_load(hass, coordinator, entry.entry_id)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -208,14 +213,24 @@ def _drop_unreported_entities(
 
         coordinator.reported_misses.pop(key, None)
         for entity in list(coordinator.reported.get(key, ())):
-            _forget_entity(hass, entity)
+            _forget_entity(hass, coordinator, entity)
 
 
-def _forget_entity(hass: HomeAssistant, entity: Any) -> None:
+def _forget_entity(
+    hass: HomeAssistant, coordinator: TechCoordinator, entity: Any
+) -> None:
     """Remove one entity, and its device once nothing is left on it.
+
+    Removing has to reach Home Assistant as well as the registry. An entity that
+    only leaves the registry keeps serving its last value and is never told it
+    left, so the platform that built it still counts it as registered, tries to
+    register it again the moment its entry is reported, and Home Assistant
+    refuses a unique id it already holds.
 
     Args:
         hass: Home Assistant instance.
+        coordinator: The entry's coordinator, which keeps what the user made of
+            the entity, so that a return is the same entity.
         entity: The entity to remove.
 
     """
@@ -225,10 +240,17 @@ def _forget_entity(hass: HomeAssistant, entity: Any) -> None:
 
     registry = er.async_get(hass)
     registered = registry.async_get(entity_id)
+    if registered is not None:
+        identity.remember(coordinator, registered)
     device_id = registered.device_id if registered else None
 
     _LOGGER.debug("Removing %s: the controller no longer reports it", entity_id)
     registry.async_remove(entity_id)
+    # The entity has to leave Home Assistant as well, and that removal is a
+    # coroutine, so it is scheduled: the row is gone by now, and the platform
+    # hears about the departure -- which is what stops it registering the entity
+    # again -- in time for the next poll.
+    hass.async_create_task(entity.async_remove())
 
     if device_id and not er.async_entries_for_device(registry, device_id):
         dr.async_get(hass).async_remove_device(device_id)

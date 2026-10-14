@@ -65,6 +65,7 @@ _FAKE_MODULES = (
     "homeassistant.helpers.entity",
     "homeassistant.helpers.entity_platform",
     "homeassistant.helpers.entity_registry",
+    "homeassistant.helpers.storage",
     "homeassistant.helpers.icon",
     "homeassistant.helpers.issue_registry",
     "homeassistant.helpers.typing",
@@ -317,6 +318,17 @@ def _fake_module(name: str) -> types.ModuleType:
     elif name == "homeassistant.helpers.entity_registry":
         module.EntityRegistry = _Registry
         module.async_get = _async_get_registry
+        # identity.py reads these off a row and converts them back on restore.
+        module.RegistryEntry = type("RegistryEntry", (), {})
+        module.RegistryEntryDisabler = _AutoNamespace()
+        module.RegistryEntryHider = _AutoNamespace()
+    elif name == "homeassistant.helpers.storage":
+        # The identity store is never opened by the stubbed suite: identity.py
+        # only names Store in an annotation once it has one.
+        class Store:  # noqa: D101 - a stub, and only its name is used here.
+            pass
+
+        module.Store = Store
     elif name == "homeassistant.helpers.icon":
         module.icon_for_signal_level = lambda level: "mdi:signal"
     elif name == "homeassistant.helpers.typing":
@@ -361,6 +373,7 @@ def _install_stubs() -> None:
                 "entity",
                 "entity_platform",
                 "entity_registry",
+                "storage",
                 "icon",
                 "issue_registry",
                 "typing",
@@ -400,7 +413,7 @@ def _load_tech_module(name: str) -> types.ModuleType:
 _install_stubs()
 const = _load_tech_module("const")
 assets = _load_tech_module("assets")
-_load_tech_module("tech")
+_tech_module = _load_tech_module("tech")
 _load_tech_module("coordinator")
 sensor = _load_tech_module("sensor")
 
@@ -422,6 +435,109 @@ PLATFORMS = (
 _PLATFORM_IDS = [name for name, _ in PLATFORMS]
 
 _modules = {name: _load_tech_module(name) for name, _ in PLATFORMS}
+
+
+# ---------------------------------------------------------------------------
+# What counts as reported, for the removal of entities the controller drops
+# ---------------------------------------------------------------------------
+
+
+def _tile_entry(tile_id: int, *, visibility: bool = True) -> dict[str, Any]:
+    """Return a tile entry as the API sends it."""
+    return {"id": tile_id, "type": 1, "visibility": visibility, "params": {"value": 1}}
+
+
+def _zone_entry(
+    zone_id: int, *, visibility: bool = True, state: str = "zoneOn"
+) -> dict[str, Any]:
+    """Return a zone entry as the API sends it."""
+    return {"zone": {"id": zone_id, "visibility": visibility, "zoneState": state}}
+
+
+async def _recorded(
+    *, tiles: list[dict[str, Any]], zones: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Return what the client records as reported for a payload of those entries.
+
+    The record is what the removal decision reads, so a payload of hidden or
+    unregistered entries is how one is set up without a controller.
+    """
+    tech = _tech_module.Tech(None, "7", "token")
+
+    async def _get_module_data(udid: str) -> dict[str, Any]:
+        return {"zones": {"elements": zones}, "tiles": tiles}
+
+    async def _get(path: str) -> dict[str, Any]:
+        return {"data": {"elements": []}}
+
+    tech.get_module_data = _get_module_data
+    tech.get = _get
+    data = await tech.module_data("abcd")
+    return data["reported"]
+
+
+async def test_an_invisible_tile_counts_as_reported() -> None:
+    """A tile hidden in the eModul app is not a tile the controller dropped.
+
+    ``visibility`` is the app's presentation choice and the payload still carries
+    the entry, so treating it as gone deletes the entity, its name, its history
+    and any automation pointing at it an hour later.
+    """
+    reported = await _recorded(tiles=[_tile_entry(42, visibility=False)], zones=[])
+
+    assert 42 in reported["tiles"]
+
+
+async def test_an_unregistered_zone_counts_as_reported() -> None:
+    """A zone that is unregistered is still the controller's own zone.
+
+    Unregistering is what a zone does while its sensors are silent or it is
+    switched off in the controller, and it is reversible, so the zone is not a
+    zone the controller has dropped.
+    """
+    reported = await _recorded(tiles=[], zones=[_zone_entry(101, state="zoneUnregistered")])
+
+    assert 101 in reported["zones"]
+
+
+async def test_an_entry_the_controller_leaves_out_is_not_reported() -> None:
+    """A payload that truly omits an entry reports nothing for it."""
+    reported = await _recorded(tiles=[], zones=[])
+
+    assert reported["tiles"] == set()
+    assert reported["zones"] == set()
+
+
+async def _recorded_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return what the client records as reported for a recorded payload."""
+    return await _recorded(
+        tiles=payload.get("tiles", []),
+        zones=payload.get("zones", {}).get("elements", []),
+    )
+
+
+@pytest.mark.parametrize("controller", ["pellet", "st2801", "st491"])
+async def test_the_recorded_payloads_count_their_hidden_tiles_as_reported(
+    controller: str,
+) -> None:
+    """A tile the controller hides is still a tile the controller sent.
+
+    These are payloads controllers really answered with, and they mark entries
+    invisible: seven on Pellet, one on st2801 and one on st491. Checking the rule
+    against them, rather than against a payload written to fit it, is what makes
+    it trustworthy.
+    """
+    payload = json.loads(
+        (_REPO_ROOT / "tests" / "fixtures" / controller / "module.json").read_text()
+    )
+    hidden = {
+        tile["id"] for tile in payload.get("tiles", []) if not tile.get("visibility")
+    }
+    assert hidden, f"{controller} should hide a tile, or it proves nothing"
+
+    reported = await _recorded_payload(payload)
+
+    assert hidden <= reported["tiles"]
 
 
 class _Translations:

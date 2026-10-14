@@ -138,6 +138,51 @@ async def test_a_tile_the_controller_starts_reporting_gains_its_entities(
     assert entity_counts(hass)["sensor"] == before["sensor"] + 1
 
 
+async def test_a_tile_the_controller_hides_keeps_its_entities(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A tile the controller still sends, but marks invisible, is not gone.
+
+    ``visibility`` is the eModul app's presentation choice, not a statement that
+    the equipment has gone: the payload still carries the tile, and the user can
+    show it again from the app. Counting it as reported is what keeps its entity,
+    its name, its history and the automations pointing at it.
+
+    The subject has to be a tile that had entities already: a tile the payload
+    has marked invisible from the start never built any, so hiding one of those
+    would prove nothing.
+    """
+    payload = _payload("pellet")
+    entry = await _set_up(hass, monkeypatch, payload)
+    before = _entity_ids(hass, entry)
+
+    # A temperature tile the builders know, reported visible and working.
+    tile = {
+        "id": 4242,
+        "menuId": 0,
+        "parentId": 0,
+        "orderId": 4242,
+        "type": const.TYPE_TEMPERATURE,
+        "visibility": True,
+        "workingStatus": True,
+        "params": {const.VALUE: 210},
+    }
+    payload["tiles"].append(tile)
+
+    await _poll(hass, entry)
+
+    added = _entity_ids(hass, entry) - before
+    assert len(added) == 1, "the tile should build one entity to hide"
+
+    # The controller keeps sending it, but hides it in the app.
+    tile["visibility"] = False
+
+    for _ in range(REMOVAL_MISSES):
+        await _poll(hass, entry)
+
+    assert added <= _entity_ids(hass, entry), "a hidden tile is not a dropped tile"
+
+
 async def test_a_zone_gone_for_an_hour_takes_its_entities_and_device_with_it(
     hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -167,6 +212,63 @@ async def test_a_zone_gone_for_an_hour_takes_its_entities_and_device_with_it(
     assert _device_ids(hass, entry) < before_devices
 
 
+async def test_an_entity_that_comes_back_is_the_same_entity(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A removal really removes, and a return is the entity the user had.
+
+    The removal pass takes the entity out of Home Assistant as well as the
+    registry, so it is gone rather than quietly still serving. What the user made
+    of it -- the id their automations point at, the icon they set -- is kept, and
+    put back on the entity built when the controller reports the entry again,
+    which is what makes a sensor that was silent for an hour the same sensor.
+    """
+    payload = _payload("l12")
+    entry = await _set_up(hass, monkeypatch, payload)
+
+    registry = er.async_get(hass)
+    # Home Assistant refuses a rename across domains, so the name the user
+    # chooses has to keep the entity's own domain.
+    entity_id = sorted(
+        candidate
+        for candidate in _entity_ids(hass, entry)
+        if candidate.startswith("sensor.")
+    )[0]
+    registry.async_update_entity(
+        entity_id, new_entity_id="sensor.custom", icon="mdi:custom"
+    )
+    renamed = registry.async_get("sensor.custom")
+    assert renamed is not None
+
+    # The controller reports nothing at all for long enough to be believed.
+    tiles, zones = payload["tiles"], payload["zones"]["elements"]
+    payload["tiles"], payload["zones"]["elements"] = [], []
+
+    for _ in range(REMOVAL_MISSES):
+        await _poll(hass, entry)
+
+    assert registry.async_get("sensor.custom") is None, "the row goes"
+    assert hass.states.get("sensor.custom") is None, "and the entity goes with it"
+
+    # A controller being reconfigured is reloaded, and a reload is what takes the
+    # entity objects away: without one, the object that outlived its row is what
+    # re-adds it. So the return is measured across a reload.
+    await hass.config_entries.async_reload(entry.entry_id)
+
+    payload["tiles"], payload["zones"]["elements"] = tiles, zones
+
+    await _poll(hass, entry)
+
+    # The entity the controller reports again is the user's own: the id their
+    # automations point at, and the icon they set, are put back on the entity
+    # built for it.
+    restored = registry.async_get("sensor.custom")
+    assert restored is not None, "the entity comes back as the user's own"
+    assert restored.entity_id == renamed.entity_id, "under the id they chose"
+    assert restored.icon == "mdi:custom", "with the icon they set"
+    assert hass.states.get("sensor.custom") is not None
+
+
 async def test_a_zone_the_controller_reports_again_comes_back(
     hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -181,6 +283,7 @@ async def test_a_zone_the_controller_reports_again_comes_back(
     entry = await _set_up(hass, monkeypatch, payload)
 
     before_entities = _entity_ids(hass, entry)
+    before_devices = _device_ids(hass, entry)
     removed = payload["zones"]["elements"].pop(0)
 
     for _ in range(REMOVAL_MISSES):
@@ -191,6 +294,10 @@ async def test_a_zone_the_controller_reports_again_comes_back(
     await _poll(hass, entry)
 
     assert _entity_ids(hass, entry) == before_entities
+    # The zone's device is built again from the same identifiers -- a zone's
+    # device is named by its id, not by anything the registry assigns -- so the
+    # entities that come back have a device to rejoin.
+    assert len(_device_ids(hass, entry)) == len(before_devices)
 
 
 async def test_the_controller_device_cannot_be_removed_by_hand(

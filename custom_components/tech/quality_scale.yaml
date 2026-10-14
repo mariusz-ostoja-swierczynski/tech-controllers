@@ -329,9 +329,15 @@ rules:
     comment: >-
       An entity whose payload entry the controller stops reporting is removed,
       and its device with it once nothing is left on it, after that entry has
-      been missing for an hour of polls (REMOVAL_MISSES): a controller being
-      reconfigured reports nothing for a while, and removing an entity loses its
-      name, its history and every automation that points at it.
+      been missing for an hour of polls (REMOVAL_MISSES). What counts as
+      reported is what the controller sent, not what the entities are built
+      from: a tile the controller marks invisible in the eModul app and a zone
+      that is unregistered are both still reported, since both are reversible
+      and neither means the equipment has gone. The removal takes the entity out
+      of Home Assistant as well as the registry, and keeps what the user made of
+      it -- the entity id automations point at, its name, its icon, its area --
+      so an entry the controller reports again is restored as the same entity
+      rather than a new one named after the payload.
       async_remove_config_entry_device is implemented as well, so a device can be
       deleted by hand; only the controller's own device refuses, because
       removing it would be undone by the next setup.

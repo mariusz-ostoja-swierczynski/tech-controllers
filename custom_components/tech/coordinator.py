@@ -83,6 +83,11 @@ class TechCoordinator(DataUpdateCoordinator):
         # that has left may be registered again, which is what lets a payload
         # that brings its source entry back rebuild it.
         self.forget_callbacks: list[Callable[[str | None], None]] = []
+        # What the user made of the entities the removal pass takes away -- their
+        # entity ids, names, icons and areas, per unique id -- and the store they
+        # are written to. See ``identity``.
+        self.identities: dict[str, dict[str, Any]] = {}
+        self.identity_store: Any = None
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch the latest module data for the configured controller.
