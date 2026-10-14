@@ -31,6 +31,11 @@ _TECH_DIR = _REPO_ROOT / "custom_components" / "tech"
 
 _UDID = "d" * 32
 _HUB = "L-8 DEMO"
+# What the API reports for a controller: one string carrying its model and its
+# firmware, which every device under it is described from.
+_TECH_VERSION = "TECH: L8 (v.2.1.19)"
+_TECH_MODEL = "L8"
+_TECH_FIRMWARE = "v.2.1.19"
 
 # ---------------------------------------------------------------------------
 # Home Assistant stubs. Only what the platform modules, const.py and
@@ -43,6 +48,7 @@ _FAKE_MODULES = (
     "homeassistant.components",
     "homeassistant.components.automation",
     "homeassistant.components.binary_sensor",
+    "homeassistant.components.binary_sensor.const",
     "homeassistant.components.button",
     "homeassistant.components.number",
     "homeassistant.components.script",
@@ -78,12 +84,31 @@ class _Entity:
 
 
 class CoordinatorEntity(_Entity):
-    """Stand-in for ``CoordinatorEntity``; only stores the coordinator."""
+    """Stand-in for ``CoordinatorEntity``; stores the coordinator, reports its state."""
+
+    def __class_getitem__(cls, item: Any) -> type[CoordinatorEntity]:
+        """Accept the coordinator type the real base is parameterised with.
+
+        ``entity.py`` derives from ``CoordinatorEntity[TechCoordinator]``, the way
+        Home Assistant's generic base is meant to be used; this stub only has to
+        keep that subscription working.
+        """
+        return cls
 
     def __init__(self, coordinator: Any = None, *args: Any, **kwargs: Any) -> None:
         """Store the coordinator the way the real base class does."""
         super().__init__(*args, **kwargs)
         self.coordinator = coordinator
+
+    @property
+    def available(self) -> bool:
+        """Report availability the way the real base class does.
+
+        The real ``CoordinatorEntity`` overrides ``Entity.available`` with the
+        coordinator's last poll result, which is also why an entity cannot
+        express its own availability by assigning ``_attr_available``.
+        """
+        return self.coordinator.last_update_success
 
 
 class SensorEntity(_Entity):
@@ -219,6 +244,7 @@ def _fake_module(name: str) -> types.ModuleType:
         module.ATTR_ID = "id"
         module.ATTR_IDENTIFIERS = "identifiers"
         module.ATTR_MANUFACTURER = "manufacturer"
+        module.ATTR_SW_VERSION = "sw_version"
         module.CONF_DESCRIPTION = "description"
         module.CONF_ID = "id"
         module.CONF_MODEL = "model"
@@ -274,6 +300,10 @@ def _fake_module(name: str) -> types.ModuleType:
         module.automations_with_entity = _automations_with_entity
     elif name == "homeassistant.components.binary_sensor":
         module.BinarySensorEntity = BinarySensorEntity
+        module.BinarySensorDeviceClass = _AutoNamespace()
+    elif name == "homeassistant.components.binary_sensor.const":
+        # The device classes live in the component's own const module, the way
+        # the sensor ones do; sensor.py imports them from there.
         module.BinarySensorDeviceClass = _AutoNamespace()
     elif name == "homeassistant.components.script":
         module.scripts_with_entity = _scripts_with_entity
@@ -414,6 +444,10 @@ class _Translations:
 class _Api:
     """Async API stub; the menu payload is irrelevant to these tests."""
 
+    def __init__(self) -> None:
+        """Record the writes an entity makes, so a test can inspect them."""
+        self.menu_writes: list[tuple[str, str, int, dict]] = []
+
     async def get_module_menus(self, udid: str) -> dict:
         """Return an empty menu tree."""
         return {}
@@ -421,6 +455,13 @@ class _Api:
     async def get_module_zones(self, udid: str) -> dict:
         """Return an empty zone payload."""
         return {}
+
+    async def set_menu_value(
+        self, udid: str, menu_type: str, item_id: int, value: dict
+    ) -> dict:
+        """Record a menu write; what the API answers is irrelevant here."""
+        self.menu_writes.append((udid, menu_type, item_id, value))
+        return {"status": "success"}
 
 
 class _Coordinator:
@@ -432,6 +473,10 @@ class _Coordinator:
         self.translations = _Translations()
         self.udid = _UDID
         self.data: dict = {}
+        # What ``CoordinatorEntity.available`` reports; a failed poll flips it.
+        self.last_update_success = True
+        # The controller's device id, which the entry's setup sets in production.
+        self.controller_device_id: str | None = "controller-device"
 
 
 class _Entry:
@@ -442,9 +487,14 @@ class _Entry:
         self.title = title
         self.entry_id = "entry-id"
         self.data = {
-            const.CONTROLLER: {const.UDID: _UDID},
+            const.CONTROLLER: {const.UDID: _UDID, const.VER: _TECH_VERSION},
             const.INCLUDE_HUB_IN_NAME: include_hub_in_name,
         }
+        # The coordinator lives on the entry (``runtime_data``) rather than in a
+        # ``hass.data`` mapping; a platform setup reads it from here.
+        self.runtime_data: Any = None
+        # The settings that are not needed to connect live in the options.
+        self.options: dict = {}
 
 
 def _item() -> dict[str, Any]:
@@ -494,7 +544,9 @@ def _build(
 
 
 @pytest.mark.parametrize(("module_name", "class_name"), PLATFORMS, ids=_PLATFORM_IDS)
-def test_zone_entity_uses_the_zone_device_name(module_name: str, class_name: str) -> None:
+def test_zone_entity_uses_the_zone_device_name(
+    module_name: str, class_name: str
+) -> None:
     """A zone-attached entity names the zone device from the resolved mapping."""
     entity = _build(
         module_name, class_name, zone_id=101, zone_names={101: "L-8 DEMO Strefa 1"}
@@ -506,6 +558,13 @@ def test_zone_entity_uses_the_zone_device_name(module_name: str, class_name: str
     assert info["identifiers"] == {(const.DOMAIN, f"{_UDID}_101")}
     assert info["name"] == "L-8 DEMO Strefa 1"
     assert info["manufacturer"] == const.MANUFACTURER
+    # The zone belongs to the controller, which the device tree shows by
+    # hanging the zone device under the controller's own device id.
+    assert info["via_device_id"] == "controller-device"
+    # A zone has no firmware or model of its own: both come from the controller's
+    # descriptor.
+    assert info["sw_version"] == _TECH_FIRMWARE
+    assert info["model"] == _TECH_MODEL
 
 
 @pytest.mark.parametrize(("module_name", "class_name"), PLATFORMS, ids=_PLATFORM_IDS)
@@ -521,6 +580,12 @@ def test_unzoned_entity_stays_on_the_controller_device(
     assert info["identifiers"] == {(const.DOMAIN, _UDID)}
     assert info["name"] == _HUB
     assert info["manufacturer"] == const.MANUFACTURER
+    # The controller's own device reports the model and the firmware the API's
+    # descriptor carries, so it has both a heading and a version.
+    assert info["sw_version"] == _TECH_FIRMWARE
+    assert info["model"] == _TECH_MODEL
+    # The controller is the top of this integration's device tree.
+    assert "via_device_id" not in info
 
 
 @pytest.mark.parametrize(("module_name", "class_name"), PLATFORMS, ids=_PLATFORM_IDS)
@@ -540,6 +605,55 @@ def test_zone_entity_falls_back_to_the_hub_title(
     info = entity.device_info
     assert info["identifiers"] == {(const.DOMAIN, f"{_UDID}_101")}
     assert info["name"] == _HUB
+    assert info["via_device_id"] == "controller-device"
+
+
+@pytest.mark.parametrize(
+    ("descriptor", "model", "firmware"),
+    [
+        # The shapes the recorded payloads carry, wall controllers and boilers.
+        ("TECH: L8 (v.2.1.19)", "L8", "v.2.1.19"),
+        ("TECH: ST-402N PWM  (v.1.1.2)", "ST-402N PWM", "v.1.1.2"),
+        ("TECH: ST-970 1.4.0 P01 (v.1.5.0)", "ST-970 1.4.0 P01", "v.1.5.0"),
+        # A controller that says nothing, and one whose shape we do not know:
+        # neither loses whatever it did report.
+        ("", None, ""),
+        ("1.0.0", None, "1.0.0"),
+    ],
+)
+def test_the_descriptor_yields_a_model_and_a_firmware(
+    descriptor: str, model: str | None, firmware: str
+) -> None:
+    """The model and the firmware both come from the controller's descriptor.
+
+    The modules list has no model field of its own, so the descriptor is the only
+    source there is: everything before the trailing parenthesised version is the
+    model, with the vendor prefix dropped because the device reports its
+    manufacturer separately.
+    """
+    entry = _Entry()
+    entry.data[const.CONTROLLER][const.VER] = descriptor
+
+    assert assets.controller_model(entry) == model
+    assert assets.controller_firmware(entry) == firmware
+
+
+def test_a_zone_entity_without_a_known_controller_device_has_no_parent() -> None:
+    """An entity built before the controller's device id is known has no parent.
+
+    The device id is set while the entry sets up, so an entity built outside a
+    running entry -- as these tests do -- must still produce a usable device
+    instead of naming a parent that does not exist.
+    """
+    coordinator = _Coordinator()
+    coordinator.controller_device_id = None
+    entity = _modules["switch"].MenuSwitchEntity(
+        _item(), "MU_3550", coordinator, _Entry(), {}, depth=0, zone_id=101
+    )
+
+    info = entity.device_info
+    assert info["identifiers"] == {(const.DOMAIN, f"{_UDID}_101")}
+    assert "via_device_id" not in info
 
 
 @pytest.mark.parametrize(("module_name", "class_name"), PLATFORMS, ids=_PLATFORM_IDS)
@@ -760,7 +874,15 @@ def test_kolton_st5305_widget_entities() -> None:
         (2223, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 4274),
         (2232, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 0),
         # 39 -- "Value l / m" in the API prose, labelled l/godz. by the app
-        (1096, "widget2", 39, "TileWidgetTemperatureSensor", flow, "volume_flow_rate", 0),
+        (
+            1096,
+            "widget2",
+            39,
+            "TileWidgetTemperatureSensor",
+            flow,
+            "volume_flow_rate",
+            0,
+        ),
         # 13 -- hours and minutes
         (1664, "widget2", 13, "TileWidgetTemperatureSensor", None, None, "00:00"),
         (1666, "widget2", 13, "TileWidgetTemperatureSensor", None, None, "17:21"),
@@ -1130,3 +1252,103 @@ class TestDeprecatedFlagSensorSelection:
 
         assert unlabelled == []
         assert temperature == []
+
+
+async def test_menu_select_maps_its_options_and_refuses_an_unknown_one() -> None:
+    """The option map skips malformed entries, keeps labels apart, and guards.
+
+    The labels are what Home Assistant shows and what a service call hands back,
+    so two options translating to the same text need telling apart, an option
+    without a label falls back to its value, and an option the entity was never
+    told about is refused rather than sent to the API.
+    """
+    item = _item()
+    item["params"]["options"] = [
+        {"value": 0, "txtId": 1},
+        {"value": 1, "txtId": 1},
+        {"value": 2, "txtId": 0},
+        "not a mapping",
+    ]
+    coordinator = _Coordinator()
+    entity = _modules["select"].MenuSelectEntity(
+        item, "MU_3550", coordinator, _Entry(), {}, depth=0
+    )
+    # The stub base class carries no state machine, so the write callback the
+    # entity makes after a successful option change has nothing to reach.
+    entity.async_write_ha_state = lambda *args, **kwargs: None
+
+    assert entity._attr_options == ["label-1", "label-1 (1)", "2"]
+    assert entity._attr_current_option == "label-1 (1)"
+
+    await entity.async_select_option("no such option")
+
+    assert entity._attr_current_option == "label-1 (1)"
+    assert coordinator.api.menu_writes == []
+
+    await entity.async_select_option("2")
+
+    assert entity._attr_current_option == "2"
+    # The value behind the label is what the API is told, not the label.
+    assert coordinator.api.menu_writes[-1][3] == {"value": 2}
+
+
+# ---------------------------------------------------------------------------
+# Availability -- entity-unavailable
+# ---------------------------------------------------------------------------
+
+
+def _menu_entity(
+    module_name: str,
+    class_name: str,
+    coordinator: _Coordinator,
+    item: dict[str, Any],
+):
+    """Build one menu entity around the given item and coordinator."""
+    return getattr(_modules[module_name], class_name)(
+        item, "MU_3550", coordinator, _Entry(), {}, depth=0
+    )
+
+
+def test_menu_entity_is_unavailable_while_the_controller_is() -> None:
+    """A failed poll marks menu entities unavailable.
+
+    Every entity of this integration is a ``CoordinatorEntity``, whose
+    ``available`` follows the coordinator's ``last_update_success``, so the
+    entities stop offering themselves while the controller cannot be reached
+    instead of showing their last state.
+    """
+    coordinator = _Coordinator()
+    entity = _menu_entity("switch", "MenuSwitchEntity", coordinator, _item())
+
+    assert entity.available
+
+    coordinator.last_update_success = False
+
+    assert not entity.available
+
+    coordinator.last_update_success = True
+
+    assert entity.available
+
+
+def test_dialogue_button_is_unavailable_while_the_controller_withdraws_it() -> None:
+    """An accessible dialogue is unavailable too when the controller drops it.
+
+    The controller offers a dialogue only while it can be used -- a
+    clear-lockout control exists while there is a lockout to clear -- and says so
+    through the item's ``access`` flag. Storing that flag in ``_attr_available``
+    was dead code, because ``CoordinatorEntity.available`` overrides
+    ``Entity.available`` without reading it.
+    """
+    coordinator = _Coordinator()
+    item = _item()
+    item["access"] = False
+    entity = _menu_entity("button", "MenuButtonEntity", coordinator, item)
+
+    assert not entity.available
+
+    item["access"] = True
+    # This is what the coordinator update callback runs to refresh the flags.
+    entity._update_from_item(item)
+
+    assert entity.available

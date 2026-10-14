@@ -298,6 +298,8 @@ def widget_unit(code: int | None) -> WidgetUnit:
         undocumented code, so an unknown type keeps behaving as it does today.
 
     """
+    if code is None:
+        return WIDGET_UNITS[0]
     return WIDGET_UNITS.get(code, WIDGET_UNITS[0])
 
 

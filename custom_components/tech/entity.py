@@ -29,12 +29,14 @@ becomes the single source of "Wisniowa 13 X" naming.
 """
 
 from abc import abstractmethod
+from collections.abc import Callable
 import logging
 from typing import Any
 
 from homeassistant.const import (
     ATTR_IDENTIFIERS,
     ATTR_MANUFACTURER,
+    ATTR_SW_VERSION,
     CONF_DESCRIPTION,
     CONF_ID,
     CONF_NAME,
@@ -44,8 +46,10 @@ from homeassistant.const import (
 from homeassistant.core import callback
 from homeassistant.helpers import entity
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from . import assets
 from .const import (
     CONTROLLER,
     DOMAIN,
@@ -53,15 +57,67 @@ from .const import (
     TXT_ID_BY_TYPE,
     TXT_ID_IS_STATUS_FOR_TYPES,
     UDID,
-    VER,
 )
-from .coordinator import TechCoordinator
+from .coordinator import TechConfigEntry, TechCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 
+class ReportedEntity(entity.Entity):
+    """An entity that knows which payload entry it was built from.
+
+    A controller can stop reporting a tile, a zone or a menu item -- the user
+    removed it in the eModul app, or replaced the hardware -- and the entities
+    built from it have to go with it. The coordinator keeps them under that
+    source key (``tile_42``, ``zone_3``, ``menu_MU_3550``), so a poll can tell
+    which of them the controller no longer reports. See
+    :func:`custom_components.tech._drop_unreported_entities`.
+    """
+
+    coordinator: TechCoordinator
+
+    @property
+    def source_key(self) -> str:
+        """Return the payload entry this entity was built from.
+
+        Every platform that builds entities from the payload answers this: a tile
+        entity with ``tile_<id>``, a zone entity with ``zone_<id>``, a menu entity
+        with ``menu_<type>_<id>``.
+        """
+        raise NotImplementedError
+
+    async def async_added_to_hass(self) -> None:
+        """Record this entity under its source key while it is registered."""
+        await super().async_added_to_hass()
+        self.coordinator.reported.setdefault(self.source_key, set()).add(self)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Forget this entity, so that a returning payload can bring it back."""
+        entities = self.coordinator.reported.get(self.source_key)
+        if entities is not None:
+            entities.discard(self)
+            if not entities:
+                self.coordinator.reported.pop(self.source_key, None)
+        self._tell_the_platform_it_left()
+        await super().async_will_remove_from_hass()
+
+    def _tell_the_platform_it_left(self) -> None:
+        """Let the platform that built this entity stop counting it as registered.
+
+        This is the only signal that says an entity has left, and it is a
+        positive one: it fires when Home Assistant removes an entity, whether the
+        removal pass dropped it or the user deleted it, and never while one is
+        merely being added. A platform that instead *inferred* the same thing
+        from the payload bookkeeping saw the window between asking for an entity
+        and Home Assistant calling it back, and registered it twice.
+        """
+        for forget in self.coordinator.forget_callbacks:
+            forget(self.unique_id)
+
+
 class TileEntity(
-    CoordinatorEntity,
+    ReportedEntity,
+    CoordinatorEntity[TechCoordinator],
     entity.Entity,
 ):
     """Base class for every Tech tile-derived Home Assistant entity.
@@ -82,7 +138,12 @@ class TileEntity(
     # this integration spent considerable effort eliminating.
     _attr_has_entity_name = True
 
-    def __init__(self, device, coordinator: TechCoordinator, config_entry) -> None:
+    def __init__(
+        self,
+        device: dict[str, Any],
+        coordinator: TechCoordinator,
+        config_entry: TechConfigEntry,
+    ) -> None:
         """Initialise common attributes for a Tech tile entity.
 
         Args:
@@ -103,9 +164,19 @@ class TileEntity(
         # ``_unique_id`` is the *root* identifier; subclasses append a
         # discriminator suffix (e.g. ``_tile_temperature_widget1``) when a
         # single tile produces multiple entities.
-        self._unique_id = f"{self._udid}_{device[CONF_ID]}"
+        self._unique_id: str = f"{self._udid}_{device[CONF_ID]}"
+        # Home Assistant reads the entity's unique id from _attr_unique_id, and
+        # declares unique_id itself as a writable cached property, so no subclass
+        # may answer it with a read-only property. _unique_id stays as the prefix
+        # subclasses append their own discriminator to.
+        self._attr_unique_id = self._unique_id
         self._model = device[CONF_PARAMS].get(CONF_DESCRIPTION)
         self._state = self.get_state(device)
+        # Home Assistant reads a sensor's state from native_value and a binary
+        # sensor's from is_on, and declares state itself as final, so the value
+        # a tile reports goes into the field the platform reads as well as into
+        # _state, which subclasses use.
+        self._attr_native_value = self._state
         self.manufacturer = MANUFACTURER
 
         # ``_attr_has_entity_name = True`` makes Home Assistant prepend the
@@ -133,31 +204,25 @@ class TileEntity(
         controllers (ST-491, ST-505, ST-976...) still produce a single
         device with grouped entities instead of orphaned, ungrouped entries.
         """
-        controller = self._config_entry.data[CONTROLLER]
         return {
             ATTR_IDENTIFIERS: {(DOMAIN, self._udid)},
             CONF_NAME: self._config_entry.title,
-            "model": controller.get(CONF_NAME, ""),
-            "sw_version": controller.get(VER, ""),
+            "model": assets.controller_model(self._config_entry),
+            ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
             ATTR_MANUFACTURER: MANUFACTURER,
         }
 
     @property
-    def unique_id(self) -> str:
-        """Return a unique ID."""
-        return self._unique_id
-
-    @property
-    def state(self):
-        """Return the cached state reported by the Tech API."""
-        return self._state
+    def source_key(self) -> str:
+        """Return the tile this entity was built from."""
+        return f"tile_{self._id}"
 
     @abstractmethod
-    def get_state(self, device):
+    def get_state(self, device: dict[str, Any]) -> Any:
         """Extract the integration-specific state from ``device`` data."""
         raise NotImplementedError("Must override get_state")
 
-    def update_properties(self, device):
+    def update_properties(self, device: dict[str, Any]) -> None:
         """Refresh entity attributes using the latest tile payload.
 
         Args:
@@ -166,9 +231,59 @@ class TileEntity(
         """
         # Update _state property
         self._state = self.get_state(device)
+        self._attr_native_value = self._state
 
     @callback
     def _handle_coordinator_update(self, *args: Any) -> None:
         """Handle updated data from the coordinator."""
         self.update_properties(self.coordinator.data["tiles"][self._id])
         self.async_write_ha_state()
+
+
+def add_later(
+    config_entry: TechConfigEntry,
+    coordinator: TechCoordinator,
+    async_add_entities: AddEntitiesCallback,
+    build: Callable[[], list[Any]],
+) -> None:
+    """Register the entities a payload produces now, and any a later one adds.
+
+    A controller's configuration changes while Home Assistant runs: a sensor is
+    paired, a zone is created in the app, a module gains a tile. A platform
+    builds its entities once, so instead of that it builds them from the
+    coordinator's latest payload every time the data updates and registers what
+    it has not registered before. What a controller *stops* reporting is handled
+    centrally, because a payload that is merely incomplete must not remove
+    anything, and an entity that leaves Home Assistant reports back here, so that
+    a payload bringing its entry back registers it again.
+
+    Args:
+        config_entry: The entry being set up, used to unregister again.
+        coordinator: The entry's coordinator, the payload each build reads, and
+            where the callback that hears about a departing entity is kept.
+        async_add_entities: The platform's registration callback.
+        build: Builds the entities of the coordinator's current payload.
+
+    """
+    registered: set[str] = set()
+
+    def _forget(unique_id: str | None) -> None:
+        if unique_id is not None:
+            registered.discard(unique_id)
+
+    coordinator.forget_callbacks.append(_forget)
+
+    def _add_new() -> None:
+        # A source key is shared by every entity built from that payload entry,
+        # across platforms -- a zone carries a thermostat and its sensors -- so
+        # what tells an entity apart is its own unique id, not that key. An
+        # entity that leaves Home Assistant says so through the callback above,
+        # which is what lets a payload bring its entry back.
+        fresh = [entity for entity in build() if entity.unique_id not in registered]
+        if not fresh:
+            return
+        registered.update(entity.unique_id for entity in fresh)
+        async_add_entities(fresh, True)
+
+    _add_new()
+    config_entry.async_on_unload(coordinator.async_add_listener(_add_new))

@@ -18,14 +18,43 @@
         "data": {
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]"
+        },
+        "data_description": {
+          "username": "The account name (or email address) you use on emodul.eu or emodul.pl.",
+          "password": "The password for that account."
         }
       },
       "select_controllers": {
         "title": "Controller selection",
         "description": "Please select the controllers you want to integrate.",
         "data": {
-          "controllers": "Controllers to import",
+          "controllers": "Controller to import",
           "include_hub_in_name": "Include hub (controller) name in entity names"
+        },
+        "data_description": {
+          "controllers": "The controller to add. Run the flow again for each further controller.",
+          "include_hub_in_name": "Prefix the entity names of this controller's zones with the name of the integration, which helps when several controllers are set up."
+        }
+      },
+      "reauth_confirm": {
+        "description": "Your eModul credentials are no longer valid. Enter them again to keep using this controller.",
+        "data": {
+          "username": "[%key:common::config_flow::data::username%]",
+          "password": "[%key:common::config_flow::data::password%]"
+        },
+        "data_description": {
+          "username": "The account name (or email address) you use on emodul.eu or emodul.pl.",
+          "password": "The password for that account."
+        }
+      },
+      "reconfigure": {
+        "title": "Controller selection",
+        "description": "Choose the controller this entry should stand for instead.",
+        "data": {
+          "controllers": "Controller to import"
+        },
+        "data_description": {
+          "controllers": "The controller to add. Run the flow again for each further controller."
         }
       }
     },
@@ -37,35 +66,29 @@
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
       "no_modules": "No modules detected or selected",
-      "controllers_configured": "Selected controllers have been added"
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+      "wrong_account": "These credentials belong to a different eModul account. Use the account this controller was set up with.",
+      "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
+    }
+  },
+  "exceptions": {
+    "token_rejected": {
+      "message": "The eModul token is no longer accepted. Sign in again."
+    },
+    "cannot_connect": {
+      "message": "The eModul API cannot be reached. Home Assistant will keep trying."
     }
   },
   "options": {
     "step": {
-      "user": {
-        "title": "Tech Sterowniki Login",
-        "description": "Please enter your credentials to emodul.eu or emodul.pl service.",
+      "init": {
         "data": {
-          "username": "[%key:common::config_flow::data::username%]",
-          "password": "[%key:common::config_flow::data::password%]"
-        }
-      },
-      "select_controllers": {
-        "title": "Controller selection",
-        "description": "Please select the controllers you want to integrate.",
-        "data": {
-          "controllers": "Controllers to import"
+          "include_hub_in_name": "Include hub (controller) name in entity names"
+        },
+        "data_description": {
+          "include_hub_in_name": "Prefix the entity names of this controller's zones with the name of the integration, which helps when several controllers are set up."
         }
       }
-    },
-    "error": {
-      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
-      "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
-      "unknown": "[%key:common::config_flow::error::unknown%]"
-    },
-    "abort": {
-      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
-      "no_modules": "No modules detected"
     }
   },
   "entity": {

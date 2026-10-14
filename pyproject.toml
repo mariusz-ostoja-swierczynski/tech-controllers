@@ -200,3 +200,11 @@ Homepage = "https://github.com/mariusz-ostoja-swierczynski/tech-controllers"
 Repository = "https://github.com/mariusz-ostoja-swierczynski/tech-controllers.git"
 Issues = "https://github.com/mariusz-ostoja-swierczynski/tech-controllers/issues"
 Changelog = "https://github.com/mariusz-ostoja-swierczynski/tech-controllers/releases"
+
+[tool.mypy]
+# Strict typing is a Platinum requirement of the integration quality scale: the
+# component is fully annotated and checked with mypy's strictest settings. The
+# `files` list is what lets a bare `mypy` -- the devenv script and the CI step --
+# check exactly the integration and nothing else.
+files = ["custom_components/tech"]
+strict = true

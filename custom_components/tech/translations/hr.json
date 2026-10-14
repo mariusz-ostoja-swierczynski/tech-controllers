@@ -13,7 +13,9 @@
         "abort": {
             "already_configured": "Uređaj već konfiguriran",
             "no_modules": "Nisu otkriveni ili odabrani moduli",
-            "controllers_configured": "Odabrani kontroleri su dodani"
+            "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+            "wrong_account": "Ovi podaci pripadaju drugom eModul računu. Upotrijebite račun s kojim je ovaj kontroler postavljen.",
+            "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
         },
         "error": {
             "cannot_connect": "Nemoguće povezivanje s Tech API-jem.",
@@ -27,6 +29,10 @@
                 "data": {
                     "password": "Lozinka",
                     "username": "Korisničko ime"
+                },
+                "data_description": {
+                    "username": "Naziv računa (ili adresa e-pošte) koji koristite na emodul.eu ili emodul.pl.",
+                    "password": "Lozinka za taj račun."
                 }
             },
             "select_controllers": {
@@ -35,6 +41,51 @@
                 "data": {
                     "controllers": "Kontroleri za uvoz",
                     "include_hub_in_name": "Uključi naziv glavnog uređaja (kontrolera) u nazive entiteta"
+                },
+                "data_description": {
+                    "controllers": "Kontroler koji želite dodati. Za svaki sljedeći kontroler ponovno dodajte integraciju.",
+                    "include_hub_in_name": "Dodajte naziv integracije ispred naziva entiteta zona ovog kontrolera. Korisno kada je postavljeno više kontrolera."
+                }
+            },
+            "reauth_confirm": {
+                "description": "Vaši podaci za eModul više nisu važeći. Unesite ih ponovno da biste nastavili koristiti ovaj kontroler.",
+                "data": {
+                    "password": "Lozinka",
+                    "username": "Korisničko ime"
+                },
+                "data_description": {
+                    "username": "Naziv računa (ili adresa e-pošte) koji koristite na emodul.eu ili emodul.pl.",
+                    "password": "Lozinka za taj račun."
+                }
+            },
+            "reconfigure": {
+                "title": "Odabir kontrolera",
+                "description": "Odaberite regulator koji ova stavka treba predstavljati.",
+                "data": {
+                    "controllers": "Kontroleri za uvoz"
+                },
+                "data_description": {
+                    "controllers": "Kontroler koji želite dodati. Za svaki sljedeći kontroler ponovno dodajte integraciju."
+                }
+            }
+        }
+    },
+    "exceptions": {
+        "token_rejected": {
+            "message": "eModul token više nije prihvaćen. Prijavite se ponovno."
+        },
+        "cannot_connect": {
+            "message": "eModul API nije dostupan. Home Assistant će nastaviti pokušavati."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "include_hub_in_name": "Uključi naziv glavnog uređaja (kontrolera) u nazive entiteta"
+                },
+                "data_description": {
+                    "include_hub_in_name": "Dodajte naziv integracije ispred naziva entiteta zona ovog kontrolera. Korisno kada je postavljeno više kontrolera."
                 }
             }
         }

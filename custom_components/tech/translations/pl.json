@@ -13,7 +13,9 @@
     "abort": {
       "already_configured": "Urządzenie jest już skonfigurowane",
       "no_modules": "Nie wykryto lub nie dodano żadnych sterowników",
-      "controllers_configured": "Wybrane sterowniki zostały dodane"
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+      "wrong_account": "Te dane logowania należą do innego konta eModul. Użyj konta, na którym skonfigurowano ten sterownik.",
+      "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
     },
     "error": {
       "cannot_connect": "Nie można się połączyć z Tech API.",
@@ -27,6 +29,10 @@
         "data": {
           "password": "Hasło",
           "username": "Użytkownik"
+        },
+        "data_description": {
+          "username": "Nazwa konta (lub adres e-mail), którego używasz w emodul.eu lub emodul.pl.",
+          "password": "Hasło do tego konta."
         }
       },
       "select_controllers": {
@@ -35,6 +41,51 @@
         "data": {
           "controllers": "Sterowniki do zintegrowania",
           "include_hub_in_name": "Umieść nazwę hub'a (kontrolera) w nazwach encji"
+        },
+        "data_description": {
+          "controllers": "Sterownik do dodania. Aby dodać kolejny sterownik, uruchom tę konfigurację ponownie.",
+          "include_hub_in_name": "Umieść nazwę integracji (hub'a) przed nazwami encji stref tego sterownika. Przydaje się, gdy skonfigurowanych jest kilka sterowników."
+        }
+      },
+      "reauth_confirm": {
+        "description": "Twoje dane logowania do eModul wygasły. Wprowadź je ponownie, aby nadal korzystać z tego sterownika.",
+        "data": {
+          "password": "Hasło",
+          "username": "Użytkownik"
+        },
+        "data_description": {
+          "username": "Nazwa konta (lub adres e-mail), którego używasz w emodul.eu lub emodul.pl.",
+          "password": "Hasło do tego konta."
+        }
+      },
+      "reconfigure": {
+        "title": "Wybór sterownika",
+        "description": "Wybierz sterownik, który ma teraz odpowiadać temu wpisowi.",
+        "data": {
+          "controllers": "Sterowniki do zintegrowania"
+        },
+        "data_description": {
+          "controllers": "Sterownik do dodania. Aby dodać kolejny sterownik, uruchom tę konfigurację ponownie."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "token_rejected": {
+      "message": "Token eModul nie jest już akceptowany. Zaloguj się ponownie."
+    },
+    "cannot_connect": {
+      "message": "API eModul jest nieosiągalne. Home Assistant będzie próbował dalej."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "include_hub_in_name": "Umieść nazwę hub'a (kontrolera) w nazwach encji"
+        },
+        "data_description": {
+          "include_hub_in_name": "Umieść nazwę integracji (hub'a) przed nazwami encji stref tego sterownika. Przydaje się, gdy skonfigurowanych jest kilka sterowników."
         }
       }
     }

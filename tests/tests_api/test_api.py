@@ -7,6 +7,7 @@ This is a "live" test using real API and Tech provided demo account
 
 import json
 import logging
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import aiohttp
@@ -121,7 +122,7 @@ class TestTechAPI:
         )
         assert authenticated, "Authentication should be successful"
 
-        modules: dict = await tech.list_modules()
+        modules: list[dict[str, Any]] = await tech.list_modules()
         assert isinstance(modules, list), "We should receive a list of modules"
         assert isinstance(modules[0], dict), "Modules should be dicts"
         assert modules[0]["id"] == 0, "First module id should be 0"
