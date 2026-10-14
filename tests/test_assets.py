@@ -29,6 +29,7 @@ class _Platform:
     SELECT = "select"
     SENSOR = "sensor"
     SWITCH = "switch"
+    TIME = "time"
 
 
 if not hasattr(_ha_const, "Platform"):

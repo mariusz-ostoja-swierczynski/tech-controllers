@@ -45,6 +45,7 @@ and community reported controllers.
 | `switch`        | Switch for menu parameters.         |
 | `number`        | Number for menu parameters.         |
 | `select`        | Select for menu parameters.         |
+| `time`          | Time of day for menu parameters.    |
 
 ![Tech Thermostat Cards](./images/ha-tech-1.png)
 

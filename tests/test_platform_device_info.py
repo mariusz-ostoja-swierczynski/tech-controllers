@@ -17,6 +17,7 @@ mapping produced by ``assets.build_zone_names`` in ``async_setup_entry``.
 
 from __future__ import annotations
 
+import datetime
 import importlib.util
 import json
 import pathlib
@@ -50,6 +51,7 @@ _FAKE_MODULES = (
     "homeassistant.components.sensor",
     "homeassistant.components.sensor.const",
     "homeassistant.components.switch",
+    "homeassistant.components.time",
     "homeassistant.config_entries",
     "homeassistant.const",
     "homeassistant.core",
@@ -75,6 +77,9 @@ class _Entity:
 
     async def async_added_to_hass(self) -> None:
         """Pretend the entity was added."""
+
+    def async_write_ha_state(self) -> None:
+        """Pretend to publish the entity state; nothing is recorded."""
 
 
 class CoordinatorEntity(_Entity):
@@ -132,6 +137,7 @@ class _Platform:
     SELECT = "select"
     SENSOR = "sensor"
     SWITCH = "switch"
+    TIME = "time"
 
 
 class _EntityCategory:
@@ -149,7 +155,7 @@ class _NumberMode:
 
 
 # The subclasses each platform module declares for its own entity type.
-for _name in ("switch", "button", "select", "number"):
+for _name in ("switch", "button", "select", "number", "time"):
     globals()[_name] = type(f"{_name.title()}Entity", (_Entity,), {})
 
 
@@ -251,6 +257,8 @@ def _fake_module(name: str) -> types.ModuleType:
     elif name == "homeassistant.components.number":
         module.NumberEntity = globals()["number"]
         module.NumberMode = _NumberMode
+    elif name == "homeassistant.components.time":
+        module.TimeEntity = globals()["time"]
     elif name == "homeassistant.config_entries":
         module.ConfigEntry = _ConfigEntry
         module.ConfigEntryState = type("ConfigEntryState", (), {"LOADED": "loaded"})
@@ -388,6 +396,7 @@ PLATFORMS = (
     ("number", "MenuNumberEntity"),
     ("select", "MenuSelectEntity"),
     ("button", "MenuButtonEntity"),
+    ("time", "MenuTimeEntity"),
 )
 _PLATFORM_IDS = [name for name, _ in PLATFORMS]
 
@@ -414,21 +423,33 @@ class _Translations:
 class _Api:
     """Async API stub; the menu payload is irrelevant to these tests."""
 
+    def __init__(self, menus: dict[str, dict[str, Any]] | None = None) -> None:
+        """Start with no writes recorded and the given menu tree to serve."""
+        self.calls: list[tuple[str, int, dict]] = []
+        self._menus = menus or {}
+
     async def get_module_menus(self, udid: str) -> dict:
-        """Return an empty menu tree."""
-        return {}
+        """Return the menu tree this stub was built with (empty by default)."""
+        return self._menus
 
     async def get_module_zones(self, udid: str) -> dict:
         """Return an empty zone payload."""
+        return {}
+
+    async def set_menu_value(
+        self, udid: str, menu_type: str, ido: int, data: dict
+    ) -> dict:
+        """Record a menu write instead of sending it."""
+        self.calls.append((menu_type, ido, data))
         return {}
 
 
 class _Coordinator:
     """Stand-in for ``TechCoordinator``."""
 
-    def __init__(self) -> None:
+    def __init__(self, menus: dict[str, dict[str, Any]] | None = None) -> None:
         """Wire up the API, translation catalog and cache."""
-        self.api = _Api()
+        self.api = _Api(menus)
         self.translations = _Translations()
         self.udid = _UDID
         self.data: dict = {}
@@ -1130,3 +1151,153 @@ class TestDeprecatedFlagSensorSelection:
 
         assert unlabelled == []
         assert temperature == []
+
+
+# ---------------------------------------------------------------------------
+# Time-of-day menu items (#224)
+# ---------------------------------------------------------------------------
+
+
+def _time_item(value: Any = 1318) -> dict[str, Any]:
+    """Return a menu item shaped like the reporter's "Godzina" (hour) item.
+
+    His installer menu carries it as a universal value whose ``params.format`` is
+    13 -- the value type the API documents as "Time written as hours * 60 + min,
+    shown as 00:00 - 23:59" -- so the raw value counts minutes since midnight and
+    ``max`` is the last minute of a day.
+    """
+    return {
+        "id": 2467,
+        "menuType": "MI",
+        "type": const.MENU_ITEM_TYPE_UNIVERSAL_VALUE,
+        "access": True,
+        "txtId": 246,
+        "params": {
+            "value": value,
+            "format": const.VALUE_FORMAT_TIME_OF_DAY,
+            "min": 0,
+            "max": const.MINUTES_IN_A_DAY - 1,
+        },
+    }
+
+
+def _number_item() -> dict[str, Any]:
+    """Return a plain numeric menu item, which has to stay a number."""
+    return {**_item(), "id": 4444, "menuType": "MI"}
+
+
+def _time_entity(
+    item: dict[str, Any] | None = None,
+    key: str = "MI_2467",
+    depth: int = 0,
+    coordinator: Any = None,
+) -> Any:
+    """Build a menu time entity the way its platform's setup does."""
+    return _modules["time"].MenuTimeEntity(
+        item or _time_item(),
+        key,
+        coordinator or _Coordinator(),
+        _Entry(),
+        {},
+        depth=depth,
+    )
+
+
+async def _added_by(platform: str, menus: dict[str, dict[str, Any]]) -> list[Any]:
+    """Run a platform's setup over ``menus`` and return the entities it added."""
+    coordinator = _Coordinator(menus)
+    entry = _Entry()
+    hass = types.SimpleNamespace(data={const.DOMAIN: {entry.entry_id: coordinator}})
+    added: list[Any] = []
+
+    await _modules[platform].async_setup_entry(
+        hass, entry, lambda entities, update: added.extend(entities)
+    )
+    return added
+
+
+@pytest.mark.parametrize(
+    ("minutes", "expected"),
+    [
+        (0, datetime.time(0, 0)),
+        (90, datetime.time(1, 30)),
+        (1318, datetime.time(21, 58)),
+        (1439, datetime.time(23, 59)),
+    ],
+)
+def test_a_time_item_reads_as_the_time_it_holds(
+    minutes: int, expected: datetime.time
+) -> None:
+    """The packed count is minutes since midnight, and reads as that time."""
+    # ``_attr_native_value`` is what Home Assistant's ``native_value`` property
+    # reads, and the stub base classes carry only the attribute.
+    assert _time_entity(_time_item(minutes))._attr_native_value == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    [const.MINUTES_IN_A_DAY, 1500, -1, 12.5, "1318", None, True],
+    ids=["a-day", "past-a-day", "negative", "fractional", "text", "absent", "flag"],
+)
+def test_a_count_that_is_not_a_time_of_day_reads_unknown(value: Any) -> None:
+    """A count that does not land inside a day is not a time of day.
+
+    The same value type is what the controller's run-time counters use, where the
+    count runs past a day (issue #221), so the bound is what tells a time from a
+    duration -- and anything it cannot express reads unknown rather than being
+    wrapped into a wrong time.
+    """
+    assert _time_entity(_time_item(value))._attr_native_value is None
+
+
+@pytest.mark.parametrize(("depth", "enabled"), [(0, True), (1, True), (2, False)])
+def test_a_time_entity_follows_the_depth_defaults(depth: int, enabled: bool) -> None:
+    """Depth still decides whether the entity is enabled when registered."""
+    assert _time_entity(depth=depth).entity_registry_enabled_default is enabled
+
+
+async def test_setting_the_time_sends_minutes_since_midnight() -> None:
+    """A write sends the count the API documents for value type 13."""
+    coordinator = _Coordinator()
+    entity = _time_entity(coordinator=coordinator)
+
+    await entity.async_set_value(datetime.time(6, 30))
+
+    assert coordinator.api.calls == [("MI", 2467, {"value": 390})]
+    assert entity._attr_native_value == datetime.time(6, 30)
+
+
+async def test_only_the_time_platform_claims_a_time_item() -> None:
+    """A time of day becomes a time entity, and stops being a number.
+
+    A number could only ever show the packed count the reporter saw as 1318, so
+    the number platform leaves these items to the time platform.
+    """
+    menus = {"MI_2467": _time_item(), "MI_4444": _number_item()}
+
+    numbers = await _added_by("number", menus)
+    times = await _added_by("time", menus)
+
+    assert [entity.unique_id for entity in numbers] == [f"{_UDID}_menu_MI_4444"]
+    assert [entity.unique_id for entity in times] == [f"{_UDID}_menu_MI_2467"]
+
+
+async def test_a_time_item_the_account_cannot_use_produces_nothing() -> None:
+    """An inaccessible item is skipped, exactly as on the other platforms."""
+    item = {**_time_item(), "access": False}
+
+    assert await _added_by("time", {"MI_2467": item}) == []
+
+
+async def test_the_number_entity_a_time_item_used_to_be_is_removed() -> None:
+    """The registry does not keep an unavailable duplicate of the new entity.
+
+    Value type 13 items were numbers until this platform took them over, and an
+    entity of each is keyed by the same unique id, so the number one is dropped.
+    """
+    registry = _install_registry(_Registry(entity_id="number.pompa_godzina"))
+
+    added = await _added_by("time", {"MI_2467": _time_item()})
+
+    assert len(added) == 1
+    assert registry.removed == ["number.pompa_godzina"]

@@ -28,6 +28,7 @@ from .const import (
     MENU_ITEM_TYPE_VALUE,
     UDID,
     VALUE_FORMAT_TENTH,
+    VALUE_FORMAT_TIME_OF_DAY,
 )
 from .coordinator import TechCoordinator
 
@@ -68,6 +69,11 @@ async def async_setup_entry(
         if item_type not in _EDITABLE_TYPES:
             continue
         if not item.get("access", False):
+            continue
+        if item.get("params", {}).get("format") == VALUE_FORMAT_TIME_OF_DAY:
+            # A time of day is not a number: :mod:`time` exposes it, and all a
+            # number could show is the raw minutes the time is packed into
+            # (#224).
             continue
         # Skip items deeper than the registration limit -- L-12 has 1100+
         # numeric items, mostly deeply nested per-zone configuration.

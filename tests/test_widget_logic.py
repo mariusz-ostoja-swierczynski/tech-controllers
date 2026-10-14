@@ -46,6 +46,7 @@ class _Platform:
     SELECT = "select"
     SENSOR = "sensor"
     SWITCH = "switch"
+    TIME = "time"
 
 
 class _AnyMember:

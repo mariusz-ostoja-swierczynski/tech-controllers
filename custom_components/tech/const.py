@@ -101,6 +101,7 @@ PLATFORMS = [
     Platform.SELECT,
     Platform.SENSOR,
     Platform.SWITCH,
+    Platform.TIME,
 ]
 
 # Coordinator polling cadence. The eModul cloud rate-limits aggressive
@@ -454,6 +455,19 @@ VALUE_FORMAT_TENTH = 2  # value/10 (e.g. setpoint 225 -> 22.5°C)
 VALUE_FORMAT_MIN_SEC = 3
 VALUE_FORMAT_HOUR_MIN = 4
 VALUE_FORMAT_H_MIN_DAY = 5
+
+# Time of day, written as hours * 60 + min and shown as 00:00 - 23:59. It is the
+# same code as :data:`WIDGET_UNIT_TIME_OF_DAY` -- one value-type table serves
+# both a menu item's ``params.format`` and a tile widget's ``params.widgetN.unit``
+# -- and an item carrying it is a time rather than a number, so :mod:`time`
+# exposes it and :class:`number.MenuNumberEntity` leaves it alone (#224).
+VALUE_FORMAT_TIME_OF_DAY = 13
+
+# A day holds this many minutes: 0-1439 is every time of day, and a value
+# outside that is not one. The same value type is also what the controller's
+# run-time counters use, where the count runs past a day (see
+# :func:`widget_hours_and_minutes`), so the bound is what tells them apart.
+MINUTES_IN_A_DAY = 1440
 
 TECH_SUPPORTED_LANGUAGES = [
     "en",

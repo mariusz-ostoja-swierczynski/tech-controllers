@@ -93,6 +93,7 @@ class _Platform:
     SELECT = "select"
     SENSOR = "sensor"
     SWITCH = "switch"
+    TIME = "time"
 
 
 def _identity(value):
