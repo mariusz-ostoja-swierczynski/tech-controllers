@@ -1297,6 +1297,111 @@ async def test_turning_one_option_keeps_the_other_options() -> None:
     assert (first.is_on, second.is_on) == (False, True)
 
 
+async def test_a_poll_during_change_keeps_the_optimistic_switch_state() -> None:
+    """A switch does not jump back while the controller is applying the write.
+
+    The optimistic write of #191 is only useful if the next poll cannot undo it:
+    the API keeps reporting the old value with ``duringChange: "t"`` until the
+    controller confirms. Zones already ignore that value; menu switches now do
+    the same. Once the flag settles to ``"f"`` the poll is authoritative again,
+    which is how a controller-side rejection still reverts.
+    """
+    item = {
+        **_item(),
+        "type": const.MENU_ITEM_TYPE_ON_OFF,
+        "params": {"value": 0},
+    }
+    coordinator = _Coordinator()
+    entity = _modules["switch"].MenuSwitchEntity(
+        item, "MU_3550", coordinator, _Entry(), {}, depth=0
+    )
+
+    await entity.async_turn_on()
+    assert entity.is_on is True
+
+    coordinator.data = {
+        "menus": {"MU_3550": {**item, "params": {"value": 0}, "duringChange": "t"}}
+    }
+    entity._handle_coordinator_update()
+    assert entity.is_on is True
+
+    coordinator.data = {
+        "menus": {"MU_3550": {**item, "params": {"value": 0}, "duringChange": "f"}}
+    }
+    entity._handle_coordinator_update()
+    assert entity.is_on is False
+
+
+async def test_a_poll_during_change_keeps_the_optimistic_number() -> None:
+    """A number follows the same duringChange rule as a switch."""
+    item = _item()
+    coordinator = _Coordinator()
+    entity = _modules["number"].MenuNumberEntity(
+        item, "MU_3550", coordinator, _Entry(), {}, depth=0
+    )
+
+    await entity.async_set_native_value(5)
+    assert entity._attr_native_value == 5
+
+    coordinator.data = {
+        "menus": {"MU_3550": {**item, "params": {**item["params"], "value": 1}, "duringChange": "t"}}
+    }
+    entity._handle_coordinator_update()
+    assert entity._attr_native_value == 5
+
+    coordinator.data = {
+        "menus": {"MU_3550": {**item, "params": {**item["params"], "value": 7}, "duringChange": "f"}}
+    }
+    entity._handle_coordinator_update()
+    assert entity._attr_native_value == 7
+
+
+async def test_a_poll_during_change_keeps_the_optimistic_select_option() -> None:
+    """A select keeps its chosen option until the controller has settled."""
+    item = _item()
+    coordinator = _Coordinator()
+    entity = _modules["select"].MenuSelectEntity(
+        item, "MU_3550", coordinator, _Entry(), {}, depth=0
+    )
+    assert entity._attr_current_option == "label-2"
+
+    await entity.async_select_option("label-1")
+    assert entity._attr_current_option == "label-1"
+
+    coordinator.data = {
+        "menus": {"MU_3550": {**item, "duringChange": "t"}}
+    }
+    entity._handle_coordinator_update()
+    assert entity._attr_current_option == "label-1"
+
+    coordinator.data = {
+        "menus": {"MU_3550": {**item, "duringChange": "f"}}
+    }
+    entity._handle_coordinator_update()
+    assert entity._attr_current_option == "label-2"
+
+
+async def test_a_poll_during_change_keeps_both_checkbox_options() -> None:
+    """A checkbox option is not undone, and neither is its sibling."""
+    switches = _kolton_checkbox_switches()
+    first = switches[f"{_UDID}_menu_MU_30029_option_128"]
+    second = switches[f"{_UDID}_menu_MU_30029_option_3645"]
+    coordinator = first.coordinator
+    item = _kolton_menus()["MU_30029"]
+
+    await second.async_turn_on()
+    assert (first.is_on, second.is_on) == (True, True)
+
+    coordinator.data = {"menus": {"MU_30029": {**item, "duringChange": "t"}}}
+    first._handle_coordinator_update()
+    assert (first.is_on, second.is_on) == (True, True)
+
+    coordinator.data = {"menus": {"MU_30029": {**item, "duringChange": "f"}}}
+    first._handle_coordinator_update()
+    second._handle_coordinator_update()
+    assert (first.is_on, second.is_on) == (True, False)
+
+
 async def test_user_menu_dialogue_is_the_factory_reset_not_a_lockout() -> None:
     """The user menu's only dialogue is factory settings, not a clear-lockout.
 
