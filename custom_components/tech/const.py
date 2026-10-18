@@ -518,6 +518,23 @@ MENU_ITEM_TYPE_UNIVERSAL_VALUE = 106
 MENU_DIALOGUE_CONFIRM_VALUES: Final[dict[int, int]] = {0: 2, 1: 1, 2: 3}
 MENU_DIALOGUE_CONFIRM_FALLBACK: Final = 1
 
+# Catalogue text ids that identify what a dialogue does, whatever language the
+# account uses. ``txtId`` 839 is "Ustawienia fabryczne" ("Factory settings") on
+# every controller seen; a press wipes the controller's configuration, so those
+# buttons are registered disabled by default. The reporter asked for exactly
+# that after #222 exposed four of them (#222 comment of 2026-10-18).
+MENU_FACTORY_RESET_TXT_ID: Final = 839
+
+# A lockout dialogue carries the *status* "Brak blokady" ("No lockout") in
+# ``params.txtId`` (10018) while its own ``txtId`` names the item. For the
+# pressure-switch item the label is already the action ("Zdjęcie blokady",
+# 8395); for the fan lockout it is only the thing that can be locked
+# ("Blokada wentylatora", 6956), which collides with the binary sensor of the
+# same name. Button naming appends the catalogue's action label in the latter
+# case so the two entities stay distinguishable.
+MENU_LOCKOUT_STATUS_TXT_ID: Final = 10018
+MENU_LOCKOUT_CLEAR_TXT_ID: Final = 8395
+
 # Menu depth filtering thresholds. Tech menus on multi-zone controllers
 # (notably L-12 with ~4100 MI items) are deeply nested and exposing every
 # leaf as a HA entity produces unusable amounts of registry noise (#187).

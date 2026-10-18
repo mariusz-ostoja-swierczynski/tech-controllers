@@ -1331,6 +1331,9 @@ async def test_user_menu_dialogue_is_the_factory_reset_not_a_lockout() -> None:
     )
 
     assert (entity.name, entity.unique_id) == ("label-839", f"{_UDID}_menu_MU_10000")
+    # A factory reset is one press away from wiping the controller, so it is
+    # registered disabled even though it sits at the top level.
+    assert not entity.entity_registry_enabled_default
 
     await entity.async_press()
 
@@ -1587,11 +1590,35 @@ async def test_service_menu_dialogue_becomes_a_working_button() -> None:
     assert button.entity_registry_enabled_default
     assert button._attr_available  # access: true while there is a lockout
 
+    # The tree also carries two factory-reset dialogues (one top-level, one
+    # under "Zabezpieczenia"). They register, but disabled.
+    assert not by_id[f"{_UDID}_menu_MS_2457"].entity_registry_enabled_default
+    assert not by_id[f"{_UDID}_menu_MS_10002"].entity_registry_enabled_default
+
     await button.async_press()
 
     assert coordinator.api.calls == [
         ("MS", _SERVICE_LOCKOUT_ID, {"type": 2, "value": 3})
     ]
+
+
+def test_fan_lockout_button_says_what_it_clears() -> None:
+    """The fan lockout button no longer shares its name with the binary sensor.
+
+    Its label is "Blokada wentylatora" -- the same text as the flag sensor --
+    while the pressure-switch dialogue is already labelled with the action. The
+    dialogue's ``params.txtId`` is the shared "Brak blokady" status, which is
+    what marks it as a lockout control; the action label from the same catalogue
+    is appended so a press reads as "Blokada wentylatora - Zdjęcie blokady".
+    """
+    item = _service_menu()["MS_2746"]
+
+    entity = _modules["button"].MenuButtonEntity(
+        item, "MS_2746", _Coordinator(), _Entry(), {}, depth=0
+    )
+
+    assert entity.name == "label-6956 - label-8395"
+    assert entity.entity_registry_enabled_default
 
 
 @pytest.mark.parametrize(

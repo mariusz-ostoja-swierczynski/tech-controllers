@@ -33,6 +33,7 @@ from .const import (
     MENU_DEPTH_REGISTRATION_LIMIT,
     MENU_DIALOGUE_CONFIRM_FALLBACK,
     MENU_DIALOGUE_CONFIRM_VALUES,
+    MENU_FACTORY_RESET_TXT_ID,
     MENU_ITEM_TYPE_DIALOGUE,
     UDID,
 )
@@ -142,12 +143,20 @@ class MenuButtonEntity(CoordinatorEntity, ButtonEntity):
         )
 
         # ``_attr_has_entity_name = True`` lets HA prepend the device name; the
-        # entity name itself is the menu label only.
-        self._name = assets.menu_entity_name(
+        # entity name itself is the menu label only. A lockout dialogue whose
+        # own label is just the lockable thing gets the action appended, so a
+        # button and the binary sensor of the same name stay distinguishable.
+        self._name = assets.menu_dialogue_entity_name(
             item, group_names, coordinator.translations
         )
 
-        self._disabled = depth > MENU_DEPTH_DEFAULT_ENABLED_LIMIT
+        # A factory-reset dialogue wipes the controller's settings on a single
+        # press, so it is registered disabled: one accidental click is not
+        # recoverable, and a user who needs it can enable it deliberately.
+        self._disabled = (
+            depth > MENU_DEPTH_DEFAULT_ENABLED_LIMIT
+            or item.get("txtId") == MENU_FACTORY_RESET_TXT_ID
+        )
 
         self._update_from_item(item)
 
