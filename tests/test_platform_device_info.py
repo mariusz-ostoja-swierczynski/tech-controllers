@@ -1189,7 +1189,6 @@ def _number_item() -> dict[str, Any]:
 def _time_entity(
     item: dict[str, Any] | None = None,
     key: str = "MI_2467",
-    depth: int = 0,
     coordinator: Any = None,
 ) -> Any:
     """Build a menu time entity the way its platform's setup does."""
@@ -1199,7 +1198,6 @@ def _time_entity(
         coordinator or _Coordinator(),
         _Entry(),
         {},
-        depth=depth,
     )
 
 
@@ -1250,10 +1248,14 @@ def test_a_count_that_is_not_a_time_of_day_reads_unknown(value: Any) -> None:
     assert _time_entity(_time_item(value))._attr_native_value is None
 
 
-@pytest.mark.parametrize(("depth", "enabled"), [(0, True), (1, True), (2, False)])
-def test_a_time_entity_follows_the_depth_defaults(depth: int, enabled: bool) -> None:
-    """Depth still decides whether the entity is enabled when registered."""
-    assert _time_entity(depth=depth).entity_registry_enabled_default is enabled
+def test_a_time_entity_is_registered_disabled() -> None:
+    """A time of day is registered disabled, whatever its depth.
+
+    The controller's clock changes every minute, so leaving it enabled records
+    a new state per minute for a setting most users never write. Enabling it is
+    one toggle away in the entity settings.
+    """
+    assert not _time_entity().entity_registry_enabled_default
 
 
 async def test_setting_the_time_sends_minutes_since_midnight() -> None:

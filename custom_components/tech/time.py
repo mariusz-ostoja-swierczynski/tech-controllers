@@ -25,7 +25,6 @@ from .const import (
     DOMAIN,
     INCLUDE_HUB_IN_NAME,
     MANUFACTURER,
-    MENU_DEPTH_DEFAULT_ENABLED_LIMIT,
     MENU_DEPTH_REGISTRATION_LIMIT,
     MENU_ITEM_TYPE_UNIVERSAL_VALUE,
     MENU_ITEM_TYPE_VALUE,
@@ -184,8 +183,10 @@ class MenuTimeEntity(CoordinatorEntity, TimeEntity):
             coordinator: Shared Tech data coordinator instance.
             config_entry: Config entry that owns the coordinator.
             group_names: Mapping of ``(menu_type, group_id)`` to group label.
-            depth: Nesting depth of this item in the Tech menu tree
-                (0 = top-level). Drives ``entity_registry_enabled_default``.
+            depth: Nesting depth of this item, accepted for parity with the
+                other menu platforms. It intentionally does not affect the
+                enabled default here: a time entity is always registered
+                disabled (see below).
             zone_id: Optional zone ID to associate this entity with a zone device.
             zone_names: Mapping of zone ID to zone device name, used to name
                 the zone device when ``zone_id`` is set.
@@ -215,7 +216,11 @@ class MenuTimeEntity(CoordinatorEntity, TimeEntity):
             item, group_names, coordinator.translations
         )
 
-        self._disabled = depth > MENU_DEPTH_DEFAULT_ENABLED_LIMIT
+        # A time-of-day item is the controller's clock or a similar setting
+        # whose value changes every minute. Registering it disabled keeps that
+        # per-minute state churn out of the recorder for users who never write
+        # the clock; one toggle in the entity settings enables it.
+        self._disabled = True
 
         self._update_from_item(item)
 
