@@ -189,10 +189,11 @@ rules:
     status: done
     comment: >-
       diagnostics.py implements async_get_config_entry_diagnostics: the entry's
-      data with the token, the account id and any credentials redacted, its
-      options, and a summary of what the controller last reported.
-      tests_ha/test_diagnostics.py pins those counts against a recorded
-      controller and asserts that the token value can never appear in a dump.
+      data with the token, the account id, the owner's contact and postcode
+      details and the controller's module identifier redacted, its options, and
+      a summary of what the controller last reported. tests_ha/test_diagnostics.py
+      pins those counts against a recorded controller and asserts that neither
+      the token nor any of those personal values can appear in a dump.
   discovery:
     status: exempt
     comment: >-

@@ -36,8 +36,21 @@ EMPTY_MENU: dict[str, Any] = {"status": "success", "data": {"elements": []}}
 
 
 def controller_payload(name: str) -> dict[str, Any]:
-    """Return the controller payload the config flow stores in an entry."""
-    return {"id": 1, "name": name, "udid": UDID, "version": "1.0.0"}
+    """Return the controller payload the config flow stores in an entry.
+
+    It carries the personal data the API returns with a controller (owner
+    email, phone and postcode) so the diagnostics test can prove a download
+    taken from it is safe to paste into a public issue.
+    """
+    return {
+        "id": 1,
+        "name": name,
+        "udid": UDID,
+        "version": "1.0.0",
+        "email": "owner@example.com",
+        "phoneNumber": "+48123456789",
+        "zipCode": "00-001",
+    }
 
 
 def entry_for(name: str, *, token: str = "token") -> MockConfigEntry:

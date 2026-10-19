@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 
-from common import USER_ID, set_up
+from common import UDID, USER_ID, set_up
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -44,19 +44,29 @@ async def test_diagnostics_describe_what_the_controller_reported(
 async def test_diagnostics_never_carry_the_account_secrets(
     hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The token and the account id are redacted wherever they appear.
+    """The token, account id, contact details and module id are redacted.
 
-    The entry's data holds the bearer token, which authenticates as the account,
-    so a diagnostics file has to be safe to paste into a public issue.
+    The entry's data holds the bearer token, which authenticates as the
+    account, and the controller payload carries the owner's email, phone and
+    postcode plus the module's stable identifier. A diagnostics file is meant
+    to be pasted into a public issue, so none of those may survive.
     """
     entry = await set_up(hass, "l12", monkeypatch, token=_TOKEN)
 
     diagnostics = await _diagnostics(hass, entry)
     dumped = json.dumps(diagnostics)
+    controller = diagnostics["entry"]["data"]["controller"]
 
     assert _TOKEN not in dumped
     assert diagnostics["entry"]["data"][CONF_TOKEN] == "**REDACTED**"
     assert entry.data[CONF_TOKEN] != diagnostics["entry"]["data"][CONF_TOKEN]
     assert entry.data[USER_ID] != diagnostics["entry"]["data"][USER_ID]
+    assert controller["udid"] == "**REDACTED**"
+    assert controller["email"] == "**REDACTED**"
+    assert controller["phoneNumber"] == "**REDACTED**"
+    assert controller["zipCode"] == "**REDACTED**"
+    assert UDID not in dumped
+    assert "owner@example.com" not in dumped
     # What is needed to reason about a report stays visible.
-    assert diagnostics["entry"]["data"]["controller"]["udid"]
+    assert controller["version"] == "1.0.0"
+    assert diagnostics["entry"]["title"] == "l12"

@@ -181,7 +181,7 @@ automation:
 - The entry says "Authentication expired": the account's token is no longer accepted. Authenticate again from the entry's menu; the controller and its entities are kept.
 - The entry says "Failed, retrying setup: the eModul API cannot be reached": the service or the connection is down. Home Assistant retries by itself, and nothing has to be done.
 - A controller is missing from the list while setting up: the account has to hold it, and the credentials you enter are the ones whose controllers are listed.
-- Anything else: download the entry's diagnostics from its menu and attach them to an issue. They describe the controller and never carry the account's token.
+- Anything else: download the entry's diagnostics from its menu and attach them to an issue. They describe the controller and never carry the account's token, contact details or controller identifier.
 
 ## :house_with_garden: Use cases
 

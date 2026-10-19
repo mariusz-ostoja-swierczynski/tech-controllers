@@ -2,9 +2,10 @@
 
 Home Assistant offers a download of this per config entry, which is what a
 reporter is asked for when something looks wrong. It carries the entry's data
-with the secrets taken out and a summary of what the controller last reported,
-so a controller's zones, tiles and menu items can be reasoned about without
-publishing the account's token.
+with the secrets and the account's personal data taken out and a summary of
+what the controller last reported, so a controller's zones, tiles and menu
+items can be reasoned about without publishing the account's token, contact
+details or the module's identifier.
 """
 
 from __future__ import annotations
@@ -22,6 +23,17 @@ TO_REDACT = {
     "user_id",
     "username",
     "password",
+    # Personal data the account returns with a controller. A diagnostics file
+    # is meant to be pasted into a public issue, so the owner's contact details
+    # and address data must not travel with it.
+    "email",
+    "phoneNumber",
+    "zipCode",
+    # The controller's stable module identifier. It is not a credential, but it
+    # identifies one physical device across reports, so it is redacted with the
+    # account data. What is left (name, model and version, counts) is what a
+    # report needs.
+    "udid",
 }
 
 
