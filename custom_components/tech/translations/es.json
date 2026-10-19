@@ -13,7 +13,9 @@
         "abort": {
             "already_configured": "Dispositivo ya configurado",
             "no_modules": "No se detectaron módulos o no se seleccionaron",
-            "controllers_configured": "Se han añadido los controladores seleccionados"
+            "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+            "wrong_account": "Estas credenciales pertenecen a otra cuenta de eModul. Utilice la cuenta con la que se configuró este controlador.",
+            "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
         },
         "error": {
             "cannot_connect": "No se puede conectar a la API de Tech.",
@@ -27,6 +29,10 @@
                 "data": {
                     "password": "Contraseña",
                     "username": "Nombre de usuario"
+                },
+                "data_description": {
+                    "username": "El nombre de la cuenta (o la dirección de correo electrónico) que utiliza en emodul.eu o emodul.pl.",
+                    "password": "La contraseña de esa cuenta."
                 }
             },
             "select_controllers": {
@@ -35,6 +41,51 @@
                 "data": {
                     "controllers": "Controladores a importar",
                     "include_hub_in_name": "Incluir nombre del concentrador (controlador) en los nombres de las entidades"
+                },
+                "data_description": {
+                    "controllers": "El controlador que se va a añadir. Añada la integración de nuevo para cada controlador adicional.",
+                    "include_hub_in_name": "Añada el nombre de la integración delante de los nombres de las entidades de las zonas de este controlador. Resulta útil cuando hay varios controladores configurados."
+                }
+            },
+            "reauth_confirm": {
+                "description": "Sus credenciales de eModul ya no son válidas. Introdúzcalas de nuevo para seguir usando este controlador.",
+                "data": {
+                    "password": "Contraseña",
+                    "username": "Nombre de usuario"
+                },
+                "data_description": {
+                    "username": "El nombre de la cuenta (o la dirección de correo electrónico) que utiliza en emodul.eu o emodul.pl.",
+                    "password": "La contraseña de esa cuenta."
+                }
+            },
+            "reconfigure": {
+                "title": "Selección de controladores",
+                "description": "Elija el controlador que debe representar esta entrada.",
+                "data": {
+                    "controllers": "Controladores a importar"
+                },
+                "data_description": {
+                    "controllers": "El controlador que se va a añadir. Añada la integración de nuevo para cada controlador adicional."
+                }
+            }
+        }
+    },
+    "exceptions": {
+        "token_rejected": {
+            "message": "El token de eModul ya no se acepta. Inicie sesión de nuevo."
+        },
+        "cannot_connect": {
+            "message": "No se puede acceder a la API de eModul. Home Assistant seguirá intentándolo."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "include_hub_in_name": "Incluir nombre del concentrador (controlador) en los nombres de las entidades"
+                },
+                "data_description": {
+                    "include_hub_in_name": "Añada el nombre de la integración delante de los nombres de las entidades de las zonas de este controlador. Resulta útil cuando hay varios controladores configurados."
                 }
             }
         }

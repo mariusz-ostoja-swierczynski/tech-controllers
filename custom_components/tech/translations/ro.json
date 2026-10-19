@@ -13,7 +13,9 @@
         "abort": {
             "already_configured": "Dispozitiv deja configurat",
             "no_modules": "Nu au fost detectate sau selectate module",
-            "controllers_configured": "Controlerele selectate au fost adăugate"
+            "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+            "wrong_account": "Aceste date de autentificare aparțin altui cont eModul. Folosiți contul cu care a fost configurat acest controler.",
+            "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
         },
         "error": {
             "cannot_connect": "Nu se poate conecta la API-ul Tech.",
@@ -27,6 +29,10 @@
                 "data": {
                     "password": "Parolă",
                     "username": "Nume de utilizator"
+                },
+                "data_description": {
+                    "username": "Numele contului (sau adresa de e-mail) pe care îl utilizați pe emodul.eu sau emodul.pl.",
+                    "password": "Parola acelui cont."
                 }
             },
             "select_controllers": {
@@ -35,6 +41,51 @@
                 "data": {
                     "controllers": "Controlere de importat",
                     "include_hub_in_name": "Includere nume hub (controller) în numele entităților"
+                },
+                "data_description": {
+                    "controllers": "Controlerul de adăugat. Adăugați din nou integrarea pentru fiecare controler suplimentar.",
+                    "include_hub_in_name": "Adăugați numele integrării înaintea numelor entităților zonelor acestui controler. Este util când sunt configurate mai multe controlere."
+                }
+            },
+            "reauth_confirm": {
+                "description": "Datele de autentificare eModul nu mai sunt valide. Introduceți-le din nou pentru a continua să folosiți acest controler.",
+                "data": {
+                    "password": "Parolă",
+                    "username": "Nume de utilizator"
+                },
+                "data_description": {
+                    "username": "Numele contului (sau adresa de e-mail) pe care îl utilizați pe emodul.eu sau emodul.pl.",
+                    "password": "Parola acelui cont."
+                }
+            },
+            "reconfigure": {
+                "title": "Selectare controlere",
+                "description": "Alegeți controlerul pe care să îl reprezinte această intrare.",
+                "data": {
+                    "controllers": "Controlere de importat"
+                },
+                "data_description": {
+                    "controllers": "Controlerul de adăugat. Adăugați din nou integrarea pentru fiecare controler suplimentar."
+                }
+            }
+        }
+    },
+    "exceptions": {
+        "token_rejected": {
+            "message": "Tokenul eModul nu mai este acceptat. Autentificați-vă din nou."
+        },
+        "cannot_connect": {
+            "message": "API-ul eModul nu poate fi accesat. Home Assistant va continua să încerce."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "include_hub_in_name": "Includere nume hub (controller) în numele entităților"
+                },
+                "data_description": {
+                    "include_hub_in_name": "Adăugați numele integrării înaintea numelor entităților zonelor acestui controler. Este util când sunt configurate mai multe controlere."
                 }
             }
         }

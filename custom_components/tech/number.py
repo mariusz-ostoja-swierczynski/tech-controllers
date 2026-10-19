@@ -4,10 +4,10 @@ import logging
 from typing import Any
 
 from homeassistant.components.number import NumberEntity, NumberMode
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_IDENTIFIERS,
     ATTR_MANUFACTURER,
+    ATTR_SW_VERSION,
     CONF_NAME,
     EntityCategory,
 )
@@ -29,16 +29,22 @@ from .const import (
     UDID,
     VALUE_FORMAT_TENTH,
 )
-from .coordinator import TechCoordinator
+from .coordinator import TechConfigEntry, TechCoordinator
+from .entity import ReportedEntity
 
 _LOGGER = logging.getLogger(__name__)
+
+# All the entities of one controller write to the same cloud account, so this
+# platform serialises their calls instead of letting a scene fire them all at
+# once. Home Assistant reads PARALLEL_UPDATES from the platform module.
+PARALLEL_UPDATES = 1
 
 _EDITABLE_TYPES = MENU_ITEM_TYPE_VALUE | {MENU_ITEM_TYPE_UNIVERSAL_VALUE}
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: TechConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Tech number entities from menu parameters.
@@ -50,7 +56,7 @@ async def async_setup_entry(
 
     """
     controller = config_entry.data[CONTROLLER]
-    coordinator: TechCoordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator: TechCoordinator = config_entry.runtime_data
     controller_udid = controller[UDID]
 
     menus = await coordinator.api.get_module_menus(controller_udid)
@@ -59,7 +65,7 @@ async def async_setup_entry(
     zone_names = assets.build_zone_names(
         zones,
         config_entry.title,
-        config_entry.data.get(INCLUDE_HUB_IN_NAME, False),
+        config_entry.options.get(INCLUDE_HUB_IN_NAME, False),
     )
 
     entities: list[MenuNumberEntity] = []
@@ -89,7 +95,9 @@ async def async_setup_entry(
     async_add_entities(entities, True)
 
 
-class MenuNumberEntity(CoordinatorEntity, NumberEntity):
+class MenuNumberEntity(
+    ReportedEntity, CoordinatorEntity[TechCoordinator], NumberEntity
+):
     """A numeric menu parameter exposed as a Home Assistant number entity."""
 
     _attr_has_entity_name = True
@@ -100,7 +108,7 @@ class MenuNumberEntity(CoordinatorEntity, NumberEntity):
         item: dict[str, Any],
         menu_key: str,
         coordinator: TechCoordinator,
-        config_entry: ConfigEntry,
+        config_entry: TechConfigEntry,
         group_names: dict[tuple[str, int], str],
         depth: int = 0,
         zone_id: int | None = None,
@@ -170,17 +178,27 @@ class MenuNumberEntity(CoordinatorEntity, NumberEntity):
         return not self._disabled
 
     @property
+    def source_key(self) -> str:
+        """Return the menu item this entity was built from."""
+        return f"menu_{self._menu_key}"
+
+    @property
     def device_info(self) -> DeviceInfo | None:
         """Return device info for the zone or controller this entity belongs to."""
         if self._zone_id is not None:
             return {
                 ATTR_IDENTIFIERS: {(DOMAIN, f"{self._udid}_{self._zone_id}")},
                 CONF_NAME: self._zone_name,
+                "model": assets.controller_model(self._config_entry),
+                ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
                 ATTR_MANUFACTURER: self.manufacturer,
+                **assets.via_controller(self.coordinator),
             }
         return {
             ATTR_IDENTIFIERS: {(DOMAIN, self._udid)},
             CONF_NAME: self._config_entry.title,
+            "model": assets.controller_model(self._config_entry),
+            ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
             ATTR_MANUFACTURER: self.manufacturer,
         }
 

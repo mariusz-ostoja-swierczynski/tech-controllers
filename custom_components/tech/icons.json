@@ -1,0 +1,9 @@
+{
+    "entity": {
+        "sensor": {
+            "actuator_entity": {
+                "default": "mdi:valve"
+            }
+        }
+    }
+}

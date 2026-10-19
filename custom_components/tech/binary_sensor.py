@@ -36,43 +36,41 @@ without that agreement the same widget could be emitted twice (or not at all).
 """
 
 import logging
+from typing import Any, cast
 
-from homeassistant.components import binary_sensor
+from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.components.binary_sensor.const import BinarySensorDeviceClass
 from homeassistant.components.sensor.const import SensorDeviceClass
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    CONF_PARAMS,
-    CONF_TYPE,
-    PERCENTAGE,
-    STATE_OFF,
-    STATE_ON,
-    EntityCategory,
-)
+from homeassistant.const import CONF_PARAMS, CONF_TYPE, PERCENTAGE, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import StateType, UndefinedType
+from homeassistant.helpers.typing import UndefinedType
 
-from . import TechCoordinator, assets
+from . import assets
 from .const import (
-    CONTROLLER,
-    DOMAIN,
     TYPE_ADDITIONAL_PUMP,
     TYPE_FIRE_SENSOR,
     TYPE_RELAY,
     TYPE_WIDGET,
-    UDID,
     VALUE,
     VISIBILITY,
     WIDGET_COLLECTOR_PUMP,
     WIDGET_DHW_PUMP,
     widget_unit,
 )
-from .entity import TileEntity
+from .coordinator import TechConfigEntry, TechCoordinator
+from .entity import TileEntity, add_later
 
 _LOGGER = logging.getLogger(__name__)
 
+# The coordinator owns fetching, so there is no per-entity call to throttle
+# here. Home Assistant reads PARALLEL_UPDATES from the platform module.
+PARALLEL_UPDATES = 0
 
-def _sibling_widget(tile_params: dict, widget_key: str) -> dict | None:
+
+def _sibling_widget(
+    tile_params: dict[str, Any], widget_key: str
+) -> dict[str, Any] | None:
     """Return the tile's other widget payload, when it carries one.
 
     A TYPE_WIDGET tile has exactly two slots, so the sibling is simply the one
@@ -90,20 +88,22 @@ def _sibling_widget(tile_params: dict, widget_key: str) -> dict | None:
     return tile_params.get(other_key) or None
 
 
-def _is_contact_marker(widget: dict | None) -> bool:
+def _is_contact_marker(widget: dict[str, Any] | None) -> bool:
     """Return True for the per-widget half of the dry-contact marker.
 
     The marker triple this tests is documented on the mirrored predicate in
     :func:`sensor._is_contact_marker`.
     """
-    return bool(widget) and (
+    if widget is None:
+        return False
+    return (
         widget.get("unit") == -1
         and widget.get(CONF_TYPE) == 0
         and widget.get("txtId", 0) != 0
     )
 
 
-def _is_contact_widget(widget: dict, sibling: dict | None) -> bool:
+def _is_contact_widget(widget: dict[str, Any], sibling: dict[str, Any] | None) -> bool:
     """Return ``True`` for widgets that should be exposed as binary contacts.
 
     The rule this tests is documented on the mirrored predicate in
@@ -115,16 +115,20 @@ def _is_contact_widget(widget: dict, sibling: dict | None) -> bool:
     return _is_contact_marker(widget) and (sibling is None or _is_contact_marker(sibling))
 
 
-def _widget_txt_id(widget: dict, sibling: dict | None = None) -> int:
+def _widget_txt_id(
+    widget: dict[str, Any], sibling: dict[str, Any] | None = None
+) -> int:
     """Return the label a widget is named by, borrowing its sibling's.
 
     The marker triple this borrows on is documented on the mirrored helper in
     :func:`sensor._widget_txt_id`.
     """
-    return widget.get("txtId") or (sibling or {}).get("txtId", 0)
+    return cast("int", widget.get("txtId") or (sibling or {}).get("txtId", 0))
 
 
-def _is_flag_widget(widget: dict, sibling: dict | None) -> bool:
+def _is_flag_widget(
+    widget: dict[str, Any], sibling: dict[str, Any] | None
+) -> bool:
     """Return ``True`` for enable/disable widgets (API value type 28).
 
     The API documents value type 28 as "Enabled / Disabled - [1/0]", which is a
@@ -138,7 +142,7 @@ def _is_flag_widget(widget: dict, sibling: dict | None) -> bool:
     return widget.get("unit") == 28 and _widget_txt_id(widget, sibling) != 0
 
 
-def _has_pump_widget(params: dict) -> bool:
+def _has_pump_widget(params: dict[str, Any]) -> bool:
     """Return ``True`` if the tile carries a pump widget that reads a pump value.
 
     Pump-type widgets (``type=1`` = WIDGET_DHW_PUMP, ``type=2`` =
@@ -167,7 +171,7 @@ def _has_pump_widget(params: dict) -> bool:
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: TechConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Tech binary sensors for a newly created config entry.
@@ -179,72 +183,74 @@ async def async_setup_entry(
 
     """
     _LOGGER.debug("Setting up entry for sensors…")
-    controller = config_entry.data[CONTROLLER]
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator = config_entry.runtime_data
 
-    entities = []
-    # for controller in controllers:
-    controller_udid = controller[UDID]
-    tiles = await coordinator.api.get_module_tiles(controller_udid)
-    # _LOGGER.debug("Setting up entry for binary sensors...tiles: %s", tiles)
-    for t in tiles:
-        tile = tiles[t]
-        if tile[VISIBILITY] is False:
-            continue
-        if tile[CONF_TYPE] == TYPE_RELAY:
-            entities.append(RelaySensor(tile, coordinator, config_entry))
-        if tile[CONF_TYPE] == TYPE_FIRE_SENSOR:
-            entities.append(
-                RelaySensor(
-                    tile,
-                    coordinator,
-                    config_entry,
-                    binary_sensor.BinarySensorDeviceClass.MOTION,
-                )
-            )
-        if tile[CONF_TYPE] == TYPE_ADDITIONAL_PUMP:
-            entities.append(RelaySensor(tile, coordinator, config_entry))
-        if tile[CONF_TYPE] == TYPE_WIDGET:
-            params = tile.get(CONF_PARAMS, {})
-            for widget_key in ("widget1", "widget2"):
-                widget = params.get(widget_key)
-                if not widget:
-                    continue
-                sibling = _sibling_widget(params, widget_key)
-                if _is_flag_widget(widget, sibling):
-                    entities.append(
-                        TileWidgetFlagSensor(
-                            tile, coordinator, config_entry, widget_key
-                        )
-                    )
-                if _is_contact_widget(widget, sibling):
-                    entities.append(
-                        TileWidgetContactSensor(
-                            tile, coordinator, config_entry, widget_key
-                        )
-                    )
-            # TYPE_WIDGET tiles with statusId 0 or 1 carry ON/OFF state for
-            # PWM-controlled pumps (e.g. solar collector). Only emit the binary
-            # sensor when the tile carries a pump widget that reads a pump
-            # quantity -- a temperature or a percentage -- so that a pressure,
-            # energy or runtime tile does not raise a phantom ON/OFF entity
-            # (issue #221). Pure temperature or contact widgets always report
-            # statusId=1 and never toggle.
-            status_id = tile.get(CONF_PARAMS, {}).get("statusId")
-            if status_id in (0, 1) and _has_pump_widget(tile.get(CONF_PARAMS, {})):
+    def _build() -> list[Any]:
+        # Read from the coordinator's payload rather than fetching: this runs
+        # again on every poll, to pick up a tile the controller adds.
+        tiles = coordinator.data.get("tiles") or {}
+
+        entities: list[BinarySensorEntity] = []
+        for t in tiles:
+            tile = tiles[t]
+            if tile[VISIBILITY] is False:
+                continue
+            if tile[CONF_TYPE] == TYPE_RELAY:
+                entities.append(RelaySensor(tile, coordinator, config_entry))
+            if tile[CONF_TYPE] == TYPE_FIRE_SENSOR:
                 entities.append(
-                    TileWidgetStatusSensor(tile, coordinator, config_entry)
+                    RelaySensor(
+                        tile,
+                        coordinator,
+                        config_entry,
+                        BinarySensorDeviceClass.MOTION,
+                    )
                 )
+            if tile[CONF_TYPE] == TYPE_ADDITIONAL_PUMP:
+                entities.append(RelaySensor(tile, coordinator, config_entry))
+            if tile[CONF_TYPE] == TYPE_WIDGET:
+                params = tile.get(CONF_PARAMS, {})
+                for widget_key in ("widget1", "widget2"):
+                    widget = params.get(widget_key)
+                    if not widget:
+                        continue
+                    sibling = _sibling_widget(params, widget_key)
+                    if _is_flag_widget(widget, sibling):
+                        entities.append(
+                            TileWidgetFlagSensor(
+                                tile, coordinator, config_entry, widget_key
+                            )
+                        )
+                    if _is_contact_widget(widget, sibling):
+                        entities.append(
+                            TileWidgetContactSensor(
+                                tile, coordinator, config_entry, widget_key
+                            )
+                        )
+                # TYPE_WIDGET tiles with statusId 0 or 1 carry ON/OFF state for
+                # PWM-controlled pumps (e.g. solar collector). Only emit the
+                # binary sensor when the tile carries a pump widget that reads a
+                # pump quantity -- a temperature or a percentage -- so that a
+                # pressure, energy or runtime tile does not raise a phantom
+                # ON/OFF entity (issue #221). Pure temperature or contact widgets
+                # always report statusId=1 and never toggle.
+                status_id = tile.get(CONF_PARAMS, {}).get("statusId")
+                if status_id in (0, 1) and _has_pump_widget(tile.get(CONF_PARAMS, {})):
+                    entities.append(
+                        TileWidgetStatusSensor(tile, coordinator, config_entry)
+                    )
 
-    async_add_entities(entities, True)
+        return entities
+
+    add_later(config_entry, coordinator, async_add_entities, _build)
 
 
-class TileBinarySensor(TileEntity, binary_sensor.BinarySensorEntity):
+class TileBinarySensor(TileEntity, BinarySensorEntity):
     """Base class for Tech tiles that expose binary sensor semantics."""
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
-    def get_state(self, device):
+    def get_state(self, device: dict[str, Any]) -> Any:
         """Return the raw binary state extracted from ``device`` data."""
 
     @property
@@ -258,16 +264,24 @@ class TileBinarySensor(TileEntity, binary_sensor.BinarySensorEntity):
         return self._name
 
     @property
-    def state(self) -> str | int | float | StateType | None:
-        """Get the state of the binary sensor."""
-        return STATE_ON if self._state else STATE_OFF
+    def is_on(self) -> bool:
+        """Return whether the tile reports the relay as closed.
+
+        Home Assistant derives a binary sensor's state from this, and declares
+        ``state`` itself as final, so this is where the tile's own value goes.
+        """
+        return bool(self._state)
 
 
 class RelaySensor(TileBinarySensor):
     """Representation of a RelaySensor."""
 
     def __init__(
-        self, device, coordinator: TechCoordinator, config_entry, device_class=None
+        self,
+        device: dict[str, Any],
+        coordinator: TechCoordinator,
+        config_entry: TechConfigEntry,
+        device_class: BinarySensorDeviceClass | None = None,
     ) -> None:
         """Initialize the relay-backed binary sensor tile.
 
@@ -287,7 +301,7 @@ class RelaySensor(TileBinarySensor):
         else:
             self._attr_icon = assets.get_icon_by_type(device[CONF_TYPE])
 
-    def get_state(self, device):
+    def get_state(self, device: dict[str, Any]) -> Any:
         """Return the on/off working status for the provided ``device`` payload."""
         return device[CONF_PARAMS]["workingStatus"]
 
@@ -303,13 +317,13 @@ class TileWidgetContactSensor(TileBinarySensor):
     """
 
     _UNIQUE_ID_SUFFIX = "tile_widget_contact"
-    _attr_device_class = binary_sensor.BinarySensorDeviceClass.OPENING
+    _attr_device_class = BinarySensorDeviceClass.OPENING
 
     def __init__(
         self,
-        device,
+        device: dict[str, Any],
         coordinator: TechCoordinator,
-        config_entry,
+        config_entry: TechConfigEntry,
         widget_key: str,
     ) -> None:
         """Initialise the contact widget binary sensor.
@@ -343,7 +357,7 @@ class TileWidgetContactSensor(TileBinarySensor):
         """Return a unique ID."""
         return f"{self._unique_id}_{self._UNIQUE_ID_SUFFIX}_{self._widget_key}"
 
-    def get_state(self, device):
+    def get_state(self, device: dict[str, Any]) -> Any:
         """Return the contact state from the tile's statusId.
 
         The emodul UI derives contact ON/OFF from ``params.statusId``
@@ -362,9 +376,11 @@ class TileWidgetFlagSensor(TileWidgetContactSensor):
     """
 
     _UNIQUE_ID_SUFFIX = "tile_widget_flag"
-    _attr_device_class = None
+    # The API names this widget's state without naming a device class, so none is
+    # set, which the binary sensor base types as a narrower attribute.
+    _attr_device_class = None  # type: ignore[assignment]
 
-    def get_state(self, device):
+    def get_state(self, device: dict[str, Any]) -> Any:
         """Return the flag state from its own widget value.
 
         Unlike a contact, whose state lives in the tile's ``statusId``, a value
@@ -389,13 +405,13 @@ class TileWidgetStatusSensor(TileBinarySensor):
     here.
     """
 
-    _attr_device_class = binary_sensor.BinarySensorDeviceClass.RUNNING
+    _attr_device_class = BinarySensorDeviceClass.RUNNING
 
     def __init__(
         self,
-        device,
+        device: dict[str, Any],
         coordinator: TechCoordinator,
-        config_entry,
+        config_entry: TechConfigEntry,
     ) -> None:
         """Initialise the status-id-backed binary sensor.
 
@@ -426,7 +442,7 @@ class TileWidgetStatusSensor(TileBinarySensor):
         """Return a unique ID."""
         return f"{self._unique_id}_tile_status"
 
-    def get_state(self, device):
+    def get_state(self, device: dict[str, Any]) -> Any:
         """Return the ON/OFF state from the tile's statusId.
 
         Args:

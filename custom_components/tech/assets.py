@@ -4,16 +4,25 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.const import CONF_DESCRIPTION, CONF_NAME, CONF_ZONE
 
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.helpers.device_registry import DeviceInfo
+
+    from .coordinator import TechCoordinator
+    from .tech import Tech
+
 from .const import (
+    CONTROLLER,
     DEFAULT_ICON,
     ICON_BY_ID,
     ICON_BY_TYPE,
     MENU_ITEM_TYPE_GROUP,
     TXT_ID_BY_TYPE,
+    VER,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -39,7 +48,7 @@ class Translations:
         self._texts: dict[str, str] = (data or {}).get("data", {})
 
     @classmethod
-    async def load(cls, language: str, api) -> Translations:
+    async def load(cls, language: str, api: Tech) -> Translations:
         """Fetch the subtitle catalog for ``language`` from the API.
 
         Args:
@@ -135,7 +144,7 @@ def compute_menu_depths(
     depths: dict[str, int] = {}
     for menu_key, item in menus.items():
         depth = 0
-        cur = item
+        cur: dict[str, Any] | None = item
         seen: set[tuple[str, int]] = set()
         while cur is not None and cur.get("parentId", 0) != 0:
             cur_key = (cur["menuType"], cur["id"])
@@ -172,6 +181,103 @@ def build_menu_group_names(
         name = translations.get_text(txt_id) if txt_id else ""
         groups[(item["menuType"], item["id"])] = name
     return groups
+
+
+def controller_descriptor(config_entry: ConfigEntry) -> str:
+    """Return the string the API uses to describe the controller.
+
+    It carries the hardware model and the firmware in one field -- the modules
+    list has no model of its own -- in the shape ``TECH: L8 (v.2.1.19)``, and the
+    recorded payloads show the same shape for the boiler controllers:
+    ``TECH: ST-402N PWM  (v.1.1.2)`` and ``TECH: ST-970 1.4.0 P01 (v.1.5.0)``.
+
+    Args:
+        config_entry: The entry of the controller the device is under.
+
+    Returns:
+        The descriptor, or an empty string when the controller carries none.
+
+    """
+    return str(config_entry.data[CONTROLLER].get(VER, "")).strip()
+
+
+def _controller_parts(config_entry: ConfigEntry) -> tuple[str | None, str]:
+    """Split a controller descriptor into its model and its firmware.
+
+    Everything before the trailing parenthesised version is the model, with the
+    vendor prefix dropped because the device already reports its manufacturer. A
+    descriptor that does not follow that shape has no model to give, and its
+    whole text stands as the firmware rather than being lost.
+
+    Args:
+        config_entry: The entry of the controller the device is under.
+
+    Returns:
+        The model, or ``None`` when the descriptor does not name one, and the
+        firmware.
+
+    """
+    descriptor = controller_descriptor(config_entry)
+    model, separator, tail = descriptor.rpartition(" (")
+    if not separator or not tail.endswith(")"):
+        return None, descriptor
+
+    firmware = tail[:-1].strip()
+    return model.strip().removeprefix("TECH:").strip() or None, firmware
+
+
+def controller_model(config_entry: ConfigEntry) -> str | None:
+    """Return the hardware model of the controller a device belongs to."""
+    return _controller_parts(config_entry)[0]
+
+
+def controller_firmware(config_entry: ConfigEntry) -> str:
+    """Return the firmware of the controller a device belongs to."""
+    return _controller_parts(config_entry)[1]
+
+
+def via_controller(coordinator: TechCoordinator) -> DeviceInfo:
+    """Return the device-info entry that names the controller as a parent.
+
+    The device registry resolves a parent by device id, and the controller's
+    device is created while the entry sets up, so the id is read from the
+    coordinator rather than looked up per entity. An id that is not known yet --
+    an entity built outside a running entry, as the unit tests do -- yields
+    nothing, so the entity simply has no parent.
+
+    Args:
+        coordinator: The entry's coordinator.
+
+    Returns:
+        A ``{"via_device_id": ...}`` mapping, or an empty one.
+
+    """
+    device_id = coordinator.controller_device_id
+    return {"via_device_id": device_id} if device_id else {}
+
+
+def reported_keys(data: dict[str, Any]) -> set[str]:
+    """Return the payload entries the controller reported on its last poll.
+
+    The keys are the ``source_key`` of the entities built from each entry, so a
+    poll can tell which of them the controller has stopped reporting. They come
+    from what the API client recorded for the last fetch rather than from its
+    caches, which accumulate: an entry the controller drops stays there so its
+    entities keep their last values.
+
+    Args:
+        data: The coordinator's cached payload.
+
+    Returns:
+        One key per tile, zone and menu item, prefixed by what it is.
+
+    """
+    reported = data.get("reported") or {}
+    return (
+        {f"tile_{key}" for key in reported.get("tiles", ())}
+        | {f"zone_{key}" for key in reported.get("zones", ())}
+        | {f"menu_{key}" for key in reported.get("menus", ())}
+    )
 
 
 def zone_payloads(zones: dict[int, Any] | None) -> dict[int, dict[str, Any]]:

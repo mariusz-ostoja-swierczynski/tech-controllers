@@ -4,10 +4,10 @@ import logging
 from typing import Any
 
 from homeassistant.components.button import ButtonEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_IDENTIFIERS,
     ATTR_MANUFACTURER,
+    ATTR_SW_VERSION,
     CONF_NAME,
     EntityCategory,
 )
@@ -27,14 +27,20 @@ from .const import (
     MENU_ITEM_TYPE_DIALOGUE,
     UDID,
 )
-from .coordinator import TechCoordinator
+from .coordinator import TechConfigEntry, TechCoordinator
+from .entity import ReportedEntity
 
 _LOGGER = logging.getLogger(__name__)
+
+# A dialogue writes to the same cloud account as everything else this
+# controller exposes, so its presses are serialised. Home Assistant reads
+# PARALLEL_UPDATES from the platform module.
+PARALLEL_UPDATES = 1
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: TechConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Tech button entities from menu dialogue parameters.
@@ -46,7 +52,7 @@ async def async_setup_entry(
 
     """
     controller = config_entry.data[CONTROLLER]
-    coordinator: TechCoordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator: TechCoordinator = config_entry.runtime_data
     controller_udid = controller[UDID]
 
     menus = await coordinator.api.get_module_menus(controller_udid)
@@ -55,7 +61,7 @@ async def async_setup_entry(
     zone_names = assets.build_zone_names(
         zones,
         config_entry.title,
-        config_entry.data.get(INCLUDE_HUB_IN_NAME, False),
+        config_entry.options.get(INCLUDE_HUB_IN_NAME, False),
     )
 
     entities: list[MenuButtonEntity] = []
@@ -82,7 +88,9 @@ async def async_setup_entry(
     async_add_entities(entities, True)
 
 
-class MenuButtonEntity(CoordinatorEntity, ButtonEntity):
+class MenuButtonEntity(
+    ReportedEntity, CoordinatorEntity[TechCoordinator], ButtonEntity
+):
     """A dialogue menu parameter exposed as a Home Assistant button entity."""
 
     _attr_has_entity_name = True
@@ -93,7 +101,7 @@ class MenuButtonEntity(CoordinatorEntity, ButtonEntity):
         item: dict[str, Any],
         menu_key: str,
         coordinator: TechCoordinator,
-        config_entry: ConfigEntry,
+        config_entry: TechConfigEntry,
         group_names: dict[tuple[str, int], str],
         depth: int = 0,
         zone_id: int | None = None,
@@ -158,17 +166,38 @@ class MenuButtonEntity(CoordinatorEntity, ButtonEntity):
         return not self._disabled
 
     @property
+    def available(self) -> bool:
+        """Return whether the entity is available.
+
+        ``CoordinatorEntity`` reports whether the last poll reached the
+        controller; a dialogue the controller has withdrawn is unavailable on
+        top of that, so that Home Assistant never offers an action the
+        controller would refuse.
+        """
+        return super().available and self._item_accessible
+
+    @property
+    def source_key(self) -> str:
+        """Return the menu item this entity was built from."""
+        return f"menu_{self._menu_key}"
+
+    @property
     def device_info(self) -> DeviceInfo | None:
         """Return device info for the zone or controller this entity belongs to."""
         if self._zone_id is not None:
             return {
                 ATTR_IDENTIFIERS: {(DOMAIN, f"{self._udid}_{self._zone_id}")},
                 CONF_NAME: self._zone_name,
+                "model": assets.controller_model(self._config_entry),
+                ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
                 ATTR_MANUFACTURER: self.manufacturer,
+                **assets.via_controller(self.coordinator),
             }
         return {
             ATTR_IDENTIFIERS: {(DOMAIN, self._udid)},
             CONF_NAME: self._config_entry.title,
+            "model": assets.controller_model(self._config_entry),
+            ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
             ATTR_MANUFACTURER: self.manufacturer,
         }
 
@@ -179,7 +208,10 @@ class MenuButtonEntity(CoordinatorEntity, ButtonEntity):
             item: Menu item dictionary with the most recent values.
 
         """
-        self._attr_available = item.get("access", False)
+        # The controller offers or withdraws a dialogue -- a lockout control is
+        # only there while there is a lockout to clear -- so the flag is kept
+        # beside the coordinator's own state and combined in ``available``.
+        self._item_accessible = item.get("access", False)
         # Dialogue type determines the API payload format
         params = item.get("params", {})
         self._dialogue_type = params.get("type", 0)

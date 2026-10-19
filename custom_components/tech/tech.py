@@ -6,12 +6,12 @@ import asyncio
 import json
 import logging
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from aiohttp import ClientTimeout
 
 if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
-    from aiohttp import ClientSession
+    from aiohttp import ClientResponse, ClientSession
 else:  # pragma: no cover
     ClientSession = Any
 
@@ -33,9 +33,9 @@ class Tech:
     def __init__(
         self,
         session: ClientSession,
-        user_id=None,
-        token=None,
-        base_url=TECH_API_URL,
+        user_id: str | None = None,
+        token: str | None = None,
+        base_url: str = TECH_API_URL,
     ) -> None:
         """Initialise the Tech API client.
 
@@ -53,17 +53,33 @@ class Tech:
         # Bound every request so a stalled cloud connection cannot hang the
         # config flow or entry setup, which run outside the coordinator timeout.
         self.timeout = ClientTimeout(total=API_TIMEOUT)
+        self.authenticated: bool = False
         if user_id and token:
             self.user_id = user_id
             self.token = token
             self.headers.setdefault("Authorization", f"Bearer {token}")
             self.authenticated = True
-        else:
-            self.authenticated = False
         # Serialises concurrent module_data refreshes (the platforms set up in
         # parallel) so they coalesce onto a single fetch instead of stampeding.
         self.update_lock = asyncio.Lock()
-        self.modules = {}
+        self.modules: dict[str, dict[str, Any]] = {}
+
+    async def _json_object(self, response: ClientResponse) -> dict[str, Any]:
+        """Return the body of an endpoint that answers with an object.
+
+        aiohttp types ``json()`` as ``Any``, so the narrowing has to happen
+        somewhere and this is the one place it does. It is used only for the
+        endpoints whose payload is an object: the account's module list is an
+        array, and :meth:`list_modules` reads that one without this.
+
+        Args:
+            response: The response whose body to read.
+
+        Returns:
+            The parsed body.
+
+        """
+        return cast("dict[str, Any]", await response.json())
 
     async def get(self, request_path: str) -> dict[str, Any]:
         """Perform a GET request against the Tech API.
@@ -87,7 +103,7 @@ class Tech:
                 _LOGGER.warning("Invalid response from Tech API: %s", response.status)
                 raise TechError(response.status, await response.text())
 
-            return await response.json()
+            return await self._json_object(response)
 
     async def post(self, request_path: str, post_data: str) -> dict[str, Any]:
         """Send a POST request against the Tech API with JSON payload string.
@@ -112,7 +128,7 @@ class Tech:
                 _LOGGER.warning("Invalid response from Tech API: %s", response.status)
                 raise TechError(response.status, await response.text())
 
-            return await response.json()
+            return await self._json_object(response)
 
     async def authenticate(self, username: str, password: str) -> bool:
         """Authenticate the user with the provided credentials.
@@ -132,7 +148,7 @@ class Tech:
         post_data = json.dumps({"username": username, "password": password})
         try:
             result = await self.post(path, post_data)
-            self.authenticated = result["authenticated"]
+            self.authenticated = bool(result["authenticated"])
             if self.authenticated:
                 self.user_id = str(result["user_id"])
                 self.token = result["token"]
@@ -143,13 +159,13 @@ class Tech:
                 }
         except TechError as err:
             raise TechLoginError(401, "Unauthorized") from err
-        return result["authenticated"]
+        return self.authenticated
 
-    async def list_modules(self) -> dict[str, Any]:
+    async def list_modules(self) -> list[dict[str, Any]]:
         """Return the list of modules available for the authenticated user.
 
         Returns:
-            Parsed JSON response describing all modules.
+            The account's controllers, as the API lists them.
 
         Raises:
             TechError: If the client is not currently authenticated.
@@ -163,7 +179,9 @@ class Tech:
         else:
             # Raise an error if the user is not authenticated
             raise TechError(401, "Unauthorized")
-        return result
+        # This endpoint answers with an array, not an object, unlike every other
+        # one the client reads through get().
+        return cast("list[dict[str, Any]]", result)
 
     # Asynchronous function to retrieve module data
     async def get_module_data(self, module_udid: str) -> dict[str, Any]:
@@ -228,7 +246,7 @@ class Tech:
         """
 
         module = await self.module_data(module_udid)
-        return module["zones"]
+        return cast("dict[int, dict[str, Any]]", module["zones"])
 
     async def get_module_tiles(self, module_udid: str) -> dict[int, dict[str, Any]]:
         """Return the cached tiles dictionary for ``module_udid``.
@@ -242,7 +260,7 @@ class Tech:
         """
 
         module = await self.module_data(module_udid)
-        return module["tiles"]
+        return cast("dict[int, dict[str, Any]]", module["tiles"])
 
     async def module_data(
         self, module_udid: str, force: bool = False
@@ -267,7 +285,13 @@ class Tech:
         async with self.update_lock:
             cache = self.modules.setdefault(
                 module_udid,
-                {"last_update": None, "zones": {}, "tiles": {}, "menus": {}},
+                {
+                    "last_update": None,
+                    "zones": {},
+                    "tiles": {},
+                    "menus": {},
+                    "reported": {"zones": set(), "tiles": set(), "menus": set()},
+                },
             )
 
             last_update = cache.get("last_update")
@@ -324,6 +348,33 @@ class Tech:
                 )
                 cache.setdefault("menus", {}).update(menu_items)
 
+            # What the controller reported *this* poll, as opposed to what the
+            # cache has accumulated: a zone or tile it stops reporting stays in
+            # the cache, so that its entities keep their last values, while
+            # being absent here -- which is what tells the removal to happen.
+            #
+            # What counts is what the controller sent, not what the builders
+            # chose to show. ``visibility`` is the eModul app's presentation
+            # choice, and a zone can be unregistered while it is still the
+            # controller's own, so neither means the entry has gone: both are
+            # reversible, from the app or from the controller, and reading them
+            # as an absence is what used to remove entities that then came back.
+            # Home Assistant has its own way to hide an entity, and the user can
+            # use it.
+            cache["reported"] = {
+                "zones": {
+                    zone["zone"]["id"]
+                    for zone in raw_zones
+                    if zone and zone.get("zone") and zone["zone"].get("id") is not None
+                },
+                "tiles": {
+                    tile["id"]
+                    for tile in raw_tiles
+                    if tile and tile.get("id") is not None
+                },
+                "menus": set(menu_items),
+            }
+
             cache["last_update"] = time.monotonic()
             return cache
 
@@ -367,7 +418,7 @@ class Tech:
 
         """
         module = await self.module_data(module_udid)
-        return module["menus"]
+        return cast("dict[str, dict[str, Any]]", module["menus"])
 
     async def set_menu_value(
         self,
@@ -399,7 +450,7 @@ class Tech:
             raise TechError(401, "Unauthorized")
         return result
 
-    async def get_zone(self, module_udid, zone_id):
+    async def get_zone(self, module_udid: str, zone_id: int) -> dict[str, Any]:
         """Return a single zone payload.
 
         Args:
@@ -411,9 +462,9 @@ class Tech:
 
         """
         await self.get_module_zones(module_udid)
-        return self.modules[module_udid]["zones"][zone_id]
+        return cast("dict[str, Any]", self.modules[module_udid]["zones"][zone_id])
 
-    async def get_tile(self, module_udid, tile_id):
+    async def get_tile(self, module_udid: str, tile_id: int) -> dict[str, Any]:
         """Return a single tile payload.
 
         Args:
@@ -425,9 +476,11 @@ class Tech:
 
         """
         await self.get_module_tiles(module_udid)
-        return self.modules[module_udid]["tiles"][tile_id]
+        return cast("dict[str, Any]", self.modules[module_udid]["tiles"][tile_id])
 
-    async def set_const_temp(self, module_udid, zone_id, target_temp):
+    async def set_const_temp(
+        self, module_udid: str, zone_id: int, target_temp: float
+    ) -> dict[str, Any]:
         """Set the constant temperature of a zone.
 
         Args:
@@ -459,7 +512,9 @@ class Tech:
             raise TechError(401, "Unauthorized")
         return result
 
-    async def set_zone(self, module_udid, zone_id, on=True):
+    async def set_zone(
+        self, module_udid: str, zone_id: int, on: bool = True
+    ) -> dict[str, Any]:
         """Toggle a zone on or off.
 
         Args:
@@ -486,7 +541,7 @@ class Tech:
 class TechError(Exception):
     """Raised when a Tech API request results in an error."""
 
-    def __init__(self, status_code, status) -> None:
+    def __init__(self, status_code: int, status: str) -> None:
         """Initialise an error with the API status code and message.
 
         Args:
@@ -501,7 +556,7 @@ class TechError(Exception):
 class TechLoginError(Exception):
     """Raised when a Tech API login attempt fails."""
 
-    def __init__(self, status_code, status) -> None:
+    def __init__(self, status_code: int, status: str) -> None:
         """Initialize the status code and status of the object.
 
         Args:

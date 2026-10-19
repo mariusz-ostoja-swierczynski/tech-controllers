@@ -13,7 +13,9 @@
         "abort": {
             "already_configured": "Naprava je že konfigurirana",
             "no_modules": "Ni zaznanih ali izbranih modulov",
-            "controllers_configured": "Izbrani krmilniki so bili dodani"
+            "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+            "wrong_account": "Te poverilnice pripadajo drugemu računu eModul. Uporabite račun, s katerim je bil ta krmilnik nastavljen.",
+            "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
         },
         "error": {
             "cannot_connect": "Ne morem se povezati s Tech API.",
@@ -27,6 +29,10 @@
                 "data": {
                     "password": "Geslo",
                     "username": "Uporabniško ime"
+                },
+                "data_description": {
+                    "username": "Ime računa (ali e-poštni naslov), ki ga uporabljate na emodul.eu ali emodul.pl.",
+                    "password": "Geslo za ta račun."
                 }
             },
             "select_controllers": {
@@ -35,6 +41,51 @@
                 "data": {
                     "controllers": "Krmilniki za uvoz",
                     "include_hub_in_name": "Vključi ime glavnega krmilnika v imena entitet"
+                },
+                "data_description": {
+                    "controllers": "Krmilnik, ki ga želite dodati. Za vsak naslednji krmilnik znova dodajte integracijo.",
+                    "include_hub_in_name": "Dodajte ime integracije pred imena entitet con tega krmilnika. Koristno, kadar je nastavljenih več krmilnikov."
+                }
+            },
+            "reauth_confirm": {
+                "description": "Vaše poverilnice za eModul niso več veljavne. Vnesite jih znova, da boste lahko še naprej uporabljali ta krmilnik.",
+                "data": {
+                    "password": "Geslo",
+                    "username": "Uporabniško ime"
+                },
+                "data_description": {
+                    "username": "Ime računa (ali e-poštni naslov), ki ga uporabljate na emodul.eu ali emodul.pl.",
+                    "password": "Geslo za ta račun."
+                }
+            },
+            "reconfigure": {
+                "title": "Izbira krmilnikov",
+                "description": "Izberite krmilnik, ki naj ga ta vnos predstavlja.",
+                "data": {
+                    "controllers": "Krmilniki za uvoz"
+                },
+                "data_description": {
+                    "controllers": "Krmilnik, ki ga želite dodati. Za vsak naslednji krmilnik znova dodajte integracijo."
+                }
+            }
+        }
+    },
+    "exceptions": {
+        "token_rejected": {
+            "message": "Žeton eModul ni več sprejet. Prijavite se znova."
+        },
+        "cannot_connect": {
+            "message": "API eModul ni dosegljiv. Home Assistant bo poskušal naprej."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "include_hub_in_name": "Vključi ime glavnega krmilnika v imena entitet"
+                },
+                "data_description": {
+                    "include_hub_in_name": "Dodajte ime integracije pred imena entitet con tega krmilnika. Koristno, kadar je nastavljenih več krmilnikov."
                 }
             }
         }

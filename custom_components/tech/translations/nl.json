@@ -13,7 +13,9 @@
         "abort": {
             "already_configured": "Apparaat is al geconfigureerd",
             "no_modules": "Geen modules gedetecteerd of geselecteerd",
-            "controllers_configured": "Geselecteerde controllers zijn toegevoegd"
+            "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+            "wrong_account": "Deze inloggegevens horen bij een ander eModul-account. Gebruik het account waarmee deze controller is ingesteld.",
+            "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
         },
         "error": {
             "cannot_connect": "Kan geen verbinding maken met Tech API.",
@@ -27,6 +29,10 @@
                 "data": {
                     "password": "Wachtwoord",
                     "username": "Gebruikersnaam"
+                },
+                "data_description": {
+                    "username": "De accountnaam (of het e-mailadres) die u gebruikt op emodul.eu of emodul.pl.",
+                    "password": "Het wachtwoord van dat account."
                 }
             },
             "select_controllers": {
@@ -35,6 +41,51 @@
                 "data": {
                     "controllers": "Te importeren controllers",
                     "include_hub_in_name": "Inclusief hub (controller) naam in entiteitnamen"
+                },
+                "data_description": {
+                    "controllers": "De controller die u wilt toevoegen. Voeg de integratie opnieuw toe voor elke volgende controller.",
+                    "include_hub_in_name": "Zet de naam van de integratie voor de entiteitnamen van de zones van deze controller. Handig wanneer meerdere controllers zijn ingesteld."
+                }
+            },
+            "reauth_confirm": {
+                "description": "Uw eModul-inloggegevens zijn niet meer geldig. Voer ze opnieuw in om deze controller te blijven gebruiken.",
+                "data": {
+                    "password": "Wachtwoord",
+                    "username": "Gebruikersnaam"
+                },
+                "data_description": {
+                    "username": "De accountnaam (of het e-mailadres) die u gebruikt op emodul.eu of emodul.pl.",
+                    "password": "Het wachtwoord van dat account."
+                }
+            },
+            "reconfigure": {
+                "title": "Controller selectie",
+                "description": "Kies de controller waarvoor deze vermelding moet staan.",
+                "data": {
+                    "controllers": "Te importeren controllers"
+                },
+                "data_description": {
+                    "controllers": "De controller die u wilt toevoegen. Voeg de integratie opnieuw toe voor elke volgende controller."
+                }
+            }
+        }
+    },
+    "exceptions": {
+        "token_rejected": {
+            "message": "Het eModul-token wordt niet meer geaccepteerd. Meld u opnieuw aan."
+        },
+        "cannot_connect": {
+            "message": "De eModul-API is niet bereikbaar. Home Assistant blijft het proberen."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "include_hub_in_name": "Inclusief hub (controller) naam in entiteitnamen"
+                },
+                "data_description": {
+                    "include_hub_in_name": "Zet de naam van de integratie voor de entiteitnamen van de zones van deze controller. Handig wanneer meerdere controllers zijn ingesteld."
                 }
             }
         }

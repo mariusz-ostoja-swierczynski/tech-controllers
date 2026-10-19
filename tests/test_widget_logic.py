@@ -272,9 +272,7 @@ class TestIsContactWidget:
         widget = {"unit": 6, "type": 0, "txtId": 760, "value": 0}
         # This emulates the _build_widget_tile dispatch: skip when
         # unit=6 AND value==0 (decorative badge, no numeric meaning).
-        should_skip = (
-            widget.get("unit") == 6 and widget.get("value", 0) == 0
-        )
+        should_skip = widget.get("unit") == 6 and widget.get("value", 0) == 0
         assert should_skip is True
 
     def test_unit6_nonzero_valued_widget_not_skipped_by_dispatch(self):
@@ -283,9 +281,7 @@ class TestIsContactWidget:
         # After the fix for the PWM solar pump (issue #196), non-zero
         # unit=6 widgets are no longer skipped — they flow through to
         # TileWidgetTemperatureSensor.
-        should_skip = (
-            widget.get("unit") == 6 and widget.get("value", 0) == 0
-        )
+        should_skip = widget.get("unit") == 6 and widget.get("value", 0) == 0
         assert should_skip is False
 
     def test_predicate_bodies_match(self):
@@ -315,7 +311,8 @@ class TestIsContactWidget:
             "    )\n"
         )
         drifted = original.replace(
-            'widget.get("txtId", 0) != 0', 'widget.get("txtId", 0) != 0\n        and widget.get("extra")'
+            'widget.get("txtId", 0) != 0',
+            'widget.get("txtId", 0) != 0\n        and widget.get("extra")',
         )
 
         assert normalised_function(original, "_is_contact_widget") != (
@@ -328,7 +325,9 @@ class TestIsContactWidget:
             _REPO_ROOT / "custom_components" / "tech" / "sensor.py"
         ).read_text()
         # The new skip condition: only skip unit=6 widgets with value==0.
-        assert 'if widget.get("unit") == 6 and widget.get("value", 0) == 0:' in sensor_src
+        assert (
+            'if widget.get("unit") == 6 and widget.get("value", 0) == 0:' in sensor_src
+        )
 
 
 class TestIsFlagWidget:
@@ -413,9 +412,9 @@ class TestMirroredWidgetPredicates:
         for function_name in MIRRORED_WIDGET_PREDICATES:
             assert predicate_body(
                 _TECH_DIR / "sensor.py", function_name
-            ) == predicate_body(
-                _TECH_DIR / "binary_sensor.py", function_name
-            ), function_name
+            ) == predicate_body(_TECH_DIR / "binary_sensor.py", function_name), (
+                function_name
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -536,7 +535,9 @@ class TestHoursAndMinutesValues:
         the payload does not state.
         """
         assert C.widget_hours_and_minutes(1440) == "24:00"
-        assert C.widget_hours_and_minutes(2190) == "36:30"  # 36 min 30 s, or 36 h 30 min
+        assert (
+            C.widget_hours_and_minutes(2190) == "36:30"
+        )  # 36 min 30 s, or 36 h 30 min
         assert C.widget_hours_and_minutes(6000) == "100:00"
 
     def test_values_the_format_cannot_express_are_unknown(self):
@@ -736,7 +737,6 @@ class TestSt491Fixture:
         # Tile 2051: widget1 unit=6 dropped, widget2 unit=7 kept -> 1
         # Tile 2057: widget1 unit=7 kept, widget2 unit=7 kept    -> 2
         assert emitted == 4
-
 
     def test_all_widget_tiles_have_status_binary_sensor(self):
         """Only TYPE_WIDGET tiles with pump-type widgets get a TileWidgetStatusSensor."""
@@ -1046,7 +1046,8 @@ class TestSt521Fixture:
             if status_id != 0:
                 continue
             has_pump = any(
-                tile["params"].get(key, {}).get("type") in (C.WIDGET_DHW_PUMP, C.WIDGET_COLLECTOR_PUMP)
+                tile["params"].get(key, {}).get("type")
+                in (C.WIDGET_DHW_PUMP, C.WIDGET_COLLECTOR_PUMP)
                 for key in ("widget1", "widget2")
             )
             if has_pump:
@@ -1210,9 +1211,10 @@ class TestKoltonSt5305Fixture:
         assert len(invisible) == 52
         assert sum(1 for _, _, w in invisible if w["txtId"] != 0) == 18
         for tile, key, widget in invisible:
-            assert (
-                is_contact_widget_oracle(widget, sibling_of(tile, key)) is False
-            ), (tile["id"], key)
+            assert is_contact_widget_oracle(widget, sibling_of(tile, key)) is False, (
+                tile["id"],
+                key,
+            )
 
     def test_the_state_widgets_are_flags_named_by_their_sibling(self):
         """The 18 unit=28 widgets borrow the label of the widget next to them."""
