@@ -71,9 +71,10 @@ def _saved(row: RegistryEntry) -> dict[str, Any]:
         "icon": row.icon,
         "area_id": row.area_id,
         "labels": sorted(row.labels),
-        # Home Assistant computes some aliases itself; only the ones the user
-        # typed are theirs to get back.
-        "aliases": sorted(alias for alias in row.aliases if isinstance(alias, str)),
+        # Home Assistant 2026.10 keeps aliases as an ordered list and adds a
+        # computed-name marker of its own. Only the strings are the user's, and
+        # their order is preserved.
+        "aliases": [alias for alias in row.aliases if isinstance(alias, str)],
         "options": dict(row.options),
         "disabled_by": row.disabled_by.value if row.disabled_by else None,
         "hidden_by": row.hidden_by.value if row.hidden_by else None,
@@ -173,8 +174,7 @@ async def async_restore(
         "icon": record.get("icon"),
         "area_id": record.get("area_id"),
         "labels": set(record.get("labels") or ()),
-        "aliases": set(record.get("aliases") or ()),
-        "options": dict(record.get("options") or {}),
+        "aliases": list(record.get("aliases") or ()),
     }
     for field, enum in (
         ("disabled_by", RegistryEntryDisabler),
@@ -194,5 +194,9 @@ async def async_restore(
         row = registry.async_update_entity(row.entity_id, new_entity_id=wanted)
 
     registry.async_update_entity(row.entity_id, **fields)
+    # Entity options live per domain and have their own update method; the
+    # generic ``async_update_entity`` no longer takes an ``options`` keyword.
+    for domain, options in (record.get("options") or {}).items():
+        registry.async_update_entity_options(row.entity_id, domain, options)
     _LOGGER.debug("Restored the identity of %s", row.entity_id)
     _save(coordinator)
