@@ -109,7 +109,7 @@ PLATFORMS = [
 SCAN_INTERVAL: Final = timedelta(seconds=60)
 API_TIMEOUT: Final = 60
 
-# A fetched module payload is reused for this many seconds. The seven HA
+# A fetched module payload is reused for this many seconds. The eight HA
 # platforms each call get_module_zones/tiles/menus during setup; without this
 # guard every call would trigger its own full (rate-limited) cloud refresh.
 # The coordinator passes force=True to refresh on its own SCAN_INTERVAL cadence
