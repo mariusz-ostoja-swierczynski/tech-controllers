@@ -68,6 +68,14 @@
     description = "Test integration";
   };
 
+  scripts.test_offline = {
+    exec = ''
+      echo '🧪 Running offline tests'
+      ./scripts/test_offline "$@"
+    '';
+    description = "Run the offline stubbed tests";
+  };
+
   scripts.lint = {
     exec = ''
       echo '🚨 Run lint'

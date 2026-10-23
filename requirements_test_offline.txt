@@ -1,8 +1,0 @@
-# Minimal dependencies for the stubbed offline tests; no HA installation.
-aiohttp==3.14.5
-pytest==9.0.0
-pytest-asyncio==1.3.0
-pytest-socket==0.7.0
-ruff==0.15.20
-SQLAlchemy==2.1.6
-voluptuous==0.16.0

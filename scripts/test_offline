@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Run only local tests. tests/tests_api exercises the real eModul demo account.
+# Dependencies come from the project's test group; the normal devenv setup
+# already provides pytest and its plugins.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
@@ -8,6 +10,6 @@ test_paths=(tests/test_platform_device_info.py)
 for test_path in tests/test_*.py; do
   [[ "$test_path" == "${test_paths[0]}" ]] || test_paths+=("$test_path")
 done
-exec "${TECH_TEST_PYTHON:-.venv/bin/python}" -m pytest \
+exec pytest \
   -p pytest_asyncio.plugin -p pytest_socket \
   --disable-socket --allow-unix-socket "${test_paths[@]}" "$@"
