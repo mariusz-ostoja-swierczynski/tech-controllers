@@ -115,6 +115,9 @@ from .const import (
     WINDOW_STATE,
     WORKING_STATUS,
     ZONE_STATE,
+    reading_is_working,
+    scaled_number,
+    valid_number,
     widget_hours_and_minutes,
     widget_unit,
 )
@@ -629,6 +632,34 @@ _TILE_ENTITY_BUILDERS: dict[int, TileBuilder] = {
 }
 
 
+class _StateAvailability:
+    """Mark a tile entity unavailable when it has no valid state.
+
+    Tile entities keep their registry row and recover on the next payload; the
+    mixin only refuses to publish a state while ``_state`` is ``None``. It sits
+    before ``TileSensor`` so ``super().available`` reaches the coordinator.
+    """
+
+    @property
+    def available(self) -> bool:
+        """Require both a successful coordinator and a valid state."""
+        return super().available and self._state is not None
+
+    @property
+    def native_value(self) -> Any:
+        """Return the cached state, which is ``None`` while invalid."""
+        return self._state
+
+
+class _NativeValueAvailability:
+    """Mark a zone entity unavailable when its native value is ``None``."""
+
+    @property
+    def available(self) -> bool:
+        """Require both a successful coordinator and a valid native value."""
+        return super().available and self._attr_native_value is not None
+
+
 class ZoneSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Zone Sensor."""
 
@@ -670,16 +701,14 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Update target_temperature property
-        if device[CONF_ZONE]["setTemperature"] is not None:
-            self._target_temperature = device[CONF_ZONE]["setTemperature"] / 10
-        else:
-            self._target_temperature = None
+        self._target_temperature = scaled_number(
+            device[CONF_ZONE].get("setTemperature"), 10
+        )
 
         # Update temperature property
-        if device[CONF_ZONE]["currentTemperature"] is not None:
-            self._temperature = device[CONF_ZONE]["currentTemperature"] / 10
-        else:
-            self._temperature = None
+        self._temperature = scaled_number(
+            device[CONF_ZONE].get("currentTemperature"), 10
+        )
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -705,7 +734,7 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
         return self._unique_id
 
 
-class ZoneTemperatureSensor(ZoneSensor):
+class ZoneTemperatureSensor(_NativeValueAvailability, ZoneSensor):
     """Representation of a Zone Temperature Sensor."""
 
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
@@ -732,10 +761,9 @@ class ZoneTemperatureSensor(ZoneSensor):
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Check if the current temperature is available, and update the native value accordingly
-        if device[CONF_ZONE]["currentTemperature"] is not None:
-            self._attr_native_value = device[CONF_ZONE]["currentTemperature"] / 10
-        else:
-            self._attr_native_value = None
+        self._attr_native_value = scaled_number(
+            device[CONF_ZONE].get("currentTemperature"), 10
+        )
 
 
 class ZoneBatterySensor(ZoneSensor):
@@ -964,7 +992,7 @@ class ZoneWindowSensor(BinarySensorEntity, ZoneSensor):
         )
 
 
-class ZoneUnderfloorSensor(ZoneSensor):
+class ZoneUnderfloorSensor(_NativeValueAvailability, ZoneSensor):
     """Representation of a Zone Temperature Sensor."""
 
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
@@ -1027,10 +1055,9 @@ class ZoneUnderfloorSensor(ZoneSensor):
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Check if the current temperature is available, and update the native value accordingly
-        if device[UNDERFLOOR]["temperature"] is not None:
-            self._attr_native_value = device[UNDERFLOOR]["temperature"] / 10
-        else:
-            self._attr_native_value = None
+        self._attr_native_value = scaled_number(
+            device[UNDERFLOOR].get("temperature"), 10
+        )
 
         # Update attributes
         self.attrs[MODE] = device[UNDERFLOOR][MODE]
@@ -1103,7 +1130,7 @@ class TileSensor(TileEntity, CoordinatorEntity):
         """Get the state of the device."""
 
 
-class TileTemperatureSensor(TileSensor, SensorEntity):
+class TileTemperatureSensor(_StateAvailability, TileSensor, SensorEntity):
     """Representation of a Tile Temperature Sensor."""
 
     _attr_has_entity_name = True
@@ -1138,8 +1165,11 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
         return f"{self._unique_id}_tile_temperature"
 
     def get_state(self, device) -> Any:
-        """Get the state of the device."""
-        return device[CONF_PARAMS][VALUE] / 10
+        """Return a finite reading only while the temperature input is working."""
+        params = device[CONF_PARAMS]
+        if not reading_is_working(params):
+            return None
+        return scaled_number(params.get(VALUE), 10)
 
     @property
     def device_info(self) -> DeviceInfo | None:
@@ -1344,7 +1374,7 @@ class TileTextSensor(TileSensor, SensorEntity):
         return self.coordinator.translations.get_text(device[CONF_PARAMS]["statusId"])
 
 
-class _TileWidgetSensorBase(TileSensor, SensorEntity):
+class _TileWidgetSensorBase(_StateAvailability, TileSensor, SensorEntity):
     """Common scaffolding for TYPE_WIDGET-derived sensor entities.
 
     Widget-backed sensors share three pieces of behaviour:
@@ -1483,11 +1513,14 @@ class TileWidgetTemperatureSensor(_TileWidgetSensorBase):
         the raw integer is published: most types are a scaled measurement, value
         type 13 is a time of day the API stores as minutes since midnight.
         """
-        widget = device[CONF_PARAMS][self._widget_key]
+        params = device[CONF_PARAMS]
+        if not reading_is_working(params):
+            return None
+        widget = params[self._widget_key]
         if widget.get("unit") == WIDGET_UNIT_TIME_OF_DAY:
-            return widget_hours_and_minutes(widget[VALUE])
+            return widget_hours_and_minutes(widget.get(VALUE))
         divisor = widget_unit(widget.get("unit")).divisor
-        return widget[VALUE] / divisor if divisor != 1 else widget[VALUE]
+        return scaled_number(widget.get(VALUE), divisor)
 
 
 class TileWidgetPumpSensor(_TileWidgetSensorBase):
@@ -1500,7 +1533,10 @@ class TileWidgetPumpSensor(_TileWidgetSensorBase):
 
     def get_state(self, device) -> Any:
         """Get the state of the device."""
-        return device[CONF_PARAMS][self._widget_key][VALUE]
+        params = device[CONF_PARAMS]
+        if not reading_is_working(params):
+            return None
+        return valid_number(params[self._widget_key].get(VALUE))
 
 
 class TileDisinfectionSensor(TileSensor, SensorEntity):
@@ -1597,7 +1633,7 @@ class TileValveSensor(TileSensor, SensorEntity):
         )
 
 
-class TileValveTemperatureSensor(TileSensor, SensorEntity):
+class TileValveTemperatureSensor(_StateAvailability, TileSensor, SensorEntity):
     """Representation of a Tile Valve Temperature Sensor."""
 
     def __init__(self, device, coordinator, config_entry, valve_sensor):
@@ -1623,10 +1659,11 @@ class TileValveTemperatureSensor(TileSensor, SensorEntity):
 
     def get_state(self, device):
         """Get the state of the device."""
-        state = device[CONF_PARAMS][self._state_key]
-        if self._state_key in ("returnTemp", "currentTemp"):
-            state /= 10
-        return state
+        params = device[CONF_PARAMS]
+        if not reading_is_working(params):
+            return None
+        divisor = 10 if self._state_key in ("returnTemp", "currentTemp") else 1
+        return scaled_number(params.get(self._state_key), divisor)
 
 
 class TileMixingValveSensor(TileSensor, SensorEntity):
@@ -1659,7 +1696,7 @@ class TileMixingValveSensor(TileSensor, SensorEntity):
         return device[CONF_PARAMS]["openingPercentage"]
 
 
-class TileGenericOpenThermSensor(TileSensor, SensorEntity):
+class TileGenericOpenThermSensor(_StateAvailability, TileSensor, SensorEntity):
     """Representation of a generic OpenTherm Sensor."""
 
     _attr_has_entity_name = True
@@ -1728,7 +1765,10 @@ class TileOpenThermTemperatureSensor(TileGenericOpenThermSensor):
 
     def get_state(self, device) -> Any:
         """Get the state of the device."""
-        return device[CONF_PARAMS][self._state_key] / 10
+        params = device[CONF_PARAMS]
+        if not reading_is_working(params):
+            return None
+        return scaled_number(params.get(self._state_key), 10)
 
 
 class TileOpenThermPercentageSensor(TileGenericOpenThermSensor):
@@ -1740,7 +1780,10 @@ class TileOpenThermPercentageSensor(TileGenericOpenThermSensor):
 
     def get_state(self, device) -> Any:
         """Get the state of the device."""
-        return device[CONF_PARAMS][self._state_key]
+        params = device[CONF_PARAMS]
+        if not reading_is_working(params):
+            return None
+        return valid_number(params.get(self._state_key))
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

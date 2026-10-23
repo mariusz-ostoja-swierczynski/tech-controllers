@@ -31,6 +31,7 @@ tile-derived entities.
 """
 
 from datetime import timedelta
+import math
 from typing import Any, Final, NamedTuple
 
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
@@ -335,6 +336,73 @@ def widget_hours_and_minutes(value: Any) -> str | None:
         return None
     first, second = divmod(value, 60)
     return f"{first:02d}:{second:02d}"
+
+
+def reading_is_working(params: Any) -> bool:
+    """Return whether a tile's ``params`` describe a working input.
+
+    The API puts ``workingStatus`` inside a tile's ``params``. A boolean
+    ``False`` means the input is off or disconnected; any other value,
+    including its absence and the legacy ``None``/``0``/string forms, leaves
+    the reading usable.
+
+    Args:
+        params: A tile's ``params`` mapping, or any other payload shape.
+
+    Returns:
+        ``False`` only for an explicit boolean ``False`` flag.
+
+    """
+    return not (isinstance(params, dict) and params.get(WORKING_STATUS) is False)
+
+
+def valid_number(value: Any) -> int | float | None:
+    """Return a finite JSON number, or ``None`` for anything else.
+
+    Booleans are rejected even though Python treats them as integers, and a
+    numeric value that cannot be represented as a finite float (the API's
+    ``-29536`` sentinels and oversized integers) is treated as unusable rather
+    than published.
+
+    Args:
+        value: A raw value from a tile or zone payload.
+
+    Returns:
+        The value when it is a finite int or float, otherwise ``None``.
+
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        if not math.isfinite(value):
+            return None
+    except OverflowError:
+        return None
+    return value
+
+
+def scaled_number(value: Any, divisor: int = 1) -> int | float | None:
+    """Validate a raw value and apply the API's divisor.
+
+    Args:
+        value: A raw value from a tile or zone payload.
+        divisor: What the API's raw integer is divided by.
+
+    Returns:
+        The scaled finite number, or ``None`` when the value is malformed or
+        the result is not finite.
+
+    """
+    number = valid_number(value)
+    if number is None:
+        return None
+    if divisor == 1:
+        return number
+    try:
+        scaled = number / divisor
+    except OverflowError:
+        return None
+    return scaled if math.isfinite(scaled) else None
 
 # ---------------------------------------------------------------------------
 # Icon mapping tables
