@@ -47,6 +47,25 @@ and community reported controllers.
 | `number`        | Number for menu parameters.         |
 | `select`        | Select for menu parameters.         |
 
+### Read-only zone schedules
+
+Controllers that report zone schedules, including M-9r, expose three additional
+climate attributes: `schedule_mode`, `schedule_index` and `active_schedule_name`.
+An active name requires a complete, valid schedule and confirmed Normal mode;
+Holiday, Eco, Comfort, pending changes and failed updates suppress that name.
+A local schedule without a supplied name keeps the name empty.
+
+The controller also has a **Schedules** diagnostic sensor, disabled by default.
+Enable it in the controller's entity list to inspect global templates once per
+controller and the local template for each zone. It includes the raw values,
+a Monday-first week, interval times in minutes, temperatures in degrees Celsius
+and decoding errors. Its `ready`, `partial` or `missing` state describes decoding;
+each zone's `schedule_applicable` attribute describes applicability.
+
+These are read-only configuration details from the existing poll. They add no
+API requests, do not change schedules or targets, and do not calculate the current
+or next target from the controller's clock.
+
 ### Menu codes
 
 Some controllers keep their installer and service menus behind a numeric code.

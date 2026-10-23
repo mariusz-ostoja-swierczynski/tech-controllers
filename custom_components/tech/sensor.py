@@ -120,6 +120,7 @@ from .const import (
 )
 from .coordinator import TechCoordinator
 from .entity import TileEntity
+from .schedules import schedule_diagnostics
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -160,8 +161,14 @@ async def async_setup_entry(
         hass, tiles, coordinator, config_entry
     )
 
+    schedule_data = (coordinator.data or {}).get("schedules")
+    schedule_entities = (
+        [ControllerSchedulesSensor(coordinator, config_entry)]
+        if isinstance(schedule_data, dict) and schedule_data.get("supported")
+        else []
+    )
     async_add_entities(
-        [*tile_entities, *zone_entities, *deprecated_entities], True
+        [*tile_entities, *zone_entities, *deprecated_entities, *schedule_entities], True
     )
 
 
@@ -627,6 +634,60 @@ _TILE_ENTITY_BUILDERS: dict[int, TileBuilder] = {
     ],
     TYPE_OPEN_THERM: _build_open_therm_tile,
 }
+
+
+class ControllerSchedulesSensor(CoordinatorEntity, SensorEntity):
+    """One opt-in read-only view of all controller schedule templates."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+    _attr_has_entity_name = True
+    _attr_name = "Schedules"
+    _attr_icon = "mdi:calendar-week"
+
+    def __init__(self, coordinator: TechCoordinator, config_entry: ConfigEntry) -> None:
+        """Bind to the existing coordinator without an additional API read."""
+        super().__init__(coordinator)
+        self._config_entry = config_entry
+        self._udid = config_entry.data[CONTROLLER][UDID]
+
+    @property
+    def unique_id(self) -> str:
+        """Keep one stable entity identity per physical controller."""
+        return f"{self._udid}_schedules"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Attach to the existing controller device, rather than every zone."""
+        controller = self._config_entry.data[CONTROLLER]
+        return {
+            ATTR_IDENTIFIERS: {(DOMAIN, self._udid)},
+            CONF_NAME: self._config_entry.title,
+            CONF_MODEL: controller.get(CONF_NAME, ""),
+            "sw_version": controller.get(VER, ""),
+            ATTR_MANUFACTURER: MANUFACTURER,
+        }
+
+    def _diagnostics(self) -> dict[str, Any]:
+        """Compute attributes from the latest snapshot, never a saved entity copy."""
+        return schedule_diagnostics(
+            (self.coordinator.data or {}).get("schedules"),
+            self.coordinator.last_update_success,
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Report decoding status; availability follows the shared coordinator."""
+        if not self.coordinator.last_update_success:
+            return None
+        return self._diagnostics()["status"]
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose stable configuration, applicability and decoding provenance."""
+        return {
+            key: value for key, value in self._diagnostics().items() if key != "status"
+        }
 
 
 class ZoneSensor(CoordinatorEntity, SensorEntity):

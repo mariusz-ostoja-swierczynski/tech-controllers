@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Run only local tests. tests/tests_api exercises the real eModul demo account.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+export PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+# Load the complete HA stubs before modules with smaller, partial stubs.
+test_paths=(tests/test_platform_device_info.py)
+for test_path in tests/test_*.py; do
+  [[ "$test_path" == "${test_paths[0]}" ]] || test_paths+=("$test_path")
+done
+exec "${TECH_TEST_PYTHON:-.venv/bin/python}" -m pytest \
+  -p pytest_asyncio.plugin -p pytest_socket \
+  --disable-socket --allow-unix-socket "${test_paths[@]}" "$@"
