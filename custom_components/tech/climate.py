@@ -31,6 +31,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import assets
 from .const import CONTROLLER, DOMAIN, INCLUDE_HUB_IN_NAME, MANUFACTURER, UDID, VER
 from .coordinator import TechCoordinator
+from .schedules import climate_schedule_attributes
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -184,6 +185,15 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
     def unique_id(self) -> str:
         """Return a unique ID."""
         return f"{self._unique_id}_zone_climate"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Describe schedule selection without inferring a current target."""
+        return climate_schedule_attributes(
+            (self._coordinator.data or {}).get("schedules"),
+            self._id,
+            self._coordinator.last_update_success,
+        )
 
     @property
     def supported_features(self) -> ClimateEntityFeature:

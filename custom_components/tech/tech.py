@@ -24,6 +24,7 @@ from .const import (
     MODULE_DATA_CACHE_TTL,
     TECH_SUPPORTED_LANGUAGES,
 )
+from .schedules import schedule_snapshot
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -324,12 +325,20 @@ class Tech:
             _LOGGER.debug("Updating module zones & tiles ... %s", module_udid)
             result = await self.get_module_data(module_udid)
 
-            raw_zones = result.get("zones", {}).get("elements", [])
+            zones_envelope = result.get("zones")
+            raw_zones = (
+                zones_envelope.get("elements", [])
+                if isinstance(zones_envelope, dict)
+                else []
+            )
+            if not isinstance(raw_zones, list):
+                raw_zones = []
             visible_zones = [
                 zone
                 for zone in raw_zones
-                if zone
-                and zone.get("zone")
+                if isinstance(zone, dict)
+                and isinstance(zone.get("zone"), dict)
+                and "id" in zone["zone"]
                 and zone["zone"].get("visibility")
                 and zone["zone"].get("zoneState") != "zoneUnregistered"
             ]
@@ -370,6 +379,9 @@ class Tech:
                 )
                 cache.setdefault("menus", {}).update(menu_items)
 
+            # Schedule consumers must use this refresh alone: the legacy zone
+            # cache above accumulates entries, including zones removed later.
+            cache["schedules"] = schedule_snapshot(zones_envelope)
             cache["last_update"] = time.monotonic()
             return cache
 
