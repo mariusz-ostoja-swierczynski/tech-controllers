@@ -28,6 +28,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 import logging
+import math
 from typing import Any, cast
 
 from homeassistant.components.automation import automations_with_entity
@@ -1137,9 +1138,30 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
         """Return a unique ID."""
         return f"{self._unique_id}_tile_temperature"
 
-    def get_state(self, device) -> Any:
-        """Get the state of the device."""
-        return device[CONF_PARAMS][VALUE] / 10
+    @property
+    def available(self) -> bool:
+        """Require both a successful coordinator and a valid temperature."""
+        return super().available and self._state is not None
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the cached temperature in degrees Celsius."""
+        return self._state
+
+    def get_state(self, device) -> float | None:
+        """Return a finite reading only while the temperature input is working."""
+        params = device[CONF_PARAMS]
+        if params.get(WORKING_STATUS) is False:
+            return None
+
+        value = params.get(VALUE)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return None
+        try:
+            temperature = value / 10
+        except OverflowError:
+            return None
+        return temperature if math.isfinite(temperature) else None
 
     @property
     def device_info(self) -> DeviceInfo | None:
