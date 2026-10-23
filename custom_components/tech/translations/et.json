@@ -7,6 +7,10 @@
         "deprecated_flag_sensor_used": {
             "title": "Tuvastati aegunud andur",
             "description": "Andur `{entity_id}` on aegunud: väärtuse tüübi 28 vidinad, mis näitavad lubatud/keelatud olekut, kuvatakse nüüd binaaranduritena sama nimega.\n\nSeda kasutatakse järgmistes automatiseeringutes või skriptides:\n{items}\n\nUuenda need koos töölaudade ja mallidega, mis seda kasutavad, et need kasutaksid binaarandurit, seejärel keela aegunud andur ja taaskäivita Home Assistant."
+        },
+        "menu_code_rejected": {
+            "title": "Menüü koodi ei võetud vastu",
+            "description": "Kontrolleri menüüle ({menu_type}) seadistatud koodi ei võetud vastu, seetõttu puuduvad selle menüü elemendid. Eemalda integreerimine ja lisa see uuesti, et kood uuesti sisestada. Vale kood näeb välja täpselt sama, kui koodi puudumine."
         }
     },
     "config": {
@@ -35,6 +39,15 @@
                 "data": {
                     "controllers": "Imporditavad kontrollerid",
                     "include_hub_in_name": "Kaasa hubi (kontrolleri) nimi üksuste nimedes"
+                }
+            },
+            "menu_codes": {
+                "title": "Menüü koodid",
+                "description": "Mõned kontrollerid hoiavad paigaldaja- ja hooldusmenüüd koodi taga. Sisesta iga menüü kood, mida Home Assistant peab lugema, või jäta väljad tühjaks. Vale kood käitub täpselt nagu koodi puudumine.",
+                "data": {
+                    "menu_code_mu": "Kasutajamenüü kood (MU)",
+                    "menu_code_mi": "Paigaldajamenüü kood (MI)",
+                    "menu_code_ms": "Hooldusmenüü kood (MS)"
                 }
             }
         }

@@ -7,6 +7,10 @@
         "deprecated_flag_sensor_used": {
             "title": "Sensor obsoleto detectado",
             "description": "El sensor `{entity_id}` está obsoleto: los widgets de tipo de valor 28, que informan Activado/Desactivado, ahora se exponen como sensores binarios con el mismo nombre.\n\nSe usa en las siguientes automatizaciones o scripts:\n{items}\n\nActualízalos, junto con los paneles y plantillas que lo usen, para usar el sensor binario en su lugar; después, desactiva el sensor obsoleto y reinicia Home Assistant."
+        },
+        "menu_code_rejected": {
+            "title": "Código de menú no aceptado",
+            "description": "El código configurado para el menú ({menu_type}) del controlador no se ha aceptado, por eso faltan los controles de ese menú. Elimina la integración y vuelve a añadirla para introducir el código de nuevo. Un código incorrecto se ve exactamente igual que ningún código."
         }
     },
     "config": {
@@ -35,6 +39,15 @@
                 "data": {
                     "controllers": "Controladores a importar",
                     "include_hub_in_name": "Incluir nombre del concentrador (controlador) en los nombres de las entidades"
+                }
+            },
+            "menu_codes": {
+                "title": "Códigos de menú",
+                "description": "Algunos controladores guardan sus menús de instalador y de servicio tras un código. Introduce el código de cada menú que quieras que Home Assistant lea, o deja los campos vacíos. Un código incorrecto se comporta exactamente igual que ningún código.",
+                "data": {
+                    "menu_code_mu": "Código del menú de usuario (MU)",
+                    "menu_code_mi": "Código del menú de instalador (MI)",
+                    "menu_code_ms": "Código del menú de servicio (MS)"
                 }
             }
         }

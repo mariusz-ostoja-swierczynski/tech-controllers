@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import logging
 import pathlib
 import sys
 import types
@@ -75,6 +76,9 @@ class _Entity:
 
     async def async_added_to_hass(self) -> None:
         """Pretend the entity was added."""
+
+    def async_write_ha_state(self) -> None:
+        """Pretend to publish the entity state; nothing is recorded."""
 
 
 class CoordinatorEntity(_Entity):
@@ -148,8 +152,20 @@ class _NumberMode:
     SLIDER = "slider"
 
 
-# The subclasses each platform module declares for its own entity type.
-for _name in ("switch", "button", "select", "number"):
+# The subclasses each platform module declares for its own entity type. The
+# switch stub is written out because a test has to be able to read ``is_on`` the
+# way Home Assistant publishes it, not just the ``_attr_is_on`` behind it.
+class SwitchEntity(_Entity):
+    """Stand-in for ``homeassistant.components.switch.SwitchEntity``."""
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return the state Home Assistant would publish."""
+        return getattr(self, "_attr_is_on", None)
+
+
+globals()["switch"] = SwitchEntity
+for _name in ("button", "select", "number"):
     globals()[_name] = type(f"{_name.title()}Entity", (_Entity,), {})
 
 
@@ -199,6 +215,10 @@ def _async_get_registry(hass: Any) -> _Registry:
 
 def _async_create_issue(hass: Any, domain: str, issue_id: str, **kwargs: Any) -> None:
     """Accept a repair issue without registering one; tests install their own."""
+
+
+def _async_delete_issue(hass: Any, domain: str, issue_id: str) -> None:
+    """Accept the removal of a repair issue; tests install their own."""
 
 
 def _automations_with_entity(hass: Any, entity_id: str) -> list[str]:
@@ -295,6 +315,7 @@ def _fake_module(name: str) -> types.ModuleType:
     elif name == "homeassistant.helpers.issue_registry":
         module.IssueSeverity = _AutoNamespace()
         module.async_create_issue = _async_create_issue
+        module.async_delete_issue = _async_delete_issue
     elif name == "homeassistant.helpers.typing":
         module.UndefinedType = type("UndefinedType", (), {})
     return module
@@ -370,8 +391,8 @@ def _load_tech_module(name: str) -> types.ModuleType:
 _install_stubs()
 const = _load_tech_module("const")
 assets = _load_tech_module("assets")
-_load_tech_module("tech")
-_load_tech_module("coordinator")
+_tech_module = _load_tech_module("tech")
+_coordinator = _load_tech_module("coordinator")
 sensor = _load_tech_module("sensor")
 
 # binary_sensor.py imports TechCoordinator and assets from the package rather
@@ -412,26 +433,45 @@ class _Translations:
 
 
 class _Api:
-    """Async API stub; the menu payload is irrelevant to these tests."""
+    """Async API stub; the menu payload is irrelevant to these tests.
+
+    Menu writes are recorded rather than sent, so a test can assert the payload
+    a platform sends to the controller.
+    """
+
+    def __init__(self, menus: dict[str, dict[str, Any]] | None = None) -> None:
+        """Start with no writes recorded and the given menu tree to serve."""
+        self.calls: list[tuple[str, int, dict]] = []
+        self._menus = menus or {}
 
     async def get_module_menus(self, udid: str) -> dict:
-        """Return an empty menu tree."""
-        return {}
+        """Return the menu tree this stub was built with (empty by default)."""
+        return self._menus
 
     async def get_module_zones(self, udid: str) -> dict:
         """Return an empty zone payload."""
+        return {}
+
+    async def set_menu_value(
+        self, udid: str, menu_type: str, ido: int, data: dict
+    ) -> dict:
+        """Record a menu write instead of sending it."""
+        self.calls.append((menu_type, ido, data))
         return {}
 
 
 class _Coordinator:
     """Stand-in for ``TechCoordinator``."""
 
-    def __init__(self) -> None:
+    def __init__(self, menus: dict[str, dict[str, Any]] | None = None) -> None:
         """Wire up the API, translation catalog and cache."""
-        self.api = _Api()
+        self.api = _Api(menus)
         self.translations = _Translations()
         self.udid = _UDID
         self.data: dict = {}
+
+    async def async_request_refresh(self) -> None:
+        """Pretend to ask for a poll after a write; nothing is fetched."""
 
 
 class _Entry:
@@ -494,7 +534,9 @@ def _build(
 
 
 @pytest.mark.parametrize(("module_name", "class_name"), PLATFORMS, ids=_PLATFORM_IDS)
-def test_zone_entity_uses_the_zone_device_name(module_name: str, class_name: str) -> None:
+def test_zone_entity_uses_the_zone_device_name(
+    module_name: str, class_name: str
+) -> None:
     """A zone-attached entity names the zone device from the resolved mapping."""
     entity = _build(
         module_name, class_name, zone_id=101, zone_names={101: "L-8 DEMO Strefa 1"}
@@ -760,7 +802,15 @@ def test_kolton_st5305_widget_entities() -> None:
         (2223, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 4274),
         (2232, "widget2", 0, "TileWidgetTemperatureSensor", None, None, 0),
         # 39 -- "Value l / m" in the API prose, labelled l/godz. by the app
-        (1096, "widget2", 39, "TileWidgetTemperatureSensor", flow, "volume_flow_rate", 0),
+        (
+            1096,
+            "widget2",
+            39,
+            "TileWidgetTemperatureSensor",
+            flow,
+            "volume_flow_rate",
+            0,
+        ),
         # 13 -- hours and minutes
         (1664, "widget2", 13, "TileWidgetTemperatureSensor", None, None, "00:00"),
         (1666, "widget2", 13, "TileWidgetTemperatureSensor", None, None, "17:21"),
@@ -1130,3 +1180,1033 @@ class TestDeprecatedFlagSensorSelection:
 
         assert unlabelled == []
         assert temperature == []
+
+
+# ---------------------------------------------------------------------------
+# Menu item type 15 -- checkbox controls (issue #222)
+# ---------------------------------------------------------------------------
+
+
+def _kolton_menus() -> dict[str, dict[str, Any]]:
+    """Return the reporter's user menu, keyed the way the API client keys it."""
+    return _menus_of("MU")
+
+
+def _kolton_switches() -> list[Any]:
+    """Return every switch the reporter's user menu produces."""
+    menus = _kolton_menus()
+    coordinator = _Coordinator()
+    ctx = assets.build_menu_context(menus, {}, coordinator.translations)
+    return _modules["switch"]._build_menu_switches(
+        menus, ctx, coordinator, _Entry(), {}
+    )
+
+
+def _kolton_checkbox_switches() -> dict[str, Any]:
+    """Return the checkbox option switches of the reporter's menu by unique id."""
+    checkbox = _modules["switch"].MenuCheckboxEntity
+    return {
+        entity.unique_id: entity
+        for entity in _kolton_switches()
+        if isinstance(entity, checkbox)
+    }
+
+
+def test_kolton_user_menu_switch_inventory() -> None:
+    """The whole switch inventory of the reporter's user menu.
+
+    Eight accessible on/off items (two are inaccessible and stay out) plus the
+    two options of the Operating modes checkbox item, in menu order. His board
+    has both operating modes available, and the ``value: 1`` bitmask means the
+    first option is the one currently enabled.
+    """
+    assert [(entity.unique_id, entity.is_on) for entity in _kolton_switches()] == [
+        (f"{_UDID}_menu_MU_2311", True),
+        (f"{_UDID}_menu_MU_30029_option_128", True),
+        (f"{_UDID}_menu_MU_30029_option_3645", False),
+        (f"{_UDID}_menu_MU_1049", True),
+        (f"{_UDID}_menu_MU_1076", False),
+        (f"{_UDID}_menu_MU_2165", True),
+        (f"{_UDID}_menu_MU_1095", False),
+        (f"{_UDID}_menu_MU_2164", False),
+        (f"{_UDID}_menu_MU_1645", False),
+        (f"{_UDID}_menu_MU_2323", False),
+    ]
+
+
+def test_checkbox_option_switches_are_named_after_their_option() -> None:
+    """Each option switch takes the option label, not the group's label.
+
+    The item's own label belongs to the group, which several switches share, so
+    the option's subtitle id is what names and identifies the entity.
+    """
+    switches = _kolton_checkbox_switches()
+
+    assert [(entity.name, entity.unique_id) for entity in switches.values()] == [
+        ("label-128", f"{_UDID}_menu_MU_30029_option_128"),
+        ("label-3645", f"{_UDID}_menu_MU_30029_option_3645"),
+    ]
+
+
+def test_inaccessible_checkbox_item_produces_no_switch() -> None:
+    """An inaccessible checkbox item stays out, even sharing the group label.
+
+    The reporter's menu carries label 820 twice: the accessible two-option item
+    and an inaccessible three-option one. Registering both would duplicate the
+    group, so only the accessible item creates switches.
+    """
+    menus = _kolton_menus()
+    item = menus["MU_30030"]
+
+    assert item["access"] is False
+    assert item["params"]["options"] == [128, 3645, 1815]
+    assert not [key for key in _kolton_checkbox_switches() if "30030" in key]
+
+
+async def test_turning_one_option_keeps_the_other_options() -> None:
+    """A write sends every option with the state it should end up in.
+
+    That is the payload the eModul app uses for a checkbox item, and it is what
+    keeps the other boxes as the user set them: the group starts as ``value: 1``,
+    so switching the second option on leaves the first on, and switching the
+    first off afterwards leaves the second on.
+    """
+    switches = _kolton_checkbox_switches()
+    first = switches[f"{_UDID}_menu_MU_30029_option_128"]
+    second = switches[f"{_UDID}_menu_MU_30029_option_3645"]
+    api = first.coordinator.api
+
+    await second.async_turn_on()
+
+    assert api.calls == [
+        (
+            "MU",
+            30029,
+            {"many_of_many": [{"id": 0, "value": 1}, {"id": 1, "value": 1}]},
+        )
+    ]
+    assert (first.is_on, second.is_on) == (True, True)
+
+    await first.async_turn_off()
+
+    assert api.calls[-1] == (
+        "MU",
+        30029,
+        {"many_of_many": [{"id": 0, "value": 0}, {"id": 1, "value": 1}]},
+    )
+    assert (first.is_on, second.is_on) == (False, True)
+
+
+async def test_a_poll_during_change_keeps_the_optimistic_switch_state() -> None:
+    """A switch does not jump back while the controller is applying the write.
+
+    The optimistic write of #191 is only useful if the next poll cannot undo it:
+    the API keeps reporting the old value with ``duringChange: "t"`` until the
+    controller confirms. Zones already ignore that value; menu switches now do
+    the same. Once the flag settles to ``"f"`` the poll is authoritative again,
+    which is how a controller-side rejection still reverts.
+    """
+    item = {
+        **_item(),
+        "type": const.MENU_ITEM_TYPE_ON_OFF,
+        "params": {"value": 0},
+    }
+    coordinator = _Coordinator()
+    entity = _modules["switch"].MenuSwitchEntity(
+        item, "MU_3550", coordinator, _Entry(), {}, depth=0
+    )
+
+    await entity.async_turn_on()
+    assert entity.is_on is True
+
+    coordinator.data = {
+        "menus": {"MU_3550": {**item, "params": {"value": 0}, "duringChange": "t"}}
+    }
+    entity._handle_coordinator_update()
+    assert entity.is_on is True
+
+    coordinator.data = {
+        "menus": {"MU_3550": {**item, "params": {"value": 0}, "duringChange": "f"}}
+    }
+    entity._handle_coordinator_update()
+    assert entity.is_on is False
+
+
+async def test_a_poll_during_change_keeps_the_optimistic_number() -> None:
+    """A number follows the same duringChange rule as a switch."""
+    item = _item()
+    coordinator = _Coordinator()
+    entity = _modules["number"].MenuNumberEntity(
+        item, "MU_3550", coordinator, _Entry(), {}, depth=0
+    )
+
+    await entity.async_set_native_value(5)
+    assert entity._attr_native_value == 5
+
+    coordinator.data = {
+        "menus": {"MU_3550": {**item, "params": {**item["params"], "value": 1}, "duringChange": "t"}}
+    }
+    entity._handle_coordinator_update()
+    assert entity._attr_native_value == 5
+
+    coordinator.data = {
+        "menus": {"MU_3550": {**item, "params": {**item["params"], "value": 7}, "duringChange": "f"}}
+    }
+    entity._handle_coordinator_update()
+    assert entity._attr_native_value == 7
+
+
+async def test_a_poll_during_change_keeps_the_optimistic_select_option() -> None:
+    """A select keeps its chosen option until the controller has settled."""
+    item = _item()
+    coordinator = _Coordinator()
+    entity = _modules["select"].MenuSelectEntity(
+        item, "MU_3550", coordinator, _Entry(), {}, depth=0
+    )
+    assert entity._attr_current_option == "label-2"
+
+    await entity.async_select_option("label-1")
+    assert entity._attr_current_option == "label-1"
+
+    coordinator.data = {
+        "menus": {"MU_3550": {**item, "duringChange": "t"}}
+    }
+    entity._handle_coordinator_update()
+    assert entity._attr_current_option == "label-1"
+
+    coordinator.data = {
+        "menus": {"MU_3550": {**item, "duringChange": "f"}}
+    }
+    entity._handle_coordinator_update()
+    assert entity._attr_current_option == "label-2"
+
+
+async def test_a_poll_during_change_keeps_both_checkbox_options() -> None:
+    """A checkbox option is not undone, and neither is its sibling."""
+    switches = _kolton_checkbox_switches()
+    first = switches[f"{_UDID}_menu_MU_30029_option_128"]
+    second = switches[f"{_UDID}_menu_MU_30029_option_3645"]
+    coordinator = first.coordinator
+    item = _kolton_menus()["MU_30029"]
+
+    await second.async_turn_on()
+    assert (first.is_on, second.is_on) == (True, True)
+
+    coordinator.data = {"menus": {"MU_30029": {**item, "duringChange": "t"}}}
+    first._handle_coordinator_update()
+    assert (first.is_on, second.is_on) == (True, True)
+
+    coordinator.data = {"menus": {"MU_30029": {**item, "duringChange": "f"}}}
+    first._handle_coordinator_update()
+    second._handle_coordinator_update()
+    assert (first.is_on, second.is_on) == (True, False)
+
+
+async def test_user_menu_dialogue_is_the_factory_reset_not_a_lockout() -> None:
+    """The user menu's only dialogue is factory settings, not a clear-lockout.
+
+    Issue #222 asked for the clear-lockout control, and this item was read as
+    it: menu type 20, so :mod:`button` maps it, and the one dialogue in his
+    user menu. The eModul subtitle catalog says otherwise -- text 839 is
+    "Ustawienia fabryczne" and the question it confirms, 838 ("Czy przywrócić
+    ustawienia fabryczne?"), is a factory reset. A button named after 839 is
+    therefore that reset; the clear-lockout control the reporter still misses
+    is not in this tree at all, see
+    :func:`test_service_menu_dialogue_becomes_a_button`.
+    """
+    menus = _kolton_menus()
+    dialogues = [
+        item
+        for item in menus.values()
+        if item.get("type") == const.MENU_ITEM_TYPE_DIALOGUE
+    ]
+
+    assert [item["id"] for item in dialogues] == [10000]
+
+    item = dialogues[0]
+    assert (item["txtId"], item["params"]["txtId"], item["params"]["type"]) == (
+        839,
+        838,
+        1,
+    )
+
+    coordinator = _Coordinator()
+    entity = _modules["button"].MenuButtonEntity(
+        item, "MU_10000", coordinator, _Entry(), {}, depth=0
+    )
+
+    assert (entity.name, entity.unique_id) == ("label-839", f"{_UDID}_menu_MU_10000")
+    # A factory reset is one press away from wiping the controller, so it is
+    # registered disabled even though it sits at the top level.
+    assert not entity.entity_registry_enabled_default
+
+    await entity.async_press()
+
+    # A Yes/No dialogue: confirming it sends 1, the app's "Tak".
+    assert coordinator.api.calls == [("MU", 10000, {"type": 1, "value": 1})]
+
+
+# ---------------------------------------------------------------------------
+# Menu trees -- the clear-lockout control lives in the service tree (#222)
+# ---------------------------------------------------------------------------
+
+# The item the reporter traced in #222: "Zdjęcie blokady", the clear-lockout
+# dialogue of his heat pump's service tree, whose sub-type 2 is what makes a
+# press send {"type": 2, "value": 3}. The item id is his, and the tree it lives
+# in is now his own dump rather than a stand-in.
+_SERVICE_LOCKOUT_ID = 1537
+
+
+def _service_menu() -> dict[str, dict[str, Any]]:
+    """Return the reporter's service tree, keyed the way the API client keys it.
+
+    This is his own ``/menu/MS/`` dump, committed as a fixture with the service
+    password replaced by a placeholder: the tree under "Menu serwis" that holds
+    "Blokada presostatu", whose clear-lockout dialogue is item 1537 with
+    sub-type 2 -- the control #222 is about. The dump also pins the nesting depth
+    that the enabled-by-default rule is measured against, which the synthetic
+    tree this replaces could only approximate.
+    """
+    return _menus_of("MS")
+
+
+def _menus_of(menu_type: str) -> dict[str, dict[str, Any]]:
+    """Return one tree of the reporter's controller, keyed as the client keys it."""
+    payload = json.loads(
+        (_REPO_ROOT / "tests/fixtures/kolton_st5305/menus.json").read_text()
+    )
+    return {
+        f"{item['menuType']}_{item['id']}": item
+        for item in payload[menu_type]["data"]["elements"]
+        if isinstance(item, dict) and item.get("id") is not None
+    }
+
+
+class _MenuTrees:
+    """Stub for ``Tech.get`` serving one element per menu tree.
+
+    A tree can be refused in the three ways the API refuses one, and the
+    difference matters to the caller:
+
+    - ``refused``: a ``TechError``, which is not a gate at all.
+    - ``messaged``: an answer with a message instead of elements -- HTTP 200,
+      body ``{"message": "missing items in <TYPE> menu"}``, no ``data``. This is
+      what a gated tree answers, and what a real controller's manufacturer tree
+      answers at all times.
+    - ``gated``: a ``(tree, code)`` pair. The tree answers with its root alone,
+      whose ``params.password`` marks it as needing a code, and the rest arrives
+      only for the request that carries ``0:<code>``. A code that does not match is
+      answered with the API's documented ``422 Invalid parameter pin`` -- or, with
+      ``empty_pin``, with a 2xx whose element list is empty, the other shape a
+      refused code has been seen in.
+
+    ``bodies`` serves recorded refusal payloads verbatim, so the gated path can
+    be tested against what the API really sent rather than a stand-in.
+    """
+
+    def __init__(
+        self,
+        refused: str | None = None,
+        messaged: str | None = None,
+        gated: tuple[str, str] | None = None,
+        bodies: dict[str, dict[str, Any]] | None = None,
+        empty_pin: bool = False,
+    ) -> None:
+        """Record how each tree answers, and start with no requests."""
+        self.paths: list[str] = []
+        self._refused = refused
+        self._messaged = messaged
+        self._gated = gated
+        self._bodies = bodies or {}
+        self._empty_pin = empty_pin
+
+    @staticmethod
+    def _refusal(menu_type: str) -> dict[str, Any]:
+        """Return the message a tree the account may not read answers with."""
+        return {"message": f"missing items in {menu_type} menu"}
+
+    def _served(self, menu_type: str) -> dict[str, Any]:
+        """Return one element for a tree the stub is willing to serve."""
+        element = {"menuType": menu_type, "id": len(self.paths), "type": 0}
+        return {"data": {"elements": [element]}}
+
+    def _gated_answer(self, menu_type: str, segment: str) -> dict[str, Any]:
+        """Answer a tree held behind a code the way the live API does.
+
+        Its root alone without a code, and the root carries ``params.password``;
+        the rest only once the segment names that root and the code it wants; and
+        an empty element list for a segment that does not match. All three shapes
+        were observed live, and the last one is what the eModul app reads as a
+        wrong code.
+        """
+        root = {
+            "menuType": menu_type,
+            "id": 0,
+            "parentId": 0,
+            "type": 0,
+            "access": True,
+            "txtId": 391,
+            "params": {"description": "Element gruping menu", "password": "password"},
+        }
+        if segment == f"0:{self._gated[1]}":
+            child = {
+                "menuType": menu_type,
+                "id": 7,
+                "parentId": 0,
+                "type": 20,
+                "access": True,
+                "params": {"type": 2, "value": -1},
+            }
+            return {"data": {"elements": [root, child]}}
+        if segment:
+            if self._empty_pin:
+                # The other shape a refused code was seen in: a 2xx whose element
+                # list is simply empty, which is what the eModul app checks for.
+                return {"data": {"elements": []}}
+            raise _tech_module.TechError(422, '{"error":"Invalid parameter pin"}')
+        return {"data": {"elements": [root]}}
+
+    async def __call__(self, path: str) -> dict[str, Any]:
+        """Record the request and answer it, or raise where the tree is refused."""
+        self.paths.append(path)
+        # A menu request has two shapes: the tree alone (".../MS/"), and the tree
+        # with the code's path segment (".../MS/0:1989").
+        menu_type, _, segment = path.rsplit("/menu/", 1)[-1].partition("/")
+        if menu_type == self._refused:
+            raise _tech_module.TechError(403, "menu not available")
+        if menu_type in self._bodies:
+            return self._bodies[menu_type]
+        if self._gated is not None and menu_type == self._gated[0]:
+            return self._gated_answer(menu_type, segment)
+        if menu_type == self._messaged:
+            return self._refusal(menu_type)
+        return self._served(menu_type)
+
+
+def _menu_client(
+    menu_codes: dict[str, str] | None = None, **transport: Any
+) -> tuple[Any, _MenuTrees]:
+    """Return a ``Tech`` client whose only stub is the menu tree transport."""
+    tech = _tech_module.Tech.__new__(_tech_module.Tech)
+    tech.user_id = 7
+    # The real constructor sets this; ``__new__`` skips it.
+    tech.menu_codes = dict(menu_codes or {})
+    transport_stub = _MenuTrees(**transport)
+    tech.get = transport_stub
+    return tech, transport_stub
+
+
+def _refused_bodies() -> dict[str, dict[str, Any]]:
+    """Return the refusal bodies the API sent the demo account, as recorded.
+
+    The demo account is refused the three trees a consumer account cannot read,
+    so this fixture holds both sides of the gate: the message a refusal is made
+    of, and the trees a served controller answers with, which are in
+    ``tests/fixtures/kolton_st5305/menus.json``.
+    """
+    return json.loads(
+        (_REPO_ROOT / "tests/fixtures/demo_refused_menus.json").read_text()
+    )
+
+
+async def test_every_menu_tree_is_fetched() -> None:
+    """The controller is asked for all four of its menu trees.
+
+    The service tree is where a heat pump keeps the clear-lockout control, so
+    not asking for it left the reporter of #222 with the lockout on a sensor and
+    no way to clear it. Items are keyed by tree, so the same item id in two trees
+    cannot collide.
+    """
+    tech, transport = _menu_client()
+
+    items = await tech._fetch_menu_data("abcd")
+
+    assert transport.paths == [
+        f"users/7/modules/abcd/menu/{menu_type}/" for menu_type in const.MENU_TYPES
+    ]
+    assert sorted(items) == ["MI_2", "MP_4", "MS_3", "MU_1"]
+
+
+async def test_a_refused_menu_tree_leaves_the_others_alone() -> None:
+    """One unreadable tree does not cost the controller the remaining three.
+
+    The API answers a tree the account may not read with ``TechError`` -- the
+    manufacturer tree of a consumer account is locked on the controllers we have
+    dumps of. That used to be harmless because only two trees were requested;
+    now it has to be contained per tree.
+    """
+    tech, transport = _menu_client(refused="MP")
+
+    items = await tech._fetch_menu_data("abcd")
+
+    assert transport.paths == [
+        f"users/7/modules/abcd/menu/{menu_type}/" for menu_type in const.MENU_TYPES
+    ]
+    assert sorted(items) == ["MI_2", "MS_3", "MU_1"]
+
+
+async def test_a_menu_tree_answered_with_a_message_loses_nothing() -> None:
+    """A tree that answers with a message instead of elements is not an error.
+
+    A real controller's manufacturer tree answers ``{"message": "missing items
+    in MP menu"}`` -- no ``data``, no elements -- and that is not a ``TechError``,
+    so only the shape of the answer tells it apart from a served tree. It must
+    cost that tree alone, leaving the other three and the rest of the poll
+    intact; it is also why the item count logged for a controller can be far
+    below what its dumps hold.
+    """
+    tech, transport = _menu_client(messaged="MP")
+
+    items = await tech._fetch_menu_data("abcd")
+
+    assert transport.paths == [
+        f"users/7/modules/abcd/menu/{menu_type}/" for menu_type in const.MENU_TYPES
+    ]
+    assert sorted(items) == ["MI_2", "MS_3", "MU_1"]
+
+
+async def test_service_menu_dialogue_becomes_a_working_button() -> None:
+    """The clear-lockout dialogue of the service tree reaches Home Assistant.
+
+    The button is named after its group and label ("Blokada presostatu -
+    Zdjęcie blokady" with the real catalog), registered enabled because the
+    group is top level, and pressing it sends the payload the reporter traced in
+    the app for this very item: ``{"value": 3, "type": 2}`` on ido 1537.
+    """
+    entry = _Entry()
+    coordinator = _Coordinator(_service_menu())
+    added: list[Any] = []
+    hass = types.SimpleNamespace(data={const.DOMAIN: {entry.entry_id: coordinator}})
+
+    await _modules["button"].async_setup_entry(
+        hass, entry, lambda entities, update: added.extend(entities)
+    )
+
+    lockout = f"{_UDID}_menu_MS_{_SERVICE_LOCKOUT_ID}"
+    # The service tree carries four dialogues and the clear-lockout is one of
+    # them: all four register from that tree, and this one is the control #222
+    # asks for.
+    assert len(added) == 4
+    by_id = {entity.unique_id: entity for entity in added}
+    assert lockout in by_id
+
+    button = by_id[lockout]
+    assert button.name == "label-4764 - label-8395"
+    assert button.entity_registry_enabled_default
+    assert button._attr_available  # access: true while there is a lockout
+
+    # The tree also carries two factory-reset dialogues (one top-level, one
+    # under "Zabezpieczenia"). They register, but disabled.
+    assert not by_id[f"{_UDID}_menu_MS_2457"].entity_registry_enabled_default
+    assert not by_id[f"{_UDID}_menu_MS_10002"].entity_registry_enabled_default
+
+    await button.async_press()
+
+    assert coordinator.api.calls == [
+        ("MS", _SERVICE_LOCKOUT_ID, {"type": 2, "value": 3})
+    ]
+
+
+def test_fan_lockout_button_says_what_it_clears() -> None:
+    """The fan lockout button no longer shares its name with the binary sensor.
+
+    Its label is "Blokada wentylatora" -- the same text as the flag sensor --
+    while the pressure-switch dialogue is already labelled with the action. The
+    dialogue's ``params.txtId`` is the shared "Brak blokady" status, which is
+    what marks it as a lockout control; the action label from the same catalogue
+    is appended so a press reads as "Blokada wentylatora - Zdjęcie blokady".
+    """
+    item = _service_menu()["MS_2746"]
+
+    entity = _modules["button"].MenuButtonEntity(
+        item, "MS_2746", _Coordinator(), _Entry(), {}, depth=0
+    )
+
+    assert entity.name == "label-6956 - label-8395"
+    assert entity.entity_registry_enabled_default
+
+
+@pytest.mark.parametrize(
+    ("params", "expected"),
+    [
+        ({"type": 0}, {"type": 0, "value": 2}),
+        ({"type": 1}, {"type": 1, "value": 1}),
+        ({"type": 2}, {"type": 2, "value": 3}),
+        # A sub-type the app draws no control for: keep the value this platform
+        # has always sent rather than invent one.
+        ({"type": 9}, {"type": 9, "value": 1}),
+        # No sub-type at all reads as 0, which the app shows as its OK button.
+        ({}, {"type": 0, "value": 2}),
+    ],
+    ids=["ok", "yes-no", "traced", "unmapped", "absent"],
+)
+async def test_dialogue_press_value_follows_the_item_sub_type(
+    params: dict[str, int], expected: dict[str, int]
+) -> None:
+    """The confirm value comes from the sub-type, as the app's control sends it.
+
+    The app's dialogue template switches on ``params.type``: 1 is Yes/No, where
+    its two buttons send 1 ("Tak") and 0 ("Nie") and a Home Assistant press
+    confirms; 0 draws one OK button sending 2; and 2, the clear-lockout
+    dialogue, draws one cancel-styled button sending 3. Only the value varies --
+    the sub-type itself goes back to the controller untouched.
+    """
+    item = dict(_service_menu()[f"MS_{_SERVICE_LOCKOUT_ID}"])
+    item["parentId"] = 0
+    # Built from scratch rather than merged over the lockout item's params, so
+    # that the "absent" case really has no sub-type to fall back on.
+    item["params"] = {"txtId": 8395, "value": -1, "blockHide": 0, **params}
+    coordinator = _Coordinator()
+    entity = _modules["button"].MenuButtonEntity(
+        item, f"MS_{_SERVICE_LOCKOUT_ID}", coordinator, _Entry(), {}, depth=0
+    )
+
+    await entity.async_press()
+
+    assert coordinator.api.calls == [("MS", _SERVICE_LOCKOUT_ID, expected)]
+
+
+# ---------------------------------------------------------------------------
+# The gate: a tree the account may not read until it is given a code (#222)
+# ---------------------------------------------------------------------------
+
+
+def test_the_recorded_refusal_is_a_message_and_not_an_error() -> None:
+    """Pin down the shape of a refusal, which is the only signal there is.
+
+    The body is recorded from the demo account, which is refused the three trees
+    a consumer account cannot read. There is no ``data``, no elements and no
+    ``status``: HTTP 200 with a message is what a gated tree answers, so the
+    status code says nothing and the body has to be read.
+    """
+    bodies = _refused_bodies()
+
+    assert sorted(bodies) == ["MP", "MS", "MU"]
+    for menu_type, body in bodies.items():
+        assert body == {"message": f"missing items in {menu_type} menu"}
+        assert "data" not in body
+        assert "status" not in body
+
+
+async def test_a_recorded_refusal_costs_only_its_own_tree() -> None:
+    """The recorded bodies are handled as refusals, and cost no other tree.
+
+    This is the gated path tested against what the API actually sent rather than
+    a hand-built payload, and it is why a controller that answers for two trees
+    can still lose three of them silently: each refusal costs its own tree and
+    nothing else, and leaves no error behind for anyone to notice.
+    """
+    tech, _ = _menu_client(bodies=_refused_bodies())
+
+    items = await tech._fetch_menu_data("abcd")
+
+    assert sorted(key.split("_")[0] for key in items) == ["MI"]
+    # And nothing is reported for them: a menu the account may not read is how
+    # those trees have always behaved, so a refusal on its own is not news.
+    assert tech.menu_code_rejections == set()
+
+
+async def test_a_tree_configured_with_a_code_is_retried_once_and_arrives() -> None:
+    """A code the user supplied turns a refused tree into a served one.
+
+    The retry is the same GET with ``0:<code>`` appended, which is the documented
+    pairing: the code belongs to the tree root. It happens once, right after the
+    refusal that prompted it, and the tree's items then reach the controller's
+    cache like any other tree's.
+    """
+    tech, transport = _menu_client(gated=("MS", "1989"), menu_codes={"MS": "1989"})
+
+    items = await tech._fetch_menu_data("abcd")
+
+    assert list(transport.paths) == [
+        "users/7/modules/abcd/menu/MU/",
+        "users/7/modules/abcd/menu/MI/",
+        "users/7/modules/abcd/menu/MS/",
+        "users/7/modules/abcd/menu/MS/0:1989",
+        "users/7/modules/abcd/menu/MP/",
+    ]
+    # The tree opened: its child arrived beside the root that was all it would
+    # give away without the code.
+    assert "MS_7" in items
+    assert tech.menu_code_rejections == set()
+
+
+async def test_a_code_the_controller_rejects_is_tried_once_and_recorded() -> None:
+    """A code the controller will not accept is tried once and reported.
+
+    The refusal is the API's documented ``422 Invalid parameter pin`` -- the same
+    answer the write path gives for a bad pin -- so the tree keeps the root it
+    handed over and the code is recorded rather than retried.
+    """
+    tech, transport = _menu_client(gated=("MS", "1989"), menu_codes={"MS": "0000"})
+
+    items = await tech._fetch_menu_data("abcd")
+
+    assert transport.paths.count("users/7/modules/abcd/menu/MS/0:0000") == 1
+    # The tree stayed shut: all it gave away is the root, and the child the right
+    # code would have brought never arrived.
+    assert "MS_7" not in items
+    assert "MS_0" in items
+    assert tech.menu_code_rejections == {"MS"}
+
+
+async def test_an_unlock_answered_with_nothing_is_not_an_unlock() -> None:
+    """An empty element list is the other shape a refused code has been seen in.
+
+    The eModul app reads exactly this as a wrong code, so it is treated as the 422
+    is: the tree keeps its root and the code is recorded.
+    """
+    tech, _ = _menu_client(
+        gated=("MS", "1989"), menu_codes={"MS": "0000"}, empty_pin=True
+    )
+
+    items = await tech._fetch_menu_data("abcd")
+
+    assert "MS_7" not in items
+    assert "MS_0" in items
+    assert tech.menu_code_rejections == {"MS"}
+
+
+async def test_a_tree_left_shut_keeps_the_root_it_gave_away() -> None:
+    """A gated tree with no code contributes exactly what it handed over.
+
+    Its root is a group, so it becomes no entity at all -- which is the silent
+    absence the reporter saw.
+    """
+    tech, transport = _menu_client(gated=("MS", "1989"))
+
+    items = await tech._fetch_menu_data("abcd")
+
+    assert list(transport.paths) == [
+        f"users/7/modules/abcd/menu/{menu_type}/" for menu_type in const.MENU_TYPES
+    ]
+    assert "MS_0" in items
+    assert "MS_7" not in items
+    assert tech.menu_code_rejections == set()
+
+
+async def test_a_tree_the_account_may_not_read_is_never_retried() -> None:
+    """A message refusal is not a gate, and must not be sent a code.
+
+    The two blocked shapes differ: a gated tree hands over its root and can be
+    opened, while a menu the account may not read answers with a message and has
+    no password element to pair a code with. Retrying the second would be asking
+    the wrong question, and would read as a rejected code.
+    """
+    tech, transport = _menu_client(messaged="MS", menu_codes={"MS": "1989"})
+
+    await tech._fetch_menu_data("abcd")
+
+    assert transport.paths.count("users/7/modules/abcd/menu/MS/0:1989") == 0
+    assert tech.menu_code_rejections == set()
+
+
+class _FakeResponse:
+    """Minimal stand-in for an aiohttp response, for the real ``Tech.get``."""
+
+    status = 200
+
+    async def json(self) -> dict[str, Any]:
+        """Return an empty element list."""
+        return {"data": {"elements": []}}
+
+    async def text(self) -> str:
+        """Return nothing; only read on an error status."""
+        return ""
+
+    async def __aenter__(self) -> _FakeResponse:
+        """Enter the response context."""
+        return self
+
+    async def __aexit__(self, *exc: Any) -> bool:
+        """Leave the response context."""
+        return False
+
+
+class _FakeSession:
+    """Stand-in for the aiohttp session, recording the URLs requested."""
+
+    def __init__(self) -> None:
+        """Start with no requests recorded."""
+        self.urls: list[str] = []
+
+    def get(self, url: str, **kwargs: Any) -> _FakeResponse:
+        """Record the request and return a response."""
+        self.urls.append(url)
+        return _FakeResponse()
+
+
+async def test_a_menu_code_is_masked_out_of_the_request_log(caplog: Any) -> None:
+    """The code travels in the request path, and the path is logged.
+
+    ``.../menu/MS/0:<code>`` would put the credential in the log and in any
+    diagnostic download made of it, so the request line masks it. This drives the
+    real ``get``, because a stubbed transport never reaches the log line.
+    """
+    tech = _tech_module.Tech.__new__(_tech_module.Tech)
+    tech.base_url = _tech_module.Tech.TECH_API_URL
+    tech.headers = {}
+    tech.timeout = None
+    tech.session = _FakeSession()
+
+    with caplog.at_level(logging.DEBUG):
+        await tech.get("users/7/modules/abcd/menu/MS/0:1989")
+
+    assert "1989" not in caplog.text
+    assert "/menu/MS/0:**REDACTED**" in caplog.text
+
+
+def test_only_a_menu_code_is_masked_in_a_path() -> None:
+    """A path with no code keeps its shape, and every code in one is masked."""
+    assert (
+        _tech_module._redact_menu_pin("users/7/modules/abcd") == "users/7/modules/abcd"
+    )
+    assert (
+        _tech_module._redact_menu_pin("users/7/modules/abcd/menu/MS/0:1989")
+        == "users/7/modules/abcd/menu/MS/0:**REDACTED**"
+    )
+    # The documented multi-element form carries one code per element.
+    assert (
+        _tech_module._redact_menu_pin("users/7/modules/abcd/menu/MS/0:1234,33:4321")
+        == "users/7/modules/abcd/menu/MS/0:**REDACTED**,33:**REDACTED**"
+    )
+
+
+def _writing_client(menu_codes: dict[str, str]) -> tuple[Any, list[tuple[str, str]]]:
+    """Return a ``Tech`` client recording what it would POST."""
+    tech = _tech_module.Tech.__new__(_tech_module.Tech)
+    tech.user_id = 7
+    tech.authenticated = True
+    tech.menu_codes = dict(menu_codes)
+    sent: list[tuple[str, str]] = []
+
+    async def _post(path: str, payload: str) -> dict[str, Any]:
+        sent.append((path, payload))
+        return {"status": "success"}
+
+    tech.post = _post
+    return tech, sent
+
+
+async def test_a_menu_write_carries_the_code_in_the_body() -> None:
+    """A write into a gated tree attaches the code as a body field.
+
+    The spec is explicit that an item behind a lock needs the code attached --
+    "when a menu item is locked you need to attach a pin", as ``{"pin": 1234,
+    "value": 25}`` -- and lists a ``422 Invalid parameter pin`` for one it
+    rejects. Without this the reporter's clear-lockout button would reach a tree
+    it can read and still be refused the write.
+    """
+    tech, sent = _writing_client({"MS": "1989"})
+
+    await tech.set_menu_value(
+        "abcd", "MS", _SERVICE_LOCKOUT_ID, {"type": 2, "value": 3}
+    )
+
+    (path, payload) = sent[0]
+    assert path == f"users/7/modules/abcd/menu/MS/ido/{_SERVICE_LOCKOUT_ID}"
+    assert json.loads(payload) == {"type": 2, "value": 3, "pin": "1989"}
+
+
+async def test_a_menu_write_without_a_code_sends_no_pin() -> None:
+    """An entry with no codes writes exactly what it always wrote.
+
+    The key is absent rather than empty, so a controller that never needed a code
+    cannot be sent a stray field by this feature.
+    """
+    tech, sent = _writing_client({})
+
+    await tech.set_menu_value("abcd", "MU", 3550, {"value": 1})
+
+    assert json.loads(sent[0][1]) == {"value": 1}
+
+
+async def test_the_menu_code_never_reaches_the_log(caplog: Any) -> None:
+    """The code is sent, never logged.
+
+    It is a credential of the same kind as the token, and the write path logs its
+    payload at debug level, which is exactly where a code would leak into a
+    diagnostic download.
+    """
+    tech, _ = _writing_client({"MS": "1989"})
+
+    with caplog.at_level(logging.DEBUG):
+        await tech.set_menu_value("abcd", "MS", _SERVICE_LOCKOUT_ID, {"type": 2})
+
+    assert "1989" not in caplog.text
+
+
+def _install_issue_recorder() -> tuple[list[dict[str, Any]], list[str]]:
+    """Point the issue registry at recording fakes and return what it saw.
+
+    Patched on the module object ``coordinator.py`` actually bound rather than
+    through ``sys.modules``: the stub harness and a real Home Assistant install
+    both live in this interpreter, and which of the two that import resolved to
+    depends on the order the test modules were collected in.
+    """
+    created: list[dict[str, Any]] = []
+    deleted: list[str] = []
+
+    def _create(hass: Any, domain: str, issue_id: str, **kwargs: Any) -> None:
+        created.append({"domain": domain, "issue_id": issue_id, **kwargs})
+
+    def _delete(hass: Any, domain: str, issue_id: str) -> None:
+        deleted.append(issue_id)
+
+    _coordinator.ir.async_create_issue = _create
+    _coordinator.ir.async_delete_issue = _delete
+    return created, deleted
+
+
+def _menu_coordinator() -> Any:
+    """Return a coordinator carrying only what the issue sync reads.
+
+    Built with ``__new__`` the way this module builds its ``Tech`` clients. The
+    test modules here share the interpreter's import cache, so which
+    ``DataUpdateCoordinator`` the real class ends up deriving from depends on
+    collection order; the method under test needs neither the base class nor its
+    constructor, only ``hass`` and the entry it scopes the issue ids by.
+    """
+    coordinator = _coordinator.TechCoordinator.__new__(_coordinator.TechCoordinator)
+    coordinator.hass = object()
+    coordinator.config_entry = types.SimpleNamespace(
+        # "name" is ``CONF_NAME``: the controller the coordinator logs for.
+        data={const.CONTROLLER: {const.UDID: _UDID, "name": _HUB}}
+    )
+    return coordinator
+
+
+def test_a_rejected_code_is_the_only_refusal_worth_reporting() -> None:
+    """A code the controller refused is reported; nothing else is.
+
+    A refused menu is not news in itself: on a consumer account the manufacturer
+    menu is refused on every controller and the user menu on some, so reporting
+    each refusal would leave a permanent, unactionable notice on almost every
+    installation. A code the user supplied and the controller would not accept is
+    different -- it is specific, and they can act on it.
+    """
+    created, deleted = _install_issue_recorder()
+    coordinator = _menu_coordinator()
+
+    coordinator._async_sync_menu_code_issues({"MS"})
+
+    assert [issue["issue_id"] for issue in created] == [
+        f"menu_code_rejected_{_UDID}_MS"
+    ]
+    assert created[0]["translation_key"] == "menu_code_rejected"
+    assert created[0]["translation_placeholders"] == {"menu_type": "MS"}
+    assert created[0]["is_fixable"] is False
+    # Every other tree's notice is swept in the same pass.
+    assert f"menu_code_rejected_{_UDID}_MU" in deleted
+    assert len(deleted) == len(const.MENU_TYPES) - 1
+
+
+def test_nothing_is_reported_and_stale_notices_are_cleared() -> None:
+    """With no rejected code there is nothing to raise, and the old one goes.
+
+    The same pass clears the notices of trees that are no longer rejected, so a
+    code that starts being accepted -- retyped, or after the controller is reset
+    -- does not leave the user looking for a problem that is gone.
+    """
+    created, deleted = _install_issue_recorder()
+    coordinator = _menu_coordinator()
+
+    coordinator._async_sync_menu_code_issues(set())
+
+    assert created == []
+    assert f"menu_code_rejected_{_UDID}_MS" in deleted
+    assert len(deleted) == len(const.MENU_TYPES)
+
+
+# ---------------------------------------------------------------------------
+# The subtitle catalog cannot take the entry down with it
+# ---------------------------------------------------------------------------
+
+
+def _catalog_coordinator(
+    *, catalog: Any = None, error: Exception | None = None
+) -> tuple[Any, list[str]]:
+    """Return a coordinator whose catalog and module fetches are stubbed.
+
+    ``_async_update_data`` reads the entry's controller name and calls
+    ``module_data``, so those are the only two stubs it needs to run for real.
+    """
+    coordinator = _menu_coordinator()
+    coordinator.hass = types.SimpleNamespace(
+        config=types.SimpleNamespace(language="pl")
+    )
+    coordinator.translations = _coordinator.Translations()
+    coordinator.translations_loaded = False
+    calls: list[str] = []
+
+    async def _get_translations(language: str) -> Any:
+        calls.append(language)
+        if error is not None:
+            raise error
+        return catalog
+
+    async def _module_data(udid: str, force: bool = False) -> dict:
+        return {"menu_code_rejections": set()}
+
+    coordinator.api = types.SimpleNamespace(
+        get_translations=_get_translations, module_data=_module_data
+    )
+    return coordinator, calls
+
+
+async def test_a_failing_subtitle_catalog_costs_names_not_entities() -> None:
+    """An i18n outage must not cost the user everything.
+
+    On 2026-10-13 the API's ``i18n`` endpoint answered 400 for every language,
+    and the catalog is loaded inside ``async_setup_entry``: letting that escape
+    failed the whole entry, and with it every zone, tile and menu control the
+    user had. The catalog only names things, and ``Translations`` was written to
+    degrade to the raw text ids, so the failure is logged and nothing else.
+    """
+    coordinator, calls = _catalog_coordinator(
+        error=_tech_module.TechError(400, "Bad Request")
+    )
+
+    await coordinator.async_load_translations()
+
+    assert calls == ["pl"]
+    assert coordinator.translations_loaded is False
+    assert coordinator.translations.get_text(8395) == "txtId 8395"
+
+
+async def test_the_catalog_is_adopted_when_the_api_serves_it() -> None:
+    """A served catalog is used, and its labels resolve as before."""
+    coordinator, _ = _catalog_coordinator(catalog={"data": {"8395": "Zdjęcie blokady"}})
+
+    await coordinator.async_load_translations()
+
+    assert coordinator.translations_loaded is True
+    assert coordinator.translations.get_text(8395) == "Zdjęcie blokady"
+
+
+async def test_a_failed_catalog_is_retried_on_the_next_refresh() -> None:
+    """The fetch is retried until it lands, so a repaired API needs no restart."""
+    _install_issue_recorder()
+    coordinator, calls = _catalog_coordinator(
+        error=_tech_module.TechError(400, "Bad Request")
+    )
+
+    await coordinator._async_update_data()
+    await coordinator._async_update_data()
+
+    assert calls == ["pl", "pl"]
+
+
+async def test_a_loaded_catalog_is_never_fetched_again() -> None:
+    """Once the catalog is in, later refreshes stop asking for it.
+
+    The retry rides on the polling cadence, so it has to stop the moment it
+    succeeds: otherwise every poll pays for a request it does not need.
+    """
+    _install_issue_recorder()
+    coordinator, calls = _catalog_coordinator(catalog={"data": {"8395": "x"}})
+
+    await coordinator._async_update_data()
+    await coordinator._async_update_data()
+
+    assert calls == ["pl"]
