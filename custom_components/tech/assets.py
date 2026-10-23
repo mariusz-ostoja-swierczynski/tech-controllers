@@ -13,6 +13,8 @@ from .const import (
     ICON_BY_ID,
     ICON_BY_TYPE,
     MENU_ITEM_TYPE_GROUP,
+    MENU_LOCKOUT_CLEAR_TXT_ID,
+    MENU_LOCKOUT_STATUS_TXT_ID,
     TXT_ID_BY_TYPE,
 )
 
@@ -410,3 +412,67 @@ def menu_entity_name(
         if parent_label:
             label = f"{parent_label} - {label}"
     return prefix + label
+
+
+def menu_dialogue_entity_name(
+    item: dict[str, Any],
+    group_names: dict[tuple[str, int], str],
+    translations: Translations,
+    prefix: str = "",
+) -> str:
+    """Return the name of a dialogue button, telling lockout actions apart.
+
+    A lockout dialogue carries the status "Brak blokady" (no lockout) in
+    ``params.txtId``. The pressure-switch item's own label already names the
+    action ("Zdjęcie blokady"), but the fan-lockout item is labelled with the
+    thing that can be locked ("Blokada wentylatora") -- the same label as its
+    binary sensor. In that case the catalogue's action label is appended, so
+    the button says what pressing it does and no longer collides with the
+    sensor (#222).
+
+    Args:
+        item: Menu item payload from the API.
+        group_names: Lookup returned by :func:`build_menu_group_names`.
+        translations: Subtitle catalog used to resolve the labels.
+        prefix: Optional hub name prefix.
+
+    Returns:
+        The entity name, with the action appended for a lockout dialogue whose
+        own label is not already that action.
+
+    """
+    name = menu_entity_name(item, group_names, translations, prefix)
+    params = item.get("params", {})
+    if params.get("txtId") != MENU_LOCKOUT_STATUS_TXT_ID:
+        return name
+    if item.get("txtId") == MENU_LOCKOUT_CLEAR_TXT_ID:
+        return name
+    action = translations.get_text(MENU_LOCKOUT_CLEAR_TXT_ID)
+    if action in name:
+        return name
+    return f"{name} - {action}"
+
+
+def menu_item_is_settling(item: dict[str, Any]) -> bool:
+    """Return whether the controller is still applying a change to a menu item.
+
+    The eModul API answers a menu item with ``duringChange: "t"`` while the
+    controller is applying a write, and with ``"f"`` once it has settled. Some
+    payloads use booleans instead, and an item that was never changed carries
+    ``None``. Only ``"t"``/``True`` mean the value in this payload cannot be
+    trusted yet; treating ``None`` the same way would freeze every untouched
+    item for good.
+
+    Zones already work this way: :meth:`climate.TechThermostat.update_properties`
+    ignores a target temperature whose ``duringChange`` is true. Menu entities
+    need the same guard so an optimistic write survives a poll that lands
+    inside the window and still reports the old value (#184, #222).
+
+    Args:
+        item: Menu item payload returned by the Tech API.
+
+    Returns:
+        ``True`` while the controller is still applying a change to the item.
+
+    """
+    return item.get("duringChange") in ("t", True)

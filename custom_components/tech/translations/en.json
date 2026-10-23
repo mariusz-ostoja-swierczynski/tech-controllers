@@ -7,6 +7,10 @@
     "deprecated_flag_sensor_used": {
       "title": "Deprecated sensor detected",
       "description": "The sensor `{entity_id}` is deprecated: value type 28 widgets, which report Enabled/Disabled, are now exposed as binary sensors with the same name.\n\nIt is used in the following automations or scripts:\n{items}\n\nUpdate those, along with any dashboards and templates that use it, to use the binary sensor instead, then disable the deprecated sensor and restart Home Assistant."
+    },
+    "menu_code_rejected": {
+      "title": "Menu code not accepted",
+      "description": "The code configured for the controller's {menu_type} menu was not accepted, so that menu's controls are missing. Remove and re-add the integration to enter the code again. A wrong code looks exactly like no code, so it cannot be checked any other way."
     }
   },
   "config": {
@@ -35,6 +39,15 @@
         "data": {
           "controllers": "Controllers to import",
           "include_hub_in_name": "Include hub (controller) name in entity names"
+        }
+      },
+      "menu_codes": {
+        "title": "Menu codes",
+        "description": "Some controllers keep their installer and service menus behind a code. Enter the code for each menu you want Home Assistant to read, or leave the fields empty. A wrong code behaves exactly like no code.",
+        "data": {
+          "menu_code_mu": "User menu code (MU)",
+          "menu_code_mi": "Installer menu code (MI)",
+          "menu_code_ms": "Service menu code (MS)"
         }
       }
     }

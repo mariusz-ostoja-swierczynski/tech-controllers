@@ -7,6 +7,10 @@
         "deprecated_flag_sensor_used": {
             "title": "Senzor învechit detectat",
             "description": "Senzorul `{entity_id}` este învechit: widgeturile de tip valoare 28, care raportează Activat/Dezactivat, sunt acum expuse ca senzori binari cu același nume.\n\nEste folosit în următoarele automatizări sau scripturi:\n{items}\n\nActualizează-le, împreună cu tablourile de bord și șabloanele care îl folosesc, pentru a folosi senzorul binar, apoi dezactivează senzorul învechit și repornește Home Assistant."
+        },
+        "menu_code_rejected": {
+            "title": "Codul meniului nu a fost acceptat",
+            "description": "Codul configurat pentru meniul ({menu_type}) al centralei nu a fost acceptat, de aceea lipsesc elementele acelui meniu. Eliminați integrarea și adăugați-o din nou pentru a introduce codul din nou. Un cod greșit arată exact ca lipsa codului."
         }
     },
     "config": {
@@ -35,6 +39,15 @@
                 "data": {
                     "controllers": "Controlere de importat",
                     "include_hub_in_name": "Includere nume hub (controller) în numele entităților"
+                }
+            },
+            "menu_codes": {
+                "title": "Coduri de meniu",
+                "description": "Unele centrale țin meniurile de instalator și de service în spatele unui cod. Introduceți codul pentru fiecare meniu pe care Home Assistant trebuie să îl citească sau lăsați câmpurile goale. Un cod greșit se comportă exact ca lipsa codului.",
+                "data": {
+                    "menu_code_mu": "Cod meniu utilizator (MU)",
+                    "menu_code_mi": "Cod meniu instalator (MI)",
+                    "menu_code_ms": "Cod meniu service (MS)"
                 }
             }
         }

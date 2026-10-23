@@ -30,6 +30,7 @@ and community reported controllers.
   - and their corresponding Temperature, Battery, Humidity sensors, Window sensors when available
 - Climate entities display data through Thermostat card
 - Limited support for Menu handling (thanks [lhruska](https://github.com/lhruska)!)
+- Reads the installer and service menus of controllers that keep them behind a code (see [Menu codes](#menu-codes))
 - Provides sensors for eModul 'tiles'
 - Automatic naming and translations of tiles from eModul API
 - Supporting languages which are supported by eModul API
@@ -46,6 +47,30 @@ and community reported controllers.
 | `number`        | Number for menu parameters.         |
 | `select`        | Select for menu parameters.         |
 | `time`          | Time of day for menu parameters.    |
+
+### Menu codes
+
+Some controllers keep their installer and service menus behind a numeric code.
+The service menu is the deep one, and it is where a heat pump keeps controls an
+installer would use — clearing a pressure-switch lockout, for example. The API
+refuses to serve such a menu at all until it is given the code, and its refusal
+says nothing about which code it wants, so the code can only be entered by hand.
+
+The config flow asks for one code per menu — user (`MU`), installer (`MI`) and
+service (`MS`) — right after you pick your controllers. The manufacturer menu
+(`MP`) is not asked about: it is refused on every consumer account, so a code
+would not help. Every field is optional: leave a field empty if you have no code
+for that menu, and the integration behaves exactly as it did before, since a
+field left empty stores no code at all. Two things are worth knowing:
+
+- A wrong code looks exactly like no code. The API refuses the menu either way
+  with the same answer, so a mistyped code cannot be told apart from a missing
+  one — it simply does not unlock anything.
+- To change or remove a code, remove the integration entry and add it again.
+
+If a code you entered is not accepted, Home Assistant raises a repair issue
+naming that menu. Menus that simply cannot be read are not reported: on a
+consumer account that is normal for several of them.
 
 ![Tech Thermostat Cards](./images/ha-tech-1.png)
 

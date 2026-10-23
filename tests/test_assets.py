@@ -145,6 +145,25 @@ def test_menu_entity_name_prepends_parent_group_label() -> None:
     assert assets.menu_entity_name(group, group_names, translations) == "Pompa"
 
 
+def test_menu_item_is_settling_reads_the_during_change_flag() -> None:
+    """Only "t" (or a boolean true) means the reported value is still old.
+
+    A menu item that was never changed carries ``duringChange: null``; treating
+    that as "still changing" would freeze every entity. Zones use the same
+    rule: trust the value unless ``duringChange`` is true.
+    """
+    assert assets.menu_item_is_settling({"duringChange": "t"})
+    assert assets.menu_item_is_settling({"duringChange": True})
+
+    for settled in (
+        {"duringChange": "f"},
+        {"duringChange": False},
+        {"duringChange": None},
+        {},
+    ):
+        assert not assets.menu_item_is_settling(settled)
+
+
 def test_build_menu_context_bundles_all_lookups() -> None:
     """build_menu_context returns group names, assignments and depths."""
     translations = assets.Translations({"data": {"1": "Grupa"}})

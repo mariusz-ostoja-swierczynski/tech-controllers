@@ -412,14 +412,78 @@ OPENTHERM_MODULATION = {"txt_id": 428, "state_key": "modulationPercentage"}
 # Menu trees and item types
 # ---------------------------------------------------------------------------
 # The Tech API exposes four hierarchical menu trees per controller. Each is
-# fetched from /users/{uid}/modules/{udid}/menu/{TYPE}/. Only USER and
-# INSTALLER menus are loaded by default -- SERVICE and MANUFACTURER menus
-# are deeply nested, frequently locked, and not currently mapped to entities.
+# fetched from /users/{uid}/modules/{udid}/menu/{TYPE}/, and all four are read:
+# the eModul app derives the same four from its own routes ("menu",
+# "fitters_menu", "service_menu", "manufacturer_menu") and a controller may
+# keep a control in any of them. The pressure-switch lockout requested in #222
+# is one such case -- its clear-lockout dialogue and lockout time live in the
+# service tree, not in the user menu the reporter first looked at, so the tree
+# has to be asked for before that control can exist.
+#
+# Reading a tree is not the same as publishing it: items the account cannot use
+# arrive with ``access: false``, which the value/choice/switch platforms skip
+# (a dialogue still registers, and reports itself ``unavailable``), and the
+# depth limits below keep the deep per-zone subgroups off the registry.
 MENU_TYPE_USER = "MU"
 MENU_TYPE_INSTALLER = "MI"
 MENU_TYPE_SERVICE = "MS"
 MENU_TYPE_MANUFACTURER = "MP"
-MENU_TYPES = [MENU_TYPE_USER, MENU_TYPE_INSTALLER]
+MENU_TYPES = [
+    MENU_TYPE_USER,
+    MENU_TYPE_INSTALLER,
+    MENU_TYPE_SERVICE,
+    MENU_TYPE_MANUFACTURER,
+]
+
+# A tree can be gated behind a code the user has to supply (#222). A refusal is
+# HTTP 200 with body ``{"message": "missing items in <TYPE> menu"}`` and no
+# elements, so the code cannot be discovered from it -- only supplied by the
+# user. A wrong code and no code are indistinguishable, which is why the UI can
+# honestly say no more than "not accepted".
+#
+# The code travels in the path as ``<element id>:<code>`` pairs separated by
+# commas. The documented convention pairs it with id 0, the tree root, which is
+# the element carrying ``params.password`` in the dumps we have; a controller
+# that gated a non-root element would name it in the same segment. Pairing with
+# the root also sidesteps the ``type: 35`` "Menu password" *setting* item, whose
+# ``params.password`` is placeholder text rather than a credential.
+MENU_ROOT_ELEMENT_ID = 0
+
+# The API's answer to a menu code it will not accept: "Invalid parameter pin",
+# on the read path as well as the write one.
+MENU_PIN_REJECTION_STATUS = 422
+
+# The trees the config flow offers a code for. Not all four: the manufacturer
+# tree is refused on every consumer account seen and no code is likely to help,
+# so asking for one there would be a field nobody can fill in. Its manifest
+# names it ``manufacturer_menu`` and it stays fetched -- an installer account may
+# read it -- it is just never asked about.
+MENU_CODE_TREES = [
+    MENU_TYPE_USER,
+    MENU_TYPE_INSTALLER,
+    MENU_TYPE_SERVICE,
+]
+
+# Where the supplied codes live in the config entry's ``data``: a mapping of
+# menu type to code, holding only the trees the user gave a code for. An absent
+# key or an empty mapping means "no codes", which is exactly the behaviour of
+# every entry configured before this existed -- so there is no migration to
+# run and VERSION does not move.
+CONF_MENU_CODES = "menu_codes"
+
+
+def menu_code_field(menu_type: str) -> str:
+    """Return the config-flow field name that holds ``menu_type``'s code.
+
+    Args:
+        menu_type: One of :data:`MENU_CODE_TREES`, e.g. ``"MS"``.
+
+    Returns:
+        The schema key for that tree's code, e.g. ``"menu_code_ms"``.
+
+    """
+    return f"menu_code_{menu_type.lower()}"
+
 
 # A menu item's ``type`` field decides which HA platform it is mapped to:
 #   - GROUP             -> not an entity (organisational header)
@@ -427,6 +491,7 @@ MENU_TYPES = [MENU_TYPE_USER, MENU_TYPE_INSTALLER]
 #   - CODE / TIME_MODE  -> currently unmapped
 #   - ON_OFF            -> SwitchEntity
 #   - CHOICE            -> SelectEntity
+#   - CHECKBOX          -> SwitchEntity, one per option (bit of ``params.value``)
 #   - DIALOGUE          -> ButtonEntity (one-shot action)
 MENU_ITEM_TYPE_GROUP = 0
 MENU_ITEM_TYPE_VALUE = {1, 2, 3, 4, 5}
@@ -434,8 +499,42 @@ MENU_ITEM_TYPE_CODE = 6
 MENU_ITEM_TYPE_TIME_MODE = 7
 MENU_ITEM_TYPE_ON_OFF = 10
 MENU_ITEM_TYPE_CHOICE = {11, 111, 112}
+MENU_ITEM_TYPE_CHECKBOX = 15
 MENU_ITEM_TYPE_DIALOGUE = 20
 MENU_ITEM_TYPE_UNIVERSAL_VALUE = 106
+
+# A DIALOGUE item carries a sub-type in ``params.type``, and the value that
+# confirms it depends on that sub-type -- not on the item. The eModul app's
+# dialogue control switches on it and sends a fixed value, always pairing it
+# with ``params.type`` as the payload's ``type``:
+#   - 1 -- Yes/No: the two buttons send 1 ("Tak") and 0 ("Nie"), so a press
+#          from Home Assistant confirms with 1.
+#   - 0 -- one confirm button, value 2.
+#   - 2 -- one button styled as a cancel, value 3. This is the service menu's
+#          clear-lockout control of #222, whose press was traced to
+#          ``{"value": 3, "type": 2}`` on the reporter's controller.
+# A sub-type outside this table draws no control in the app, so no observed
+# value exists for it; the button keeps the value this platform has always
+# sent rather than inventing another.
+MENU_DIALOGUE_CONFIRM_VALUES: Final[dict[int, int]] = {0: 2, 1: 1, 2: 3}
+MENU_DIALOGUE_CONFIRM_FALLBACK: Final = 1
+
+# Catalogue text ids that identify what a dialogue does, whatever language the
+# account uses. ``txtId`` 839 is "Ustawienia fabryczne" ("Factory settings") on
+# every controller seen; a press wipes the controller's configuration, so those
+# buttons are registered disabled by default. The reporter asked for exactly
+# that after #222 exposed four of them (#222 comment of 2026-10-18).
+MENU_FACTORY_RESET_TXT_ID: Final = 839
+
+# A lockout dialogue carries the *status* "Brak blokady" ("No lockout") in
+# ``params.txtId`` (10018) while its own ``txtId`` names the item. For the
+# pressure-switch item the label is already the action ("Zdjęcie blokady",
+# 8395); for the fan lockout it is only the thing that can be locked
+# ("Blokada wentylatora", 6956), which collides with the binary sensor of the
+# same name. Button naming appends the catalogue's action label in the latter
+# case so the two entities stay distinguishable.
+MENU_LOCKOUT_STATUS_TXT_ID: Final = 10018
+MENU_LOCKOUT_CLEAR_TXT_ID: Final = 8395
 
 # Menu depth filtering thresholds. Tech menus on multi-zone controllers
 # (notably L-12 with ~4100 MI items) are deeply nested and exposing every

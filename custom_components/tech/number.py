@@ -242,6 +242,11 @@ class MenuNumberEntity(CoordinatorEntity, NumberEntity):
         """Handle updated data from the coordinator."""
         menus = self._coordinator.data.get("menus", {})
         item = menus.get(self._menu_key)
-        if item:
+        if item and not assets.menu_item_is_settling(item):
             self._update_from_item(item)
+        elif item:
+            _LOGGER.debug(
+                "Menu item %s is duringChange; keeping the optimistic state",
+                self._menu_key,
+            )
         self.async_write_ha_state()

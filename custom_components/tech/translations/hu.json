@@ -7,6 +7,10 @@
         "deprecated_flag_sensor_used": {
             "title": "Elavult érzékelő észlelve",
             "description": "A(z) `{entity_id}` érzékelő elavult: a 28-as értéktípusú widgetek, amelyek Engedélyezve/Letiltva állapotot jelentenek, mostantól azonos nevű bináris érzékelőkként jelennek meg.\n\nA következő automatizálásokban vagy szkriptekben használják:\n{items}\n\nFrissítsd ezeket, valamint az őket használó irányítópultokat és sablonokat, hogy a bináris érzékelőt használják, majd tiltsd le az elavult érzékelőt és indítsd újra a Home Assistantot."
+        },
+        "menu_code_rejected": {
+            "title": "A menükód nem lett elfogadva",
+            "description": "A vezérlő ({menu_type}) menüjéhez beállított kód nem lett elfogadva, ezért a menü elemei hiányoznak. Távolítsa el az integrációt, és adja hozzá újra a kód újbóli megadásához. A hibás kód pontosan úgy néz ki, mint a kód hiánya."
         }
     },
     "config": {
@@ -35,6 +39,15 @@
                 "data": {
                     "controllers": "Importálni kívánt vezérlők",
                     "include_hub_in_name": "A hub (vezérlő) nevének belefoglalása az entitásnevekbe"
+                }
+            },
+            "menu_codes": {
+                "title": "Menükódok",
+                "description": "Egyes vezérlők a telepítői és szervizmenüket kód mögött tartják. Adja meg minden menü kódját, amelyet a Home Assistantnak olvasnia kell, vagy hagyja üresen a mezőket. A hibás kód pontosan úgy viselkedik, mint a kód hiánya.",
+                "data": {
+                    "menu_code_mu": "Felhasználói menü kódja (MU)",
+                    "menu_code_mi": "Telepítői menü kódja (MI)",
+                    "menu_code_ms": "Szervizmenü kódja (MS)"
                 }
             }
         }
