@@ -127,7 +127,9 @@
       },
       "global_schedule_entity": {
         "name": "global schedule {schedule_number}"
-      },
+      }
+    },
+    "binary_sensor": {
       "schedule_problem_entity": {
         "name": "schedule problem"
       }

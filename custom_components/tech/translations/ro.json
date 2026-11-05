@@ -98,7 +98,9 @@
             },
             "global_schedule_entity": {
                 "name": "Programare globală {schedule_number}"
-            },
+            }
+        },
+        "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Problemă de programare"
             }

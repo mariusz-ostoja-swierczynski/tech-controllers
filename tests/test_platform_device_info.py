@@ -238,7 +238,7 @@ def _async_translate_state(
     domain: str,
     platform: str | None,
     translation_key: str | None,
-    device_class: str | None,
+    *tail: str | None,
 ) -> str:
     """Return the raw state; translation-specific tests replace this stub."""
     return state

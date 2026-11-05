@@ -768,11 +768,13 @@ def test_zone_schedule_mode_is_translated(
     entity = sensor.ZoneScheduleSensor(zone, coordinator, entry)
     entity.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
 
-    def translate(hass, state, domain, platform, key, device_class):
+    def translate(hass, state, domain, platform, key, *tail):
+        assert hass is entity.hass
         assert domain == "sensor"
         assert platform == const.DOMAIN
         assert key == "zone_schedule_entity"
         assert state == translation_key
+        assert tail == (None,)
         return expected
 
     monkeypatch.setattr(sensor, "async_translate_state", translate)
