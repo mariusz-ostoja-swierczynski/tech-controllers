@@ -321,8 +321,8 @@ def test_global_selection_uses_declared_index_and_never_uses_local_name() -> Non
         "active_schedule_name": "First",
     }
     assert entity.unique_id == f"{_UDID}_101_zone_climate"
-    assert entity.target_temperature == 23.5
-    assert entity.current_temperature == 21.0
+    assert entity.native_target_temperature == 23.5
+    assert entity.native_current_temperature == 21.0
     assert entity.hvac_mode == "heat"
     assert not any("interval" in key for key in entity.extra_state_attributes)
 
