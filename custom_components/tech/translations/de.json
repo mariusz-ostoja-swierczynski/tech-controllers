@@ -80,6 +80,29 @@
             },
             "zone_state_entity": {
                 "name": "{entity_name} Alarmzustand"
+            },
+            "controller_schedules": {
+                "name": "Zeitpläne"
+            },
+            "zone_schedule_entity": {
+                "name": "Zeitplan",
+                "state": {
+                  "constant-temp": "Konstante Temperatur",
+                  "global-schedule": "Globaler Zeitplan",
+                  "local-schedule": "Lokaler Zeitplan",
+                  "time-limit": "Zeitlimit"
+                }
+            },
+            "local_schedule_entity": {
+                "name": "Lokaler Zeitplan"
+            },
+            "global_schedule_entity": {
+                "name": "Globaler Zeitplan {schedule_number}"
+            }
+        },
+        "binary_sensor": {
+            "schedule_problem_entity": {
+                "name": "Zeitplanproblem"
             }
         }
     },

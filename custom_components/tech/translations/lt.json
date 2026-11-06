@@ -80,6 +80,29 @@
             },
             "zone_state_entity": {
                 "name": "{entity_name} Signalizacijos būsena"
+            },
+            "controller_schedules": {
+                "name": "Tvarkaraščiai"
+            },
+            "zone_schedule_entity": {
+                "name": "Tvarkaraštis",
+                "state": {
+                  "constant-temp": "Pastovi temperatūra",
+                  "global-schedule": "Bendras tvarkaraštis",
+                  "local-schedule": "Vietinis tvarkaraštis",
+                  "time-limit": "Laiko limitas"
+                }
+            },
+            "local_schedule_entity": {
+                "name": "Vietinis tvarkaraštis"
+            },
+            "global_schedule_entity": {
+                "name": "Bendras tvarkaraštis {schedule_number}"
+            }
+        },
+        "binary_sensor": {
+            "schedule_problem_entity": {
+                "name": "Tvarkaraščio problema"
             }
         }
     },

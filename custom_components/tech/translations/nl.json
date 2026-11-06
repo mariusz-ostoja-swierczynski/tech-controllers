@@ -80,6 +80,29 @@
             },
             "zone_state_entity": {
                 "name": "{entity_name} Alarmstatus"
+            },
+            "controller_schedules": {
+                "name": "Schema's"
+            },
+            "zone_schedule_entity": {
+                "name": "Schema",
+                "state": {
+                  "constant-temp": "Constante temperatuur",
+                  "global-schedule": "Globaal schema",
+                  "local-schedule": "Lokaal schema",
+                  "time-limit": "Tijdslimiet"
+                }
+            },
+            "local_schedule_entity": {
+                "name": "Lokaal schema"
+            },
+            "global_schedule_entity": {
+                "name": "Globaal schema {schedule_number}"
+            }
+        },
+        "binary_sensor": {
+            "schedule_problem_entity": {
+                "name": "Schemaprobleem"
             }
         }
     },

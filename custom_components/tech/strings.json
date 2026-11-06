@@ -109,6 +109,29 @@
       },
       "zone_state_entity": {
         "name": "{entity_name} alarm state"
+      },
+      "controller_schedules": {
+        "name": "schedules"
+      },
+      "zone_schedule_entity": {
+        "name": "schedule",
+        "state": {
+          "constant-temp": "Constant Temperature",
+          "global-schedule": "Global Schedule",
+          "local-schedule": "Local Schedule",
+          "time-limit": "Time Limit"
+        }
+      },
+      "local_schedule_entity": {
+        "name": "local schedule"
+      },
+      "global_schedule_entity": {
+        "name": "global schedule {schedule_number}"
+      }
+    },
+    "binary_sensor": {
+      "schedule_problem_entity": {
+        "name": "schedule problem"
       }
     }
   }

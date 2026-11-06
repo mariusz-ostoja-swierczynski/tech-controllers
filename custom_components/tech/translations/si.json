@@ -80,6 +80,29 @@
             },
             "zone_state_entity": {
                 "name": "{entity_name} Stanje alarma"
+            },
+            "controller_schedules": {
+                "name": "Urniki"
+            },
+            "zone_schedule_entity": {
+                "name": "Urnik",
+                "state": {
+                  "constant-temp": "Konstantna temperatura",
+                  "global-schedule": "Globalni urnik",
+                  "local-schedule": "Lokalni urnik",
+                  "time-limit": "Časovna omejitev"
+                }
+            },
+            "local_schedule_entity": {
+                "name": "Lokalni urnik"
+            },
+            "global_schedule_entity": {
+                "name": "Globalni urnik {schedule_number}"
+            }
+        },
+        "binary_sensor": {
+            "schedule_problem_entity": {
+                "name": "Težava z urnikom"
             }
         }
     },

@@ -47,6 +47,39 @@ and community reported controllers.
 | `number`        | Number for menu parameters.         |
 | `select`        | Select for menu parameters.         |
 
+### Read-only zone schedules
+
+Controllers that report zone schedules, including M-9r, expose three additional
+climate attributes: `schedule_mode`, `schedule_index` and `active_schedule_name`.
+An active name requires a complete, valid schedule and confirmed Normal mode;
+Holiday, Eco, Comfort, pending changes and failed updates suppress that name.
+A local schedule without a supplied name keeps the name empty. A controller is
+treated as schedule-capable when the payload exposes global template elements
+or a zone mode/schedule object, even if every zone is currently in
+constant-temperature mode.
+
+The zone also has a read-only **Schedule** sensor, enabled by default. Its state
+is the proven active schedule name, falling back to the configured mode
+(`globalSchedule`, `localSchedule`, `constantTemp`, ...). Its attributes carry
+the selected and local templates, applicability, validity and errors.
+
+The **Local schedule** sensor per zone and the **Global schedule N** sensors per
+controller are disabled by default. All five global slots are created up front;
+a slot without a template reports `missing` and becomes valid without a reload
+once the controller adds it. They report `valid`, `pending`, `invalid` or
+`missing`, with the Monday-first week, `HH:MM` interval times, Celsius
+temperatures and decoding errors. Intervals ending at midnight are displayed as
+`24:00`; the controller's `stop: 0` is treated as midnight. A controller-level **Schedules** diagnostic
+sensor, disabled by default, reports `ready`, `partial` or `missing`; its compact
+attributes summarize selection and errors without duplicating the template
+graphs. A **Schedule problem** binary sensor, enabled by default, turns on only
+when a selected template is missing or invalid. Raw controller payloads are not
+exposed.
+
+These are read-only configuration details from the existing poll. They add no
+API requests, do not change schedules or targets, and do not calculate the current
+or next target from the controller's clock.
+
 ### Menu codes
 
 Some controllers keep their installer and service menus behind a numeric code.

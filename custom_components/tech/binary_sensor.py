@@ -36,6 +36,7 @@ without that agreement the same widget could be emitted twice (or not at all).
 """
 
 import logging
+from typing import Any
 
 from homeassistant.components import binary_sensor
 from homeassistant.components.sensor.const import SensorDeviceClass
@@ -48,9 +49,11 @@ from homeassistant.const import (
     STATE_ON,
     EntityCategory,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType, UndefinedType
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import TechCoordinator, assets
 from .const import (
@@ -67,7 +70,8 @@ from .const import (
     WIDGET_DHW_PUMP,
     widget_unit,
 )
-from .entity import TileEntity
+from .entity import TileEntity, controller_device_info
+from .schedules import schedule_problem
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -235,6 +239,10 @@ async def async_setup_entry(
                 entities.append(
                     TileWidgetStatusSensor(tile, coordinator, config_entry)
                 )
+
+    schedule_data = (coordinator.data or {}).get("schedules")
+    if isinstance(schedule_data, dict) and schedule_data.get("supported"):
+        entities.append(ScheduleProblemSensor(coordinator, config_entry))
 
     async_add_entities(entities, True)
 
@@ -443,3 +451,51 @@ class TileWidgetStatusSensor(TileBinarySensor):
         if status_id == 0:
             return False
         return None
+
+
+class ScheduleProblemSensor(CoordinatorEntity, binary_sensor.BinarySensorEntity):
+    """Controller-level read-only indicator for unusable selected schedules."""
+
+    _attr_device_class = binary_sensor.BinarySensorDeviceClass.PROBLEM
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_has_entity_name = True
+    _attr_translation_key = "schedule_problem_entity"
+    _attr_entity_registry_enabled_default = True
+
+    def __init__(self, coordinator: TechCoordinator, config_entry: ConfigEntry) -> None:
+        """Bind to the existing coordinator without an additional API read."""
+        super().__init__(coordinator)
+        self._config_entry = config_entry
+        self._udid = config_entry.data[CONTROLLER][UDID]
+
+    @property
+    def unique_id(self) -> str:
+        """Keep one stable entity identity per physical controller."""
+        return f"{self._udid}_schedule_problem"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Attach to the shared controller device."""
+        return controller_device_info(self._config_entry)
+
+    def _schedule_data(self) -> Any:
+        """Return the current schedule snapshot."""
+        return (self.coordinator.data or {}).get("schedules")
+
+    @property
+    def available(self) -> bool:
+        """Become unavailable when the schedule snapshot disappears."""
+        return super().available and isinstance(self._schedule_data(), dict)
+
+    @property
+    def is_on(self) -> bool | None:
+        """Report a problem only for a selected schedule that is actually broken."""
+        data = self._schedule_data()
+        if not self.coordinator.last_update_success or not isinstance(data, dict):
+            return None
+        return schedule_problem(data, True)
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Write the coordinator's schedule problem state."""
+        self.async_write_ha_state()

@@ -80,6 +80,29 @@
             },
             "zone_state_entity": {
                 "name": "{entity_name} Stato di allarme"
+            },
+            "controller_schedules": {
+                "name": "Programmazioni"
+            },
+            "zone_schedule_entity": {
+                "name": "Programmazione",
+                "state": {
+                  "constant-temp": "Temperatura costante",
+                  "global-schedule": "Programmazione globale",
+                  "local-schedule": "Programmazione locale",
+                  "time-limit": "Limite di tempo"
+                }
+            },
+            "local_schedule_entity": {
+                "name": "Programmazione locale"
+            },
+            "global_schedule_entity": {
+                "name": "Programmazione globale {schedule_number}"
+            }
+        },
+        "binary_sensor": {
+            "schedule_problem_entity": {
+                "name": "Problema di programmazione"
             }
         }
     },

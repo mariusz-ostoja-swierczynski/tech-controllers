@@ -60,6 +60,7 @@ from homeassistant.helpers import entity_registry as er, issue_registry as ir
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.icon import icon_for_signal_level
+from homeassistant.helpers.translation import async_translate_state
 from homeassistant.helpers.typing import UndefinedType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -122,7 +123,15 @@ from .const import (
     widget_unit,
 )
 from .coordinator import TechCoordinator
-from .entity import TileEntity
+from .entity import TileEntity, controller_device_info
+from .schedules import (
+    GLOBAL_SCHEDULE_SLOTS,
+    global_schedule_details,
+    local_schedule_details,
+    schedule_summary,
+    zone_schedule_attributes,
+    zone_schedule_info,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -163,8 +172,16 @@ async def async_setup_entry(
         hass, tiles, coordinator, config_entry
     )
 
+    schedule_data = (coordinator.data or {}).get("schedules")
+    schedule_entities = []
+    if isinstance(schedule_data, dict) and schedule_data.get("supported"):
+        schedule_entities.append(ControllerSchedulesSensor(coordinator, config_entry))
+        schedule_entities.extend(
+            ControllerGlobalScheduleSensor(coordinator, config_entry, index)
+            for index in range(GLOBAL_SCHEDULE_SLOTS)
+        )
     async_add_entities(
-        [*tile_entities, *zone_entities, *deprecated_entities], True
+        [*tile_entities, *zone_entities, *deprecated_entities, *schedule_entities], True
     )
 
 
@@ -211,6 +228,14 @@ def _build_zone_entities(
 
     if isinstance(zone.get(UNDERFLOOR), dict) and zone.get(UNDERFLOOR):
         entities.append(ZoneUnderfloorSensor(zone, coordinator, config_entry))
+
+    schedule_data = (coordinator.data or {}).get("schedules")
+    if isinstance(schedule_data, dict) and schedule_data.get("supported"):
+        zone_id = zone_state.get(CONF_ID)
+        schedule_zones = schedule_data.get("zones")
+        if isinstance(schedule_zones, dict) and zone_id in schedule_zones:
+            entities.append(ZoneScheduleSensor(zone, coordinator, config_entry))
+            entities.append(ZoneLocalScheduleSensor(zone, coordinator, config_entry))
 
     return entities
 
@@ -1816,3 +1841,248 @@ class TileOpenThermPercentageSensor(TileGenericOpenThermSensor):
         set_attr("activeHeating", flag=True)
         set_attr("communication", flag=True)
         set_attr("heatingCurve", flag=True)
+
+
+class ControllerSchedulesSensor(CoordinatorEntity, SensorEntity):
+    """One opt-in read-only view of all controller schedule templates."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+    _attr_has_entity_name = True
+    _attr_translation_key = "controller_schedules"
+    _attr_icon = "mdi:calendar-week"
+
+    def __init__(self, coordinator: TechCoordinator, config_entry: ConfigEntry) -> None:
+        """Bind to the existing coordinator without an additional API read."""
+        super().__init__(coordinator)
+        self._config_entry = config_entry
+        self._udid = config_entry.data[CONTROLLER][UDID]
+
+    @property
+    def unique_id(self) -> str:
+        """Keep one stable entity identity per physical controller."""
+        return f"{self._udid}_schedules"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Attach to the existing controller device, rather than every zone."""
+        return controller_device_info(self._config_entry)
+
+    def _diagnostics(self) -> dict[str, Any]:
+        """Compute compact attributes from the latest snapshot."""
+        return schedule_summary(
+            (self.coordinator.data or {}).get("schedules"),
+            self.coordinator.last_update_success,
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Report decoding status; availability follows the shared coordinator."""
+        if not self.coordinator.last_update_success:
+            return None
+        return self._diagnostics()["status"]
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose stable configuration, applicability and decoding provenance."""
+        return {
+            key: value for key, value in self._diagnostics().items() if key != "status"
+        }
+
+
+class ZoneScheduleSensor(ZoneSensor):
+    """Read-only view of one zone's configured and active schedule."""
+
+    _attr_translation_key = "zone_schedule_entity"
+    _attr_entity_registry_enabled_default = True
+    _attr_icon = "mdi:calendar-week"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_zone_schedule"
+
+    def update_properties(self, device):
+        """Keep the zone label; the schedule itself comes from the coordinator."""
+        self._name = device[CONF_DESCRIPTION][CONF_NAME]
+
+    def _schedule_data(self) -> Any:
+        """Return the current schedule snapshot."""
+        return (self.coordinator.data or {}).get("schedules")
+
+    @property
+    def available(self) -> bool:
+        """Become unavailable when the schedule snapshot disappears."""
+        return super().available and isinstance(self._schedule_data(), dict)
+
+    @property
+    def native_value(self) -> str | None:
+        """Prefer the proven active name, then a translated configured mode."""
+        data = self._schedule_data()
+        if not self.coordinator.last_update_success or not isinstance(data, dict):
+            return None
+        info = zone_schedule_info(data, self._id, True)
+        if info["active_schedule_name"]:
+            return info["active_schedule_name"]
+        mode = info["schedule_mode"]
+        if mode is None:
+            return None
+        hass = getattr(self, "hass", None)
+        if hass is None:
+            return mode
+        translation_key = _SCHEDULE_MODE_TRANSLATION_KEYS.get(mode)
+        if translation_key is None:
+            return mode
+        translated = async_translate_state(
+            hass,
+            translation_key,
+            "sensor",
+            DOMAIN,
+            "zone_schedule_entity",
+            None,
+        )
+        return mode if translated == translation_key else translated
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose selection, applicability, local template and errors."""
+        data = self._schedule_data()
+        if not isinstance(data, dict):
+            return {}
+        return zone_schedule_attributes(data, self._id, True)
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Write the coordinator's schedule view without touching tile state."""
+        self.async_write_ha_state()
+
+
+class ZoneLocalScheduleSensor(ZoneSensor):
+    """Read-only view of one zone's local schedule template."""
+
+    _attr_translation_key = "local_schedule_entity"
+    _attr_entity_registry_enabled_default = False
+    _attr_icon = "mdi:calendar-week"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_zone_schedule_local"
+
+    def update_properties(self, device):
+        """Keep the zone label; the template comes from the coordinator."""
+        self._name = device[CONF_DESCRIPTION][CONF_NAME]
+
+    def _schedule_data(self) -> Any:
+        """Return the current schedule snapshot."""
+        return (self.coordinator.data or {}).get("schedules")
+
+    def _details(self) -> dict[str, Any] | None:
+        """Return the decoded local template, or ``None`` without a snapshot."""
+        data = self._schedule_data()
+        if not isinstance(data, dict):
+            return None
+        return local_schedule_details(data, self._id)
+
+    @property
+    def available(self) -> bool:
+        """Become unavailable when the schedule snapshot disappears."""
+        return super().available and isinstance(self._schedule_data(), dict)
+
+    @property
+    def native_value(self) -> str | None:
+        """Report missing, pending, valid or invalid."""
+        return _template_status(self._details())
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the decoded template and its provenance."""
+        return self._details() or {}
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Write the coordinator's schedule view without touching tile state."""
+        self.async_write_ha_state()
+
+
+def _template_status(details: dict[str, Any] | None) -> str | None:
+    """Turn one decoded template into a compact sensor state."""
+    if details is None:
+        return None
+    if not details["found"]:
+        return "missing"
+    if not details["settled"]:
+        return "pending"
+    return "valid" if details["valid"] else "invalid"
+
+
+_SCHEDULE_MODE_TRANSLATION_KEYS = {
+    "constantTemp": "constant-temp",
+    "globalSchedule": "global-schedule",
+    "localSchedule": "local-schedule",
+    "timeLimit": "time-limit",
+}
+
+
+class ControllerGlobalScheduleSensor(CoordinatorEntity, SensorEntity):
+    """Read-only view of one global schedule template slot."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+    _attr_has_entity_name = True
+    _attr_translation_key = "global_schedule_entity"
+    _attr_icon = "mdi:calendar-week"
+
+    def __init__(
+        self,
+        coordinator: TechCoordinator,
+        config_entry: ConfigEntry,
+        index: int,
+    ) -> None:
+        """Bind to the existing coordinator and one global slot."""
+        super().__init__(coordinator)
+        self._config_entry = config_entry
+        self._udid = config_entry.data[CONTROLLER][UDID]
+        self._index = index
+        self._attr_translation_placeholders = {"schedule_number": str(index + 1)}
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._udid}_schedule_global_{self._index}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Attach to the controller device."""
+        return controller_device_info(self._config_entry)
+
+    def _schedule_data(self) -> Any:
+        """Return the current schedule snapshot."""
+        return (self.coordinator.data or {}).get("schedules")
+
+    def _details(self) -> dict[str, Any] | None:
+        """Return the decoded global template, or ``None`` without a snapshot."""
+        data = self._schedule_data()
+        if not isinstance(data, dict):
+            return None
+        return global_schedule_details(data, self._index)
+
+    @property
+    def available(self) -> bool:
+        """Become unavailable when the schedule snapshot disappears."""
+        return super().available and isinstance(self._schedule_data(), dict)
+
+    @property
+    def native_value(self) -> str | None:
+        """Report missing, pending, valid or invalid."""
+        return _template_status(self._details())
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the decoded template and its provenance."""
+        return self._details() or {}
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Write the coordinator's schedule view without touching tile state."""
+        self.async_write_ha_state()

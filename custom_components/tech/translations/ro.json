@@ -80,6 +80,29 @@
             },
             "zone_state_entity": {
                 "name": "{entity_name} Stare de alarmă"
+            },
+            "controller_schedules": {
+                "name": "Programări"
+            },
+            "zone_schedule_entity": {
+                "name": "Programare",
+                "state": {
+                  "constant-temp": "Temperatură constantă",
+                  "global-schedule": "Programare globală",
+                  "local-schedule": "Programare locală",
+                  "time-limit": "Limită de timp"
+                }
+            },
+            "local_schedule_entity": {
+                "name": "Programare locală"
+            },
+            "global_schedule_entity": {
+                "name": "Programare globală {schedule_number}"
+            }
+        },
+        "binary_sensor": {
+            "schedule_problem_entity": {
+                "name": "Problemă de programare"
             }
         }
     },

@@ -62,6 +62,7 @@ _FAKE_MODULES = (
     "homeassistant.helpers.entity_registry",
     "homeassistant.helpers.icon",
     "homeassistant.helpers.issue_registry",
+    "homeassistant.helpers.translation",
     "homeassistant.helpers.typing",
     "homeassistant.helpers.update_coordinator",
 )
@@ -231,6 +232,18 @@ def _scripts_with_entity(hass: Any, entity_id: str) -> list[str]:
     return []
 
 
+def _async_translate_state(
+    hass: Any,
+    state: str,
+    domain: str,
+    platform: str | None,
+    translation_key: str | None,
+    *tail: str | None,
+) -> str:
+    """Return the raw state; translation-specific tests replace this stub."""
+    return state
+
+
 def _fake_module(name: str) -> types.ModuleType:
     """Build the stub for one ``homeassistant`` module."""
     module = types.ModuleType(name)
@@ -316,6 +329,8 @@ def _fake_module(name: str) -> types.ModuleType:
         module.IssueSeverity = _AutoNamespace()
         module.async_create_issue = _async_create_issue
         module.async_delete_issue = _async_delete_issue
+    elif name == "homeassistant.helpers.translation":
+        module.async_translate_state = _async_translate_state
     elif name == "homeassistant.helpers.typing":
         module.UndefinedType = type("UndefinedType", (), {})
     return module
@@ -354,6 +369,7 @@ def _install_stubs() -> None:
                 "entity_registry",
                 "icon",
                 "issue_registry",
+                "translation",
                 "typing",
                 "update_coordinator",
             ),

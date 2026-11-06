@@ -80,6 +80,29 @@
             },
             "zone_state_entity": {
                 "name": "Estado de alarme de {entity_name}"
+            },
+            "controller_schedules": {
+                "name": "Horários"
+            },
+            "zone_schedule_entity": {
+                "name": "Horário",
+                "state": {
+                  "constant-temp": "Temperatura constante",
+                  "global-schedule": "Horário global",
+                  "local-schedule": "Horário local",
+                  "time-limit": "Limite de tempo"
+                }
+            },
+            "local_schedule_entity": {
+                "name": "Horário local"
+            },
+            "global_schedule_entity": {
+                "name": "Horário global {schedule_number}"
+            }
+        },
+        "binary_sensor": {
+            "schedule_problem_entity": {
+                "name": "Problema de horário"
             }
         }
     },

@@ -80,6 +80,29 @@
             },
             "zone_state_entity": {
                 "name": "{entity_name} Alarmno stanje"
+            },
+            "controller_schedules": {
+                "name": "Rasporedi"
+            },
+            "zone_schedule_entity": {
+                "name": "Raspored",
+                "state": {
+                  "constant-temp": "Konstantna temperatura",
+                  "global-schedule": "Globalni raspored",
+                  "local-schedule": "Lokalni raspored",
+                  "time-limit": "Vremensko ograničenje"
+                }
+            },
+            "local_schedule_entity": {
+                "name": "Lokalni raspored"
+            },
+            "global_schedule_entity": {
+                "name": "Globalni raspored {schedule_number}"
+            }
+        },
+        "binary_sensor": {
+            "schedule_problem_entity": {
+                "name": "Problem s rasporedom"
             }
         }
     },
