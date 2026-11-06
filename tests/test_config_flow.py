@@ -130,7 +130,6 @@ def _fake_module(name: str) -> types.ModuleType:
         module.ConfigEntry = _ConfigEntry
         module.ConfigFlowResult = dict
         module.SOURCE_USER = "user"
-        module.CONN_CLASS_CLOUD_POLL = "cloud_poll"
         module.HANDLERS = _Handlers()
     elif name == "homeassistant.core":
         module.HomeAssistant = object
