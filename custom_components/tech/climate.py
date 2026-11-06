@@ -29,7 +29,15 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import assets
-from .const import CONTROLLER, DOMAIN, INCLUDE_HUB_IN_NAME, MANUFACTURER, UDID, VER
+from .const import (
+    CONTROLLER,
+    DOMAIN,
+    INCLUDE_HUB_IN_NAME,
+    MANUFACTURER,
+    UDID,
+    VER,
+    scaled_number,
+)
 from .coordinator import TechCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -130,7 +138,9 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         # Update target temperature
         if device[CONF_ZONE]["setTemperature"] is not None:
             if device[CONF_ZONE]["duringChange"] is False:
-                self._target_temperature = device[CONF_ZONE]["setTemperature"] / 10
+                self._target_temperature = scaled_number(
+                    device[CONF_ZONE]["setTemperature"], 10
+                )
             else:
                 _LOGGER.debug(
                     "Zone ID %s is duringChange so ignore to update target temperature",
@@ -140,10 +150,9 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
             self._target_temperature = None
 
         # Update current temperature
-        if device[CONF_ZONE]["currentTemperature"] is not None:
-            self._temperature = device[CONF_ZONE]["currentTemperature"] / 10
-        else:
-            self._temperature = None
+        self._temperature = scaled_number(
+            device[CONF_ZONE].get("currentTemperature"), 10
+        )
 
         # Update humidity
         if (
