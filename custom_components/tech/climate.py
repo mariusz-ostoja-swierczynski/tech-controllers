@@ -239,9 +239,9 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
 
     # Home Assistant 2026.11 renamed these temperature properties with a
     # ``native_`` prefix and took ownership of the ``temperature_unit`` state
-    # attribute, so this entity needs 2026.11 or newer. The old names keep
-    # working but log a deprecation warning, and are removed in 2027.11. See
-    # https://developers.home-assistant.io/blog/2026/10/08/climate-native-temperature
+    # attribute. The old names remain deprecated until 2027.11; this entity
+    # targets 2026.11, so it implements only the native properties.
+    # See https://developers.home-assistant.io/blog/2026/10/08/climate-native-temperature
     @property
     def native_temperature_unit(self) -> str:
         """Return the unit of measurement."""
