@@ -60,6 +60,18 @@ from .coordinator import TechCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 
+def controller_device_info(config_entry) -> DeviceInfo:
+    """Return the shared device description for controller-level entities."""
+    controller = config_entry.data[CONTROLLER]
+    return {
+        ATTR_IDENTIFIERS: {(DOMAIN, controller[UDID])},
+        CONF_NAME: config_entry.title,
+        "model": controller.get(CONF_NAME, ""),
+        "sw_version": controller.get(VER, ""),
+        ATTR_MANUFACTURER: MANUFACTURER,
+    }
+
+
 class TileEntity(
     CoordinatorEntity,
     entity.Entity,
@@ -133,14 +145,7 @@ class TileEntity(
         controllers (ST-491, ST-505, ST-976...) still produce a single
         device with grouped entities instead of orphaned, ungrouped entries.
         """
-        controller = self._config_entry.data[CONTROLLER]
-        return {
-            ATTR_IDENTIFIERS: {(DOMAIN, self._udid)},
-            CONF_NAME: self._config_entry.title,
-            "model": controller.get(CONF_NAME, ""),
-            "sw_version": controller.get(VER, ""),
-            ATTR_MANUFACTURER: MANUFACTURER,
-        }
+        return controller_device_info(self._config_entry)
 
     @property
     def unique_id(self) -> str:

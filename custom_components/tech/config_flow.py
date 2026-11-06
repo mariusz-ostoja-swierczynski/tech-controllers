@@ -20,13 +20,16 @@ from homeassistant.helpers import aiohttp_client, config_validation as cv
 from homeassistant.helpers.redact import async_redact_data
 
 from .const import (
+    CONF_MENU_CODES,
     CONTROLLER,
     CONTROLLERS,
     DOMAIN,
     INCLUDE_HUB_IN_NAME,
+    MENU_CODE_TREES,
     UDID,
     USER_ID,
     VER,
+    menu_code_field,
 )
 from .tech import Tech, TechError, TechLoginError
 
@@ -38,6 +41,51 @@ DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_PASSWORD): cv.string,
     }
 )
+
+
+def menu_codes_schema() -> vol.Schema:
+    """Build the optional per-tree menu-code form.
+
+    One field per tree that can be gated, every one optional. Some controllers
+    keep their installer and service menus behind a code and the API refuses such
+    a tree outright -- HTTP 200 with a message and no items -- without saying
+    which code it wants, so the code cannot be discovered from the refusal. It
+    can only be supplied, which is what this form is for.
+
+    Returns:
+        Voluptuous schema with an optional code field for every menu tree that
+        can be gated.
+
+    """
+    return vol.Schema(
+        {
+            vol.Optional(menu_code_field(menu_type), default=""): cv.string
+            for menu_type in MENU_CODE_TREES
+        }
+    )
+
+
+def _menu_codes_from(user_input: dict[str, Any]) -> dict[str, str]:
+    """Return the codes a payload carries, dropping the empty ones.
+
+    An empty field means "no code", not "an empty code", so it is not stored at
+    all: an entry is then indistinguishable from one configured before codes
+    existed, and no empty code is ever sent to the controller.
+
+    Args:
+        user_input: Validated payload holding the code fields, or any payload --
+            such as the controller selection alone -- that holds none of them.
+
+    Returns:
+        Mapping of menu type to code, holding only the trees that were given
+        one.
+
+    """
+    return {
+        menu_type: code
+        for menu_type in MENU_CODE_TREES
+        if (code := str(user_input.get(menu_code_field(menu_type), "")).strip())
+    }
 
 
 def controllers_schema(controllers) -> vol.Schema:
@@ -114,6 +162,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize the config flow."""
         self._init_info: dict[str, Any] | None = None
         self._controllers: list[dict] | None = None
+        # The controller selection, held between its own step and the menu-code
+        # step that follows it: the entry is created only once both are in.
+        self._pending_input: dict[str, str] | None = None
 
     async def _async_finish_controller(
         self, user_input: dict[str, str]
@@ -135,6 +186,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # about the user's choice -- only its value does.
         include_name: bool = bool(user_input.get(INCLUDE_HUB_IN_NAME, False))
 
+        # The codes ride along in the same payload: the step that asks for them
+        # merges its own fields into the selection this method is given.
+        menu_codes = _menu_codes_from(user_input)
+
         if self._controllers is None or not user_input.get(CONTROLLERS):
             return self.async_abort(reason="no_modules")
 
@@ -154,9 +209,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # does not create an entry, so it finishes with an informational abort.
         for controller in selected:
             controller[INCLUDE_HUB_IN_NAME] = include_name
+            if menu_codes:
+                # Stored next to the token and the user id because the fetch
+                # that needs them happens right after setup, per controller, and
+                # because a code is a credential of the same kind.
+                controller[CONF_MENU_CODES] = dict(menu_codes)
             _LOGGER.debug(
                 "Adding config entry for: %s",
-                async_redact_data(controller, ["token"]),
+                async_redact_data(controller, ["token", CONF_MENU_CODES]),
             )
             await self.hass.config_entries.async_add(
                 self._create_config_entry(controller=controller)
@@ -188,7 +248,41 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data_schema=controllers_schema(controllers=self._controllers),
             )
 
-        return await self._async_finish_controller(user_input)
+        # Hold the selection for the step that follows: the codes are asked for
+        # on their own form, and the entries are created once both are in.
+        self._pending_input = dict(user_input)
+        return await self.async_step_menu_codes()
+
+    async def async_step_menu_codes(
+        self,
+        user_input: dict[str, str] | None = None,
+    ) -> ConfigFlowResult:
+        """Ask for the per-menu codes and then create the config entries.
+
+        A controller can keep its installer and service menus behind a code, and
+        the API refuses such a tree outright rather than saying which code it
+        wants, so a code can only be supplied by the user. Every field is
+        optional and empty means "no code", so a user with none can submit the
+        form untouched and get exactly the behaviour of an entry that predates
+        this step.
+
+        Args:
+            user_input: The code entered for each menu tree, if the form was
+                submitted.
+
+        Returns:
+            The code form, or the final entry creation result.
+
+        """
+        if user_input is None:
+            return self.async_show_form(
+                step_id="menu_codes",
+                data_schema=menu_codes_schema(),
+            )
+
+        return await self._async_finish_controller(
+            {**(self._pending_input or {}), **user_input}
+        )
 
     async def async_step_user(
         self, user_input: dict[str, str] | None = None

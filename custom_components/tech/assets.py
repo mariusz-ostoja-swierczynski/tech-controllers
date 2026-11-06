@@ -6,13 +6,15 @@ from dataclasses import dataclass
 import logging
 from typing import Any
 
-from homeassistant.const import CONF_DESCRIPTION, CONF_NAME
+from homeassistant.const import CONF_DESCRIPTION, CONF_NAME, CONF_ZONE
 
 from .const import (
     DEFAULT_ICON,
     ICON_BY_ID,
     ICON_BY_TYPE,
     MENU_ITEM_TYPE_GROUP,
+    MENU_LOCKOUT_CLEAR_TXT_ID,
+    MENU_LOCKOUT_STATUS_TXT_ID,
     TXT_ID_BY_TYPE,
 )
 
@@ -174,6 +176,30 @@ def build_menu_group_names(
     return groups
 
 
+def zone_payloads(zones: dict[int, Any] | None) -> dict[int, dict[str, Any]]:
+    """Return only the entries of ``zones`` that are usable zone payloads.
+
+    The API delivers zones under a ``zones.elements`` envelope, which
+    :meth:`tech.Tech.module_data` normalises into a zone-id mapping filtered for
+    visible zones. Controllers with no zones at all -- heat pumps, for instance
+    -- may still send an envelope in that position, and a payload can carry
+    entries without the expected ``zone`` sub-dict. Consumers filter through here
+    rather than assuming the shape and raising on it.
+
+    Args:
+        zones: Value of the cached ``zones`` entry, which may be malformed.
+
+    Returns:
+        Mapping of zone ID to zone payload, containing only usable entries.
+
+    """
+    return {
+        zone_id: zone
+        for zone_id, zone in (zones or {}).items()
+        if isinstance(zone, dict) and isinstance(zone.get(CONF_ZONE), dict)
+    }
+
+
 def build_menu_zone_assignments(
     menus: dict[str, dict[str, Any]],
     zones: dict[int, dict[str, Any]],
@@ -192,6 +218,7 @@ def build_menu_zone_assignments(
         Dictionary mapping menu item key (e.g. ``MI_308``) to zone ID.
 
     """
+    zones = zone_payloads(zones)
     if not zones:
         return {}
 
@@ -231,7 +258,21 @@ def build_menu_zone_assignments(
         children_by_parent.get((mt, zones_group["id"]), []), key=lambda g: g["id"]
     )
 
-    # Sort zones by index for positional matching
+    # Sort zones by index for positional matching. A zone without an index
+    # cannot be matched to a subgroup positionally, and guessing would attach
+    # menu items to the wrong zone device, so skip the assignment entirely.
+    without_index = [
+        zid for zid, zdata in zones.items() if zdata["zone"].get("index") is None
+    ]
+    if without_index:
+        _LOGGER.debug(
+            "Not assigning menu items to zones: %d of %d zones have no index (%s)",
+            len(without_index),
+            len(zones),
+            without_index,
+        )
+        return {}
+
     sorted_zone_ids = [
         zid for zid, zdata in sorted(zones.items(), key=lambda x: x[1]["zone"]["index"])
     ]
@@ -302,7 +343,7 @@ def build_zone_names(
 
     """
     zone_names: dict[int, str] = {}
-    for zone_id, zone in zones.items():
+    for zone_id, zone in zone_payloads(zones).items():
         description = zone.get(CONF_DESCRIPTION)
         name = description.get(CONF_NAME) if isinstance(description, dict) else None
         if not name:
@@ -371,3 +412,67 @@ def menu_entity_name(
         if parent_label:
             label = f"{parent_label} - {label}"
     return prefix + label
+
+
+def menu_dialogue_entity_name(
+    item: dict[str, Any],
+    group_names: dict[tuple[str, int], str],
+    translations: Translations,
+    prefix: str = "",
+) -> str:
+    """Return the name of a dialogue button, telling lockout actions apart.
+
+    A lockout dialogue carries the status "Brak blokady" (no lockout) in
+    ``params.txtId``. The pressure-switch item's own label already names the
+    action ("Zdjęcie blokady"), but the fan-lockout item is labelled with the
+    thing that can be locked ("Blokada wentylatora") -- the same label as its
+    binary sensor. In that case the catalogue's action label is appended, so
+    the button says what pressing it does and no longer collides with the
+    sensor (#222).
+
+    Args:
+        item: Menu item payload from the API.
+        group_names: Lookup returned by :func:`build_menu_group_names`.
+        translations: Subtitle catalog used to resolve the labels.
+        prefix: Optional hub name prefix.
+
+    Returns:
+        The entity name, with the action appended for a lockout dialogue whose
+        own label is not already that action.
+
+    """
+    name = menu_entity_name(item, group_names, translations, prefix)
+    params = item.get("params", {})
+    if params.get("txtId") != MENU_LOCKOUT_STATUS_TXT_ID:
+        return name
+    if item.get("txtId") == MENU_LOCKOUT_CLEAR_TXT_ID:
+        return name
+    action = translations.get_text(MENU_LOCKOUT_CLEAR_TXT_ID)
+    if action in name:
+        return name
+    return f"{name} - {action}"
+
+
+def menu_item_is_settling(item: dict[str, Any]) -> bool:
+    """Return whether the controller is still applying a change to a menu item.
+
+    The eModul API answers a menu item with ``duringChange: "t"`` while the
+    controller is applying a write, and with ``"f"`` once it has settled. Some
+    payloads use booleans instead, and an item that was never changed carries
+    ``None``. Only ``"t"``/``True`` mean the value in this payload cannot be
+    trusted yet; treating ``None`` the same way would freeze every untouched
+    item for good.
+
+    Zones already work this way: :meth:`climate.TechThermostat.update_properties`
+    ignores a target temperature whose ``duringChange`` is true. Menu entities
+    need the same guard so an optimistic write survives a poll that lands
+    inside the window and still reports the old value (#184, #222).
+
+    Args:
+        item: Menu item payload returned by the Tech API.
+
+    Returns:
+        ``True`` while the controller is still applying a change to the item.
+
+    """
+    return item.get("duringChange") in ("t", True)

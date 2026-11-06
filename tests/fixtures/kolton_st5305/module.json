@@ -1,0 +1,2746 @@
+{
+  "zones": {
+    "transaction_time": null,
+    "elements": [],
+    "globalSchedules": {
+      "time": null,
+      "duringChange": null,
+      "elements": []
+    },
+    "controllerParameters": {}
+  },
+  "tiles": [
+    {
+      "id": 509,
+      "parentId": 0,
+      "type": 50,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Controller software version",
+        "version": "1.2.3",
+        "txtId": 1634,
+        "iconId": 29,
+        "companyId": 4,
+        "controllerName": "ST-5305",
+        "mainControllerId": 0
+      }
+    },
+    {
+      "id": 1002,
+      "parentId": 11000,
+      "type": 41,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Date",
+        "year": 2026,
+        "month": 10,
+        "day": 10,
+        "dayId": 6,
+        "hours": 19,
+        "minutes": 51
+      }
+    },
+    {
+      "id": 1006,
+      "parentId": 11000,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 0,
+        "iconId": 102,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 866,
+          "value": 0,
+          "unit": 8,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 1007,
+      "parentId": 11000,
+      "type": 11,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 1383,
+        "iconId": 224
+      }
+    },
+    {
+      "id": 1008,
+      "parentId": 11011,
+      "type": 11,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 3321,
+        "iconId": 100
+      }
+    },
+    {
+      "id": 1009,
+      "parentId": 11011,
+      "type": 11,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 10101,
+        "iconId": 100
+      }
+    },
+    {
+      "id": 1010,
+      "parentId": 11011,
+      "type": 11,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 3558,
+        "iconId": 157
+      }
+    },
+    {
+      "id": 1011,
+      "parentId": 11002,
+      "type": 11,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 1691,
+        "iconId": 153
+      }
+    },
+    {
+      "id": 1013,
+      "parentId": 11000,
+      "type": 40,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Text information",
+        "statusId": 112,
+        "headerId": 3289,
+        "iconId": 100,
+        "options": []
+      }
+    },
+    {
+      "id": 1014,
+      "parentId": 11011,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 0,
+        "iconId": 17,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 3555,
+          "value": 0,
+          "unit": 8,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 1015,
+      "parentId": 11011,
+      "type": 11,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 5789,
+        "iconId": 100
+      }
+    },
+    {
+      "id": 1016,
+      "parentId": 11011,
+      "type": 11,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 3595,
+        "iconId": 153
+      }
+    },
+    {
+      "id": 1020,
+      "parentId": 11002,
+      "type": 1,
+      "menuId": 1052,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 1041,
+        "value": 540,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 1021,
+      "parentId": 11000,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 795,
+        "value": 132,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 1022,
+      "parentId": 11011,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 1385,
+        "value": 173,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 1023,
+      "parentId": 11001,
+      "type": 1,
+      "menuId": 1930,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 1856,
+        "value": 185,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 1024,
+      "parentId": 11001,
+      "type": 1,
+      "menuId": 1930,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 1855,
+        "value": 176,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 1025,
+      "parentId": 11011,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 3553,
+        "value": 280,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 1026,
+      "parentId": 11011,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 6805,
+        "value": 200,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 1027,
+      "parentId": 11011,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 1386,
+        "value": 245,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 1028,
+      "parentId": 11000,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 1400,
+        "value": 287,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 1029,
+      "parentId": 11011,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 10100,
+        "value": 208,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 1075,
+      "parentId": 11002,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 0,
+        "iconId": 15,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": 28,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 246,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 1096,
+      "parentId": 0,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 2,
+        "iconId": 196,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 632,
+          "value": 0,
+          "unit": 39,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 1521,
+      "parentId": 11001,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 1582,
+        "value": 324,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 1538,
+      "parentId": 11011,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 1357,
+        "value": 43,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 1545,
+      "parentId": 11004,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 3837,
+        "value": 154,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 1546,
+      "parentId": 11004,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 3838,
+        "value": 170,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 1547,
+      "parentId": 11004,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 3839,
+        "value": 139,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 1548,
+      "parentId": 11004,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 195,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 3840,
+          "value": 61,
+          "unit": 23,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 1549,
+      "parentId": 11004,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 87,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 3841,
+          "value": 3,
+          "unit": 32,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 1550,
+      "parentId": 11004,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 195,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 4013,
+          "value": 60,
+          "unit": 23,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 1551,
+      "parentId": 11004,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 4014,
+        "value": 134,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 1552,
+      "parentId": 11004,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 0,
+        "iconId": 100,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 3842,
+          "value": 0,
+          "unit": 8,
+          "type": 2,
+          "params": [
+            0,
+            100,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 1553,
+      "parentId": 11004,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 218,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 1634,
+          "value": 78,
+          "unit": 0,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 1562,
+      "parentId": 11000,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 27,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 4209,
+          "value": 0,
+          "unit": 26,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 1575,
+      "parentId": 11000,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 127,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 4208,
+          "value": 0,
+          "unit": 26,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 1590,
+      "parentId": 11000,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 120,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 4210,
+          "value": 0,
+          "unit": 38,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 1664,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 200,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 5152,
+          "value": 0,
+          "unit": 13,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 1666,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 224,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 5153,
+          "value": 1041,
+          "unit": 13,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 1668,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 224,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 1462,
+          "value": -29536,
+          "unit": 13,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 1681,
+      "parentId": 11011,
+      "type": 11,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 6956,
+        "iconId": 102
+      }
+    },
+    {
+      "id": 1682,
+      "parentId": 11011,
+      "type": 11,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 731,
+        "iconId": 7
+      }
+    },
+    {
+      "id": 2186,
+      "parentId": 11013,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 6364,
+        "value": 0,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 2187,
+      "parentId": 11013,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 1855,
+        "value": 0,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 2188,
+      "parentId": 11013,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 1279,
+        "value": 0,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 2189,
+      "parentId": 11013,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 1041,
+        "value": 0,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 2190,
+      "parentId": 11013,
+      "type": 11,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 6529,
+        "iconId": 240
+      }
+    },
+    {
+      "id": 2191,
+      "parentId": 11013,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 209,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 6527,
+          "value": 0,
+          "unit": 0,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2192,
+      "parentId": 11013,
+      "type": 40,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Text information",
+        "statusId": 128,
+        "headerId": 6522,
+        "iconId": 240,
+        "options": []
+      }
+    },
+    {
+      "id": 2193,
+      "parentId": 11013,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 64,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 6523,
+          "value": 0,
+          "unit": 13,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2194,
+      "parentId": 11013,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 64,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 6524,
+          "value": 0,
+          "unit": 13,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2195,
+      "parentId": 11013,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 64,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 6525,
+          "value": 0,
+          "unit": 13,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2196,
+      "parentId": 11013,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 64,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 6526,
+          "value": 0,
+          "unit": 13,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2197,
+      "parentId": 11013,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 240,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 6487,
+          "value": 0,
+          "unit": 0,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2198,
+      "parentId": 11013,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 209,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 6530,
+          "value": 0,
+          "unit": 0,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2199,
+      "parentId": 11013,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 795,
+        "value": 0,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 2200,
+      "parentId": 11013,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 1856,
+        "value": 0,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 2209,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 105,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 8399,
+          "value": 1000,
+          "unit": 0,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2213,
+      "parentId": 11013,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 64,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 8406,
+          "value": 0,
+          "unit": 3,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2214,
+      "parentId": 11013,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 64,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 8407,
+          "value": 0,
+          "unit": 3,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2215,
+      "parentId": 11013,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 64,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 8408,
+          "value": 0,
+          "unit": 3,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2216,
+      "parentId": 11013,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 64,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 8409,
+          "value": 0,
+          "unit": 3,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2217,
+      "parentId": 11013,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 64,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 8402,
+          "value": 0,
+          "unit": 0,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2218,
+      "parentId": 11013,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 64,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 8403,
+          "value": 0,
+          "unit": 0,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2219,
+      "parentId": 11013,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 64,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 8404,
+          "value": 0,
+          "unit": 0,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2220,
+      "parentId": 11013,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 64,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 8405,
+          "value": 0,
+          "unit": 0,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2221,
+      "parentId": 11013,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 5477,
+        "value": 0,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 2223,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 106,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 8400,
+          "value": 4274,
+          "unit": 0,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2225,
+      "parentId": 11011,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 4860,
+        "value": 101,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 2232,
+      "parentId": 11013,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 240,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 5151,
+          "value": 0,
+          "unit": 0,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2269,
+      "parentId": 11004,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 87,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 8397,
+          "value": 10,
+          "unit": 32,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2270,
+      "parentId": 11004,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 100,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 8398,
+          "value": 5,
+          "unit": 8,
+          "type": 2,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 2455,
+      "parentId": 11001,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 1730,
+        "value": 264,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 11000,
+      "parentId": 0,
+      "type": 60,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "expanded": null,
+      "params": {
+        "description": "Container",
+        "txtId": 2584,
+        "iconId": 209
+      }
+    },
+    {
+      "id": 11001,
+      "parentId": 0,
+      "type": 60,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "expanded": null,
+      "params": {
+        "description": "Container",
+        "txtId": 112,
+        "iconId": 166
+      }
+    },
+    {
+      "id": 11002,
+      "parentId": 0,
+      "type": 60,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "expanded": null,
+      "params": {
+        "description": "Container",
+        "txtId": 128,
+        "iconId": 105
+      }
+    },
+    {
+      "id": 11004,
+      "parentId": 0,
+      "type": 60,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "expanded": null,
+      "params": {
+        "description": "Container",
+        "txtId": 3833,
+        "iconId": 100
+      }
+    },
+    {
+      "id": 11011,
+      "parentId": 0,
+      "type": 60,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "expanded": null,
+      "params": {
+        "description": "Container",
+        "txtId": 229,
+        "iconId": 50
+      }
+    },
+    {
+      "id": 11012,
+      "parentId": 0,
+      "type": 60,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "expanded": null,
+      "params": {
+        "description": "Container",
+        "txtId": 5246,
+        "iconId": 209
+      }
+    },
+    {
+      "id": 12015,
+      "parentId": 11001,
+      "type": 11,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 1692,
+        "iconId": 153
+      }
+    },
+    {
+      "id": 12019,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 0,
+        "iconId": 224,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": 28,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 4492,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 12020,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 0,
+        "iconId": 45,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": 28,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 4764,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 12037,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 0,
+        "iconId": 47,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": 28,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 295,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 12038,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 47,
+        "widget1": {
+          "txtId": 0,
+          "value": 1,
+          "unit": 28,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 296,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 12039,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 47,
+        "widget1": {
+          "txtId": 0,
+          "value": 1,
+          "unit": 28,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 6358,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 12040,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 0,
+        "iconId": 74,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": 28,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 6303,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 12041,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 74,
+        "widget1": {
+          "txtId": 0,
+          "value": 1,
+          "unit": 28,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 6320,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 12042,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 0,
+        "iconId": 74,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": 28,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 6314,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 12043,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 0,
+        "iconId": 103,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": 28,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 6311,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 12044,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 103,
+        "widget1": {
+          "txtId": 0,
+          "value": 1,
+          "unit": 28,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 6345,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 12045,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 0,
+        "iconId": 103,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": 28,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 6346,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 12046,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 0,
+        "iconId": 17,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": 28,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 6361,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 12048,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 0,
+        "iconId": 17,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": 28,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 3664,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 12049,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 0,
+        "iconId": 45,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": 28,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 3699,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 12052,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 0,
+        "iconId": 202,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": 28,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 6677,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 12053,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 0,
+        "iconId": 196,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": 28,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 3508,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 12054,
+      "parentId": 11012,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 0,
+        "iconId": 45,
+        "widget1": {
+          "txtId": 0,
+          "value": 0,
+          "unit": 28,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 6246,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    }
+  ],
+  "tilesOrder": null,
+  "tilesLastUpdate": "2026-10-10 19:50:39.891685+02"
+}

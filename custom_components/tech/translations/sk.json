@@ -1,4 +1,18 @@
 {
+  "issues": {
+    "deprecated_flag_sensor": {
+      "title": "Zistený zastaraný senzor",
+      "description": "Senzor `{entity_id}` je zastaraný: widgety typu hodnoty 28, ktoré hlásia Zapnuté/Vypnuté, sú teraz zobrazené ako binárne senzory s rovnakým názvom.\n\nAktualizujte svoje panely, šablóny, automatizácie a skripty, aby používali binárny senzor, potom zakážte zastaraný senzor a reštartujte Home Assistant."
+    },
+    "deprecated_flag_sensor_used": {
+      "title": "Zistený zastaraný senzor",
+      "description": "Senzor `{entity_id}` je zastaraný: widgety typu hodnoty 28, ktoré hlásia Zapnuté/Vypnuté, sú teraz zobrazené ako binárne senzory s rovnakým názvom.\n\nPoužíva sa v nasledujúcich automatizáciách alebo skriptoch:\n{items}\n\nAktualizujte ich spolu s panelmi a šablónami, ktoré ho používajú, aby používali binárny senzor, potom zakážte zastaraný senzor a reštartujte Home Assistant."
+    },
+    "menu_code_rejected": {
+      "title": "Kód menu nebol prijatý",
+      "description": "Kód nastavený pre menu ({menu_type}) regulátora nebol prijatý, preto chýbajú prvky tohto menu. Odstráňte integráciu a pridajte ju znova a zadajte kód znova. Nesprávny kód vyzerá presne ako žiadny kód."
+    }
+  },
   "config": {
     "abort": {
       "already_configured": "Zariadenie už bolo nakonfigurované",
@@ -25,6 +39,15 @@
         "data": {
           "controllers": "Moduly na import",
           "include_hub_in_name": "Zahrňte názov hubu (modulu) do názvov entít"
+        }
+      },
+      "menu_codes": {
+        "title": "Kódy menu",
+        "description": "Niektoré regulátory držia menu inštalatéra a servisné menu za kódom. Zadajte kód pre každé menu, ktoré má Home Assistant čítať, alebo polia ponechajte prázdne. Nesprávny kód sa správa presne ako žiadny kód.",
+        "data": {
+          "menu_code_mu": "Kód používateľského menu (MU)",
+          "menu_code_mi": "Kód inštalačného menu (MI)",
+          "menu_code_ms": "Kód servisného menu (MS)"
         }
       }
     }
@@ -57,6 +80,29 @@
       },
       "zone_state_entity": {
         "name": "{entity_name} Stav alarmu"
+      },
+      "controller_schedules": {
+        "name": "Harmonogramy"
+      },
+      "zone_schedule_entity": {
+        "name": "Harmonogram",
+        "state": {
+          "constant-temp": "Konštantná teplota",
+          "global-schedule": "Globálny harmonogram",
+          "local-schedule": "Miestny harmonogram",
+          "time-limit": "Časový limit"
+        }
+      },
+      "local_schedule_entity": {
+        "name": "Miestny harmonogram"
+      },
+      "global_schedule_entity": {
+        "name": "Globálny harmonogram {schedule_number}"
+      }
+    },
+    "binary_sensor": {
+      "schedule_problem_entity": {
+        "name": "Problém s harmonogramom"
       }
     }
   },

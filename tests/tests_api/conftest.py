@@ -13,11 +13,16 @@ from tests.common import load_fixture
 @pytest.fixture(scope="module")
 def valid_credentials():
     """Fixture to provide valid credentials."""
+    # The demo account's own credentials, the ones this module's docstring
+    # publishes. The token is a placeholder rather than a recorded one: it is
+    # never sent anywhere -- a client built with it is authenticated by
+    # construction, which is what one of the tests below checks -- and a real
+    # token is a credential besides going stale.
     yield {
         "username": "test",
         "password": "test",
         "user_id": 240471648,
-        "token": "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6InRlc3QiLCJ1c2VyX2lkIjoyNDA0NzE2NDgsImlhdCI6MTcxMDkzNTA2Mn0.mFdWnX6BBLEQALgp8t8zJKgLq7hx0ZArvNIbWADbpas",
+        "token": "REDACTED",
     }
 
 

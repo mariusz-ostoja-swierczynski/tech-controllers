@@ -1,4 +1,18 @@
 {
+    "issues": {
+        "deprecated_flag_sensor": {
+            "title": "Veralteter Sensor erkannt",
+            "description": "Der Sensor `{entity_id}` ist veraltet: Widgets des Werttyps 28, die Aktiviert/Deaktiviert melden, werden jetzt als Binärsensoren mit demselben Namen bereitgestellt.\n\nAktualisiere deine Dashboards, Templates, Automationen und Skripte, damit sie stattdessen den Binärsensor verwenden, deaktiviere dann den veralteten Sensor und starte Home Assistant neu."
+        },
+        "deprecated_flag_sensor_used": {
+            "title": "Veralteter Sensor erkannt",
+            "description": "Der Sensor `{entity_id}` ist veraltet: Widgets des Werttyps 28, die Aktiviert/Deaktiviert melden, werden jetzt als Binärsensoren mit demselben Namen bereitgestellt.\n\nEr wird in den folgenden Automationen oder Skripten verwendet:\n{items}\n\nAktualisiere diese sowie alle Dashboards und Templates, die ihn verwenden, damit sie stattdessen den Binärsensor nutzen, deaktiviere dann den veralteten Sensor und starte Home Assistant neu."
+        },
+        "menu_code_rejected": {
+            "title": "Menücode nicht akzeptiert",
+            "description": "Der für das Menü ({menu_type}) des Reglers konfigurierte Code wurde nicht akzeptiert, daher fehlen die Bedienelemente dieses Menüs. Entfernen Sie die Integration und fügen Sie sie erneut hinzu, um den Code neu einzugeben. Ein falscher Code sieht genauso aus wie kein Code."
+        }
+    },
     "config": {
         "abort": {
             "already_configured": "Gerät bereits konfiguriert",
@@ -25,6 +39,15 @@
                 "data": {
                     "controllers": "Zu importierende Controller",
                     "include_hub_in_name": "Hub (Controller) Namen in Entitätsnamen einbeziehen"
+                }
+            },
+            "menu_codes": {
+                "title": "Menücodes",
+                "description": "Manche Regler halten ihre Installateur- und Servicemenüs hinter einem Code. Geben Sie den Code für jedes Menü ein, das Home Assistant lesen soll, oder lassen Sie die Felder leer. Ein falscher Code verhält sich genau wie kein Code.",
+                "data": {
+                    "menu_code_mu": "Code für Benutzermenü (MU)",
+                    "menu_code_mi": "Code für Installateurmenü (MI)",
+                    "menu_code_ms": "Code für Servicemenü (MS)"
                 }
             }
         }
@@ -57,6 +80,29 @@
             },
             "zone_state_entity": {
                 "name": "{entity_name} Alarmzustand"
+            },
+            "controller_schedules": {
+                "name": "Zeitpläne"
+            },
+            "zone_schedule_entity": {
+                "name": "Zeitplan",
+                "state": {
+                  "constant-temp": "Konstante Temperatur",
+                  "global-schedule": "Globaler Zeitplan",
+                  "local-schedule": "Lokaler Zeitplan",
+                  "time-limit": "Zeitlimit"
+                }
+            },
+            "local_schedule_entity": {
+                "name": "Lokaler Zeitplan"
+            },
+            "global_schedule_entity": {
+                "name": "Globaler Zeitplan {schedule_number}"
+            }
+        },
+        "binary_sensor": {
+            "schedule_problem_entity": {
+                "name": "Zeitplanproblem"
             }
         }
     },

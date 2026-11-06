@@ -33,3 +33,6 @@ devenv.local.nix
 .DS_Store
 .AppleDouble
 .LSOverride
+
+### AI
+.omo

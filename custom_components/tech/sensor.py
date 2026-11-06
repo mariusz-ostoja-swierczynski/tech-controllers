@@ -30,10 +30,12 @@ from collections.abc import Callable, Iterable
 import logging
 from typing import Any, cast
 
+from homeassistant.components.automation import automations_with_entity
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
+from homeassistant.components.script import scripts_with_entity
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
@@ -54,9 +56,11 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er, issue_registry as ir
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.icon import icon_for_signal_level
+from homeassistant.helpers.translation import async_translate_state
 from homeassistant.helpers.typing import UndefinedType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -107,14 +111,27 @@ from .const import (
     VISIBILITY,
     WIDGET_COLLECTOR_PUMP,
     WIDGET_DHW_PUMP,
-    WIDGET_UNIT_DIVISORS,
+    WIDGET_UNIT_TIME_OF_DAY,
     WINDOW_SENSORS,
     WINDOW_STATE,
     WORKING_STATUS,
     ZONE_STATE,
+    reading_is_working,
+    scaled_number,
+    valid_number,
+    widget_hours_and_minutes,
+    widget_unit,
 )
 from .coordinator import TechCoordinator
-from .entity import TileEntity
+from .entity import TileEntity, controller_device_info
+from .schedules import (
+    GLOBAL_SCHEDULE_SLOTS,
+    global_schedule_details,
+    local_schedule_details,
+    schedule_summary,
+    zone_schedule_attributes,
+    zone_schedule_info,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -151,7 +168,21 @@ async def async_setup_entry(
         for entity in _build_tile_entities(tile, coordinator, config_entry)
     ]
 
-    async_add_entities([*tile_entities, *zone_entities], True)
+    deprecated_entities = _build_deprecated_flag_sensors(
+        hass, tiles, coordinator, config_entry
+    )
+
+    schedule_data = (coordinator.data or {}).get("schedules")
+    schedule_entities = []
+    if isinstance(schedule_data, dict) and schedule_data.get("supported"):
+        schedule_entities.append(ControllerSchedulesSensor(coordinator, config_entry))
+        schedule_entities.extend(
+            ControllerGlobalScheduleSensor(coordinator, config_entry, index)
+            for index in range(GLOBAL_SCHEDULE_SLOTS)
+        )
+    async_add_entities(
+        [*tile_entities, *zone_entities, *deprecated_entities, *schedule_entities], True
+    )
 
 
 def _iter_mapping(mapping: dict[Any, Any] | Iterable[Any]) -> Iterable[Any]:
@@ -197,6 +228,14 @@ def _build_zone_entities(
 
     if isinstance(zone.get(UNDERFLOOR), dict) and zone.get(UNDERFLOOR):
         entities.append(ZoneUnderfloorSensor(zone, coordinator, config_entry))
+
+    schedule_data = (coordinator.data or {}).get("schedules")
+    if isinstance(schedule_data, dict) and schedule_data.get("supported"):
+        zone_id = zone_state.get(CONF_ID)
+        schedule_zones = schedule_data.get("zones")
+        if isinstance(schedule_zones, dict) and zone_id in schedule_zones:
+            entities.append(ZoneScheduleSensor(zone, coordinator, config_entry))
+            entities.append(ZoneLocalScheduleSensor(zone, coordinator, config_entry))
 
     return entities
 
@@ -310,24 +349,192 @@ def _build_open_therm_tile(
     return entities
 
 
-def _is_contact_widget(widget: dict[str, Any]) -> bool:
-    """Return True for widgets that should be modelled as a binary contact sensor.
+def _sibling_widget(tile_params: dict, widget_key: str) -> dict | None:
+    """Return the tile's other widget payload, when it carries one.
 
-    Tech encodes a "dry contact" / voltage input on a TYPE_WIDGET tile by
-    the marker triple ``unit == -1``, ``type == 0`` and a non-zero ``txtId``.
-    EU-i-3+ extension modules expose all four of their inputs this way.
+    A TYPE_WIDGET tile has exactly two slots, so the sibling is simply the one
+    ``widget_key`` does not name.
 
-    The contact branch is mirrored by the same predicate in
-    :mod:`binary_sensor` -- both modules need to agree on which widgets
-    they own, so :func:`_build_widget_tile` *skips* contact widgets here
-    and lets the binary_sensor platform create
-    :class:`binary_sensor.TileWidgetContactSensor` for them instead.
+    Args:
+        tile_params: The tile's ``params`` dict.
+        widget_key: ``widget1`` or ``widget2`` -- the slot being classified.
+
+    Returns:
+        The other slot's payload, or ``None`` when that slot is empty.
+
     """
-    return (
+    other_key = "widget2" if widget_key == "widget1" else "widget1"
+    return tile_params.get(other_key) or None
+
+
+def _is_contact_marker(widget: dict | None) -> bool:
+    """Return True for the per-widget half of the dry-contact marker.
+
+    Tech marks an invisible input with the API's "value invisible" type
+    (``unit == -1``), ``type == 0`` and a ``txtId`` of its own. Find out whether
+    the whole tile is like that through :func:`_is_contact_widget`.
+    """
+    return bool(widget) and (
         widget.get("unit") == -1
         and widget.get(CONF_TYPE) == 0
         and widget.get("txtId", 0) != 0
     )
+
+
+def _is_contact_widget(widget: dict, sibling: dict | None) -> bool:
+    """Return True for widgets that should be modelled as a binary contact sensor.
+
+    EU-i-3+ and i2+ extension modules expose their voltage and potential-free
+    inputs as a TYPE_WIDGET tile built *entirely* of contact widgets, so a
+    contact is only recognised when its sibling is one too. A lone ``unit == -1``
+    widget next to a visible reading is something else: the API uses that type
+    for an invisible value, and heat pumps (e.g. Kołton ST-5305) pair one with
+    their Enabled/Disabled widget. Reading those as contacts produced phantom
+    opening sensors (issue #221).
+
+    The contact branch is mirrored by the same predicate in
+    :mod:`binary_sensor` -- both modules need to agree on which widgets they
+    own, so :func:`_build_widget_tile` *skips* contact widgets here and lets the
+    binary_sensor platform create
+    :class:`binary_sensor.TileWidgetContactSensor` for them instead.
+
+    Args:
+        widget: The widget payload being classified.
+        sibling: The tile's other widget payload, or ``None`` when it is empty.
+
+    Returns:
+        ``True`` when the widget is a contact marker and every other widget the
+        tile defines is one as well.
+
+    """
+    return _is_contact_marker(widget) and (sibling is None or _is_contact_marker(sibling))
+
+
+def _widget_txt_id(widget: dict, sibling: dict | None = None) -> int:
+    """Return the label a widget is named by, borrowing its sibling's.
+
+    A widget without a label of its own (``txtId == 0``) is named after its
+    sibling, which is how the emodul UI labels such tiles as well.
+
+    Args:
+        widget: The widget payload being named.
+        sibling: The tile's other widget payload, or ``None`` when it is empty.
+
+    Returns:
+        The widget's own ``txtId``, the sibling's, or 0 when neither has one.
+
+    """
+    return widget.get("txtId") or (sibling or {}).get("txtId", 0)
+
+
+def _is_flag_widget(widget: dict, sibling: dict | None) -> bool:
+    """Return ``True`` for enable/disable widgets (API value type 28).
+
+    Mirrored by the same predicate in :mod:`binary_sensor`, which owns these
+    widgets; see there for why the widget ``type`` is not part of the check.
+
+    Args:
+        widget: The widget payload being classified.
+        sibling: The tile's other widget payload, or ``None`` when it is empty.
+
+    """
+    return widget.get("unit") == 28 and _widget_txt_id(widget, sibling) != 0
+
+
+def _build_deprecated_flag_sensors(
+    hass: HomeAssistant,
+    tiles: dict[Any, Any] | Iterable[Any],
+    coordinator: TechCoordinator,
+    config_entry: ConfigEntry,
+) -> list[TileWidgetTemperatureSensor]:
+    """Return the numeric sensors that value type 28 widgets used to create.
+
+    Those widgets are binary sensors now, so :func:`_build_widget_tile` skips
+    them, but the deprecation policy does not allow removing an entity without a
+    transition: an entity referenced from automations or dashboards would break
+    silently. The old numeric entity is therefore rebuilt for installs that
+    already have it, and a repair issue tells those users to migrate. Installs
+    that never had it never get it.
+    """
+
+    # Removal checklist for 2027.5.0, the version this deprecation announces via
+    # breaks_in_ha_version: delete this function and its call in
+    # async_setup_entry, delete _async_deprecate_flag_sensor, drop the two
+    # "issues" entries from strings.json and every translations file, and remove
+    # the sensor registry rows still left for these widgets. That last step is
+    # safe by then because the notice period will have passed; doing it sooner is
+    # what the deprecation policy forbids.
+    registry = er.async_get(hass)
+    entities: list[TileWidgetTemperatureSensor] = []
+    for tile in _iter_mapping(tiles):
+        if tile.get(CONF_TYPE) != TYPE_WIDGET or tile.get(VISIBILITY) is False:
+            continue
+        params = tile.get(CONF_PARAMS, {})
+        for widget_key in ("widget1", "widget2"):
+            widget = params.get(widget_key)
+            if not widget:
+                continue
+            if not _is_flag_widget(widget, _sibling_widget(params, widget_key)):
+                continue
+            entity = TileWidgetTemperatureSensor(
+                tile, coordinator, config_entry, widget_key
+            )
+            if _async_deprecate_flag_sensor(hass, registry, entity.unique_id):
+                entities.append(entity)
+    return entities
+
+
+def _async_deprecate_flag_sensor(
+    hass: HomeAssistant, registry: er.EntityRegistry, unique_id: str
+) -> bool:
+    """Return whether the deprecated numeric flag sensor should still be created.
+
+    The deprecated entity keeps working until the user disables it, which is how
+    the deprecation is acknowledged: once it is disabled and neither an automation
+    nor a script references it, the registry entry is removed so it is not
+    recreated.
+
+    Args:
+        hass: Home Assistant instance.
+        registry: Entity registry to look the deprecated sensor up in.
+        unique_id: Unique ID the sensor platform registered the widget under.
+
+    Returns:
+        ``True`` when the deprecated entity should be added.
+
+    """
+    entity_id = registry.async_get_entity_id("sensor", DOMAIN, unique_id)
+    if entity_id is None:
+        return False
+
+    entry = registry.async_get(entity_id)
+    references = automations_with_entity(hass, entity_id) + scripts_with_entity(
+        hass, entity_id
+    )
+    if entry is not None and entry.disabled and not references:
+        _LOGGER.debug("Removing deprecated flag sensor %s", entity_id)
+        registry.async_remove(entity_id)
+        return False
+
+    # The issue id is scoped by the unique id, which carries the controller udid,
+    # so entries for several controllers do not collide.
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        f"deprecated_flag_sensor_{unique_id}",
+        breaks_in_ha_version="2027.5.0",
+        is_fixable=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key=(
+            "deprecated_flag_sensor_used" if references else "deprecated_flag_sensor"
+        ),
+        translation_placeholders=(
+            {"entity_id": entity_id, "items": "\n".join(references)}
+            if references
+            else {"entity_id": entity_id}
+        ),
+    )
+    return True
 
 
 def _build_widget_tile(
@@ -353,17 +560,23 @@ def _build_widget_tile(
     field selects the semantic class (see :data:`const.WIDGET_DHW_PUMP`,
     :data:`const.WIDGET_COLLECTOR_PUMP`, :data:`const.WIDGET_TEMPERATURE_CH`),
     while the ``unit`` field decides how to scale the integer ``value``
-    (see :data:`const.WIDGET_UNIT_DIVISORS`).
+    (see :data:`const.WIDGET_UNITS`).
 
     Filtering rules applied in order:
 
-    1. Widgets with ``txtId == 0`` are placeholders -- skip.
-    2. Contact-shaped widgets (``unit==-1, type==0, txtId!=0``) belong to
-       :mod:`binary_sensor`; skip here so they are not emitted twice.
-    3. ``unit == 6`` widgets are decorative state badges (always 0 in the
-       wild); skip to avoid useless "always 0" sensors.
-    4. WIDGET_COLLECTOR_PUMP -> :class:`TileWidgetPumpSensor` (percentage).
-    5. Everything else (DHW set/current temp, CH temp, generic
+    1. Contact and value type 28 widgets belong to :mod:`binary_sensor`; skip
+       them here so no widget is claimed by both platforms. A contact is a
+       tile made of contact widgets only (see :func:`_is_contact_widget`).
+    2. ``unit == -1`` is the API's "value invisible": skip it. Paired with a
+       visible reading it is not a contact, it is just an invisible value.
+    3. Widgets with ``txtId == 0`` are placeholders -- skip, *unless* the
+       widget is a pump type (``type==1`` / ``type==2``) whose sibling
+       carries a label, in which case the sibling's label is borrowed.
+    4. ``unit == 6`` widgets with a zero value are decorative state badges;
+       skip them to avoid useless "always 0" sensors. Non-zero unit=6
+       widgets (e.g. solar pump temperatures) are kept and handled below.
+    5. WIDGET_COLLECTOR_PUMP -> :class:`TileWidgetPumpSensor` (percentage).
+    6. Everything else (DHW set/current temp, CH temp, generic
        ``type==0`` numeric) -> :class:`TileWidgetTemperatureSensor`,
        which applies unit-aware scaling at read time.
 
@@ -376,11 +589,32 @@ def _build_widget_tile(
     params = tile.get(CONF_PARAMS, {})
     for widget_key in ("widget1", "widget2"):
         widget = params.get(widget_key)
-        if not widget or widget.get("txtId", 0) == 0:
+        if not widget:
             continue
-        if _is_contact_widget(widget):
+        sibling = _sibling_widget(params, widget_key)
+        # Contacts and flags belong to binary_sensor; agree with that module on
+        # which widgets they own, or a widget is claimed twice or not at all.
+        if _is_contact_widget(widget, sibling) or _is_flag_widget(widget, sibling):
             continue
-        if widget.get("unit") == 6:
+        # Value type -1 means "value invisible" in the API's own table, so there
+        # is nothing to publish. On a tile that is not all contacts this is an
+        # invisible value sitting next to a visible one (issue #221).
+        if widget.get("unit") == -1:
+            continue
+        # Widgets with txtId==0 are usually placeholders, but pump-type
+        # widgets (WIDGET_DHW_PUMP, WIDGET_COLLECTOR_PUMP) may lack their
+        # own label when they share the sibling's txtId. Let them through
+        # so the second temperature on a dual-widget tile (e.g. solar pump)
+        # is not silently dropped -- _build_name borrows the sibling label.
+        if widget.get("txtId", 0) == 0:
+            if widget.get(CONF_TYPE) not in (
+                WIDGET_DHW_PUMP,
+                WIDGET_COLLECTOR_PUMP,
+            ):
+                continue
+            if not sibling or sibling.get("txtId", 0) == 0:
+                continue
+        if widget.get("unit") == 6 and widget.get("value", 0) == 0:
             continue
         widget_type = widget.get(CONF_TYPE)
         if widget_type == WIDGET_COLLECTOR_PUMP or widget.get("unit") == 8:
@@ -393,7 +627,7 @@ def _build_widget_tile(
             # temperature class. Scaling is driven by the widget's own
             # ``unit`` field, not by the widget type, so an unknown numeric
             # type is still rendered correctly so long as ``unit`` is one of
-            # the documented values in :data:`const.WIDGET_UNIT_DIVISORS`.
+            # the documented values in :data:`const.WIDGET_UNITS`.
             entities.append(
                 TileWidgetTemperatureSensor(tile, coordinator, config_entry, widget_key)
             )
@@ -421,6 +655,34 @@ _TILE_ENTITY_BUILDERS: dict[int, TileBuilder] = {
     ],
     TYPE_OPEN_THERM: _build_open_therm_tile,
 }
+
+
+class _StateAvailability:
+    """Mark a tile entity unavailable when it has no valid state.
+
+    Tile entities keep their registry row and recover on the next payload; the
+    mixin only refuses to publish a state while ``_state`` is ``None``. It sits
+    before ``TileSensor`` so ``super().available`` reaches the coordinator.
+    """
+
+    @property
+    def available(self) -> bool:
+        """Require both a successful coordinator and a valid state."""
+        return super().available and self._state is not None
+
+    @property
+    def native_value(self) -> Any:
+        """Return the cached state, which is ``None`` while invalid."""
+        return self._state
+
+
+class _NativeValueAvailability:
+    """Mark a zone entity unavailable when its native value is ``None``."""
+
+    @property
+    def available(self) -> bool:
+        """Require both a successful coordinator and a valid native value."""
+        return super().available and self._attr_native_value is not None
 
 
 class ZoneSensor(CoordinatorEntity, SensorEntity):
@@ -464,16 +726,14 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Update target_temperature property
-        if device[CONF_ZONE]["setTemperature"] is not None:
-            self._target_temperature = device[CONF_ZONE]["setTemperature"] / 10
-        else:
-            self._target_temperature = None
+        self._target_temperature = scaled_number(
+            device[CONF_ZONE].get("setTemperature"), 10
+        )
 
         # Update temperature property
-        if device[CONF_ZONE]["currentTemperature"] is not None:
-            self._temperature = device[CONF_ZONE]["currentTemperature"] / 10
-        else:
-            self._temperature = None
+        self._temperature = scaled_number(
+            device[CONF_ZONE].get("currentTemperature"), 10
+        )
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -499,7 +759,7 @@ class ZoneSensor(CoordinatorEntity, SensorEntity):
         return self._unique_id
 
 
-class ZoneTemperatureSensor(ZoneSensor):
+class ZoneTemperatureSensor(_NativeValueAvailability, ZoneSensor):
     """Representation of a Zone Temperature Sensor."""
 
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
@@ -526,10 +786,9 @@ class ZoneTemperatureSensor(ZoneSensor):
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Check if the current temperature is available, and update the native value accordingly
-        if device[CONF_ZONE]["currentTemperature"] is not None:
-            self._attr_native_value = device[CONF_ZONE]["currentTemperature"] / 10
-        else:
-            self._attr_native_value = None
+        self._attr_native_value = scaled_number(
+            device[CONF_ZONE].get("currentTemperature"), 10
+        )
 
 
 class ZoneBatterySensor(ZoneSensor):
@@ -758,7 +1017,7 @@ class ZoneWindowSensor(BinarySensorEntity, ZoneSensor):
         )
 
 
-class ZoneUnderfloorSensor(ZoneSensor):
+class ZoneUnderfloorSensor(_NativeValueAvailability, ZoneSensor):
     """Representation of a Zone Temperature Sensor."""
 
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
@@ -821,10 +1080,9 @@ class ZoneUnderfloorSensor(ZoneSensor):
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Check if the current temperature is available, and update the native value accordingly
-        if device[UNDERFLOOR]["temperature"] is not None:
-            self._attr_native_value = device[UNDERFLOOR]["temperature"] / 10
-        else:
-            self._attr_native_value = None
+        self._attr_native_value = scaled_number(
+            device[UNDERFLOOR].get("temperature"), 10
+        )
 
         # Update attributes
         self.attrs[MODE] = device[UNDERFLOOR][MODE]
@@ -897,7 +1155,7 @@ class TileSensor(TileEntity, CoordinatorEntity):
         """Get the state of the device."""
 
 
-class TileTemperatureSensor(TileSensor, SensorEntity):
+class TileTemperatureSensor(_StateAvailability, TileSensor, SensorEntity):
     """Representation of a Tile Temperature Sensor."""
 
     _attr_has_entity_name = True
@@ -932,8 +1190,11 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
         return f"{self._unique_id}_tile_temperature"
 
     def get_state(self, device) -> Any:
-        """Get the state of the device."""
-        return device[CONF_PARAMS][VALUE] / 10
+        """Return a finite reading only while the temperature input is working."""
+        params = device[CONF_PARAMS]
+        if not reading_is_working(params):
+            return None
+        return scaled_number(params.get(VALUE), 10)
 
     @property
     def device_info(self) -> DeviceInfo | None:
@@ -1138,7 +1399,7 @@ class TileTextSensor(TileSensor, SensorEntity):
         return self.coordinator.translations.get_text(device[CONF_PARAMS]["statusId"])
 
 
-class _TileWidgetSensorBase(TileSensor, SensorEntity):
+class _TileWidgetSensorBase(_StateAvailability, TileSensor, SensorEntity):
     """Common scaffolding for TYPE_WIDGET-derived sensor entities.
 
     Widget-backed sensors share three pieces of behaviour:
@@ -1164,6 +1425,29 @@ class _TileWidgetSensorBase(TileSensor, SensorEntity):
         "widget2": " Current Temperature",
     }
 
+    def _apply_unit_metadata(self, widget: dict[str, Any]) -> None:
+        """Take unit, class, precision, icon and default from the widget's type.
+
+        The class-level attributes describe a temperature. A widget whose API
+        value type says otherwise - kilowatts, COP, a kelvin difference, a plain
+        number - has to replace them, or the reading is published in the wrong
+        engineering unit and with a device class that lies about it (issue #221).
+        The divisor comes from the same entry, through :meth:`get_state`, and so
+        does whether the entity starts out enabled: an elapsed-time counter is
+        registered disabled rather than cluttering the list.
+
+        Args:
+            widget: The widget payload this entity reads.
+
+        """
+        metadata = widget_unit(widget.get("unit"))
+        self._attr_native_unit_of_measurement = metadata.unit
+        self._attr_device_class = metadata.device_class
+        self._attr_state_class = metadata.state_class
+        self._attr_suggested_display_precision = metadata.precision
+        self._attr_icon = metadata.icon
+        self._attr_entity_registry_enabled_default = metadata.enabled_default
+
     def __init__(
         self,
         device,
@@ -1188,18 +1472,23 @@ class _TileWidgetSensorBase(TileSensor, SensorEntity):
     def _build_name(self, device) -> str:
         params = device[CONF_PARAMS]
         widget = params[self._widget_key]
-        txt_id = widget.get("txtId", 0)
-        # If this widget has no label (txtId 0), borrow it from its sibling so
+        sibling = _sibling_widget(params, self._widget_key)
+        # A widget with no label of its own (txtId 0) borrows its sibling's, so
         # the entity name still reflects the tile's purpose.
-        if txt_id == 0:
-            other = "widget2" if self._widget_key == "widget1" else "widget1"
-            txt_id = params.get(other, {}).get("txtId", 0)
+        txt_id = _widget_txt_id(widget, sibling)
         suffix = ""
-        if widget.get(CONF_TYPE) == WIDGET_DHW_PUMP:
-            other_key = "widget2" if self._widget_key == "widget1" else "widget1"
-            other_widget = params.get(other_key, {})
-            if other_widget.get("txtId", 0) != 0:
-                suffix = self._NAME_SUFFIX_FOR_DHW.get(self._widget_key, "")
+        # The "Set Temperature" / "Current Temperature" suffix disambiguates the
+        # two slots of a DHW pump's temperature pair, so it belongs on a widget
+        # that *reads* a temperature: heat pumps mark every reading with the pump
+        # subtype, and a pressure, flow or runtime widget would otherwise be
+        # published as "Przepływ Current Temperature" (issue #221).
+        if (
+            widget.get(CONF_TYPE) == WIDGET_DHW_PUMP
+            and sibling
+            and widget_unit(widget.get("unit")).device_class
+            == SensorDeviceClass.TEMPERATURE
+        ):
+            suffix = self._NAME_SUFFIX_FOR_DHW.get(self._widget_key, "")
         return f"{self.coordinator.translations.get_text(txt_id)}{suffix}"
 
     @property
@@ -1214,18 +1503,49 @@ class _TileWidgetSensorBase(TileSensor, SensorEntity):
 
 
 class TileWidgetTemperatureSensor(_TileWidgetSensorBase):
-    """A TYPE_WIDGET widget reporting a (scaled) temperature value."""
+    """A TYPE_WIDGET numeric value, scaled and typed by its API value type."""
 
+    # Class-level defaults describe a temperature; the constructor replaces them
+    # from the widget's own API value type.
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
     _attr_device_class = SensorDeviceClass.TEMPERATURE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _UNIQUE_ID_SUFFIX = "tile_widget_temperature"
 
+    def __init__(
+        self,
+        device: dict[str, Any],
+        coordinator: TechCoordinator,
+        config_entry: ConfigEntry,
+        widget_key: str,
+    ) -> None:
+        """Initialise the sensor and take its metadata from the widget type.
+
+        Args:
+            device: Tile payload this entity belongs to.
+            coordinator: Shared Tech data coordinator instance.
+            config_entry: Config entry that owns the coordinator.
+            widget_key: ``widget1`` or ``widget2``.
+
+        """
+        super().__init__(device, coordinator, config_entry, widget_key)
+        self._apply_unit_metadata(device[CONF_PARAMS][widget_key])
+
     def get_state(self, device) -> Any:
-        """Get the state of the device."""
-        widget = device[CONF_PARAMS][self._widget_key]
-        divisor = WIDGET_UNIT_DIVISORS.get(widget.get("unit"), 1)
-        return widget[VALUE] / divisor if divisor != 1 else widget[VALUE]
+        """Get the state of the device.
+
+        The widget's ``unit`` field is the API's value type, and it decides how
+        the raw integer is published: most types are a scaled measurement, value
+        type 13 is a time of day the API stores as minutes since midnight.
+        """
+        params = device[CONF_PARAMS]
+        if not reading_is_working(params):
+            return None
+        widget = params[self._widget_key]
+        if widget.get("unit") == WIDGET_UNIT_TIME_OF_DAY:
+            return widget_hours_and_minutes(widget.get(VALUE))
+        divisor = widget_unit(widget.get("unit")).divisor
+        return scaled_number(widget.get(VALUE), divisor)
 
 
 class TileWidgetPumpSensor(_TileWidgetSensorBase):
@@ -1238,7 +1558,8 @@ class TileWidgetPumpSensor(_TileWidgetSensorBase):
 
     def get_state(self, device) -> Any:
         """Get the state of the device."""
-        return device[CONF_PARAMS][self._widget_key][VALUE]
+        params = device[CONF_PARAMS]
+        return valid_number(params[self._widget_key].get(VALUE))
 
 
 class TileDisinfectionSensor(TileSensor, SensorEntity):
@@ -1335,7 +1656,7 @@ class TileValveSensor(TileSensor, SensorEntity):
         )
 
 
-class TileValveTemperatureSensor(TileSensor, SensorEntity):
+class TileValveTemperatureSensor(_StateAvailability, TileSensor, SensorEntity):
     """Representation of a Tile Valve Temperature Sensor."""
 
     def __init__(self, device, coordinator, config_entry, valve_sensor):
@@ -1361,10 +1682,11 @@ class TileValveTemperatureSensor(TileSensor, SensorEntity):
 
     def get_state(self, device):
         """Get the state of the device."""
-        state = device[CONF_PARAMS][self._state_key]
-        if self._state_key in ("returnTemp", "currentTemp"):
-            state /= 10
-        return state
+        params = device[CONF_PARAMS]
+        if not reading_is_working(params):
+            return None
+        divisor = 10 if self._state_key in ("returnTemp", "currentTemp") else 1
+        return scaled_number(params.get(self._state_key), divisor)
 
 
 class TileMixingValveSensor(TileSensor, SensorEntity):
@@ -1397,7 +1719,7 @@ class TileMixingValveSensor(TileSensor, SensorEntity):
         return device[CONF_PARAMS]["openingPercentage"]
 
 
-class TileGenericOpenThermSensor(TileSensor, SensorEntity):
+class TileGenericOpenThermSensor(_StateAvailability, TileSensor, SensorEntity):
     """Representation of a generic OpenTherm Sensor."""
 
     _attr_has_entity_name = True
@@ -1466,7 +1788,10 @@ class TileOpenThermTemperatureSensor(TileGenericOpenThermSensor):
 
     def get_state(self, device) -> Any:
         """Get the state of the device."""
-        return device[CONF_PARAMS][self._state_key] / 10
+        params = device[CONF_PARAMS]
+        if not reading_is_working(params):
+            return None
+        return scaled_number(params.get(self._state_key), 10)
 
 
 class TileOpenThermPercentageSensor(TileGenericOpenThermSensor):
@@ -1478,7 +1803,8 @@ class TileOpenThermPercentageSensor(TileGenericOpenThermSensor):
 
     def get_state(self, device) -> Any:
         """Get the state of the device."""
-        return device[CONF_PARAMS][self._state_key]
+        params = device[CONF_PARAMS]
+        return valid_number(params.get(self._state_key))
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -1515,3 +1841,248 @@ class TileOpenThermPercentageSensor(TileGenericOpenThermSensor):
         set_attr("activeHeating", flag=True)
         set_attr("communication", flag=True)
         set_attr("heatingCurve", flag=True)
+
+
+class ControllerSchedulesSensor(CoordinatorEntity, SensorEntity):
+    """One opt-in read-only view of all controller schedule templates."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+    _attr_has_entity_name = True
+    _attr_translation_key = "controller_schedules"
+    _attr_icon = "mdi:calendar-week"
+
+    def __init__(self, coordinator: TechCoordinator, config_entry: ConfigEntry) -> None:
+        """Bind to the existing coordinator without an additional API read."""
+        super().__init__(coordinator)
+        self._config_entry = config_entry
+        self._udid = config_entry.data[CONTROLLER][UDID]
+
+    @property
+    def unique_id(self) -> str:
+        """Keep one stable entity identity per physical controller."""
+        return f"{self._udid}_schedules"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Attach to the existing controller device, rather than every zone."""
+        return controller_device_info(self._config_entry)
+
+    def _diagnostics(self) -> dict[str, Any]:
+        """Compute compact attributes from the latest snapshot."""
+        return schedule_summary(
+            (self.coordinator.data or {}).get("schedules"),
+            self.coordinator.last_update_success,
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Report decoding status; availability follows the shared coordinator."""
+        if not self.coordinator.last_update_success:
+            return None
+        return self._diagnostics()["status"]
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose stable configuration, applicability and decoding provenance."""
+        return {
+            key: value for key, value in self._diagnostics().items() if key != "status"
+        }
+
+
+class ZoneScheduleSensor(ZoneSensor):
+    """Read-only view of one zone's configured and active schedule."""
+
+    _attr_translation_key = "zone_schedule_entity"
+    _attr_entity_registry_enabled_default = True
+    _attr_icon = "mdi:calendar-week"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_zone_schedule"
+
+    def update_properties(self, device):
+        """Keep the zone label; the schedule itself comes from the coordinator."""
+        self._name = device[CONF_DESCRIPTION][CONF_NAME]
+
+    def _schedule_data(self) -> Any:
+        """Return the current schedule snapshot."""
+        return (self.coordinator.data or {}).get("schedules")
+
+    @property
+    def available(self) -> bool:
+        """Become unavailable when the schedule snapshot disappears."""
+        return super().available and isinstance(self._schedule_data(), dict)
+
+    @property
+    def native_value(self) -> str | None:
+        """Prefer the proven active name, then a translated configured mode."""
+        data = self._schedule_data()
+        if not self.coordinator.last_update_success or not isinstance(data, dict):
+            return None
+        info = zone_schedule_info(data, self._id, True)
+        if info["active_schedule_name"]:
+            return info["active_schedule_name"]
+        mode = info["schedule_mode"]
+        if mode is None:
+            return None
+        hass = getattr(self, "hass", None)
+        if hass is None:
+            return mode
+        translation_key = _SCHEDULE_MODE_TRANSLATION_KEYS.get(mode)
+        if translation_key is None:
+            return mode
+        translated = async_translate_state(
+            hass,
+            translation_key,
+            "sensor",
+            DOMAIN,
+            "zone_schedule_entity",
+            None,
+        )
+        return mode if translated == translation_key else translated
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose selection, applicability, local template and errors."""
+        data = self._schedule_data()
+        if not isinstance(data, dict):
+            return {}
+        return zone_schedule_attributes(data, self._id, True)
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Write the coordinator's schedule view without touching tile state."""
+        self.async_write_ha_state()
+
+
+class ZoneLocalScheduleSensor(ZoneSensor):
+    """Read-only view of one zone's local schedule template."""
+
+    _attr_translation_key = "local_schedule_entity"
+    _attr_entity_registry_enabled_default = False
+    _attr_icon = "mdi:calendar-week"
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_zone_schedule_local"
+
+    def update_properties(self, device):
+        """Keep the zone label; the template comes from the coordinator."""
+        self._name = device[CONF_DESCRIPTION][CONF_NAME]
+
+    def _schedule_data(self) -> Any:
+        """Return the current schedule snapshot."""
+        return (self.coordinator.data or {}).get("schedules")
+
+    def _details(self) -> dict[str, Any] | None:
+        """Return the decoded local template, or ``None`` without a snapshot."""
+        data = self._schedule_data()
+        if not isinstance(data, dict):
+            return None
+        return local_schedule_details(data, self._id)
+
+    @property
+    def available(self) -> bool:
+        """Become unavailable when the schedule snapshot disappears."""
+        return super().available and isinstance(self._schedule_data(), dict)
+
+    @property
+    def native_value(self) -> str | None:
+        """Report missing, pending, valid or invalid."""
+        return _template_status(self._details())
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the decoded template and its provenance."""
+        return self._details() or {}
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Write the coordinator's schedule view without touching tile state."""
+        self.async_write_ha_state()
+
+
+def _template_status(details: dict[str, Any] | None) -> str | None:
+    """Turn one decoded template into a compact sensor state."""
+    if details is None:
+        return None
+    if not details["found"]:
+        return "missing"
+    if not details["settled"]:
+        return "pending"
+    return "valid" if details["valid"] else "invalid"
+
+
+_SCHEDULE_MODE_TRANSLATION_KEYS = {
+    "constantTemp": "constant-temp",
+    "globalSchedule": "global-schedule",
+    "localSchedule": "local-schedule",
+    "timeLimit": "time-limit",
+}
+
+
+class ControllerGlobalScheduleSensor(CoordinatorEntity, SensorEntity):
+    """Read-only view of one global schedule template slot."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+    _attr_has_entity_name = True
+    _attr_translation_key = "global_schedule_entity"
+    _attr_icon = "mdi:calendar-week"
+
+    def __init__(
+        self,
+        coordinator: TechCoordinator,
+        config_entry: ConfigEntry,
+        index: int,
+    ) -> None:
+        """Bind to the existing coordinator and one global slot."""
+        super().__init__(coordinator)
+        self._config_entry = config_entry
+        self._udid = config_entry.data[CONTROLLER][UDID]
+        self._index = index
+        self._attr_translation_placeholders = {"schedule_number": str(index + 1)}
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._udid}_schedule_global_{self._index}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Attach to the controller device."""
+        return controller_device_info(self._config_entry)
+
+    def _schedule_data(self) -> Any:
+        """Return the current schedule snapshot."""
+        return (self.coordinator.data or {}).get("schedules")
+
+    def _details(self) -> dict[str, Any] | None:
+        """Return the decoded global template, or ``None`` without a snapshot."""
+        data = self._schedule_data()
+        if not isinstance(data, dict):
+            return None
+        return global_schedule_details(data, self._index)
+
+    @property
+    def available(self) -> bool:
+        """Become unavailable when the schedule snapshot disappears."""
+        return super().available and isinstance(self._schedule_data(), dict)
+
+    @property
+    def native_value(self) -> str | None:
+        """Report missing, pending, valid or invalid."""
+        return _template_status(self._details())
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the decoded template and its provenance."""
+        return self._details() or {}
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Write the coordinator's schedule view without touching tile state."""
+        self.async_write_ha_state()

@@ -1,4 +1,18 @@
 {
+    "issues": {
+        "deprecated_flag_sensor": {
+            "title": "Byl zjištěn zastaralý senzor",
+            "description": "Senzor `{entity_id}` je zastaralý: widgety typu hodnoty 28, které hlásí Zapnuto/Vypnuto, jsou nyní vystaveny jako binární senzory se stejným názvem.\n\nAktualizujte své dashboardy, šablony, automatizace a skripty, aby používaly binární senzor, poté zastaralý senzor zakažte a restartujte Home Assistant."
+        },
+        "deprecated_flag_sensor_used": {
+            "title": "Byl zjištěn zastaralý senzor",
+            "description": "Senzor `{entity_id}` je zastaralý: widgety typu hodnoty 28, které hlásí Zapnuto/Vypnuto, jsou nyní vystaveny jako binární senzory se stejným názvem.\n\nPoužívá se v následujících automatizacích nebo skriptech:\n{items}\n\nAktualizujte je spolu s dashboardy a šablonami, které jej používají, aby používaly binární senzor, poté zastaralý senzor zakažte a restartujte Home Assistant."
+        },
+        "menu_code_rejected": {
+            "title": "Kód menu nebyl přijat",
+            "description": "Kód nastavený pro menu ({menu_type}) regulátoru nebyl přijat, proto chybí prvky tohoto menu. Odeberte integraci a přidejte ji znovu a zadejte kód znovu. Špatný kód vypadá přesně jako žádný kód."
+        }
+    },
     "config": {
         "abort": {
             "already_configured": "Zařízení již nakonfigurováno",
@@ -25,6 +39,15 @@
                 "data": {
                     "controllers": "Ovladače k importu",
                     "include_hub_in_name": "Zahrnout název hubu (ovladače) do názvů entit"
+                }
+            },
+            "menu_codes": {
+                "title": "Kódy menu",
+                "description": "Některé regulátory drží menu instalatéra a servisní menu za kódem. Zadejte kód pro každé menu, které má Home Assistant číst, nebo pole ponechte prázdná. Špatný kód se chová přesně jako žádný kód.",
+                "data": {
+                    "menu_code_mu": "Kód uživatelského menu (MU)",
+                    "menu_code_mi": "Kód instalačního menu (MI)",
+                    "menu_code_ms": "Kód servisního menu (MS)"
                 }
             }
         }
@@ -57,6 +80,29 @@
             },
             "zone_state_entity": {
                 "name": "{entity_name} Stav alarmu"
+            },
+            "controller_schedules": {
+                "name": "Harmonogramy"
+            },
+            "zone_schedule_entity": {
+                "name": "Harmonogram",
+                "state": {
+                  "constant-temp": "Konstantní teplota",
+                  "global-schedule": "Globální harmonogram",
+                  "local-schedule": "Místní harmonogram",
+                  "time-limit": "Časový limit"
+                }
+            },
+            "local_schedule_entity": {
+                "name": "Místní harmonogram"
+            },
+            "global_schedule_entity": {
+                "name": "Globální harmonogram {schedule_number}"
+            }
+        },
+        "binary_sensor": {
+            "schedule_problem_entity": {
+                "name": "Problém s harmonogramem"
             }
         }
     },

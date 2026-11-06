@@ -28,8 +28,18 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONTROLLER, DOMAIN, INCLUDE_HUB_IN_NAME, MANUFACTURER, UDID, VER
+from . import assets
+from .const import (
+    CONTROLLER,
+    DOMAIN,
+    INCLUDE_HUB_IN_NAME,
+    MANUFACTURER,
+    UDID,
+    VER,
+    scaled_number,
+)
 from .coordinator import TechCoordinator
+from .schedules import climate_schedule_attributes
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,9 +64,12 @@ async def async_setup_entry(
     udid = config_entry.data[CONTROLLER][UDID]
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     _LOGGER.debug("Setting up entry, controller udid: %s", udid)
-    zones = await coordinator.api.get_module_zones(udid)
+    # Only usable zone payloads: a controller without zones, or one whose payload
+    # carries entries that are not zone payloads, must not take the whole climate
+    # platform down with it.
+    zones = assets.zone_payloads(await coordinator.api.get_module_zones(udid))
     thermostats = [
-        TechThermostat(zones[zone], coordinator, config_entry) for zone in zones
+        TechThermostat(zone, coordinator, config_entry) for zone in zones.values()
     ]
 
     async_add_entities(thermostats, True)
@@ -126,7 +139,9 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         # Update target temperature
         if device[CONF_ZONE]["setTemperature"] is not None:
             if device[CONF_ZONE]["duringChange"] is False:
-                self._target_temperature = device[CONF_ZONE]["setTemperature"] / 10
+                self._target_temperature = scaled_number(
+                    device[CONF_ZONE]["setTemperature"], 10
+                )
             else:
                 _LOGGER.debug(
                     "Zone ID %s is duringChange so ignore to update target temperature",
@@ -136,10 +151,9 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
             self._target_temperature = None
 
         # Update current temperature
-        if device[CONF_ZONE]["currentTemperature"] is not None:
-            self._temperature = device[CONF_ZONE]["currentTemperature"] / 10
-        else:
-            self._temperature = None
+        self._temperature = scaled_number(
+            device[CONF_ZONE].get("currentTemperature"), 10
+        )
 
         # Update humidity
         if (
@@ -180,6 +194,15 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
     def unique_id(self) -> str:
         """Return a unique ID."""
         return f"{self._unique_id}_zone_climate"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Describe schedule selection without inferring a current target."""
+        return climate_schedule_attributes(
+            (self._coordinator.data or {}).get("schedules"),
+            self._id,
+            self._coordinator.last_update_success,
+        )
 
     @property
     def supported_features(self) -> ClimateEntityFeature:

@@ -31,9 +31,22 @@ tile-derived entities.
 """
 
 from datetime import timedelta
-from typing import Final
+import math
+from typing import Any, Final, NamedTuple
 
-from homeassistant.const import Platform
+from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
+from homeassistant.const import (
+    PERCENTAGE,
+    Platform,
+    UnitOfElectricPotential,
+    UnitOfEnergy,
+    UnitOfPower,
+    UnitOfPressure,
+    UnitOfTemperature,
+    UnitOfTime,
+    UnitOfVolume,
+    UnitOfVolumeFlowRate,
+)
 
 # ---------------------------------------------------------------------------
 # Config-entry and API field keys
@@ -133,6 +146,16 @@ TYPE_OPEN_THERM = 252  # OpenTherm boiler -- carries 4-5 sub-temperature values
 WIDGET_DHW_PUMP = 1  # DHW pump set vs current temperature pair
 WIDGET_COLLECTOR_PUMP = 2  # Solar collector pump duty cycle (percentage)
 WIDGET_TEMPERATURE_CH = 9  # Central-heating temperature reading
+# Value type 13 is a *two-field reading*: the API documents it as
+# "Time written as hours * 60 + min, shown as 00:00 - 23:59", so its raw value
+# is a count of minutes and :func:`widget_hours_and_minutes` splits it into the
+# two fields the controller shows. Controllers also use the type for
+# elapsed-time counters whose raw value counts *seconds* instead (the Kołton
+# ST-5305 compressor downtime advanced 205:00 -> 226:00 over about twenty
+# minutes, i.e. one per second), which is why nothing bounds the first field.
+# The split is the same either way, so only the meaning of the raw value -- and
+# therefore the unit the two fields are in -- differs between fields.
+WIDGET_UNIT_TIME_OF_DAY: Final = 13
 
 # ``params.widgetN.unit`` codes seen in the wild and the divisor that turns
 # the integer ``value`` into a human-readable measurement. Codes not listed
@@ -148,17 +171,238 @@ WIDGET_TEMPERATURE_CH = 9  # Central-heating temperature reading
 #  * 26  -- tenths of a kW (power sensor, observed on ST-521)
 #  * 33  -- tenths of a percent (mixer opening, observed on ST-521)
 #  * -1  -- contact widget marker (handled by binary_sensor, not scaled here)
-WIDGET_UNIT_DIVISORS = {
-    0: 1,
-    4: 10,
-    5: 100,
-    6: 1,
-    7: 10,
-    8: 1,
-    23: 10,
-    26: 10,
-    33: 10,
+#
+# The remaining divisors come from the API's own value-type table
+# (https://api-documentation.emodul.eu/openapi.yaml, "Data types format"), which
+# states the transformation each value type needs:
+#  * 19 -- kWh with a decimal point    -> / 10. The API names the decimal point
+#          but not the transformation; every other "with a decimal point" type
+#          (21, 26) divides by 10, and the eModul app's own formatter multiplies
+#          value types 19 by 0.1 before showing one decimal place.
+#  * 21 -- MWh with a decimal point   -> / 10
+#  * 22 -- L/min with a decimal point -> / 10
+#  * 30 -- L/hr with a decimal point  -> / 100
+#  * 36 -- kWh with a hundredth       -> / 100
+#  * 40 -- kWh with a thousandth      -> / 1000
+#  * 38 -- COP with decimal places    -> / 10. The API states the decimal places
+#          but not the transformation; reported COP values are divided by 10,
+#          as every other "with decimals" type is.
+# Every documented value type is listed below. The divisor scales the raw
+# integer; the remaining fields carry the engineering meaning that value alone
+# cannot express - a power reading published with a temperature unit and the
+# temperature device class is wrong no matter how it is scaled (issue #221).
+# Types the API leaves semantically open stay unitless: 15 (run), 18 (flame
+# brightness), 24 (epoch), 35 (hexadecimal), 37 (years/days) and 39 ("Value
+# l / m", which the API does not define further, but which the app labels with
+# the same "l/godz." string as value type 30 -- litres per hour). Value type 13
+# carries no precision either: its state is the hours-and-minutes reading
+# :func:`widget_hours_and_minutes` builds, and Home Assistant refuses a
+# non-numeric state when a precision (or unit, or state class) asks for one.
+# Value types 3 (hours) and 13 (hours:minutes) are also the two the payload uses
+# for elapsed-time counters, so their entities are registered *disabled*: a
+# heat pump carries a whole block of them (start counts, compressor run and
+# downtime) that most installations never read, and the ones a user does read
+# are one toggle away.
+class WidgetUnit(NamedTuple):
+    """Home Assistant metadata for one eModul value type.
+
+    Attributes:
+        unit: Unit of measurement, or ``None`` for a dimensionless reading.
+        divisor: What the API's raw integer is divided by.
+        device_class: Home Assistant sensor device class, where the unit implies
+            one. Kelvin carries none: the API uses it for temperature
+            *differences*, which an absolute-temperature converter would mangle.
+        state_class: Statistics class. ``MEASUREMENT`` for a physical quantity,
+            ``None`` for identifiers, settings and counters, where statistics
+            would be noise.
+        precision: Suggested display precision, or ``None`` to leave it to the
+            user.
+        icon: Suggested icon, which a user's own choice still overrides.
+        enabled_default: Whether Home Assistant registers the entity enabled.
+            Elapsed-time counters are registered disabled: they are diagnostics
+            that most installations never read (issue #221), and a user enables
+            the one counter they care about with a single toggle.
+
+    """
+
+    unit: str | None = None
+    divisor: int = 1
+    device_class: SensorDeviceClass | None = None
+    state_class: SensorStateClass | None = None
+    precision: int | None = None
+    icon: str = "mdi:numeric"
+    enabled_default: bool = True
+
+
+# Columns: unit, divisor, device_class, state_class, precision, icon,
+# enabled_default.
+WIDGET_UNITS: dict[int, WidgetUnit] = {
+    -1: WidgetUnit(),  # invisible value
+    0: WidgetUnit(None, 1, None, None, 0, "mdi:counter"),  # ordinary value
+    1: WidgetUnit(UnitOfTime.SECONDS, 1, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, 0, "mdi:timer-outline"),
+    2: WidgetUnit(UnitOfTime.MINUTES, 1, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, 0, "mdi:timer-outline"),
+    3: WidgetUnit(UnitOfTime.HOURS, 1, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, 1, "mdi:timer-outline", enabled_default=False),  # run-time counter
+    4: WidgetUnit(None, 10, None, SensorStateClass.MEASUREMENT, 1, "mdi:numeric"),
+    5: WidgetUnit(None, 100, None, SensorStateClass.MEASUREMENT, 2, "mdi:numeric"),
+    6: WidgetUnit(UnitOfTemperature.CELSIUS, 1, SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT, 1, "mdi:thermometer"),
+    7: WidgetUnit(UnitOfTemperature.CELSIUS, 10, SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT, 1, "mdi:thermometer"),
+    8: WidgetUnit(PERCENTAGE, 1, None, SensorStateClass.MEASUREMENT, 0, "mdi:percent"),
+    9: WidgetUnit(None, 1, None, SensorStateClass.MEASUREMENT, 1, "mdi:numeric"),  # promile
+    10: WidgetUnit(UnitOfPower.KILO_WATT, 1, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT, 1, "mdi:flash"),
+    11: WidgetUnit(UnitOfEnergy.KILO_WATT_HOUR, 1, SensorDeviceClass.ENERGY, None, 0, "mdi:lightning-bolt"),
+    12: WidgetUnit(UnitOfElectricPotential.VOLT, 1, SensorDeviceClass.VOLTAGE, SensorStateClass.MEASUREMENT, 1, "mdi:flash"),
+    13: WidgetUnit(None, 1, None, None, None, "mdi:clock-outline", enabled_default=False),  # hours:minutes, see widget_hours_and_minutes
+    14: WidgetUnit(UnitOfTime.DAYS, 1, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, 0, "mdi:calendar"),
+    15: WidgetUnit(None, 1, None, None, 0, "mdi:play-circle-outline"),  # run
+    16: WidgetUnit(UnitOfTime.SECONDS, 1, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, 0, "mdi:timer-outline"),
+    17: WidgetUnit(UnitOfTime.MINUTES, 1, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, 0, "mdi:timer-outline"),
+    18: WidgetUnit(None, 1, None, None, 0, "mdi:fire"),  # flame brightness
+    19: WidgetUnit(UnitOfEnergy.KILO_WATT_HOUR, 10, SensorDeviceClass.ENERGY, None, 1, "mdi:lightning-bolt"),
+    20: WidgetUnit(UnitOfEnergy.MEGA_WATT_HOUR, 1, SensorDeviceClass.ENERGY, None, 1, "mdi:lightning-bolt"),
+    21: WidgetUnit(UnitOfEnergy.MEGA_WATT_HOUR, 10, SensorDeviceClass.ENERGY, None, 2, "mdi:lightning-bolt"),
+    22: WidgetUnit(UnitOfVolumeFlowRate.LITERS_PER_MINUTE, 10, SensorDeviceClass.VOLUME_FLOW_RATE, SensorStateClass.MEASUREMENT, 2, "mdi:waves"),
+    23: WidgetUnit(UnitOfPressure.BAR, 10, SensorDeviceClass.PRESSURE, SensorStateClass.MEASUREMENT, 1, "mdi:gauge"),
+    24: WidgetUnit(None, 1, None, None, 0, "mdi:clock-outline"),  # epoch
+    25: WidgetUnit(UnitOfTime.SECONDS, 1, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, 0, "mdi:timer-outline"),
+    26: WidgetUnit(UnitOfPower.KILO_WATT, 10, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT, 1, "mdi:flash"),
+    27: WidgetUnit("rpm", 1, None, SensorStateClass.MEASUREMENT, 0, "mdi:rotate-right"),
+    28: WidgetUnit(None, 1, None, None, 0, "mdi:toggle-switch-outline"),  # enabled/disabled
+    29: WidgetUnit(UnitOfPower.WATT, 1, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT, 0, "mdi:flash"),
+    30: WidgetUnit(UnitOfVolumeFlowRate.LITERS_PER_HOUR, 100, SensorDeviceClass.VOLUME_FLOW_RATE, SensorStateClass.MEASUREMENT, 2, "mdi:waves"),
+    31: WidgetUnit(UnitOfTime.HOURS, 1, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, 0, "mdi:timer-outline"),
+    32: WidgetUnit(UnitOfTemperature.KELVIN, 1, None, SensorStateClass.MEASUREMENT, 1, "mdi:thermometer"),
+    33: WidgetUnit(PERCENTAGE, 10, None, SensorStateClass.MEASUREMENT, 1, "mdi:percent"),
+    34: WidgetUnit(UnitOfEnergy.WATT_HOUR, 1, SensorDeviceClass.ENERGY, None, 1, "mdi:lightning-bolt"),
+    35: WidgetUnit(None, 1, None, None, 0, "mdi:numeric"),  # hexadecimal
+    36: WidgetUnit(UnitOfEnergy.KILO_WATT_HOUR, 100, SensorDeviceClass.ENERGY, None, 2, "mdi:lightning-bolt"),
+    37: WidgetUnit(None, 1, None, None, 0, "mdi:calendar"),  # years/days
+    38: WidgetUnit(None, 10, None, SensorStateClass.MEASUREMENT, 1, "mdi:numeric"),  # COP
+    # 39 is "Value l / m" in the API prose, and the eModul app labels it with the
+    # same "l/godz." string as value type 30: a flow rate in litres per hour. The
+    # app transforms neither its value nor its decimals, so the raw integer is
+    # published as-is; the scale is unverified (issue #221 only has zero readings).
+    39: WidgetUnit(UnitOfVolumeFlowRate.LITERS_PER_HOUR, 1, SensorDeviceClass.VOLUME_FLOW_RATE, SensorStateClass.MEASUREMENT, 0, "mdi:waves"),
+    40: WidgetUnit(UnitOfEnergy.KILO_WATT_HOUR, 1000, SensorDeviceClass.ENERGY, None, 3, "mdi:lightning-bolt"),
+    41: WidgetUnit(UnitOfVolume.LITERS, 1, SensorDeviceClass.VOLUME, SensorStateClass.MEASUREMENT, 1, "mdi:water"),
+    42: WidgetUnit(UnitOfVolume.CUBIC_METERS, 1, SensorDeviceClass.VOLUME, SensorStateClass.MEASUREMENT, 1, "mdi:water"),
 }
+
+
+def widget_unit(code: int | None) -> WidgetUnit:
+    """Return the Home Assistant metadata for an eModul value type.
+
+    Args:
+        code: The widget's ``unit`` field, which is the API's value type.
+
+    Returns:
+        The matching entry, or the ordinary-value entry for a missing or
+        undocumented code, so an unknown type keeps behaving as it does today.
+
+    """
+    return WIDGET_UNITS.get(code, WIDGET_UNITS[0])
+
+
+def widget_hours_and_minutes(value: Any) -> str | None:
+    """Render a value type 13 reading, which is a two-field time or duration.
+
+    The API documents value type 13 as "Time written as hours * 60 + min, shown
+    as 00:00 - 23:59", and the eModul app's formatter splits the raw value the
+    same way (``minutes = t % 60; hours = (t - minutes) / 60``) without bounding
+    the first field. Both the app and the controller therefore render a raw
+    count as ``total // 60`` and ``total % 60``.
+
+    Which unit that count is in is per field, not per type. The API's own prose
+    is minutes, which makes the reading a time of day (``1041`` is 17:21). The
+    Kołton ST-5305 uses the same type for its compressor run-time counters, and
+    the reporter measured those counting *seconds* -- his history shows 205:00
+    to 226:00 over about twenty minutes, one per second, so ``2190`` is 36
+    minutes 30 seconds (issue #221). Both readings render as the same two-field
+    string, so the entity shows what the controller shows either way; the
+    payload does not say which unit applies.
+
+    Values the format cannot express - negative, fractional, or not a number at
+    all - return ``None`` (unknown) rather than a nonsense reading; the same
+    payload's ``-29536`` sentinel is one of those.
+
+    Args:
+        value: The widget's raw ``value`` field.
+
+    Returns:
+        ``"MM:SS"`` or ``"HH:MM"`` (the first field may exceed 59), or ``None``
+        for an unusable value.
+
+    """
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    first, second = divmod(value, 60)
+    return f"{first:02d}:{second:02d}"
+
+
+def reading_is_working(params: Any) -> bool:
+    """Return whether a tile's ``params`` describe a working input.
+
+    The API puts ``workingStatus`` inside a tile's ``params``. A boolean
+    ``False`` means the input is off or disconnected; any other value,
+    including its absence and the legacy ``None``/``0``/string forms, leaves
+    the reading usable.
+
+    Args:
+        params: A tile's ``params`` mapping, or any other payload shape.
+
+    Returns:
+        ``False`` only for an explicit boolean ``False`` flag.
+
+    """
+    return not (isinstance(params, dict) and params.get(WORKING_STATUS) is False)
+
+
+def valid_number(value: Any) -> int | float | None:
+    """Return a finite JSON number, or ``None`` for anything else.
+
+    Booleans are rejected even though Python treats them as integers, and a
+    numeric value that cannot be represented as a finite float (the API's
+    ``-29536`` sentinels and oversized integers) is treated as unusable rather
+    than published.
+
+    Args:
+        value: A raw value from a tile or zone payload.
+
+    Returns:
+        The value when it is a finite int or float, otherwise ``None``.
+
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        if not math.isfinite(value):
+            return None
+    except OverflowError:
+        return None
+    return value
+
+
+def scaled_number(value: Any, divisor: int = 1) -> int | float | None:
+    """Validate a raw value and apply the API's divisor.
+
+    Args:
+        value: A raw value from a tile or zone payload.
+        divisor: What the API's raw integer is divided by.
+
+    Returns:
+        The scaled finite number, or ``None`` when the value is malformed or
+        the result is not finite.
+
+    """
+    number = valid_number(value)
+    if number is None:
+        return None
+    if divisor == 1:
+        return number
+    try:
+        scaled = number / divisor
+    except OverflowError:
+        return None
+    return scaled if math.isfinite(scaled) else None
 
 # ---------------------------------------------------------------------------
 # Icon mapping tables
@@ -235,14 +479,78 @@ OPENTHERM_MODULATION = {"txt_id": 428, "state_key": "modulationPercentage"}
 # Menu trees and item types
 # ---------------------------------------------------------------------------
 # The Tech API exposes four hierarchical menu trees per controller. Each is
-# fetched from /users/{uid}/modules/{udid}/menu/{TYPE}/. Only USER and
-# INSTALLER menus are loaded by default -- SERVICE and MANUFACTURER menus
-# are deeply nested, frequently locked, and not currently mapped to entities.
+# fetched from /users/{uid}/modules/{udid}/menu/{TYPE}/, and all four are read:
+# the eModul app derives the same four from its own routes ("menu",
+# "fitters_menu", "service_menu", "manufacturer_menu") and a controller may
+# keep a control in any of them. The pressure-switch lockout requested in #222
+# is one such case -- its clear-lockout dialogue and lockout time live in the
+# service tree, not in the user menu the reporter first looked at, so the tree
+# has to be asked for before that control can exist.
+#
+# Reading a tree is not the same as publishing it: items the account cannot use
+# arrive with ``access: false``, which the value/choice/switch platforms skip
+# (a dialogue still registers, and reports itself ``unavailable``), and the
+# depth limits below keep the deep per-zone subgroups off the registry.
 MENU_TYPE_USER = "MU"
 MENU_TYPE_INSTALLER = "MI"
 MENU_TYPE_SERVICE = "MS"
 MENU_TYPE_MANUFACTURER = "MP"
-MENU_TYPES = [MENU_TYPE_USER, MENU_TYPE_INSTALLER]
+MENU_TYPES = [
+    MENU_TYPE_USER,
+    MENU_TYPE_INSTALLER,
+    MENU_TYPE_SERVICE,
+    MENU_TYPE_MANUFACTURER,
+]
+
+# A tree can be gated behind a code the user has to supply (#222). A refusal is
+# HTTP 200 with body ``{"message": "missing items in <TYPE> menu"}`` and no
+# elements, so the code cannot be discovered from it -- only supplied by the
+# user. A wrong code and no code are indistinguishable, which is why the UI can
+# honestly say no more than "not accepted".
+#
+# The code travels in the path as ``<element id>:<code>`` pairs separated by
+# commas. The documented convention pairs it with id 0, the tree root, which is
+# the element carrying ``params.password`` in the dumps we have; a controller
+# that gated a non-root element would name it in the same segment. Pairing with
+# the root also sidesteps the ``type: 35`` "Menu password" *setting* item, whose
+# ``params.password`` is placeholder text rather than a credential.
+MENU_ROOT_ELEMENT_ID = 0
+
+# The API's answer to a menu code it will not accept: "Invalid parameter pin",
+# on the read path as well as the write one.
+MENU_PIN_REJECTION_STATUS = 422
+
+# The trees the config flow offers a code for. Not all four: the manufacturer
+# tree is refused on every consumer account seen and no code is likely to help,
+# so asking for one there would be a field nobody can fill in. Its manifest
+# names it ``manufacturer_menu`` and it stays fetched -- an installer account may
+# read it -- it is just never asked about.
+MENU_CODE_TREES = [
+    MENU_TYPE_USER,
+    MENU_TYPE_INSTALLER,
+    MENU_TYPE_SERVICE,
+]
+
+# Where the supplied codes live in the config entry's ``data``: a mapping of
+# menu type to code, holding only the trees the user gave a code for. An absent
+# key or an empty mapping means "no codes", which is exactly the behaviour of
+# every entry configured before this existed -- so there is no migration to
+# run and VERSION does not move.
+CONF_MENU_CODES = "menu_codes"
+
+
+def menu_code_field(menu_type: str) -> str:
+    """Return the config-flow field name that holds ``menu_type``'s code.
+
+    Args:
+        menu_type: One of :data:`MENU_CODE_TREES`, e.g. ``"MS"``.
+
+    Returns:
+        The schema key for that tree's code, e.g. ``"menu_code_ms"``.
+
+    """
+    return f"menu_code_{menu_type.lower()}"
+
 
 # A menu item's ``type`` field decides which HA platform it is mapped to:
 #   - GROUP             -> not an entity (organisational header)
@@ -250,6 +558,7 @@ MENU_TYPES = [MENU_TYPE_USER, MENU_TYPE_INSTALLER]
 #   - CODE / TIME_MODE  -> currently unmapped
 #   - ON_OFF            -> SwitchEntity
 #   - CHOICE            -> SelectEntity
+#   - CHECKBOX          -> SwitchEntity, one per option (bit of ``params.value``)
 #   - DIALOGUE          -> ButtonEntity (one-shot action)
 MENU_ITEM_TYPE_GROUP = 0
 MENU_ITEM_TYPE_VALUE = {1, 2, 3, 4, 5}
@@ -257,8 +566,42 @@ MENU_ITEM_TYPE_CODE = 6
 MENU_ITEM_TYPE_TIME_MODE = 7
 MENU_ITEM_TYPE_ON_OFF = 10
 MENU_ITEM_TYPE_CHOICE = {11, 111, 112}
+MENU_ITEM_TYPE_CHECKBOX = 15
 MENU_ITEM_TYPE_DIALOGUE = 20
 MENU_ITEM_TYPE_UNIVERSAL_VALUE = 106
+
+# A DIALOGUE item carries a sub-type in ``params.type``, and the value that
+# confirms it depends on that sub-type -- not on the item. The eModul app's
+# dialogue control switches on it and sends a fixed value, always pairing it
+# with ``params.type`` as the payload's ``type``:
+#   - 1 -- Yes/No: the two buttons send 1 ("Tak") and 0 ("Nie"), so a press
+#          from Home Assistant confirms with 1.
+#   - 0 -- one confirm button, value 2.
+#   - 2 -- one button styled as a cancel, value 3. This is the service menu's
+#          clear-lockout control of #222, whose press was traced to
+#          ``{"value": 3, "type": 2}`` on the reporter's controller.
+# A sub-type outside this table draws no control in the app, so no observed
+# value exists for it; the button keeps the value this platform has always
+# sent rather than inventing another.
+MENU_DIALOGUE_CONFIRM_VALUES: Final[dict[int, int]] = {0: 2, 1: 1, 2: 3}
+MENU_DIALOGUE_CONFIRM_FALLBACK: Final = 1
+
+# Catalogue text ids that identify what a dialogue does, whatever language the
+# account uses. ``txtId`` 839 is "Ustawienia fabryczne" ("Factory settings") on
+# every controller seen; a press wipes the controller's configuration, so those
+# buttons are registered disabled by default. The reporter asked for exactly
+# that after #222 exposed four of them (#222 comment of 2026-10-18).
+MENU_FACTORY_RESET_TXT_ID: Final = 839
+
+# A lockout dialogue carries the *status* "Brak blokady" ("No lockout") in
+# ``params.txtId`` (10018) while its own ``txtId`` names the item. For the
+# pressure-switch item the label is already the action ("Zdjęcie blokady",
+# 8395); for the fan lockout it is only the thing that can be locked
+# ("Blokada wentylatora", 6956), which collides with the binary sensor of the
+# same name. Button naming appends the catalogue's action label in the latter
+# case so the two entities stay distinguishable.
+MENU_LOCKOUT_STATUS_TXT_ID: Final = 10018
+MENU_LOCKOUT_CLEAR_TXT_ID: Final = 8395
 
 # Menu depth filtering thresholds. Tech menus on multi-zone controllers
 # (notably L-12 with ~4100 MI items) are deeply nested and exposing every

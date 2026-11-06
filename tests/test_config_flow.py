@@ -100,6 +100,18 @@ def _identity(value):
     return value
 
 
+# What the flow asked to redact, in order: the redaction helper itself is a
+# no-op here, so the only way to tell that a code is kept out of the log is to
+# record the keys the flow hands over.
+_REDACTED: list[tuple[dict, list]] = []
+
+
+def _redact(data, keys):
+    """Record what the flow asked to redact, and redact nothing."""
+    _REDACTED.append((dict(data), list(keys)))
+    return data
+
+
 def _fake_module(name: str) -> types.ModuleType:
     """Build the stub for one ``homeassistant`` module."""
     module = types.ModuleType(name)
@@ -128,7 +140,7 @@ def _fake_module(name: str) -> types.ModuleType:
         module.multi_select = lambda options: _identity
         module.string = _identity
     elif name == "homeassistant.helpers.redact":
-        module.async_redact_data = lambda data, keys: data
+        module.async_redact_data = _redact
     elif name == "homeassistant.helpers.aiohttp_client":
         module.async_get_clientsession = lambda hass: None
     return module
@@ -285,3 +297,114 @@ def test_no_selection_aborts_without_adding_entries() -> None:
     )
     assert result == {"type": "abort", "reason": "no_modules"}
     assert flow.hass.config_entries.added == []
+
+
+# ---------------------------------------------------------------------------
+# The menu-code step (#222)
+# ---------------------------------------------------------------------------
+
+
+def _drive(submitted: dict) -> tuple[Any, dict]:
+    """Select the one controller, then submit the menu-code form.
+
+    Home Assistant hands a step the schema-validated payload, so the submitted
+    codes go through ``menu_codes_schema`` first, defaults and all.
+    """
+    flow = _flow([_controller_payload()])
+    asyncio.run(
+        flow.async_step_select_controllers(_validated({const.CONTROLLERS: ["1"]}))
+    )
+    return flow, asyncio.run(
+        flow.async_step_menu_codes(config_flow.menu_codes_schema()(submitted))
+    )
+
+
+def test_the_code_form_is_offered_after_the_controller_selection() -> None:
+    """The selection step hands over to the code form instead of finishing.
+
+    A controller that keeps a menu behind a code refuses to serve it, and says
+    nothing about which code it wants, so the code has to be collected inside the
+    flow -- it is needed to fetch the tree during setup. Nothing is stored yet.
+    """
+    flow = _flow([_controller_payload()])
+
+    result = asyncio.run(
+        flow.async_step_select_controllers(_validated({const.CONTROLLERS: ["1"]}))
+    )
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "menu_codes"
+    assert flow.hass.config_entries.added == []
+
+
+def test_leaving_every_code_empty_stores_none_and_behaves_as_before() -> None:
+    """An untouched form means "no code", and costs none of the old behaviour.
+
+    This is what keeps the step a no-op for every account whose menus were never
+    gated: the entry comes out with no code key at all, which is exactly the shape
+    an entry configured before this step existed has -- so no migration is
+    needed and nothing has to be bumped.
+    """
+    flow, result = _drive({})
+
+    (entry,) = flow.hass.config_entries.added
+    assert const.CONF_MENU_CODES not in entry.data
+    assert entry.data[const.INCLUDE_HUB_IN_NAME] is False
+    assert result == {"type": "abort", "reason": "controllers_configured"}
+
+
+def test_the_codes_are_stored_per_menu_tree() -> None:
+    """Each tree keeps its own code, under its own key.
+
+    One field per tree is the point of the form: his installer and service codes
+    are different values, so a single "service code" field could not carry both.
+    Only the trees that were given one are stored.
+    """
+    flow, _ = _drive({"menu_code_mi": "0000", "menu_code_ms": "1989"})
+
+    (entry,) = flow.hass.config_entries.added
+    assert entry.data[const.CONF_MENU_CODES] == {"MI": "0000", "MS": "1989"}
+
+
+def test_a_blank_code_is_treated_as_no_code() -> None:
+    """Whitespace is not a code either.
+
+    A field holding only spaces must not put anything on the wire, where an empty
+    code would be as good as a wrong one.
+    """
+    flow, _ = _drive({"menu_code_ms": "   "})
+
+    (entry,) = flow.hass.config_entries.added
+    assert const.CONF_MENU_CODES not in entry.data
+
+
+def test_the_manufacturer_menu_is_neither_offered_nor_stored() -> None:
+    """The MP tree is fetched, but no code is ever asked for it.
+
+    It is refused on every consumer account seen -- including controllers whose
+    other three trees are wide open -- so a field for it would be one nobody
+    could fill in. A payload that carries one anyway is ignored rather than
+    stored, so a stale form cannot put a code on the wire.
+    """
+    fields = {
+        getattr(key, "schema", key) for key in config_flow.menu_codes_schema().schema
+    }
+
+    assert fields == {"menu_code_mu", "menu_code_mi", "menu_code_ms"}
+    assert config_flow._menu_codes_from({"menu_code_mp": "1234"}) == {}
+
+
+def test_the_menu_codes_are_redacted_wherever_the_token_is() -> None:
+    """The codes are credentials, so the flow redacts them along with the token.
+
+    The flow logs the payload it is about to store, and a code missing from the
+    redaction list reaches the debug log and any diagnostic download made of it.
+    """
+    _REDACTED.clear()
+
+    _drive({"menu_code_ms": "1989"})
+
+    assert _REDACTED, "the flow should redact the entry it logs"
+    _data, keys = _REDACTED[-1]
+    assert "token" in keys
+    assert const.CONF_MENU_CODES in keys
