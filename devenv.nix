@@ -32,8 +32,8 @@
   scripts.setup = {
     exec = ''
       echo '🛠️ Running setup'
-      # Sync with pyproject.toml via pip
-      uv sync --group test_api
+      # Sync with pyproject.toml via uv
+      uv sync --group test --group test_api
     '';
     description = "Install dependencies";
   };
@@ -63,7 +63,7 @@
   scripts.tests = {
     exec = ''
       echo '🧪 Running tests'
-      pytest tests/ --cov-report=term-missing --cov=custom_components.tech.tech
+      ./scripts/test "$@"
     '';
     description = "Test integration";
   };
@@ -106,7 +106,7 @@
   tasks."app:setup" = {
     exec = ''
       echo '🛠️ Running setup'
-      uv sync --group test_api --python "$VIRTUAL_ENV/bin/python"
+      uv sync --group test --group test_api --python "$VIRTUAL_ENV/bin/python"
       find ".devenv/state/venv" -name "EXTERNALLY-MANAGED" -delete 2>/dev/null || true
     '';
     after = ["devenv:enterShell"];
@@ -115,6 +115,6 @@
   # https://devenv.sh/tests/
   enterTest = ''
     echo '🧪 Running tests'
-    pytest tests/ --cov-report=term-missing --cov=custom_components.tech.tech
+    ./scripts/test
   '';
 }
