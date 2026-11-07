@@ -267,6 +267,19 @@ def _forget_entity(
         forget(entity.unique_id)
 
     if device_id and not er.async_entries_for_device(registry, device_id):
+        # The device goes with the last entity on it, and everything still on it
+        # goes too -- including the disabled-by-default entities, which are not
+        # in that count and which Home Assistant never told they left, because
+        # it never wrote their state and so never ran their departure hook. They
+        # are not in the coordinator's bookkeeping either, for the same reason,
+        # so the platforms are told about them here. Without this, a payload
+        # that reports the device again would build the enabled entities and
+        # silently leave the disabled ones out for good.
+        for row in er.async_entries_for_device(
+            registry, device_id, include_disabled_entities=True
+        ):
+            for forget in coordinator.forget_callbacks:
+                forget(row.unique_id)
         dr.async_get(hass).async_remove_device(device_id)
 
 

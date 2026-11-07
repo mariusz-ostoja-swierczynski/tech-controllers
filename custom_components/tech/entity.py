@@ -35,7 +35,7 @@ from typing import Any
 
 from homeassistant.const import CONF_DESCRIPTION, CONF_ID, CONF_PARAMS, CONF_TYPE
 from homeassistant.core import callback
-from homeassistant.helpers import entity, entity_registry as er
+from homeassistant.helpers import entity
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -289,24 +289,6 @@ def add_later(
         # what tells an entity apart is its own unique id, not that key. An
         # entity that leaves Home Assistant says so through the callback above,
         # which is what lets a payload bring its entry back.
-        #
-        # That departure signal is not the only way an entity can go, though: one
-        # that belongs to a device the removal pass takes away leaves the
-        # registry with it, and Home Assistant never runs the departure hook for
-        # an entity it wrote no state for -- which is every disabled-by-default
-        # entity. The count is therefore reconciled against the registry, so a
-        # payload reporting that entry again can build it.
-        if registered:
-            registry = er.async_get(coordinator.hass)
-            present = {
-                row.unique_id
-                for row in er.async_entries_for_config_entry(
-                    registry, config_entry.entry_id
-                )
-                if row.unique_id is not None
-            }
-            registered.intersection_update(present)
-
         fresh = [entity for entity in build() if entity.unique_id not in registered]
         if not fresh:
             return
