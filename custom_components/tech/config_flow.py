@@ -36,13 +36,16 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import (
+    CONF_MENU_CODES,
     CONTROLLER,
     CONTROLLERS,
     DOMAIN,
     INCLUDE_HUB_IN_NAME,
+    MENU_CODE_TREES,
     UDID,
     USER_ID,
     VER,
+    menu_code_field,
 )
 from .coordinator import TechConfigEntry
 from .tech import Tech, TechError, TechLoginError
@@ -62,6 +65,54 @@ DATA_SCHEMA = probatio.Schema(
         ),
     }
 )
+
+
+def menu_codes_schema() -> probatio.Schema:
+    """Build the optional per-tree menu-code form.
+
+    One field per tree that can be gated, every one optional. Some controllers
+    keep their installer and service menus behind a code, and a tree held behind
+    one answers with its root alone -- marked with ``params.password`` -- without
+    saying which code it wants, so the code can only be supplied, which is what
+    this form is for. Every field is a password field, because a code is a
+    credential of the same kind as the token.
+
+    Returns:
+        Schema with an optional code field for every menu tree that can be
+        gated.
+
+    """
+    return probatio.Schema(
+        {
+            probatio.Optional(menu_code_field(menu_type), default=""): TextSelector(
+                TextSelectorConfig(type=TextSelectorType.PASSWORD)
+            )
+            for menu_type in MENU_CODE_TREES
+        }
+    )
+
+
+def _menu_codes_from(user_input: dict[str, Any]) -> dict[str, str]:
+    """Return the codes a payload carries, dropping the empty ones.
+
+    An empty field means "no code", not "an empty code", so it is not stored at
+    all: an entry is then indistinguishable from one configured before codes
+    existed, and no empty code is ever sent to the controller.
+
+    Args:
+        user_input: Validated payload holding the code fields, or any payload --
+            such as the controller selection alone -- that holds none of them.
+
+    Returns:
+        Mapping of menu type to code, holding only the trees that were given
+        one.
+
+    """
+    return {
+        menu_type: code
+        for menu_type in MENU_CODE_TREES
+        if (code := str(user_input.get(menu_code_field(menu_type), "")).strip())
+    }
 
 
 def controllers_schema(
@@ -158,8 +209,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 4
     MINOR_VERSION = 0
-    # Pick one of the available connection classes in homeassistant/config_entries.py
-    CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
 
     def __init__(self) -> None:
         """Initialize the config flow.
@@ -169,6 +218,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """
         self._init_info: dict[str, Any] | None = None
         self._controllers: list[dict[str, Any]] = []
+        # The controller chosen on the selection step and the naming preference
+        # given with it, held between that step and the menu-code step that
+        # follows: the entry is created once both are in.
+        self._selected_controller: dict[str, Any] | None = None
+        self._include_hub_in_name: bool = False
 
     @staticmethod
     @callback
@@ -251,20 +305,63 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         await self.async_set_unique_id(controller[CONTROLLER][UDID])
         self._abort_if_unique_id_configured()
 
+        # The controller is chosen; the codes it may need are asked for on their
+        # own form, and the entry is created once both are in.
+        self._selected_controller = controller
+        self._include_hub_in_name = bool(user_input.get(INCLUDE_HUB_IN_NAME, False))
+        return await self.async_step_menu_codes()
+
+    async def async_step_menu_codes(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Ask for the per-tree menu codes and create the chosen entry.
+
+        A controller can keep its installer and service menus behind a code, and
+        a tree held behind one answers with its root alone rather than saying
+        which code it wants, so a code can only be supplied by the user. Every
+        field is optional and empty means "no code", so a user with none can
+        submit the form untouched and get exactly the behaviour of an entry that
+        predates this step.
+
+        Args:
+            user_input: Optional mapping holding the code given for each tree.
+
+        Returns:
+            The code form, or the result of creating the entry.
+
+        """
+        if self._selected_controller is None:
+            # Reached without a controller, which can only happen for a stale
+            # flow: go back to the step that picks one.
+            return await self.async_step_select_controllers()
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="menu_codes",
+                data_schema=menu_codes_schema(),
+            )
+
+        controller = self._selected_controller
+        data = dict(controller)
+        menu_codes = _menu_codes_from(user_input)
+        if menu_codes:
+            # Stored next to the token and the user id: a code is a credential of
+            # the same kind, and the fetch that needs it runs right after setup.
+            data[CONF_MENU_CODES] = menu_codes
+
         _LOGGER.debug(
             "Adding config entry for: %s",
-            async_redact_data(controller, ["token"]),
+            async_redact_data(data, ["token", CONF_MENU_CODES]),
         )
 
         return self.async_create_entry(
             title=controller[CONTROLLER][CONF_NAME],
-            data=controller,
-            # A naming preference, not connection data: it is asked here while
-            # the user is looking at the controller it applies to, stored where
-            # the settings belong, and editable afterwards in the options flow.
-            options={
-                INCLUDE_HUB_IN_NAME: user_input.get(INCLUDE_HUB_IN_NAME, False),
-            },
+            data=data,
+            # A naming preference, not connection data: it is asked on the
+            # selection step, while the user is looking at the controller it
+            # applies to, stored where the settings belong, and editable
+            # afterwards in the options flow.
+            options={INCLUDE_HUB_IN_NAME: self._include_hub_in_name},
         )
 
     async def async_step_reconfigure(

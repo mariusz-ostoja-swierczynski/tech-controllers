@@ -1,16 +1,17 @@
-"""Platform for button entities backed by Tech menu dialogue parameters."""
+"""Platform for button entities backed by Tech menu dialogue parameters.
+
+A dialogue item (menu item type 20) is a one-shot action, so it becomes a
+button. Its ``params.type`` picks the shape of the confirm payload: the type
+goes back untouched and the value comes from
+:data:`const.MENU_DIALOGUE_CONFIRM_VALUES`, which mirrors what the eModul app
+sends for each sub-type.
+"""
 
 import logging
 from typing import Any
 
 from homeassistant.components.button import ButtonEntity
-from homeassistant.const import (
-    ATTR_IDENTIFIERS,
-    ATTR_MANUFACTURER,
-    ATTR_SW_VERSION,
-    CONF_NAME,
-    EntityCategory,
-)
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -24,6 +25,9 @@ from .const import (
     MANUFACTURER,
     MENU_DEPTH_DEFAULT_ENABLED_LIMIT,
     MENU_DEPTH_REGISTRATION_LIMIT,
+    MENU_DIALOGUE_CONFIRM_FALLBACK,
+    MENU_DIALOGUE_CONFIRM_VALUES,
+    MENU_FACTORY_RESET_TXT_ID,
     MENU_ITEM_TYPE_DIALOGUE,
     UDID,
 )
@@ -141,12 +145,20 @@ class MenuButtonEntity(
         )
 
         # ``_attr_has_entity_name = True`` lets HA prepend the device name; the
-        # entity name itself is the menu label only.
-        self._name = assets.menu_entity_name(
+        # entity name itself is the menu label only. A lockout dialogue whose
+        # own label is just the lockable thing gets the action appended, so a
+        # button and the binary sensor of the same name stay distinguishable.
+        self._name = assets.menu_dialogue_entity_name(
             item, group_names, coordinator.translations
         )
 
-        self._disabled = depth > MENU_DEPTH_DEFAULT_ENABLED_LIMIT
+        # A factory-reset dialogue wipes the controller's settings on a single
+        # press, so it is registered disabled: one accidental click is not
+        # recoverable, and a user who needs it can enable it deliberately.
+        self._disabled = (
+            depth > MENU_DEPTH_DEFAULT_ENABLED_LIMIT
+            or item.get("txtId") == MENU_FACTORY_RESET_TXT_ID
+        )
 
         self._update_from_item(item)
 
@@ -185,21 +197,21 @@ class MenuButtonEntity(
     def device_info(self) -> DeviceInfo | None:
         """Return device info for the zone or controller this entity belongs to."""
         if self._zone_id is not None:
-            return {
-                ATTR_IDENTIFIERS: {(DOMAIN, f"{self._udid}_{self._zone_id}")},
-                CONF_NAME: self._zone_name,
-                "model": assets.controller_model(self._config_entry),
-                ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
-                ATTR_MANUFACTURER: self.manufacturer,
-                **assets.via_controller(self.coordinator),
-            }
-        return {
-            ATTR_IDENTIFIERS: {(DOMAIN, self._udid)},
-            CONF_NAME: self._config_entry.title,
-            "model": assets.controller_model(self._config_entry),
-            ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
-            ATTR_MANUFACTURER: self.manufacturer,
-        }
+            return DeviceInfo(
+                identifiers={(DOMAIN, f"{self._udid}_{self._zone_id}")},
+                name=self._zone_name,
+                model=assets.controller_model(self._config_entry),
+                sw_version=assets.controller_firmware(self._config_entry),
+                manufacturer=self.manufacturer,
+                via_device_id=assets.via_controller(self.coordinator),
+            )
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._udid)},
+            name=self._config_entry.title,
+            model=assets.controller_model(self._config_entry),
+            sw_version=assets.controller_firmware(self._config_entry),
+            manufacturer=self.manufacturer,
+        )
 
     def _update_from_item(self, item: dict[str, Any]) -> None:
         """Refresh entity properties from the menu item payload.
@@ -212,9 +224,13 @@ class MenuButtonEntity(
         # only there while there is a lockout to clear -- so the flag is kept
         # beside the coordinator's own state and combined in ``available``.
         self._item_accessible = item.get("access", False)
-        # Dialogue type determines the API payload format
+        # Dialogue sub-type selects the payload: the type goes back to the
+        # controller untouched, while the confirming value depends on it.
         params = item.get("params", {})
         self._dialogue_type = params.get("type", 0)
+        self._confirm_value = MENU_DIALOGUE_CONFIRM_VALUES.get(
+            self._dialogue_type, MENU_DIALOGUE_CONFIRM_FALLBACK
+        )
 
     async def async_press(self) -> None:
         """Handle the button press by triggering the dialogue action."""
@@ -222,7 +238,7 @@ class MenuButtonEntity(
             self._udid,
             self._menu_type,
             self._item_id,
-            {"type": self._dialogue_type, "value": 1},
+            {"type": self._dialogue_type, "value": self._confirm_value},
         )
         await self.coordinator.async_request_refresh()
 

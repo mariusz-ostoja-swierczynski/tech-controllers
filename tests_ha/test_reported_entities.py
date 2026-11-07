@@ -15,7 +15,7 @@ import pathlib
 
 from common import DOMAIN, EMPTY_MENU, UDID, entity_counts, entry_for
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.tech import (
     REMOVAL_MISSES,

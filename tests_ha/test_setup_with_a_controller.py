@@ -22,7 +22,7 @@ from unittest.mock import AsyncMock
 
 from common import EMPTY_MENU, UDID, entity_counts, entry_for, set_up
 import pytest
-from pytest_homeassistant_custom_component.common import async_fire_time_changed
+from pytest_homeassistant.common import async_fire_time_changed
 
 from custom_components.tech.const import CONTROLLER, DOMAIN, SCAN_INTERVAL, VER
 from custom_components.tech.tech import Tech
@@ -40,10 +40,21 @@ _EXPECTED = {
         "number": 78,
         "select": 19,
         "sensor": 17,
-        "switch": 22,
+        "switch": 28,
     },
-    "kolton_st5305": {"binary_sensor": 33, "sensor": 61},
-    "l12": {"climate": 5, "sensor": 19},
+    "kolton_st5305": {
+        "binary_sensor": 33,
+        "button": 8,
+        "number": 130,
+        "select": 14,
+        "sensor": 61,
+        "switch": 28,
+    },
+    # The L-12 reports schedules, so each of its five zones also gets the
+    # schedule reading and the local template, the controller gets the five
+    # global slots and the compact diagnostic, and the problem indicator is a
+    # binary sensor.
+    "l12": {"binary_sensor": 1, "climate": 5, "sensor": 35},
     "st521": {"binary_sensor": 65, "sensor": 84},
     "st2801": {"binary_sensor": 3, "sensor": 8},
     "pellet": {"binary_sensor": 4, "sensor": 12},

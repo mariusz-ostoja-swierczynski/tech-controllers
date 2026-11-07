@@ -124,8 +124,8 @@ rules:
     status: done
     comment: >-
       The README's Parameters section lists what the setup form asks for: the
-      account name, its password, the controller to add and the naming
-      preference.
+      account name, its password, the controller to add, the naming preference,
+      and the optional per-menu codes, with what leaving one empty means.
   entity_unavailable:
     status: done
     comment: >-
@@ -236,7 +236,8 @@ rules:
     status: done
     comment: >-
       The README describes what the integration provides, bullet by bullet, and
-      the platforms it sets up with what each is for.
+      the platforms it sets up with what each is for, including the read-only
+      schedule views and the menu codes a controller can keep behind one.
   docs_troubleshooting:
     status: done
     comment: >-
@@ -302,13 +303,13 @@ rules:
     status: done
     comment: >-
       icons.json names the icons this integration chooses for the entities it
-      also keys itself -- the zone actuator's valve, which used to be set in
-      code. What else sets an icon does so for a reason a file cannot express:
-      the entity carries a device class and Home Assistant derives the icon from
-      it, the icon depends on the entity's state (the signal-strength readings),
-      or the controller itself sends the icon for a tile. A test keeps the file
-      and the keys in step, and the two dead static signal icons it replaced are
-      gone.
+      also keys itself -- the zone actuator's valve and the four schedule
+      readings -- each of which used to be set in code. What else sets an icon
+      does so for a reason a file cannot express: the entity carries a device
+      class and Home Assistant derives the icon from it, the icon depends on the
+      entity's state (the signal-strength readings), or the controller itself
+      sends the icon for a tile. A test keeps the file and the keys in step, and
+      the two dead static signal icons it replaced are gone.
   reconfiguration_flow:
     status: done
     comment: >-

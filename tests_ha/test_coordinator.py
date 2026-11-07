@@ -14,7 +14,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.tech.config_flow import ConfigFlow
 from custom_components.tech.const import CONTROLLER, DOMAIN, USER_ID, VER
@@ -51,7 +51,12 @@ async def _coordinator(hass: HomeAssistant, module_data: AsyncMock) -> TechCoord
     coordinator = TechCoordinator(hass, async_get_clientsession(hass), "42", "token")
     # Normally set by Home Assistant while it sets the entry up.
     coordinator.config_entry = entry
-    coordinator.api = SimpleNamespace(module_data=module_data)
+    coordinator.api = SimpleNamespace(
+        module_data=module_data,
+        # The catalog is fetched on the first successful poll; an empty one is
+        # what the API answers for a language it does not carry.
+        get_translations=AsyncMock(return_value={"data": {}}),
+    )
     return coordinator
 
 

@@ -32,9 +32,9 @@
   scripts.setup = {
     exec = ''
       echo '🛠️ Running setup'
-      # Sync with pyproject.toml via pip
+      # Sync with pyproject.toml via uv
       # The Home Assistant suite needs the `test` group on top of `test_api`.
-      uv sync --group test_api --group test
+      uv sync --group test --group test_api
     '';
     description = "Install dependencies";
   };
@@ -64,13 +64,21 @@
   scripts.tests = {
     exec = ''
       echo '🧪 Running tests'
-      pytest tests/ --cov-report= --cov=custom_components.tech
+      ./scripts/test "$@"
       echo '🧪 Running Home Assistant tests'
       pytest tests_ha/ --cov-report=term-missing --cov-report=json --cov=custom_components.tech --cov-append --cov-fail-under=95
       echo '🧪 Checking every module'
       python script/check_module_coverage.py
     '';
     description = "Test integration";
+  };
+
+  scripts.test_offline = {
+    exec = ''
+      echo '🧪 Running offline tests'
+      ./scripts/test_offline "$@"
+    '';
+    description = "Run the offline stubbed tests";
   };
 
   scripts.lint = {
@@ -111,7 +119,7 @@
   tasks."app:setup" = {
     exec = ''
       echo '🛠️ Running setup'
-      uv sync --group test_api --python "$VIRTUAL_ENV/bin/python"
+      uv sync --group test --group test_api --python "$VIRTUAL_ENV/bin/python"
       find ".devenv/state/venv" -name "EXTERNALLY-MANAGED" -delete 2>/dev/null || true
     '';
     after = ["devenv:enterShell"];
@@ -120,7 +128,7 @@
   # https://devenv.sh/tests/
   enterTest = ''
     echo '🧪 Running tests'
-    pytest tests/ --cov-report= --cov=custom_components.tech
+    ./scripts/test
     pytest tests_ha/ --cov-report=term-missing --cov-report=json --cov=custom_components.tech --cov-append --cov-fail-under=95
     python script/check_module_coverage.py
   '';

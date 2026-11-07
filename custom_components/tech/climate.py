@@ -10,9 +10,6 @@ from homeassistant.components.climate.const import (
     HVACMode,
 )
 from homeassistant.const import (
-    ATTR_IDENTIFIERS,
-    ATTR_MANUFACTURER,
-    ATTR_SW_VERSION,
     ATTR_TEMPERATURE,
     CONF_DESCRIPTION,
     CONF_ID,
@@ -28,9 +25,17 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import assets
-from .const import CONTROLLER, DOMAIN, INCLUDE_HUB_IN_NAME, MANUFACTURER, UDID
+from .const import (
+    CONTROLLER,
+    DOMAIN,
+    INCLUDE_HUB_IN_NAME,
+    MANUFACTURER,
+    UDID,
+    scaled_number,
+)
 from .coordinator import TechConfigEntry, TechCoordinator
 from .entity import ReportedEntity, add_later
+from .schedules import climate_schedule_attributes
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -109,8 +114,8 @@ class TechThermostat(ReportedEntity, ClimateEntity, CoordinatorEntity[TechCoordi
         )
 
         self.manufacturer = MANUFACTURER
-        self._temperature = None
-        self._target_temperature = None
+        self._temperature: float | None = None
+        self._target_temperature: float | None = None
         self.update_properties(device)
         # Remove the line below after HA 2025.1
         self._enable_turn_on_off_backwards_compatibility = False
@@ -123,18 +128,16 @@ class TechThermostat(ReportedEntity, ClimateEntity, CoordinatorEntity[TechCoordi
     @property
     def device_info(self) -> DeviceInfo | None:
         """Return Home Assistant ``DeviceInfo`` describing the controller."""
-        return {
-            ATTR_IDENTIFIERS: {
-                (DOMAIN, self._unique_id)
-            },  # Unique identifiers for the device
-            CONF_NAME: self.device_name,  # Name of the device
-            "model": assets.controller_model(self._config_entry),
-            ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
-            ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._unique_id)},
+            name=self.device_name,
+            model=assets.controller_model(self._config_entry),
+            sw_version=assets.controller_firmware(self._config_entry),
+            manufacturer=self.manufacturer,
             # A thermostat is a zone of the controller, so it belongs under it
             # in the device tree rather than beside it.
-            **assets.via_controller(self.coordinator),
-        }
+            via_device_id=assets.via_controller(self.coordinator),
+        )
 
     def update_properties(self, device: dict[str, Any]) -> None:
         """Populate state attributes from the latest zone payload.
@@ -146,7 +149,9 @@ class TechThermostat(ReportedEntity, ClimateEntity, CoordinatorEntity[TechCoordi
         # Update target temperature
         if device[CONF_ZONE]["setTemperature"] is not None:
             if device[CONF_ZONE]["duringChange"] is False:
-                self._target_temperature = device[CONF_ZONE]["setTemperature"] / 10
+                self._target_temperature = scaled_number(
+                    device[CONF_ZONE]["setTemperature"], 10
+                )
             else:
                 _LOGGER.debug(
                     "Zone ID %s is duringChange so ignore to update target temperature",
@@ -156,10 +161,9 @@ class TechThermostat(ReportedEntity, ClimateEntity, CoordinatorEntity[TechCoordi
             self._target_temperature = None
 
         # Update current temperature
-        if device[CONF_ZONE]["currentTemperature"] is not None:
-            self._temperature = device[CONF_ZONE]["currentTemperature"] / 10
-        else:
-            self._temperature = None
+        self._temperature = scaled_number(
+            device[CONF_ZONE].get("currentTemperature"), 10
+        )
 
         # Update humidity
         if (
@@ -202,6 +206,15 @@ class TechThermostat(ReportedEntity, ClimateEntity, CoordinatorEntity[TechCoordi
         return f"{self._unique_id}_zone_climate"
 
     @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Describe schedule selection without inferring a current target."""
+        return climate_schedule_attributes(
+            (self._coordinator.data or {}).get("schedules"),
+            self._id,
+            self._coordinator.last_update_success,
+        )
+
+    @property
     def supported_features(self) -> ClimateEntityFeature:
         """Return the list of supported features."""
         return (
@@ -234,8 +247,13 @@ class TechThermostat(ReportedEntity, ClimateEntity, CoordinatorEntity[TechCoordi
         """
         return self._state
 
+    # Home Assistant 2026.11 renamed these temperature properties with a
+    # ``native_`` prefix and took ownership of the ``temperature_unit`` state
+    # attribute. The old names remain deprecated until 2027.11; this entity
+    # targets 2026.11, so it implements only the native properties.
+    # See https://developers.home-assistant.io/blog/2026/10/08/climate-native-temperature
     @property
-    def temperature_unit(self) -> str:
+    def native_temperature_unit(self) -> str:
         """Return the unit of measurement."""
         return UnitOfTemperature.CELSIUS
 
@@ -245,7 +263,7 @@ class TechThermostat(ReportedEntity, ClimateEntity, CoordinatorEntity[TechCoordi
         return 0.1
 
     @property
-    def current_temperature(self) -> float | None:
+    def native_current_temperature(self) -> float | None:
         """Return the current temperature."""
         return self._temperature
 
@@ -265,7 +283,7 @@ class TechThermostat(ReportedEntity, ClimateEntity, CoordinatorEntity[TechCoordi
         return DEFAULT_MAX_TEMP
 
     @property
-    def target_temperature(self) -> float | None:
+    def native_target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
         return self._target_temperature
 

@@ -15,7 +15,7 @@ from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.tech import (
     async_migrate_entry,
@@ -28,13 +28,20 @@ from custom_components.tech.config_flow import (
     validate_input,
 )
 from custom_components.tech.const import (
+    CONF_MENU_CODES,
     CONTROLLER,
     CONTROLLERS,
     DOMAIN,
     INCLUDE_HUB_IN_NAME,
+    MENU_CODE_TREES,
+    MENU_TYPE_INSTALLER,
+    MENU_TYPE_MANUFACTURER,
+    MENU_TYPE_SERVICE,
+    MENU_TYPE_USER,
     UDID,
     USER_ID,
     VER,
+    menu_code_field,
 )
 from custom_components.tech.tech import TechError, TechLoginError
 from homeassistant import config_entries
@@ -96,11 +103,33 @@ async def _select(
 
     ``include_hub_in_name`` is left out when it is ``None``, which is how the
     form behaves when the box is left as it is: the schema fills in its default.
+
+    The selection is followed by the menu-code form, so this returns that form
+    rather than the entry: :func:`_submit_menu_codes` finishes the flow.
     """
     user_input: dict[str, Any] = {CONTROLLERS: str(controller_id)}
     if include_hub_in_name is not None:
         user_input[INCLUDE_HUB_IN_NAME] = include_hub_in_name
     return await hass.config_entries.flow.async_configure(flow_id, user_input)
+
+
+async def _submit_menu_codes(
+    hass: HomeAssistant, flow_id: str, codes: dict[str, str] | None = None
+) -> dict[str, Any]:
+    """Submit the menu-code form and return the flow result.
+
+    ``codes`` is empty when the test has none to give, which is what a user who
+    keeps no menus behind a code submits: the fields are all optional.
+    """
+    return await hass.config_entries.flow.async_configure(flow_id, dict(codes or {}))
+
+
+async def _create_entry(hass: HomeAssistant, controller_id: Any = 1) -> dict[str, Any]:
+    """Run the whole flow for one controller, with no menu codes."""
+    flow_id = (await _start_flow(hass))["flow_id"]
+    await _submit_credentials(hass, flow_id)
+    await _select(hass, flow_id, controller_id)
+    return await _submit_menu_codes(hass, flow_id)
 
 
 def _field_names(schema: Any) -> list[str]:
@@ -160,6 +189,12 @@ async def test_selecting_a_controller_creates_its_entry(hass: HomeAssistant) -> 
 
     result = await _select(hass, flow_id, 1)
 
+    # The controller is chosen; the codes its menus may need are asked for next.
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "menu_codes"
+
+    result = await _submit_menu_codes(hass, flow_id)
+
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "L-8 DEMO"
 
@@ -175,7 +210,8 @@ async def test_selecting_a_controller_creates_its_entry(hass: HomeAssistant) -> 
     # The second controller is a second run of the same flow.
     flow_id = (await _start_flow(hass))["flow_id"]
     await _submit_credentials(hass, flow_id)
-    result = await _select(hass, flow_id, 2)
+    await _select(hass, flow_id, 2)
+    result = await _submit_menu_codes(hass, flow_id)
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert {entry.unique_id for entry in hass.config_entries.async_entries(DOMAIN)} == {
@@ -203,9 +239,87 @@ async def test_the_naming_preference_becomes_the_entry_option(
     await _submit_credentials(hass, flow_id)
 
     await _select(hass, flow_id, 1, include_hub_in_name=given)
+    await _submit_menu_codes(hass, flow_id)
 
     (entry,) = hass.config_entries.async_entries(DOMAIN)
     assert entry.options == {INCLUDE_HUB_IN_NAME: expected}
+
+
+async def test_the_menu_code_form_asks_for_each_gateable_tree(
+    hass: HomeAssistant,
+) -> None:
+    """The code form offers the trees a code can open, and only those.
+
+    The manufacturer tree is left out: it is refused on every consumer account,
+    so a field for it would be one nobody can fill in. Each field is a masked
+    text field, because a code is a credential like the token.
+    """
+    flow_id = (await _start_flow(hass))["flow_id"]
+    await _submit_credentials(hass, flow_id)
+
+    result = await _select(hass, flow_id, 1)
+
+    assert result["step_id"] == "menu_codes"
+    schema = result["data_schema"]
+    assert _field_names(schema) == [
+        menu_code_field(menu_type) for menu_type in MENU_CODE_TREES
+    ]
+    assert MENU_TYPE_MANUFACTURER not in MENU_CODE_TREES
+
+    selector = schema.schema[
+        next(
+            key
+            for key in schema.schema
+            if key.schema == menu_code_field(MENU_TYPE_SERVICE)
+        )
+    ]
+    assert selector.config["type"] == TextSelectorType.PASSWORD
+
+
+async def test_a_menu_code_is_stored_with_the_credentials(
+    hass: HomeAssistant,
+) -> None:
+    """A code the user gives is kept in the entry's data, beside the token.
+
+    The fetch that needs it runs right after setup, and a code is a credential
+    of the same kind as the token, so it is stored where the token is.
+    """
+    flow_id = (await _start_flow(hass))["flow_id"]
+    await _submit_credentials(hass, flow_id)
+    await _select(hass, flow_id, 1)
+
+    result = await _submit_menu_codes(
+        hass, flow_id, {menu_code_field(MENU_TYPE_SERVICE): "2468"}
+    )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    (entry,) = hass.config_entries.async_entries(DOMAIN)
+    assert entry.data[CONF_MENU_CODES] == {MENU_TYPE_SERVICE: "2468"}
+
+
+async def test_an_empty_menu_code_stores_nothing(hass: HomeAssistant) -> None:
+    """An untouched form is an entry without codes, not one with empty ones.
+
+    That keeps an entry configured here indistinguishable from one configured
+    before codes existed, so nothing empty is ever sent to the controller.
+    """
+    flow_id = (await _start_flow(hass))["flow_id"]
+    await _submit_credentials(hass, flow_id)
+    await _select(hass, flow_id, 1)
+
+    result = await _submit_menu_codes(
+        hass,
+        flow_id,
+        {
+            menu_code_field(MENU_TYPE_USER): "",
+            menu_code_field(MENU_TYPE_INSTALLER): "  ",
+            menu_code_field(MENU_TYPE_SERVICE): "",
+        },
+    )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    (entry,) = hass.config_entries.async_entries(DOMAIN)
+    assert CONF_MENU_CODES not in entry.data
 
 
 async def test_invalid_credentials_are_reported(hass: HomeAssistant) -> None:
@@ -271,6 +385,7 @@ async def test_a_controller_cannot_be_added_twice(hass: HomeAssistant) -> None:
     flow_id = (await _start_flow(hass))["flow_id"]
     await _submit_credentials(hass, flow_id)
     await _select(hass, flow_id, 1)
+    await _submit_menu_codes(hass, flow_id)
 
     flow_id = (await _start_flow(hass))["flow_id"]
     await _submit_credentials(hass, flow_id)
@@ -291,6 +406,7 @@ async def test_options_flow_stores_the_hub_name_flag(hass: HomeAssistant) -> Non
     flow_id = (await _start_flow(hass))["flow_id"]
     await _submit_credentials(hass, flow_id)
     await _select(hass, flow_id, 1)
+    await _submit_menu_codes(hass, flow_id)
     entry = hass.config_entries.async_entries(DOMAIN)[0]
 
     result = await hass.config_entries.options.async_init(entry.entry_id)

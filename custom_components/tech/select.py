@@ -4,13 +4,7 @@ import logging
 from typing import Any
 
 from homeassistant.components.select import SelectEntity
-from homeassistant.const import (
-    ATTR_IDENTIFIERS,
-    ATTR_MANUFACTURER,
-    ATTR_SW_VERSION,
-    CONF_NAME,
-    EntityCategory,
-)
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -181,21 +175,21 @@ class MenuSelectEntity(
     def device_info(self) -> DeviceInfo | None:
         """Return device info for the zone or controller this entity belongs to."""
         if self._zone_id is not None:
-            return {
-                ATTR_IDENTIFIERS: {(DOMAIN, f"{self._udid}_{self._zone_id}")},
-                CONF_NAME: self._zone_name,
-                "model": assets.controller_model(self._config_entry),
-                ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
-                ATTR_MANUFACTURER: self.manufacturer,
-                **assets.via_controller(self.coordinator),
-            }
-        return {
-            ATTR_IDENTIFIERS: {(DOMAIN, self._udid)},
-            CONF_NAME: self._config_entry.title,
-            "model": assets.controller_model(self._config_entry),
-            ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
-            ATTR_MANUFACTURER: self.manufacturer,
-        }
+            return DeviceInfo(
+                identifiers={(DOMAIN, f"{self._udid}_{self._zone_id}")},
+                name=self._zone_name,
+                model=assets.controller_model(self._config_entry),
+                sw_version=assets.controller_firmware(self._config_entry),
+                manufacturer=self.manufacturer,
+                via_device_id=assets.via_controller(self.coordinator),
+            )
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._udid)},
+            name=self._config_entry.title,
+            model=assets.controller_model(self._config_entry),
+            sw_version=assets.controller_firmware(self._config_entry),
+            manufacturer=self.manufacturer,
+        )
 
     def _build_option_maps(self, options: list[dict[str, Any]]) -> None:
         """Build label/value mappings from the API options list.
@@ -273,6 +267,11 @@ class MenuSelectEntity(
         """Handle updated data from the coordinator."""
         menus = self._coordinator.data.get("menus", {})
         item = menus.get(self._menu_key)
-        if item:
+        if item and not assets.menu_item_is_settling(item):
             self._update_from_item(item)
+        elif item:
+            _LOGGER.debug(
+                "Menu item %s is duringChange; keeping the optimistic state",
+                self._menu_key,
+            )
         self.async_write_ha_state()

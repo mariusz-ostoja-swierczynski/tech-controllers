@@ -37,9 +37,6 @@ from homeassistant.components.script import scripts_with_entity
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
-    ATTR_IDENTIFIERS,
-    ATTR_MANUFACTURER,
-    ATTR_SW_VERSION,
     CONF_DESCRIPTION,
     CONF_ID,
     CONF_NAME,
@@ -55,8 +52,10 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er, issue_registry as ir
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.icon import icon_for_signal_level
+from homeassistant.helpers.translation import async_translate_state
 from homeassistant.helpers.typing import UndefinedType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -111,11 +110,22 @@ from .const import (
     WINDOW_STATE,
     WORKING_STATUS,
     ZONE_STATE,
+    reading_is_working,
+    scaled_number,
+    valid_number,
     widget_hours_and_minutes,
     widget_unit,
 )
 from .coordinator import TechConfigEntry, TechCoordinator
-from .entity import ReportedEntity, TileEntity, add_later
+from .entity import ReportedEntity, TileEntity, add_later, controller_device_info
+from .schedules import (
+    GLOBAL_SCHEDULE_SLOTS,
+    global_schedule_details,
+    local_schedule_details,
+    schedule_summary,
+    zone_schedule_attributes,
+    zone_schedule_info,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -164,7 +174,23 @@ async def async_setup_entry(
             hass, tiles, coordinator, config_entry
         )
 
-        return [*tile_entities, *zone_entities, *deprecated_entities]
+        schedule_entities: list[Any] = []
+        schedule_data = (coordinator.data or {}).get("schedules")
+        if isinstance(schedule_data, dict) and schedule_data.get("supported"):
+            schedule_entities.append(
+                ControllerSchedulesSensor(coordinator, config_entry)
+            )
+            schedule_entities.extend(
+                ControllerGlobalScheduleSensor(coordinator, config_entry, index)
+                for index in range(GLOBAL_SCHEDULE_SLOTS)
+            )
+
+        return [
+            *tile_entities,
+            *zone_entities,
+            *deprecated_entities,
+            *schedule_entities,
+        ]
 
     add_later(config_entry, coordinator, async_add_entities, _build)
 
@@ -212,6 +238,14 @@ def _build_zone_entities(
 
     if isinstance(zone.get(UNDERFLOOR), dict) and zone.get(UNDERFLOOR):
         entities.append(ZoneUnderfloorSensor(zone, coordinator, config_entry))
+
+    schedule_data = (coordinator.data or {}).get("schedules")
+    if isinstance(schedule_data, dict) and schedule_data.get("supported"):
+        zone_id = zone_state.get(CONF_ID)
+        schedule_zones = schedule_data.get("zones")
+        if isinstance(schedule_zones, dict) and zone_id in schedule_zones:
+            entities.append(ZoneScheduleSensor(zone, coordinator, config_entry))
+            entities.append(ZoneLocalScheduleSensor(zone, coordinator, config_entry))
 
     return entities
 
@@ -641,7 +675,43 @@ _TILE_ENTITY_BUILDERS: dict[int, TileBuilder] = {
 }
 
 
-class ZoneSensor(ReportedEntity, CoordinatorEntity[TechCoordinator], SensorEntity):
+class _StateAvailability(Entity):
+    """Mark a tile entity unavailable when it has no valid state.
+
+    Tile entities keep their registry row and recover on the next payload; the
+    mixin only refuses to publish a state while ``_state`` is ``None``. It sits
+    before ``TileSensor`` so ``super().available`` reaches the coordinator.
+    """
+
+    _state: Any
+
+    @property
+    def available(self) -> bool:
+        """Require both a successful coordinator and a valid state."""
+        return super().available and self._state is not None
+
+    @property
+    def native_value(self) -> Any:
+        """Return the cached state, which is ``None`` while invalid."""
+        return self._state
+
+
+class _NativeValueAvailability(Entity):
+    """Mark a zone entity unavailable when its native value is ``None``."""
+
+    _attr_native_value: Any
+
+    @property
+    def available(self) -> bool:
+        """Require both a successful coordinator and a valid native value."""
+        return super().available and self._attr_native_value is not None
+
+
+class ZoneSensor(
+    ReportedEntity,
+    CoordinatorEntity[TechCoordinator],
+    SensorEntity,
+):
     """Representation of a Zone Sensor."""
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -680,16 +750,14 @@ class ZoneSensor(ReportedEntity, CoordinatorEntity[TechCoordinator], SensorEntit
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Update target_temperature property
-        if device[CONF_ZONE]["setTemperature"] is not None:
-            self._target_temperature = device[CONF_ZONE]["setTemperature"] / 10
-        else:
-            self._target_temperature = None
+        self._target_temperature = scaled_number(
+            device[CONF_ZONE].get("setTemperature"), 10
+        )
 
         # Update temperature property
-        if device[CONF_ZONE]["currentTemperature"] is not None:
-            self._temperature = device[CONF_ZONE]["currentTemperature"] / 10
-        else:
-            self._temperature = None
+        self._temperature = scaled_number(
+            device[CONF_ZONE].get("currentTemperature"), 10
+        )
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -705,17 +773,15 @@ class ZoneSensor(ReportedEntity, CoordinatorEntity[TechCoordinator], SensorEntit
     @property
     def device_info(self) -> DeviceInfo | None:
         """Return Home Assistant ``DeviceInfo`` for the associated controller."""
-        return {
-            ATTR_IDENTIFIERS: {
-                (DOMAIN, self._unique_id)
-            },  # Unique identifiers for the device
-            CONF_NAME: self._device_name,  # Name of the device
-            "model": assets.controller_model(self._config_entry),
-            ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
-            ATTR_MANUFACTURER: self._manufacturer,  # Manufacturer of the device
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._unique_id)},
+            name=self._device_name,
+            model=assets.controller_model(self._config_entry),
+            sw_version=assets.controller_firmware(self._config_entry),
+            manufacturer=self._manufacturer,
             # A zone is part of the controller, so its device belongs under it.
-            **assets.via_controller(self.coordinator),
-        }
+            via_device_id=assets.via_controller(self.coordinator),
+        )
 
     @property
     def unique_id(self) -> str:
@@ -723,7 +789,7 @@ class ZoneSensor(ReportedEntity, CoordinatorEntity[TechCoordinator], SensorEntit
         return self._unique_id
 
 
-class ZoneTemperatureSensor(ZoneSensor):
+class ZoneTemperatureSensor(_NativeValueAvailability, ZoneSensor):
     """Representation of a Zone Temperature Sensor."""
 
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
@@ -750,10 +816,9 @@ class ZoneTemperatureSensor(ZoneSensor):
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Check if the current temperature is available, and update the native value accordingly
-        if device[CONF_ZONE]["currentTemperature"] is not None:
-            self._attr_native_value = device[CONF_ZONE]["currentTemperature"] / 10
-        else:
-            self._attr_native_value = None
+        self._attr_native_value = scaled_number(
+            device[CONF_ZONE].get("currentTemperature"), 10
+        )
 
 
 class ZoneBatterySensor(ZoneSensor):
@@ -997,7 +1062,7 @@ class ZoneWindowSensor(BinarySensorEntity, ZoneSensor):  # type: ignore[misc]
         )
 
 
-class ZoneUnderfloorSensor(ZoneSensor):
+class ZoneUnderfloorSensor(_NativeValueAvailability, ZoneSensor):
     """Representation of a Zone Temperature Sensor."""
 
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
@@ -1065,10 +1130,9 @@ class ZoneUnderfloorSensor(ZoneSensor):
         self._name = device[CONF_DESCRIPTION][CONF_NAME]
 
         # Check if the current temperature is available, and update the native value accordingly
-        if device[UNDERFLOOR]["temperature"] is not None:
-            self._attr_native_value = device[UNDERFLOOR]["temperature"] / 10
-        else:
-            self._attr_native_value = None
+        self._attr_native_value = scaled_number(
+            device[UNDERFLOOR].get("temperature"), 10
+        )
 
         # Update attributes
         self.attrs[MODE] = device[UNDERFLOOR][MODE]
@@ -1146,7 +1210,7 @@ class TileSensor(TileEntity, CoordinatorEntity[TechCoordinator]):
         """Get the state of the device."""
 
 
-class TileTemperatureSensor(TileSensor, SensorEntity):
+class TileTemperatureSensor(_StateAvailability, TileSensor, SensorEntity):
     """Representation of a Tile Temperature Sensor."""
 
     _attr_has_entity_name = True
@@ -1180,25 +1244,26 @@ class TileTemperatureSensor(TileSensor, SensorEntity):
         return f"{self._unique_id}_tile_temperature"
 
     def get_state(self, device: dict[str, Any]) -> Any:
-        """Get the state of the device."""
-        return device[CONF_PARAMS][VALUE] / 10
+        """Return a finite reading only while the temperature input is working."""
+        params = device[CONF_PARAMS]
+        if not reading_is_working(params):
+            return None
+        return scaled_number(params.get(VALUE), 10)
 
     @property
     def device_info(self) -> DeviceInfo | None:
         """Returns device information in a dictionary format."""
 
         if self._create_device:
-            return {
-                ATTR_IDENTIFIERS: {
-                    (DOMAIN, self._unique_id)
-                },  # Unique identifiers for the device
-                CONF_NAME: self._name,  # Name of the device
-                "model": assets.controller_model(self._config_entry),
-                ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
-                ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+            return DeviceInfo(
+                identifiers={(DOMAIN, self._unique_id)},
+                name=self._name,
+                model=assets.controller_model(self._config_entry),
+                sw_version=assets.controller_firmware(self._config_entry),
+                manufacturer=self.manufacturer,
                 # The tile this entity belongs to is part of the controller.
-                **assets.via_controller(self.coordinator),
-            }
+                via_device_id=assets.via_controller(self.coordinator),
+            )
         # Fall back to the controller-level device defined in TileEntity so
         # tile-derived entities still get grouped on zone-less controllers.
         return super().device_info
@@ -1243,16 +1308,14 @@ class TileTemperatureBatterySensor(TileSensor, SensorEntity):
         """Returns device information in a dictionary format."""
 
         if self._create_device:
-            return {
-                ATTR_IDENTIFIERS: {
-                    (DOMAIN, self._unique_id)
-                },  # Unique identifiers for the device
-                CONF_NAME: self._name,  # Name of the device
-                "model": assets.controller_model(self._config_entry),
-                ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
-                ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
-                **assets.via_controller(self.coordinator),
-            }
+            return DeviceInfo(
+                identifiers={(DOMAIN, self._unique_id)},
+                name=self._name,
+                model=assets.controller_model(self._config_entry),
+                sw_version=assets.controller_firmware(self._config_entry),
+                manufacturer=self.manufacturer,
+                via_device_id=assets.via_controller(self.coordinator),
+            )
         # Fall back to the controller-level device defined in TileEntity so
         # tile-derived entities still get grouped on zone-less controllers.
         return super().device_info
@@ -1300,16 +1363,14 @@ class TileTemperatureSignalSensor(TileSensor, SensorEntity):
     def device_info(self) -> DeviceInfo | None:
         """Returns device information in a dictionary format."""
         if self._create_device:
-            return {
-                ATTR_IDENTIFIERS: {
-                    (DOMAIN, self._unique_id)
-                },  # Unique identifiers for the device
-                CONF_NAME: self._name,  # Name of the device
-                "model": assets.controller_model(self._config_entry),
-                ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
-                ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
-                **assets.via_controller(self.coordinator),
-            }
+            return DeviceInfo(
+                identifiers={(DOMAIN, self._unique_id)},
+                name=self._name,
+                model=assets.controller_model(self._config_entry),
+                sw_version=assets.controller_firmware(self._config_entry),
+                manufacturer=self.manufacturer,
+                via_device_id=assets.via_controller(self.coordinator),
+            )
         return None
 
 
@@ -1405,7 +1466,7 @@ class TileTextSensor(TileSensor, SensorEntity):
         return self.coordinator.translations.get_text(device[CONF_PARAMS]["statusId"])
 
 
-class _TileWidgetSensorBase(TileSensor, SensorEntity):
+class _TileWidgetSensorBase(_StateAvailability, TileSensor, SensorEntity):
     """Common scaffolding for TYPE_WIDGET-derived sensor entities.
 
     Widget-backed sensors share three pieces of behaviour:
@@ -1544,11 +1605,14 @@ class TileWidgetTemperatureSensor(_TileWidgetSensorBase):
         the raw integer is published: most types are a scaled measurement, value
         type 13 is a time of day the API stores as minutes since midnight.
         """
-        widget = device[CONF_PARAMS][self._widget_key]
+        params = device[CONF_PARAMS]
+        if not reading_is_working(params):
+            return None
+        widget = params[self._widget_key]
         if widget.get("unit") == WIDGET_UNIT_TIME_OF_DAY:
-            return widget_hours_and_minutes(widget[VALUE])
+            return widget_hours_and_minutes(widget.get(VALUE))
         divisor = widget_unit(widget.get("unit")).divisor
-        return widget[VALUE] / divisor if divisor != 1 else widget[VALUE]
+        return scaled_number(widget.get(VALUE), divisor)
 
 
 class TileWidgetPumpSensor(_TileWidgetSensorBase):
@@ -1561,7 +1625,8 @@ class TileWidgetPumpSensor(_TileWidgetSensorBase):
 
     def get_state(self, device: dict[str, Any]) -> Any:
         """Get the state of the device."""
-        return device[CONF_PARAMS][self._widget_key][VALUE]
+        params = device[CONF_PARAMS]
+        return valid_number(params[self._widget_key].get(VALUE))
 
 
 class TileDisinfectionSensor(TileSensor, SensorEntity):
@@ -1668,7 +1733,7 @@ class TileValveSensor(TileSensor, SensorEntity):
         )
 
 
-class TileValveTemperatureSensor(TileSensor, SensorEntity):
+class TileValveTemperatureSensor(_StateAvailability, TileSensor, SensorEntity):
     """Representation of a Tile Valve Temperature Sensor."""
 
     def __init__(
@@ -1700,10 +1765,11 @@ class TileValveTemperatureSensor(TileSensor, SensorEntity):
 
     def get_state(self, device: dict[str, Any]) -> Any:
         """Get the state of the device."""
-        state = device[CONF_PARAMS][self._state_key]
-        if self._state_key in ("returnTemp", "currentTemp"):
-            state /= 10
-        return state
+        params = device[CONF_PARAMS]
+        if not reading_is_working(params):
+            return None
+        divisor = 10 if self._state_key in ("returnTemp", "currentTemp") else 1
+        return scaled_number(params.get(self._state_key), divisor)
 
 
 class TileMixingValveSensor(TileSensor, SensorEntity):
@@ -1741,7 +1807,7 @@ class TileMixingValveSensor(TileSensor, SensorEntity):
         return device[CONF_PARAMS]["openingPercentage"]
 
 
-class TileGenericOpenThermSensor(TileSensor, SensorEntity):
+class TileGenericOpenThermSensor(_StateAvailability, TileSensor, SensorEntity):
     """Representation of a generic OpenTherm Sensor."""
 
     _attr_has_entity_name = True
@@ -1786,18 +1852,16 @@ class TileGenericOpenThermSensor(TileSensor, SensorEntity):
     @property
     def device_info(self) -> DeviceInfo | None:
         """Returns device information in a dictionary format."""
-        return {
-            ATTR_IDENTIFIERS: {
-                (DOMAIN, self._unique_id)
-            },  # Unique identifiers for the device
-            CONF_NAME: self.device_name,  # Name of the device
-            "model": assets.controller_model(self._config_entry),
-            ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
-            ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._unique_id)},
+            name=self.device_name,
+            model=assets.controller_model(self._config_entry),
+            sw_version=assets.controller_firmware(self._config_entry),
+            manufacturer=self.manufacturer,
             # This sensor's tile is part of the controller, so its device
             # belongs under it like the other tile devices.
-            **assets.via_controller(self.coordinator),
-        }
+            via_device_id=assets.via_controller(self.coordinator),
+        )
 
 
 class TileOpenThermTemperatureSensor(TileGenericOpenThermSensor):
@@ -1809,7 +1873,10 @@ class TileOpenThermTemperatureSensor(TileGenericOpenThermSensor):
 
     def get_state(self, device: dict[str, Any]) -> Any:
         """Get the state of the device."""
-        return device[CONF_PARAMS][self._state_key] / 10
+        params = device[CONF_PARAMS]
+        if not reading_is_working(params):
+            return None
+        return scaled_number(params.get(self._state_key), 10)
 
 
 class TileOpenThermPercentageSensor(TileGenericOpenThermSensor):
@@ -1821,7 +1888,8 @@ class TileOpenThermPercentageSensor(TileGenericOpenThermSensor):
 
     def get_state(self, device: dict[str, Any]) -> Any:
         """Get the state of the device."""
-        return device[CONF_PARAMS][self._state_key]
+        params = device[CONF_PARAMS]
+        return valid_number(params.get(self._state_key))
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -1858,3 +1926,247 @@ class TileOpenThermPercentageSensor(TileGenericOpenThermSensor):
         set_attr("activeHeating", flag=True)
         set_attr("communication", flag=True)
         set_attr("heatingCurve", flag=True)
+
+
+class ControllerSchedulesSensor(CoordinatorEntity, SensorEntity):
+    """One opt-in read-only view of all controller schedule templates."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+    _attr_has_entity_name = True
+    _attr_translation_key = "controller_schedules"
+
+    def __init__(
+        self, coordinator: TechCoordinator, config_entry: TechConfigEntry
+    ) -> None:
+        """Bind to the existing coordinator without an additional API read."""
+        super().__init__(coordinator)
+        self._config_entry = config_entry
+        self._udid = config_entry.data[CONTROLLER][UDID]
+
+    @property
+    def unique_id(self) -> str:
+        """Keep one stable entity identity per physical controller."""
+        return f"{self._udid}_schedules"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Attach to the existing controller device, rather than every zone."""
+        return controller_device_info(self._config_entry)
+
+    def _diagnostics(self) -> dict[str, Any]:
+        """Compute compact attributes from the latest snapshot."""
+        return schedule_summary(
+            (self.coordinator.data or {}).get("schedules"),
+            self.coordinator.last_update_success,
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Report decoding status; availability follows the shared coordinator."""
+        if not self.coordinator.last_update_success:
+            return None
+        return cast("str | None", self._diagnostics()["status"])
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose stable configuration, applicability and decoding provenance."""
+        return {
+            key: value for key, value in self._diagnostics().items() if key != "status"
+        }
+
+
+class ZoneScheduleSensor(ZoneSensor):
+    """Read-only view of one zone's configured and active schedule."""
+
+    _attr_translation_key = "zone_schedule_entity"
+    _attr_entity_registry_enabled_default = True
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_zone_schedule"
+
+    def update_properties(self, device: dict[str, Any]) -> None:
+        """Keep the zone label; the schedule itself comes from the coordinator."""
+        self._name = device[CONF_DESCRIPTION][CONF_NAME]
+
+    def _schedule_data(self) -> Any:
+        """Return the current schedule snapshot."""
+        return (self.coordinator.data or {}).get("schedules")
+
+    @property
+    def available(self) -> bool:
+        """Become unavailable when the schedule snapshot disappears."""
+        return super().available and isinstance(self._schedule_data(), dict)
+
+    @property
+    def native_value(self) -> str | None:
+        """Prefer the proven active name, then a translated configured mode."""
+        data = self._schedule_data()
+        if not self.coordinator.last_update_success or not isinstance(data, dict):
+            return None
+        info = zone_schedule_info(data, self._id, True)
+        name = info["active_schedule_name"]
+        if isinstance(name, str) and name:
+            return name
+        mode = info["schedule_mode"]
+        if not isinstance(mode, str):
+            return None
+        hass = getattr(self, "hass", None)
+        if hass is None:
+            return mode
+        translation_key = _SCHEDULE_MODE_TRANSLATION_KEYS.get(mode)
+        if translation_key is None:
+            return mode
+        translated = async_translate_state(
+            hass,
+            translation_key,
+            "sensor",
+            DOMAIN,
+            "zone_schedule_entity",
+            None,
+        )
+        return mode if translated == translation_key else translated
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose selection, applicability, local template and errors."""
+        data = self._schedule_data()
+        if not isinstance(data, dict):
+            return {}
+        return zone_schedule_attributes(data, self._id, True)
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Write the coordinator's schedule view without touching tile state."""
+        self.async_write_ha_state()
+
+
+class ZoneLocalScheduleSensor(ZoneSensor):
+    """Read-only view of one zone's local schedule template."""
+
+    _attr_translation_key = "local_schedule_entity"
+    _attr_entity_registry_enabled_default = False
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._unique_id}_zone_schedule_local"
+
+    def update_properties(self, device: dict[str, Any]) -> None:
+        """Keep the zone label; the template comes from the coordinator."""
+        self._name = device[CONF_DESCRIPTION][CONF_NAME]
+
+    def _schedule_data(self) -> Any:
+        """Return the current schedule snapshot."""
+        return (self.coordinator.data or {}).get("schedules")
+
+    def _details(self) -> dict[str, Any] | None:
+        """Return the decoded local template, or ``None`` without a snapshot."""
+        data = self._schedule_data()
+        if not isinstance(data, dict):
+            return None
+        return local_schedule_details(data, self._id)
+
+    @property
+    def available(self) -> bool:
+        """Become unavailable when the schedule snapshot disappears."""
+        return super().available and isinstance(self._schedule_data(), dict)
+
+    @property
+    def native_value(self) -> str | None:
+        """Report missing, pending, valid or invalid."""
+        return _template_status(self._details())
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the decoded template and its provenance."""
+        return self._details() or {}
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Write the coordinator's schedule view without touching tile state."""
+        self.async_write_ha_state()
+
+
+def _template_status(details: dict[str, Any] | None) -> str | None:
+    """Turn one decoded template into a compact sensor state."""
+    if details is None:
+        return None
+    if not details["found"]:
+        return "missing"
+    if not details["settled"]:
+        return "pending"
+    return "valid" if details["valid"] else "invalid"
+
+
+_SCHEDULE_MODE_TRANSLATION_KEYS = {
+    "constantTemp": "constant-temp",
+    "globalSchedule": "global-schedule",
+    "localSchedule": "local-schedule",
+    "timeLimit": "time-limit",
+}
+
+
+class ControllerGlobalScheduleSensor(CoordinatorEntity, SensorEntity):
+    """Read-only view of one global schedule template slot."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+    _attr_has_entity_name = True
+    _attr_translation_key = "global_schedule_entity"
+
+    def __init__(
+        self,
+        coordinator: TechCoordinator,
+        config_entry: TechConfigEntry,
+        index: int,
+    ) -> None:
+        """Bind to the existing coordinator and one global slot."""
+        super().__init__(coordinator)
+        self._config_entry = config_entry
+        self._udid = config_entry.data[CONTROLLER][UDID]
+        self._index = index
+        self._attr_translation_placeholders = {"schedule_number": str(index + 1)}
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return f"{self._udid}_schedule_global_{self._index}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Attach to the controller device."""
+        return controller_device_info(self._config_entry)
+
+    def _schedule_data(self) -> Any:
+        """Return the current schedule snapshot."""
+        return (self.coordinator.data or {}).get("schedules")
+
+    def _details(self) -> dict[str, Any] | None:
+        """Return the decoded global template, or ``None`` without a snapshot."""
+        data = self._schedule_data()
+        if not isinstance(data, dict):
+            return None
+        return global_schedule_details(data, self._index)
+
+    @property
+    def available(self) -> bool:
+        """Become unavailable when the schedule snapshot disappears."""
+        return super().available and isinstance(self._schedule_data(), dict)
+
+    @property
+    def native_value(self) -> str | None:
+        """Report missing, pending, valid or invalid."""
+        return _template_status(self._details())
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the decoded template and its provenance."""
+        return self._details() or {}
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Write the coordinator's schedule view without touching tile state."""
+        self.async_write_ha_state()

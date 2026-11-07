@@ -1,9 +1,9 @@
 """Fixtures for the tests that run against a real Home Assistant.
 
-These tests live in their own directory because they use
-pytest-homeassistant-custom-component and therefore a real ``homeassistant``
-package, while the suites in ``tests/`` replace that package with stubs when
-they are imported. One pytest process cannot have both.
+These tests live in their own directory because they use a real
+``homeassistant`` package through ``pytest-homeassistant``, while the suites in
+``tests/`` replace that package with stubs when they are imported. One pytest
+process cannot have both.
 """
 
 from __future__ import annotations
@@ -27,12 +27,6 @@ from custom_components.tech.tech import Tech  # noqa: E402
 # so a test that exercises the client can put the real one back.
 _REAL_GET = Tech.get
 _REAL_POST = Tech.post
-
-
-@pytest.fixture(autouse=True)
-def auto_enable_custom_integrations(enable_custom_integrations):
-    """Let Home Assistant load ``custom_components.tech``."""
-    yield
 
 
 @pytest.fixture

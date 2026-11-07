@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
+cd "$(dirname "$0")/.."
 
-pytest tests/ --cov-report=term-missing --cov=custom_components.tech.tech
+exec ./scripts/test_offline \
+  --cov-report=term-missing \
+  --cov=custom_components.tech.tech "$@"

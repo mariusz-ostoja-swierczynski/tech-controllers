@@ -16,6 +16,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from . import assets, identity
 from .const import (
+    CONF_MENU_CODES,
     CONTROLLER,
     DOMAIN,
     INCLUDE_HUB_IN_NAME,
@@ -74,16 +75,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: TechConfigEntry) -> bool
     _LOGGER.debug(
         "Entry -> title: %s, data: %s, id: %s, domain: %s",
         entry.title,
-        async_redact_data(dict(entry.data), ["token"]),
+        # The menu codes are credentials like the token, and sit under one key,
+        # so redacting that key hides all of them: nothing here may log a code.
+        async_redact_data(dict(entry.data), ["token", CONF_MENU_CODES]),
         entry.entry_id,
         entry.domain,
     )
-    language_code = hass.config.language
     user_id = entry.data[USER_ID]
     token = entry.data[CONF_TOKEN]
+    # An entry without the key, or with an empty mapping, has no codes: that is
+    # what every entry configured before codes existed looks like.
+    menu_codes = dict(entry.data.get(CONF_MENU_CODES) or {})
     websession = async_get_clientsession(hass)
 
-    coordinator = TechCoordinator(hass, websession, user_id, token)
+    coordinator = TechCoordinator(
+        hass, websession, user_id, token, menu_codes=menu_codes
+    )
     entry.runtime_data = coordinator
 
     await coordinator.async_config_entry_first_refresh()
@@ -106,9 +113,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: TechConfigEntry) -> bool
     )
     coordinator.controller_device_id = controller_device.id
 
-    coordinator.translations = await assets.Translations.load(
-        language_code, coordinator.api
-    )
+    # The catalog names things; it is not needed to run, and the coordinator
+    # retries it on each refresh if the API will not serve it.
+    await coordinator.async_load_translations()
 
     # What the user made of an entity the removal pass takes away is kept across
     # the removal, so that an entry the controller reports again is the same
@@ -251,6 +258,13 @@ def _forget_entity(
     # hears about the departure -- which is what stops it registering the entity
     # again -- in time for the next poll.
     hass.async_create_task(entity.async_remove())
+    # The departure hook is not run for an entity Home Assistant never wrote a
+    # state for, which is every disabled-by-default entity, so the platform is
+    # told here as well. Both paths discard from the same set, so hearing about
+    # a departure twice is harmless, and hearing about it once is what lets a
+    # returning payload rebuild the entity.
+    for forget in coordinator.forget_callbacks:
+        forget(entity.unique_id)
 
     if device_id and not er.async_entries_for_device(registry, device_id):
         dr.async_get(hass).async_remove_device(device_id)

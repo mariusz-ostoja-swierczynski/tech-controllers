@@ -1,4 +1,4 @@
-"""Tests ensuring all translation files share the same JSON key structure.
+"""Tests ensuring translation key parity and correct entity namespaces.
 
 Every file under ``custom_components/tech/translations`` must contain exactly
 the same set of (nested) keys. Only the string values may differ between
@@ -12,8 +12,11 @@ import pathlib
 
 import pytest
 
+from . import test_platform_device_info as support
+
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 _TRANSLATIONS_DIR = _REPO_ROOT / "custom_components" / "tech" / "translations"
+_STRINGS_PATH = _TRANSLATIONS_DIR.parent / "strings.json"
 _REFERENCE_LANG = "en"
 
 
@@ -65,3 +68,21 @@ def test_translation_keys_match_reference(path: pathlib.Path) -> None:
         f"  missing: {sorted(missing)}\n"
         f"  extra:   {sorted(extra)}"
     )
+
+
+@pytest.mark.parametrize(
+    "path", [_STRINGS_PATH, *_translation_files()], ids=lambda path: path.name
+)
+def test_schedule_problem_name_uses_binary_sensor_namespace(path: pathlib.Path) -> None:
+    """Resolve the real problem entity's name in its binary sensor platform."""
+    entity_type = support.binary_sensor.ScheduleProblemSensor
+    assert issubclass(entity_type, support.BinarySensorEntity)
+    translation_key = entity_type._attr_translation_key
+    entities = _load(path)["entity"]
+    binary_sensor_names = entities.get("binary_sensor", {})
+
+    assert translation_key in binary_sensor_names, (
+        f"{path.name} lacks entity.binary_sensor.{translation_key}"
+    )
+    assert binary_sensor_names[translation_key]["name"].strip()
+    assert translation_key not in entities.get("sensor", {})

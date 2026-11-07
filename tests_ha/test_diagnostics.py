@@ -11,7 +11,7 @@ import json
 
 from common import UDID, USER_ID, set_up
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.tech.diagnostics import async_get_config_entry_diagnostics
 from homeassistant.const import CONF_TOKEN

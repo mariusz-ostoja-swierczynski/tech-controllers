@@ -33,18 +33,9 @@ from collections.abc import Callable
 import logging
 from typing import Any
 
-from homeassistant.const import (
-    ATTR_IDENTIFIERS,
-    ATTR_MANUFACTURER,
-    ATTR_SW_VERSION,
-    CONF_DESCRIPTION,
-    CONF_ID,
-    CONF_NAME,
-    CONF_PARAMS,
-    CONF_TYPE,
-)
+from homeassistant.const import CONF_DESCRIPTION, CONF_ID, CONF_PARAMS, CONF_TYPE
 from homeassistant.core import callback
-from homeassistant.helpers import entity
+from homeassistant.helpers import entity, entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -118,6 +109,26 @@ class ReportedEntity(entity.Entity):
         """
         for forget in self.coordinator.forget_callbacks:
             forget(self.unique_id)
+
+
+def controller_device_info(config_entry: TechConfigEntry) -> DeviceInfo:
+    """Return the shared device description for controller-level entities.
+
+    Args:
+        config_entry: The entry whose controller the device describes.
+
+    Returns:
+        The description the controller's own device was created with, so that
+        an entity naming these identifiers joins that device.
+
+    """
+    return DeviceInfo(
+        identifiers={(DOMAIN, config_entry.data[CONTROLLER][UDID])},
+        name=config_entry.title,
+        model=assets.controller_model(config_entry),
+        sw_version=assets.controller_firmware(config_entry),
+        manufacturer=MANUFACTURER,
+    )
 
 
 class TileEntity(
@@ -209,13 +220,7 @@ class TileEntity(
         controllers (ST-491, ST-505, ST-976...) still produce a single
         device with grouped entities instead of orphaned, ungrouped entries.
         """
-        return {
-            ATTR_IDENTIFIERS: {(DOMAIN, self._udid)},
-            CONF_NAME: self._config_entry.title,
-            "model": assets.controller_model(self._config_entry),
-            ATTR_SW_VERSION: assets.controller_firmware(self._config_entry),
-            ATTR_MANUFACTURER: MANUFACTURER,
-        }
+        return controller_device_info(self._config_entry)
 
     @property
     def source_key(self) -> str:
@@ -284,6 +289,24 @@ def add_later(
         # what tells an entity apart is its own unique id, not that key. An
         # entity that leaves Home Assistant says so through the callback above,
         # which is what lets a payload bring its entry back.
+        #
+        # That departure signal is not the only way an entity can go, though: one
+        # that belongs to a device the removal pass takes away leaves the
+        # registry with it, and Home Assistant never runs the departure hook for
+        # an entity it wrote no state for -- which is every disabled-by-default
+        # entity. The count is therefore reconciled against the registry, so a
+        # payload reporting that entry again can build it.
+        if registered:
+            registry = er.async_get(coordinator.hass)
+            present = {
+                row.unique_id
+                for row in er.async_entries_for_config_entry(
+                    registry, config_entry.entry_id
+                )
+                if row.unique_id is not None
+            }
+            registered.intersection_update(present)
+
         fresh = [entity for entity in build() if entity.unique_id not in registered]
         if not fresh:
             return
