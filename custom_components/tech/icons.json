@@ -1,0 +1,21 @@
+{
+    "entity": {
+        "sensor": {
+            "actuator_entity": {
+                "default": "mdi:valve"
+            },
+            "controller_schedules": {
+                "default": "mdi:calendar-week"
+            },
+            "zone_schedule_entity": {
+                "default": "mdi:calendar-week"
+            },
+            "local_schedule_entity": {
+                "default": "mdi:calendar-week"
+            },
+            "global_schedule_entity": {
+                "default": "mdi:calendar-week"
+            }
+        }
+    }
+}

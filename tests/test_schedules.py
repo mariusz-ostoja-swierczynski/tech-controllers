@@ -145,7 +145,13 @@ def _context(snapshot: dict) -> tuple[SimpleNamespace, SimpleNamespace]:
         data={"schedules": snapshot, "zones": {101: _zone()}, "tiles": {}},
         last_update_success=True,
         translations=support._Translations(),
+        forget_callbacks=[],
     )
+    coordinator.async_add_listener = lambda callback, context=None: (lambda: None)
+    # The platforms read the coordinator from the entry, as production does.
+    entry.runtime_data = coordinator
+    entry.options = {}
+    entry.async_on_unload = lambda callback: None
     return entry, coordinator
 
 

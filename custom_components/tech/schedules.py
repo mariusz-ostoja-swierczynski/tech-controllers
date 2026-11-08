@@ -124,8 +124,8 @@ def normalize_schedule(raw: Any) -> dict[str, Any]:
         errors.append("schedule:missing_or_invalid")
         return result
 
-    profiles = []
-    masks = []
+    profiles: list[dict[str, Any] | None] = []
+    masks: list[list[str] | None] = []
     for profile in range(2):
         prefix = f"p{profile}"
         mask = raw.get(f"{prefix}Days")
@@ -142,7 +142,7 @@ def normalize_schedule(raw: Any) -> dict[str, Any]:
         if not valid:
             errors.append(f"{prefix}SetbackTemp:invalid_temperature")
         intervals = raw.get(f"{prefix}Intervals")
-        decoded = []
+        decoded: list[dict[str, Any]] = []
         if not isinstance(intervals, list):
             errors.append(f"{prefix}Intervals:invalid_list")
             valid = False
@@ -192,12 +192,13 @@ def normalize_schedule(raw: Any) -> dict[str, Any]:
             if valid
             else None
         )
-    if all(mask is not None for mask in masks):
+    first_mask, second_mask = masks
+    if first_mask is not None and second_mask is not None:
         for index, day in enumerate(DAYS):
-            if masks[0][index] == masks[1][index]:
+            if first_mask[index] == second_mask[index]:
                 errors.append(f"{day}:conflicting_profiles")
             else:
-                week[day] = profiles[0 if masks[0][index] == "1" else 1]
+                week[day] = profiles[0 if first_mask[index] == "1" else 1]
     result["valid"] = all(day is not None for day in week.values())
     return result
 
@@ -347,7 +348,7 @@ def zone_schedule_info(
     snapshot: Any, zone_id: int, available: bool = True
 ) -> dict[str, Any]:
     """Resolve configured selection separately from proven applicability."""
-    info = {
+    info: dict[str, Any] = {
         "schedule_mode": None,
         "schedule_index": None,
         "active_schedule_name": None,
@@ -387,6 +388,7 @@ def zone_schedule_info(
         and _settled(mode)
     ):
         return info
+    template: dict[str, Any] | None
     if selected_mode == "globalSchedule":
         if info["schedule_index"] is None or not _settled(
             snapshot.get("globalSchedules"), required=True
@@ -396,8 +398,9 @@ def zone_schedule_info(
         if template is None:
             return info
     else:
-        template = zone.get("schedule")
-    if _settled(template) and normalize_schedule(template)["valid"]:
+        local = zone.get("schedule")
+        template = local if isinstance(local, dict) else None
+    if template is not None and _settled(template) and normalize_schedule(template)["valid"]:
         info["schedule_applicable"] = True
         name = template.get("name")
         info["active_schedule_name"] = name if isinstance(name, str) and name else None

@@ -88,7 +88,13 @@ def _context(tile: dict[str, Any]) -> tuple[SimpleNamespace, SimpleNamespace]:
         data={"tiles": tiles},
         translations=support._Translations(),
         last_update_success=True,
+        forget_callbacks=[],
     )
+    coordinator.async_add_listener = lambda callback, context=None: (lambda: None)
+    # The platforms read the coordinator from the entry, as production does.
+    entry.runtime_data = coordinator
+    entry.options = {}
+    entry.async_on_unload = lambda callback: None
     return entry, coordinator
 
 
@@ -128,23 +134,22 @@ async def test_startup_failure_still_registers_and_recovers_same_entity() -> Non
     expected_id = f"{_UDID}_{_TILE_ID}_tile_temperature"
     assert entity.unique_id == expected_id
     assert entity.available is False
-    assert entity.state is None
     assert entity.native_value is None
 
     _refresh(entity, coordinator, {"workingStatus": True, "value": 235})
     assert entity.available is True
-    assert entity.state == 23.5
     assert entity.native_value == 23.5
     assert entity.unique_id == expected_id
 
     _refresh(entity, coordinator, {"workingStatus": False, "value": -2030})
     assert entity.available is False
-    assert entity.state is None
     assert entity.native_value is None
     assert added == [entity]
     assert entity.unique_id == expected_id
     assert entity.state_writes == 2
-    assert coordinator.api.reads == [("zones", _UDID), ("tiles", _UDID)]
+    # Registration reads the coordinator's payload; nothing is fetched per
+    # platform any more.
+    assert coordinator.api.reads == []
 
 
 @pytest.mark.parametrize(
@@ -166,7 +171,6 @@ def test_valid_numeric_readings_and_legacy_flags(params: dict, expected: float) 
     entity, _ = _build(params)
     assert entity.available is True
     assert entity.native_value == pytest.approx(expected)
-    assert entity.state == pytest.approx(expected)
 
 
 @pytest.mark.parametrize(
@@ -205,7 +209,6 @@ def test_invalid_values_are_safe_at_startup_and_refresh(value: Any) -> None:
     params = {"workingStatus": True, "value": value}
     entity, coordinator = _build(deepcopy(params))
     assert entity.available is False
-    assert entity.state is None
     assert entity.native_value is None
 
     _refresh(entity, coordinator, {"workingStatus": True, "value": 235})
@@ -214,7 +217,6 @@ def test_invalid_values_are_safe_at_startup_and_refresh(value: Any) -> None:
 
     _refresh(entity, coordinator, params)
     assert entity.available is False
-    assert entity.state is None
     assert entity.native_value is None
 
 
@@ -222,7 +224,6 @@ def test_missing_value_is_unavailable() -> None:
     """A payload without a value has no valid temperature to publish."""
     entity, _ = _build({"workingStatus": True})
     assert entity.available is False
-    assert entity.state is None
     assert entity.native_value is None
 
 
@@ -245,7 +246,6 @@ def test_relay_and_pump_off_remain_available(tile_type: int) -> None:
     entity = binary_sensor.RelaySensor(tile, coordinator, entry)
     assert entity.available is True
     assert entity.get_state(tile) is False
-    assert entity.state == "off"
     coordinator.last_update_success = False
     assert entity.available is False
 
@@ -436,6 +436,8 @@ def _zone_entry() -> SimpleNamespace:
         },
         entry_id="synthetic-entry",
         title="Synthetic controller",
+        # The naming preference lives in the entry's options, not its data.
+        options={},
     )
 
 

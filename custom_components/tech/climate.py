@@ -1,7 +1,7 @@
 """Climate platform for the Tech Controllers integration."""
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
@@ -9,14 +9,10 @@ from homeassistant.components.climate.const import (
     HVACAction,
     HVACMode,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    ATTR_IDENTIFIERS,
-    ATTR_MANUFACTURER,
     ATTR_TEMPERATURE,
     CONF_DESCRIPTION,
     CONF_ID,
-    CONF_MODEL,
     CONF_NAME,
     CONF_ZONE,
     STATE_OFF,
@@ -35,13 +31,18 @@ from .const import (
     INCLUDE_HUB_IN_NAME,
     MANUFACTURER,
     UDID,
-    VER,
     scaled_number,
 )
-from .coordinator import TechCoordinator
+from .coordinator import TechConfigEntry, TechCoordinator
+from .entity import ReportedEntity, add_later
 from .schedules import climate_schedule_attributes
 
 _LOGGER = logging.getLogger(__name__)
+
+# Climate changes (mode, setpoint) go to the same cloud account as the menu
+# writes, so they are serialised with them. Home Assistant reads
+# PARALLEL_UPDATES from the platform module.
+PARALLEL_UPDATES = 1
 
 DEFAULT_MIN_TEMP = 5
 DEFAULT_MAX_TEMP = 35
@@ -50,7 +51,7 @@ SUPPORT_HVAC = [HVACMode.HEAT, HVACMode.OFF]
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: TechConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Tech climate entities for the provided config entry.
@@ -62,27 +63,34 @@ async def async_setup_entry(
 
     """
     udid = config_entry.data[CONTROLLER][UDID]
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator = config_entry.runtime_data
     _LOGGER.debug("Setting up entry, controller udid: %s", udid)
+
     # Only usable zone payloads: a controller without zones, or one whose payload
     # carries entries that are not zone payloads, must not take the whole climate
     # platform down with it.
-    zones = assets.zone_payloads(await coordinator.api.get_module_zones(udid))
-    thermostats = [
-        TechThermostat(zone, coordinator, config_entry) for zone in zones.values()
-    ]
+    def _build() -> list[TechThermostat]:
+        # Read from the coordinator's payload rather than fetching: this runs
+        # again on every poll, to pick up a zone the controller starts reporting.
+        zones = assets.zone_payloads(coordinator.data.get("zones"))
+        return [
+            TechThermostat(zone, coordinator, config_entry) for zone in zones.values()
+        ]
 
-    async_add_entities(thermostats, True)
+    add_later(config_entry, coordinator, async_add_entities, _build)
 
 
-class TechThermostat(ClimateEntity, CoordinatorEntity):
+class TechThermostat(ReportedEntity, ClimateEntity, CoordinatorEntity[TechCoordinator]):
     """Representation of a Tech climate."""
 
     _attr_has_entity_name = True
     _attr_name = None
 
     def __init__(
-        self, device, coordinator: TechCoordinator, config_entry: ConfigEntry
+        self,
+        device: dict[str, Any],
+        coordinator: TechCoordinator,
+        config_entry: TechConfigEntry,
     ) -> None:
         """Initialise a thermostat entity backed by a Tech zone payload.
 
@@ -101,35 +109,37 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
         self._unique_id = f"{self._udid}_{device[CONF_ZONE][CONF_ID]}"
         self.device_name = (
             device[CONF_DESCRIPTION][CONF_NAME]
-            if not self._config_entry.data.get(INCLUDE_HUB_IN_NAME, False)
+            if not self._config_entry.options.get(INCLUDE_HUB_IN_NAME, False)
             else f"{self._config_entry.title} {device[CONF_DESCRIPTION][CONF_NAME]}"
         )
 
         self.manufacturer = MANUFACTURER
-        self.model = (
-            config_entry.data[CONTROLLER][CONF_NAME]
-            + ": "
-            + config_entry.data[CONTROLLER][VER]
-        )
-        self._temperature = None
-        self._target_temperature = None
+        self._temperature: float | None = None
+        self._target_temperature: float | None = None
         self.update_properties(device)
         # Remove the line below after HA 2025.1
         self._enable_turn_on_off_backwards_compatibility = False
 
     @property
+    def source_key(self) -> str:
+        """Return the zone this thermostat was built from."""
+        return f"zone_{self._id}"
+
+    @property
     def device_info(self) -> DeviceInfo | None:
         """Return Home Assistant ``DeviceInfo`` describing the controller."""
-        return {
-            ATTR_IDENTIFIERS: {
-                (DOMAIN, self._unique_id)
-            },  # Unique identifiers for the device
-            CONF_NAME: self.device_name,  # Name of the device
-            CONF_MODEL: self.model,  # Model of the device
-            ATTR_MANUFACTURER: self.manufacturer,  # Manufacturer of the device
-        }
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._unique_id)},
+            name=self.device_name,
+            model=assets.controller_model(self._config_entry),
+            sw_version=assets.controller_firmware(self._config_entry),
+            manufacturer=self.manufacturer,
+            # A thermostat is a zone of the controller, so it belongs under it
+            # in the device tree rather than beside it.
+            via_device_id=assets.via_controller(self.coordinator),
+        )
 
-    def update_properties(self, device):
+    def update_properties(self, device: dict[str, Any]) -> None:
         """Populate state attributes from the latest zone payload.
 
         Args:
@@ -260,7 +270,7 @@ class TechThermostat(ClimateEntity, CoordinatorEntity):
     @property
     def current_humidity(self) -> float | None:
         """Return current humidity."""
-        return self._humidity
+        return cast("float | None", self._humidity)
 
     @property
     def min_temp(self) -> float:

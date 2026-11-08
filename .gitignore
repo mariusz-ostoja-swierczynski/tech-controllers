@@ -10,6 +10,7 @@ __pycache__
 # misc
 .coverage
 coverage.xml
+coverage.json
 
 
 # Home Assistant configuration

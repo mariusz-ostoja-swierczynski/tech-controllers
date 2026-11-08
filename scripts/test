@@ -3,6 +3,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# The whole package is measured, not one module under it: the coverage gate is
+# per module, and this run is combined with the Home Assistant suite's by
+# --cov-append. Measuring only ``custom_components.tech.tech`` here would leave
+# every other module with nothing but what the Home Assistant suite happens to
+# reach, which is how schedules, sensors and the API client fell under the
+# floor once the gate started looking at each module on its own.
 exec ./scripts/test_offline \
   --cov-report=term-missing \
-  --cov=custom_components.tech.tech "$@"
+  --cov=custom_components.tech "$@"
