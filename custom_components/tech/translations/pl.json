@@ -44,11 +44,16 @@
         "description": "Wybierz sterowniki, które chcesz zintegrować.",
         "data": {
           "controllers": "Sterowniki do zintegrowania",
-          "include_hub_in_name": "Umieść nazwę hub'a (kontrolera) w nazwach encji"
+          "include_hub_in_name": "Umieść nazwę hub'a (kontrolera) w nazwach encji",
+          "configure_menu_codes": "Skonfiguruj kody menu",
+          "menu_code_mu": "Kod menu użytkownika (MU)",
+          "menu_code_mi": "Kod menu instalatora (MI)",
+          "menu_code_ms": "Kod menu serwisowego (MS)"
         },
         "data_description": {
           "controllers": "Sterownik do dodania. Aby dodać kolejny sterownik, uruchom tę konfigurację ponownie.",
-          "include_hub_in_name": "Umieść nazwę integracji (hub'a) przed nazwami encji stref tego sterownika. Przydaje się, gdy skonfigurowanych jest kilka sterowników."
+          "include_hub_in_name": "Umieść nazwę integracji (hub'a) przed nazwami encji stref tego sterownika. Przydaje się, gdy skonfigurowanych jest kilka sterowników.",
+          "configure_menu_codes": "Niektóre sterowniki trzymają menu instalatora i serwisowe za kodem. Wpisz kod dla każdego menu, które Home Assistant ma odczytywać, albo pozostaw pola puste. Błędny kod działa dokładnie tak samo jak brak kodu."
         }
       },
       "reauth_confirm": {
@@ -93,15 +98,6 @@
         },
         "data_description": {
           "include_hub_in_name": "Umieść nazwę integracji (hub'a) przed nazwami encji stref tego sterownika. Przydaje się, gdy skonfigurowanych jest kilka sterowników."
-        }
-      },
-      "menu_codes": {
-        "title": "Kody menu",
-        "description": "Niektóre sterowniki trzymają menu instalatora i serwisowe za kodem. Wpisz kod dla każdego menu, które Home Assistant ma odczytywać, albo pozostaw pola puste. Błędny kod działa dokładnie tak samo jak brak kodu.",
-        "data": {
-          "menu_code_mu": "Kod menu użytkownika (MU)",
-          "menu_code_mi": "Kod menu instalatora (MI)",
-          "menu_code_ms": "Kod menu serwisowego (MS)"
         }
       }
     }

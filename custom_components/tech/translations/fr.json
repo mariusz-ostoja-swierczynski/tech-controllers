@@ -44,11 +44,16 @@
                 "description": "Veuillez sélectionner les contrôleurs que vous souhaitez intégrer.",
                 "data": {
                     "controllers": "Contrôleurs à importer",
-                    "include_hub_in_name": "Inclure le nom du hub (contrôleur) dans les noms des entités"
+                    "include_hub_in_name": "Inclure le nom du hub (contrôleur) dans les noms des entités",
+                    "configure_menu_codes": "Configurer les codes de menu",
+                    "menu_code_mu": "Code du menu utilisateur (MU)",
+                    "menu_code_mi": "Code du menu installateur (MI)",
+                    "menu_code_ms": "Code du menu service (MS)"
                 },
                 "data_description": {
                     "controllers": "Le contrôleur à ajouter. Ajoutez l'intégration à nouveau pour chaque contrôleur supplémentaire.",
-                    "include_hub_in_name": "Ajoutez le nom de l'intégration devant les noms des entités des zones de ce contrôleur. Utile lorsque plusieurs contrôleurs sont configurés."
+                    "include_hub_in_name": "Ajoutez le nom de l'intégration devant les noms des entités des zones de ce contrôleur. Utile lorsque plusieurs contrôleurs sont configurés.",
+                    "configure_menu_codes": "Certains régulateurs gardent leurs menus installateur et service derrière un code. Saisissez le code de chaque menu que Home Assistant doit lire, ou laissez les champs vides. Un mauvais code se comporte exactement comme aucun code."
                 }
             },
             "reauth_confirm": {
@@ -93,15 +98,6 @@
                 },
                 "data_description": {
                     "include_hub_in_name": "Ajoutez le nom de l'intégration devant les noms des entités des zones de ce contrôleur. Utile lorsque plusieurs contrôleurs sont configurés."
-                }
-            },
-            "menu_codes": {
-                "title": "Codes des menus",
-                "description": "Certains régulateurs gardent leurs menus installateur et service derrière un code. Saisissez le code de chaque menu que Home Assistant doit lire, ou laissez les champs vides. Un mauvais code se comporte exactement comme aucun code.",
-                "data": {
-                    "menu_code_mu": "Code du menu utilisateur (MU)",
-                    "menu_code_mi": "Code du menu installateur (MI)",
-                    "menu_code_ms": "Code du menu service (MS)"
                 }
             }
         }

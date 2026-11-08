@@ -44,11 +44,16 @@
                 "description": "Palun valige kontrollerid, mida soovite integreerida.",
                 "data": {
                     "controllers": "Imporditavad kontrollerid",
-                    "include_hub_in_name": "Kaasa hubi (kontrolleri) nimi üksuste nimedes"
+                    "include_hub_in_name": "Kaasa hubi (kontrolleri) nimi üksuste nimedes",
+                    "configure_menu_codes": "Seadista menüükoodid",
+                    "menu_code_mu": "Kasutajamenüü kood (MU)",
+                    "menu_code_mi": "Paigaldajamenüü kood (MI)",
+                    "menu_code_ms": "Hooldusmenüü kood (MS)"
                 },
                 "data_description": {
                     "controllers": "Lisatav kontroller. Iga järgmise kontrolleri jaoks lisage integratsioon uuesti.",
-                    "include_hub_in_name": "Lisa integratsiooni nimi selle kontrolleri tsoonide üksuste nimede ette. Kasulik, kui on seadistatud mitu kontrollerit."
+                    "include_hub_in_name": "Lisa integratsiooni nimi selle kontrolleri tsoonide üksuste nimede ette. Kasulik, kui on seadistatud mitu kontrollerit.",
+                    "configure_menu_codes": "Mõned kontrollerid hoiavad paigaldaja- ja hooldusmenüüd koodi taga. Sisesta iga menüü kood, mida Home Assistant peab lugema, või jäta väljad tühjaks. Vale kood käitub täpselt nagu koodi puudumine."
                 }
             },
             "reauth_confirm": {
@@ -93,15 +98,6 @@
                 },
                 "data_description": {
                     "include_hub_in_name": "Lisa integratsiooni nimi selle kontrolleri tsoonide üksuste nimede ette. Kasulik, kui on seadistatud mitu kontrollerit."
-                }
-            },
-            "menu_codes": {
-                "title": "Menüü koodid",
-                "description": "Mõned kontrollerid hoiavad paigaldaja- ja hooldusmenüüd koodi taga. Sisesta iga menüü kood, mida Home Assistant peab lugema, või jäta väljad tühjaks. Vale kood käitub täpselt nagu koodi puudumine.",
-                "data": {
-                    "menu_code_mu": "Kasutajamenüü kood (MU)",
-                    "menu_code_mi": "Paigaldajamenüü kood (MI)",
-                    "menu_code_ms": "Hooldusmenüü kood (MS)"
                 }
             }
         }
