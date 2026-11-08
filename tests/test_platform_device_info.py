@@ -85,6 +85,9 @@ class _Entity:
     async def async_added_to_hass(self) -> None:
         """Pretend the entity was added."""
 
+    def async_on_remove(self, func: Any) -> None:
+        """Record a cleanup callback the stubbed lifecycle never runs."""
+
     def async_write_ha_state(self) -> None:
         """Pretend to publish the entity state; nothing is recorded."""
 
