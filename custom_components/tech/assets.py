@@ -238,13 +238,13 @@ def controller_firmware(config_entry: ConfigEntry) -> str:
 
 
 def via_controller(coordinator: TechCoordinator) -> str | None:
-    """Return the id of the controller's device, to name it as a parent.
+    """Return the id of the controller's device, to name it as the via device.
 
-    The device registry resolves a parent by device id, and the controller's
+    The device registry resolves a via device by device id, and the controller's
     device is created while the entry sets up, so the id is read from the
     coordinator rather than looked up per entity. An id that is not known yet --
     an entity built outside a running entry, as the unit tests do -- yields
-    ``None``, so the entity simply has no parent.
+    ``None``, so the entity simply has no via device.
 
     Args:
         coordinator: The entry's coordinator.
@@ -254,6 +254,30 @@ def via_controller(coordinator: TechCoordinator) -> str | None:
 
     """
     return coordinator.controller_device_id
+
+
+def parent_controller(coordinator: TechCoordinator) -> str:
+    """Return the id of the controller's device, for a child's parent.
+
+    A child device names its parent by device id, and the controller's device is
+    created while the entry sets up, so the id is always known by the time a
+    platform builds a zone entity. Unlike a via device, a child's parent cannot
+    be omitted.
+
+    Args:
+        coordinator: The entry's coordinator.
+
+    Returns:
+        The controller device's registry id.
+
+    Raises:
+        RuntimeError: If the controller's device has not been registered.
+
+    """
+    device_id = coordinator.controller_device_id
+    if device_id is None:
+        raise RuntimeError("The controller device is not registered")
+    return device_id
 
 
 def reported_keys(data: dict[str, Any]) -> set[str]:
@@ -424,22 +448,15 @@ def build_menu_zone_assignments(
 
 def build_zone_names(
     zones: dict[int, dict[str, Any]],
-    config_entry_title: str,
-    include_hub_in_name: bool = False,
 ) -> dict[int, str]:
     """Map zone IDs to the display names used for zone-level devices.
 
     Zone devices are shared by the zone sensor/climate entities and the
     menu-based platforms (switch, select, button, number); the name is taken
-    from the zone payload description, optionally prefixed with the hub
-    (config entry) title when ``include_hub_in_name`` is set -- the same
-    convention used by :class:`sensor.ZoneSensor` and
-    :class:`climate.TechThermostat`.
+    from the zone payload description.
 
     Args:
         zones: Mapping of zone ID to zone payload (as cached by the API client).
-        config_entry_title: Title of the owning config entry (the hub name).
-        include_hub_in_name: Whether to prefix the zone name with the hub title.
 
     Returns:
         Mapping of zone ID to device name. Zones without a usable name are
@@ -452,8 +469,6 @@ def build_zone_names(
         name = description.get(CONF_NAME) if isinstance(description, dict) else None
         if not name:
             continue
-        if include_hub_in_name:
-            name = f"{config_entry_title} {name}"
         zone_names[zone_id] = name
     return zone_names
 

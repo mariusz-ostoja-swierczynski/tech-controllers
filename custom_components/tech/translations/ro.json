@@ -44,7 +44,6 @@
                 "description": "Vă rugăm să selectați controlerele pe care doriți să le integrați.",
                 "data": {
                     "controllers": "Controlere de importat",
-                    "include_hub_in_name": "Includere nume hub (controller) în numele entităților",
                     "configure_menu_codes": "Configurați codurile meniurilor",
                     "menu_code_mu": "Cod meniu utilizator (MU)",
                     "menu_code_mi": "Cod meniu instalator (MI)",
@@ -52,7 +51,6 @@
                 },
                 "data_description": {
                     "controllers": "Controlerul de adăugat. Adăugați din nou integrarea pentru fiecare controler suplimentar.",
-                    "include_hub_in_name": "Adăugați numele integrării înaintea numelor entităților zonelor acestui controler. Este util când sunt configurate mai multe controlere.",
                     "configure_menu_codes": "Unele centrale țin meniurile de instalator și de service în spatele unui cod. Introduceți codul pentru fiecare meniu pe care Home Assistant trebuie să îl citească sau lăsați câmpurile goale. Un cod greșit se comportă exact ca lipsa codului."
                 }
             },
@@ -88,18 +86,6 @@
         },
         "entry_from_newer_version": {
             "message": "Această intrare a fost creată de o versiune mai nouă a Tech Controllers. Actualizați integrarea și reporniți Home Assistant."
-        }
-    },
-    "options": {
-        "step": {
-            "init": {
-                "data": {
-                    "include_hub_in_name": "Includere nume hub (controller) în numele entităților"
-                },
-                "data_description": {
-                    "include_hub_in_name": "Adăugați numele integrării înaintea numelor entităților zonelor acestui controler. Este util când sunt configurate mai multe controlere."
-                }
-            }
         }
     },
     "entity": {

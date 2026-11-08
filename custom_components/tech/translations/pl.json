@@ -44,7 +44,6 @@
         "description": "Wybierz sterowniki, które chcesz zintegrować.",
         "data": {
           "controllers": "Sterowniki do zintegrowania",
-          "include_hub_in_name": "Umieść nazwę hub'a (kontrolera) w nazwach encji",
           "configure_menu_codes": "Skonfiguruj kody menu",
           "menu_code_mu": "Kod menu użytkownika (MU)",
           "menu_code_mi": "Kod menu instalatora (MI)",
@@ -52,7 +51,6 @@
         },
         "data_description": {
           "controllers": "Sterownik do dodania. Aby dodać kolejny sterownik, uruchom tę konfigurację ponownie.",
-          "include_hub_in_name": "Umieść nazwę integracji (hub'a) przed nazwami encji stref tego sterownika. Przydaje się, gdy skonfigurowanych jest kilka sterowników.",
           "configure_menu_codes": "Niektóre sterowniki trzymają menu instalatora i serwisowe za kodem. Wpisz kod dla każdego menu, które Home Assistant ma odczytywać, albo pozostaw pola puste. Błędny kod działa dokładnie tak samo jak brak kodu."
         }
       },
@@ -88,18 +86,6 @@
     },
     "entry_from_newer_version": {
       "message": "Ten wpis został utworzony przez nowszą wersję Tech Controllers. Zaktualizuj integrację i uruchom ponownie Home Assistant."
-    }
-  },
-  "options": {
-    "step": {
-      "init": {
-        "data": {
-          "include_hub_in_name": "Umieść nazwę hub'a (kontrolera) w nazwach encji"
-        },
-        "data_description": {
-          "include_hub_in_name": "Umieść nazwę integracji (hub'a) przed nazwami encji stref tego sterownika. Przydaje się, gdy skonfigurowanych jest kilka sterowników."
-        }
-      }
     }
   },
   "entity": {

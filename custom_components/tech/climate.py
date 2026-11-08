@@ -20,19 +20,12 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import ChildDeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import assets
-from .const import (
-    CONTROLLER,
-    DOMAIN,
-    INCLUDE_HUB_IN_NAME,
-    MANUFACTURER,
-    UDID,
-    scaled_number,
-)
+from .const import CONTROLLER, DOMAIN, UDID, scaled_number
 from .coordinator import TechConfigEntry, TechCoordinator
 from .entity import ReportedEntity, add_later
 from .schedules import climate_schedule_attributes
@@ -107,13 +100,8 @@ class TechThermostat(ReportedEntity, ClimateEntity, CoordinatorEntity[TechCoordi
         self._coordinator = coordinator
         self._id = device[CONF_ZONE][CONF_ID]
         self._unique_id = f"{self._udid}_{device[CONF_ZONE][CONF_ID]}"
-        self.device_name = (
-            device[CONF_DESCRIPTION][CONF_NAME]
-            if not self._config_entry.options.get(INCLUDE_HUB_IN_NAME, False)
-            else f"{self._config_entry.title} {device[CONF_DESCRIPTION][CONF_NAME]}"
-        )
+        self.device_name = device[CONF_DESCRIPTION][CONF_NAME]
 
-        self.manufacturer = MANUFACTURER
         self._temperature: float | None = None
         self._target_temperature: float | None = None
         self.update_properties(device)
@@ -126,17 +114,14 @@ class TechThermostat(ReportedEntity, ClimateEntity, CoordinatorEntity[TechCoordi
         return f"zone_{self._id}"
 
     @property
-    def device_info(self) -> DeviceInfo | None:
-        """Return Home Assistant ``DeviceInfo`` describing the controller."""
-        return DeviceInfo(
+    def device_info(self) -> ChildDeviceInfo | None:
+        """Return Home Assistant ``ChildDeviceInfo`` for this zone."""
+        return ChildDeviceInfo(
             identifiers={(DOMAIN, self._unique_id)},
             name=self.device_name,
-            model=assets.controller_model(self._config_entry),
-            sw_version=assets.controller_firmware(self._config_entry),
-            manufacturer=self.manufacturer,
-            # A thermostat is a zone of the controller, so it belongs under it
-            # in the device tree rather than beside it.
-            via_device_id=assets.via_controller(self.coordinator),
+            # A zone is a logical part of the controller, so it is a child
+            # device, not a separate product reached through it.
+            parent_device_id=assets.parent_controller(self.coordinator),
         )
 
     def update_properties(self, device: dict[str, Any]) -> None:

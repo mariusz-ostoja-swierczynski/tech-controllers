@@ -16,15 +16,7 @@ from homeassistant.helpers.redact import async_redact_data
 from homeassistant.helpers.typing import ConfigType
 
 from . import assets, identity
-from .const import (
-    CONF_MENU_CODES,
-    CONTROLLER,
-    DOMAIN,
-    INCLUDE_HUB_IN_NAME,
-    PLATFORMS,
-    UDID,
-    USER_ID,
-)
+from .const import CONF_MENU_CODES, CONTROLLER, DOMAIN, PLATFORMS, UDID, USER_ID
 from .coordinator import TechConfigEntry, TechCoordinator
 from .entity import controller_device_info
 
@@ -179,9 +171,10 @@ async def async_migrate_entry(hass: HomeAssistant, entry: TechConfigEntry) -> No
     if entry.version < 4:
         data = dict(entry.data)
         options = dict(entry.options)
-        include_hub = data.pop(INCLUDE_HUB_IN_NAME, None)
-        if include_hub is not None:
-            options.setdefault(INCLUDE_HUB_IN_NAME, include_hub)
+        # The hub-name naming preference has been removed; drop the key older
+        # versions kept, whether it sat among the data or among the options.
+        data.pop("include_hub_in_name", None)
+        options.pop("include_hub_in_name", None)
         hass.config_entries.async_update_entry(
             entry, data=data, options=options, version=4
         )

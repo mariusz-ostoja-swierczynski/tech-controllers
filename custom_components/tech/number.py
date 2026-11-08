@@ -6,7 +6,7 @@ from typing import Any
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import ChildDeviceInfo, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -14,7 +14,6 @@ from . import assets
 from .const import (
     CONTROLLER,
     DOMAIN,
-    INCLUDE_HUB_IN_NAME,
     MANUFACTURER,
     MENU_DEPTH_DEFAULT_ENABLED_LIMIT,
     MENU_DEPTH_REGISTRATION_LIMIT,
@@ -56,11 +55,7 @@ async def async_setup_entry(
     menus = await coordinator.api.get_module_menus(controller_udid)
     zones = await coordinator.api.get_module_zones(controller_udid)
     ctx = assets.build_menu_context(menus, zones, coordinator.translations)
-    zone_names = assets.build_zone_names(
-        zones,
-        config_entry.title,
-        config_entry.options.get(INCLUDE_HUB_IN_NAME, False),
-    )
+    zone_names = assets.build_zone_names(zones)
 
     entities: list[MenuNumberEntity] = []
     for key, item in menus.items():
@@ -177,16 +172,13 @@ class MenuNumberEntity(
         return f"menu_{self._menu_key}"
 
     @property
-    def device_info(self) -> DeviceInfo | None:
-        """Return device info for the zone or controller this entity belongs to."""
+    def device_info(self) -> ChildDeviceInfo | DeviceInfo | None:
+        """Return the zone child device or the controller device."""
         if self._zone_id is not None:
-            return DeviceInfo(
+            return ChildDeviceInfo(
                 identifiers={(DOMAIN, f"{self._udid}_{self._zone_id}")},
                 name=self._zone_name,
-                model=assets.controller_model(self._config_entry),
-                sw_version=assets.controller_firmware(self._config_entry),
-                manufacturer=self.manufacturer,
-                via_device_id=assets.via_controller(self.coordinator),
+                parent_device_id=assets.parent_controller(self.coordinator),
             )
         return DeviceInfo(
             identifiers={(DOMAIN, self._udid)},

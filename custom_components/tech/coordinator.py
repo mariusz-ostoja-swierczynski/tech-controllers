@@ -89,8 +89,9 @@ class TechCoordinator(DataUpdateCoordinator):
         # :meth:`async_load_translations`.
         self.translations_loaded = False
         # The registry id of the controller's device, set while the entry sets
-        # up. Entities that belong to a zone or a sensor name it as their
-        # ``via_device_id``, and the registry needs the id, not the identifier.
+        # up. Entities that belong to a zone name it as their child-device
+        # parent, and entities for a separate sensor name it as their
+        # ``via_device_id``; the registry needs the id, not the identifier.
         self.controller_device_id: str | None = None
         # The entities of each payload entry, by source key, and how many polls
         # in a row the controller has left that entry out. See

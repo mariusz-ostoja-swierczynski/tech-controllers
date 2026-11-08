@@ -51,7 +51,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er, issue_registry as ir
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import ChildDeviceInfo, DeviceInfo
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.icon import icon_for_signal_level
@@ -70,7 +70,6 @@ from .const import (
     DOMAIN,
     EVENTS,
     FLOOR_PUMP,
-    INCLUDE_HUB_IN_NAME,
     LOW_BATTERY,
     LOW_SIGNAL,
     MANUFACTURER,
@@ -731,12 +730,7 @@ class ZoneSensor(
         self._unique_id: str = (
             config_entry.data[CONTROLLER][UDID] + "_" + str(device[CONF_ZONE][CONF_ID])
         )
-        self._device_name = (
-            device[CONF_DESCRIPTION][CONF_NAME]
-            if not self._config_entry.options.get(INCLUDE_HUB_IN_NAME, False)
-            else f"{self._config_entry.title} {device[CONF_DESCRIPTION][CONF_NAME]}"
-        )
-        self._manufacturer = MANUFACTURER
+        self._device_name = device[CONF_DESCRIPTION][CONF_NAME]
         self._attr_translation_placeholders = {"entity_name": ""}
         self.update_properties(device)
 
@@ -771,16 +765,14 @@ class ZoneSensor(
         return f"zone_{self._id}"
 
     @property
-    def device_info(self) -> DeviceInfo | None:
-        """Return Home Assistant ``DeviceInfo`` for the associated controller."""
-        return DeviceInfo(
+    def device_info(self) -> ChildDeviceInfo | None:
+        """Return Home Assistant ``ChildDeviceInfo`` for this zone."""
+        return ChildDeviceInfo(
             identifiers={(DOMAIN, self._unique_id)},
             name=self._device_name,
-            model=assets.controller_model(self._config_entry),
-            sw_version=assets.controller_firmware(self._config_entry),
-            manufacturer=self._manufacturer,
-            # A zone is part of the controller, so its device belongs under it.
-            via_device_id=assets.via_controller(self.coordinator),
+            # A zone is a logical part of the controller, so its device is a
+            # child of the controller's device.
+            parent_device_id=assets.parent_controller(self.coordinator),
         )
 
     @property

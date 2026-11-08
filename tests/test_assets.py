@@ -192,17 +192,9 @@ def test_build_zone_names_extracts_description_name() -> None:
         1: _zone(1, "Strefa 1", index=0),
         2: _zone(2, "Strefa 2", index=1),
     }
-    assert assets.build_zone_names(zones, "Wisniowa 13") == {
+    assert assets.build_zone_names(zones) == {
         1: "Strefa 1",
         2: "Strefa 2",
-    }
-
-
-def test_build_zone_names_prefixes_hub_when_configured() -> None:
-    """include_hub_in_name prefixes the zone name with the hub title."""
-    zones = {1: _zone(1, "Strefa 1", index=0)}
-    assert assets.build_zone_names(zones, "Wisniowa 13", include_hub_in_name=True) == {
-        1: "Wisniowa 13 Strefa 1"
     }
 
 
@@ -212,26 +204,20 @@ def test_build_zone_names_skips_zones_without_name() -> None:
         1: _zone(1, "Strefa 1", index=0),
         2: _zone(2, index=1),
     }
-    assert assets.build_zone_names(zones, "Wisniowa 13") == {1: "Strefa 1"}
-
-
-def test_build_zone_names_no_bare_prefix_for_nameless_zone() -> None:
-    """A nameless zone is omitted even with the hub prefix enabled."""
-    zones = {1: _zone(1, index=0)}
-    assert assets.build_zone_names(zones, "Wisniowa 13", include_hub_in_name=True) == {}
+    assert assets.build_zone_names(zones) == {1: "Strefa 1"}
 
 
 def test_build_zone_names_skips_empty_name() -> None:
     """An empty description name is treated as no name."""
     zones = {1: _zone(1, "", index=0)}
-    assert assets.build_zone_names(zones, "Wisniowa 13") == {}
+    assert assets.build_zone_names(zones) == {}
 
 
 def test_build_zone_names_skips_non_dict_description() -> None:
     """A non-dict description is treated as no name."""
     zones = {1: _zone(1, index=0)}
     zones[1]["description"] = "not a dict"
-    assert assets.build_zone_names(zones, "Wisniowa 13") == {}
+    assert assets.build_zone_names(zones) == {}
 
 
 def test_resolve_zone_device_name_uses_zone_name() -> None:
@@ -315,4 +301,4 @@ def test_build_zone_names_ignores_non_zone_entries() -> None:
     zones = dict(_zoneless_envelope())
     zones[101] = _zone(101, "Strefa 1", index=0)
 
-    assert assets.build_zone_names(zones, "L-8 DEMO") == {101: "Strefa 1"}
+    assert assets.build_zone_names(zones) == {101: "Strefa 1"}

@@ -182,11 +182,13 @@ rules:
     status: done
     comment: >-
       Every entity carries device_info: the controller device with its
-      identifiers, name, model, manufacturer and sw_version, a device per zone
-      for the zone-attached entities, and one per wireless sensor or tile that
-      owns sub-entities. The zone and sensor devices name the controller as
-      their parent by device id (via_device_id), and the controller's device is
-      created while the entry sets up so that there is one to name.
+      identifiers, name, model, manufacturer and sw_version, a child device per
+      zone for the zone-attached entities, and one per wireless sensor or tile
+      that owns sub-entities. A zone is a logical part of the controller, so it
+      names the controller's device as its parent_device_id; the separate
+      wireless sensor and tile devices keep a via_device_id because the
+      controller reaches them as separate products. The controller's device is
+      created while the entry sets up so that there is a parent to name.
   diagnostics:
     status: done
     comment: >-

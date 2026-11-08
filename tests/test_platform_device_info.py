@@ -159,6 +159,10 @@ class _DeviceInfo(dict):
             raise AttributeError(name) from err
 
 
+class _ChildDeviceInfo(_DeviceInfo):
+    """Stand-in for the ``ChildDeviceInfo`` dataclass, read the same way."""
+
+
 class _AddEntitiesCallback:
     """Stand-in for the ``AddEntitiesCallback`` annotation."""
 
@@ -339,6 +343,7 @@ def _fake_module(name: str) -> types.ModuleType:
         module.HomeAssistantError = type("HomeAssistantError", (Exception,), {})
     elif name == "homeassistant.helpers.device_registry":
         module.DeviceInfo = _DeviceInfo
+        module.ChildDeviceInfo = _ChildDeviceInfo
     elif name == "homeassistant.helpers.entity_platform":
         module.AddEntitiesCallback = _AddEntitiesCallback
     elif name == "homeassistant.helpers.update_coordinator":
@@ -665,13 +670,12 @@ class _Coordinator:
 class _Entry:
     """Stand-in for the config entry, with just the fields the code reads."""
 
-    def __init__(self, title: str = _HUB, include_hub_in_name: bool = False) -> None:
-        """Build an entry carrying the controller udid and the naming flag."""
+    def __init__(self, title: str = _HUB) -> None:
+        """Build an entry carrying the controller udid."""
         self.title = title
         self.entry_id = "entry-id"
         self.data = {
             const.CONTROLLER: {const.UDID: _UDID, const.VER: _TECH_VERSION},
-            const.INCLUDE_HUB_IN_NAME: include_hub_in_name,
         }
         # The coordinator lives on the entry (``runtime_data``) rather than in a
         # ``hass.data`` mapping; a platform setup reads it from here.
@@ -746,14 +750,15 @@ def test_zone_entity_uses_the_zone_device_name(
     info = entity.device_info
     assert info["identifiers"] == {(const.DOMAIN, f"{_UDID}_101")}
     assert info["name"] == "L-8 DEMO Strefa 1"
-    assert info["manufacturer"] == const.MANUFACTURER
-    # The zone belongs to the controller, which the device tree shows by
-    # hanging the zone device under the controller's own device id.
-    assert info["via_device_id"] == "controller-device"
-    # A zone has no firmware or model of its own: both come from the controller's
-    # descriptor.
-    assert info["sw_version"] == _TECH_FIRMWARE
-    assert info["model"] == _TECH_MODEL
+    # A zone is a logical part of the controller: it is a child device naming
+    # the controller's device as its parent, and it carries no hardware
+    # identity of its own. The frontend shows the parent's manufacturer, model
+    # and firmware.
+    assert info["parent_device_id"] == "controller-device"
+    assert "via_device_id" not in info
+    assert "manufacturer" not in info
+    assert "sw_version" not in info
+    assert "model" not in info
 
 
 @pytest.mark.parametrize(("module_name", "class_name"), PLATFORMS, ids=_PLATFORM_IDS)
@@ -794,7 +799,7 @@ def test_zone_entity_falls_back_to_the_hub_title(
     info = entity.device_info
     assert info["identifiers"] == {(const.DOMAIN, f"{_UDID}_101")}
     assert info["name"] == _HUB
-    assert info["via_device_id"] == "controller-device"
+    assert info["parent_device_id"] == "controller-device"
 
 
 @pytest.mark.parametrize(
@@ -827,12 +832,13 @@ def test_the_descriptor_yields_a_model_and_a_firmware(
     assert assets.controller_firmware(entry) == firmware
 
 
-def test_a_zone_entity_without_a_known_controller_device_has_no_parent() -> None:
-    """An entity built before the controller's device id is known has no parent.
+def test_a_zone_entity_needs_the_controller_device() -> None:
+    """A zone child cannot name a parent that does not exist.
 
-    The device id is set while the entry sets up, so an entity built outside a
-    running entry -- as these tests do -- must still produce a usable device
-    instead of naming a parent that does not exist.
+    The controller's device is created while the entry sets up, so an entity
+    built outside a running entry -- as these tests do -- is the only case where
+    the id is missing. It fails loudly instead of registering a main device that
+    could not later become a child.
     """
     coordinator = _Coordinator()
     coordinator.controller_device_id = None
@@ -840,37 +846,17 @@ def test_a_zone_entity_without_a_known_controller_device_has_no_parent() -> None
         _item(), "MU_3550", coordinator, _Entry(), {}, depth=0, zone_id=101
     )
 
-    info = entity.device_info
-    assert info.identifiers == {(const.DOMAIN, f"{_UDID}_101")}
-    # The entity has no parent because the controller's device id is not known
-    # yet, which the builder records as an explicit None.
-    assert info.via_device_id is None
+    with pytest.raises(RuntimeError, match="controller device"):
+        _ = entity.device_info
 
 
 @pytest.mark.parametrize(("module_name", "class_name"), PLATFORMS, ids=_PLATFORM_IDS)
-def test_zone_names_built_with_the_hub_prefix_reach_the_device(
+def test_zone_names_reach_the_device(
     module_name: str, class_name: str
 ) -> None:
-    """The prefixed mapping built for ``include_hub_in_name`` is what gets used."""
+    """The zone names built from the payload reach the zone device."""
     zone_names = assets.build_zone_names(
-        {101: {"zone": {"id": 101, "index": 0}, "description": {"name": "Strefa 1"}}},
-        _HUB,
-        include_hub_in_name=True,
-    )
-    entity = _build(module_name, class_name, zone_id=101, zone_names=zone_names)
-
-    assert entity.device_info.name == "L-8 DEMO Strefa 1"
-
-
-@pytest.mark.parametrize(("module_name", "class_name"), PLATFORMS, ids=_PLATFORM_IDS)
-def test_zone_names_built_without_the_prefix_reach_the_device(
-    module_name: str, class_name: str
-) -> None:
-    """With the flag off the device takes the bare zone name, as before."""
-    zone_names = assets.build_zone_names(
-        {101: {"zone": {"id": 101, "index": 0}, "description": {"name": "Strefa 1"}}},
-        _HUB,
-        include_hub_in_name=False,
+        {101: {"zone": {"id": 101, "index": 0}, "description": {"name": "Strefa 1"}}}
     )
     entity = _build(module_name, class_name, zone_id=101, zone_names=zone_names)
 

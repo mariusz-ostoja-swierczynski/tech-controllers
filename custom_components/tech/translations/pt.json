@@ -44,7 +44,6 @@
                 "description": "Por favor, selecione os controladores que pretende integrar.",
                 "data": {
                     "controllers": "Controladores a importar",
-                    "include_hub_in_name": "Incluir o nome do hub (controlador) nos nomes das entidades",
                     "configure_menu_codes": "Configurar códigos de menu",
                     "menu_code_mu": "Código do menu de utilizador (MU)",
                     "menu_code_mi": "Código do menu de instalador (MI)",
@@ -52,7 +51,6 @@
                 },
                 "data_description": {
                     "controllers": "O controlador a adicionar. Adicione a integração novamente para cada controlador adicional.",
-                    "include_hub_in_name": "Adicione o nome da integração antes dos nomes das entidades das zonas deste controlador. É útil quando estão configurados vários controladores.",
                     "configure_menu_codes": "Alguns controladores mantêm os menus de instalador e de serviço atrás de um código. Introduza o código de cada menu que o Home Assistant deve ler, ou deixe os campos vazios. Um código errado comporta-se exatamente como nenhum código."
                 }
             },
@@ -88,18 +86,6 @@
         },
         "entry_from_newer_version": {
             "message": "Esta entrada foi criada por uma versão mais recente do Tech Controllers. Atualize a integração e reinicie o Home Assistant."
-        }
-    },
-    "options": {
-        "step": {
-            "init": {
-                "data": {
-                    "include_hub_in_name": "Incluir o nome do hub (controlador) nos nomes das entidades"
-                },
-                "data_description": {
-                    "include_hub_in_name": "Adicione o nome da integração antes dos nomes das entidades das zonas deste controlador. É útil quando estão configurados vários controladores."
-                }
-            }
         }
     },
     "entity": {

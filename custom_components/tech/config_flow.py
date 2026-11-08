@@ -9,11 +9,7 @@ from typing import Any
 import probatio
 
 from homeassistant import config_entries, core, data_entry_flow, exceptions
-from homeassistant.config_entries import (
-    ConfigEntry,
-    ConfigFlowResult,
-    OptionsFlowWithReload,
-)
+from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
 from homeassistant.const import (
     ATTR_ID,
     CONF_NAME,
@@ -21,7 +17,6 @@ from homeassistant.const import (
     CONF_TOKEN,
     CONF_USERNAME,
 )
-from homeassistant.core import callback
 from homeassistant.helpers import aiohttp_client
 from homeassistant.helpers.redact import async_redact_data
 from homeassistant.helpers.selector import (
@@ -41,14 +36,12 @@ from .const import (
     CONTROLLER,
     CONTROLLERS,
     DOMAIN,
-    INCLUDE_HUB_IN_NAME,
     MENU_CODE_TREES,
     UDID,
     USER_ID,
     VER,
     menu_code_field,
 )
-from .coordinator import TechConfigEntry
 from .tech import Tech, TechError, TechLoginError
 
 _LOGGER = logging.getLogger(__name__)
@@ -98,32 +91,25 @@ def _menu_codes_from(user_input: dict[str, Any]) -> dict[str, str]:
 def controllers_schema(
     controllers: list[dict[str, Any]],
     *,
-    with_naming: bool = True,
     with_menu_codes: bool = True,
 ) -> probatio.Schema:
     """Build the selection form for the provided controller list.
 
     One controller per flow run: the user repeats the flow for the next one, so
-    every entry stands for exactly one controller. The naming preference is
-    asked when a controller is being added, because it is about the controller
-    being added, and a setting is easiest to answer while the user is looking at
-    it; it is stored in the entry's options rather than its data. A controller
-    can also keep its menus behind a code, so the form offers the per-tree codes
-    as well, behind a checkbox that reveals them: a user who keeps none never
-    sees the fields. Home Assistant leaves a hidden field out of the submitted
-    input, so an unticked form carries no codes at all. Reconfiguring an entry
-    asks for the controller alone: its naming preference belongs to that entry,
-    the options flow is where it is changed, and its codes are setup-time only.
+    every entry stands for exactly one controller. A controller can also keep
+    its menus behind a code, so the form offers the per-tree codes as well,
+    behind a checkbox that reveals them: a user who keeps none never sees the
+    fields. Home Assistant leaves a hidden field out of the submitted input, so
+    an unticked form carries no codes at all. Reconfiguring an entry asks for
+    the controller alone: its codes are setup-time only.
 
     Args:
         controllers: Sequence returned by the Tech API describing modules.
-        with_naming: Whether the form also asks for the naming preference.
         with_menu_codes: Whether the form also offers the per-tree menu codes.
 
     Returns:
-        Voluptuous schema with a dropdown of the account's controllers, the
-        naming preference when it was asked for, and the menu codes behind
-        their checkbox.
+        Voluptuous schema with a dropdown of the account's controllers and the
+        menu codes behind their checkbox.
 
     """
     fields: dict[Any, Any] = {
@@ -140,11 +126,6 @@ def controllers_schema(
             )
         ),
     }
-
-    if with_naming:
-        fields[probatio.Required(INCLUDE_HUB_IN_NAME, default=False)] = (
-            BooleanSelector()
-        )
 
     if with_menu_codes:
         # The checkbox reveals the code fields; Home Assistant drops a hidden
@@ -223,12 +204,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._init_info: dict[str, Any] | None = None
         self._controllers: list[dict[str, Any]] = []
 
-    @staticmethod
-    @callback
-    def async_get_options_flow(config_entry: TechConfigEntry) -> TechOptionsFlow:
-        """Return the options flow that edits this entry's settings."""
-        return TechOptionsFlow()
-
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -271,8 +246,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         and the entry carries no codes.
 
         Args:
-            user_input: Optional mapping naming the controller to add, the
-                naming preference to start it with, and any menu codes given.
+            user_input: Optional mapping naming the controller to add and any
+                menu codes given.
 
         Returns:
             The selection form, or the result of creating the entry for the
@@ -324,13 +299,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(
             title=controller[CONTROLLER][CONF_NAME],
             data=data,
-            # A naming preference, not connection data: it is asked alongside the
-            # controller while the user is looking at the one it applies to,
-            # stored where the settings belong, and editable afterwards in the
-            # options flow.
-            options={
-                INCLUDE_HUB_IN_NAME: bool(user_input.get(INCLUDE_HUB_IN_NAME, False))
-            },
         )
 
     async def async_step_reconfigure(
@@ -341,11 +309,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         Home Assistant offers this from the entry's menu, which is where a user
         looks after replacing a controller in the eModul app. Only the
         controller is asked for: the credentials belong to the account and
-        reauthentication handles them, while the naming preference is a setting
-        of this entry, which the options flow changes. The entry keeps its id,
-        so its history and everything that refers to it survive; the unique id
-        moves with the controller, since being unique per controller is what
-        stops the same one being added twice.
+        reauthentication handles them. The entry keeps its id, so its history
+        and everything that refers to it survive; the unique id moves with the
+        controller, since being unique per controller is what stops the same one
+        being added twice.
 
         Args:
             user_input: Optional mapping naming the controller to switch to.
@@ -408,7 +375,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="reconfigure",
             data_schema=controllers_schema(
-                self._controllers, with_naming=False, with_menu_codes=False
+                self._controllers, with_menu_codes=False
             ),
             errors=errors,
         )
@@ -527,44 +494,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONTROLLER: controller_dict,
             VER: f"{controller_dict[VER]}: {controller_dict[CONF_NAME]}",
         }
-
-
-class TechOptionsFlow(OptionsFlowWithReload):
-    """Handle the settings that are not needed to connect to the account.
-
-    The only setting so far is whether entity names carry the hub name. The
-    base class reloads the entry afterwards, so the renamed entities follow
-    without a restart.
-    """
-
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Show the settings form, or store what was submitted.
-
-        Args:
-            user_input: Optional mapping with the settings to store.
-
-        Returns:
-            The settings form, or the result of storing the settings.
-
-        """
-        if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=probatio.Schema(
-                {
-                    probatio.Required(
-                        INCLUDE_HUB_IN_NAME,
-                        default=self.config_entry.options.get(
-                            INCLUDE_HUB_IN_NAME, False
-                        ),
-                    ): BooleanSelector()
-                }
-            ),
-        )
 
 
 class CannotConnect(exceptions.HomeAssistantError):
