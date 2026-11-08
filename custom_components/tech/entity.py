@@ -78,16 +78,24 @@ class ReportedEntity(entity.Entity):
         raise NotImplementedError
 
     async def async_added_to_hass(self) -> None:
-        """Record this entity under its source key while it is registered."""
+        """Record this entity and arrange its cleanup when it leaves.
+
+        Home Assistant runs the callbacks registered with ``async_on_remove``
+        both when a successfully added entity is removed and when an add aborts
+        after this point, so the bookkeeping below cannot outlive an entity that
+        never made it into Home Assistant.
+        """
         await super().async_added_to_hass()
         self.coordinator.reported.setdefault(self.source_key, set()).add(self)
+        self.async_on_remove(self._forget_from_platform)
         # An entity built to replace one the controller stopped reporting is the
         # same entity as far as the user is concerned, so what they made of the
         # old one -- its entity id, name, icon, area -- is put back here, which
         # is the first moment its registry row is there to take it.
         await identity.async_restore(self.hass, self.coordinator, self)
 
-    async def async_will_remove_from_hass(self) -> None:
+    @callback
+    def _forget_from_platform(self) -> None:
         """Forget this entity, so that a returning payload can bring it back."""
         entities = self.coordinator.reported.get(self.source_key)
         if entities is not None:
@@ -95,17 +103,17 @@ class ReportedEntity(entity.Entity):
             if not entities:
                 self.coordinator.reported.pop(self.source_key, None)
         self._tell_the_platform_it_left()
-        await super().async_will_remove_from_hass()
 
     def _tell_the_platform_it_left(self) -> None:
         """Let the platform that built this entity stop counting it as registered.
 
         This is the only signal that says an entity has left, and it is a
         positive one: it fires when Home Assistant removes an entity, whether the
-        removal pass dropped it or the user deleted it, and never while one is
-        merely being added. A platform that instead *inferred* the same thing
-        from the payload bookkeeping saw the window between asking for an entity
-        and Home Assistant calling it back, and registered it twice.
+        removal pass dropped it or the user deleted it, and also when an add
+        aborts after the entity was counted. A platform that instead *inferred*
+        the same thing from the payload bookkeeping saw the window between asking
+        for an entity and Home Assistant calling it back, and registered it
+        twice.
         """
         for forget in self.coordinator.forget_callbacks:
             forget(self.unique_id)

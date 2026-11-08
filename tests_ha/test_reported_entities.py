@@ -12,6 +12,7 @@ from __future__ import annotations
 import copy
 import json
 import pathlib
+from typing import Any
 
 from common import DOMAIN, EMPTY_MENU, UDID, entity_counts, entry_for
 import pytest
@@ -21,6 +22,7 @@ from custom_components.tech import (
     REMOVAL_MISSES,
     async_remove_config_entry_device,
     const,
+    identity,
 )
 from custom_components.tech.tech import Tech
 from homeassistant.core import HomeAssistant
@@ -136,6 +138,50 @@ async def test_a_tile_the_controller_starts_reporting_gains_its_entities(
     await _poll(hass, entry)
 
     assert entity_counts(hass)["sensor"] == before["sensor"] + 1
+
+
+async def test_a_failed_add_does_not_leave_the_entity_counted(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An add that fails after the entity was counted cleans up after itself.
+
+    Home Assistant does not call ``async_will_remove_from_hass`` when an add
+    aborts, so the bookkeeping is registered with ``async_on_remove``; otherwise
+    the coordinator keeps counting an entity that never made it into Home
+    Assistant, and the platform never hears that it can build it again.
+    """
+    payload = _payload("l12")
+    entry = await _set_up(hass, monkeypatch, payload)
+    payload["tiles"].append(
+        {
+            "id": 4242,
+            "menuId": 0,
+            "parentId": 0,
+            "orderId": 4242,
+            "type": const.TYPE_TEMPERATURE,
+            "visibility": True,
+            "workingStatus": True,
+            "params": {const.VALUE: 210},
+        }
+    )
+    target = f"{UDID}_4242_tile_temperature"
+    real_restore = identity.async_restore
+
+    async def _restore(hass: HomeAssistant, coordinator: Any, entity: Any) -> None:
+        if entity.unique_id == target:
+            raise RuntimeError("restore failed")
+        await real_restore(hass, coordinator, entity)
+
+    monkeypatch.setattr(identity, "async_restore", _restore)
+
+    await _poll(hass, entry)
+
+    counted = {
+        entity.unique_id
+        for entities in entry.runtime_data.reported.values()
+        for entity in entities
+    }
+    assert target not in counted
 
 
 async def test_a_tile_the_controller_hides_keeps_its_entities(
