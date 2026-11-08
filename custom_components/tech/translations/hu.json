@@ -80,6 +80,9 @@
         },
         "cannot_connect": {
             "message": "Az eModul API nem érhető el. A Home Assistant tovább próbálkozik."
+        },
+        "entry_from_newer_version": {
+            "message": "Ezt a bejegyzést a Tech Controllers újabb verziója hozta létre. Frissítse az integrációt, és indítsa újra a Home Assistantot."
         }
     },
     "options": {

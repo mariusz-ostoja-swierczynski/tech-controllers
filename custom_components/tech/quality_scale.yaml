@@ -108,10 +108,12 @@ rules:
   config_entry_unloading:
     status: done
     comment: >-
-      async_unload_entry unloads every platform. The coordinator picks the
-      config entry up from the setup context, so Home Assistant registers its
-      shutdown on the entry and stops its 60-second timer on unload; a reload
-      does not leave a second poller behind.
+      async_unload_entry unloads every platform through
+      async_unload_platforms_or_raise, so a platform that will not unload
+      reaches Home Assistant as a translated ConfigEntryError. The coordinator
+      picks the config entry up from the setup context, so Home Assistant
+      registers its shutdown on the entry and stops its 60-second timer on
+      unload; a reload does not leave a second poller behind.
       tests_ha/test_setup_with_a_controller.py unloads an entry, fires a poll
       interval past it and asserts nothing was fetched.
   docs_configuration_parameters:

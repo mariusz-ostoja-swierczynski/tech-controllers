@@ -80,6 +80,9 @@
         },
         "cannot_connect": {
             "message": "eModul API nepasiekiama. Home Assistant bandys toliau."
+        },
+        "entry_from_newer_version": {
+            "message": "Šis įrašas buvo sukurtas naujesnės Tech Controllers versijos. Atnaujinkite integraciją ir paleiskite Home Assistant iš naujo."
         }
     },
     "options": {

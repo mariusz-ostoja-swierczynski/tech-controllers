@@ -80,6 +80,9 @@
         },
         "cannot_connect": {
             "message": "De eModul-API is niet bereikbaar. Home Assistant blijft het proberen."
+        },
+        "entry_from_newer_version": {
+            "message": "Dit item is gemaakt door een nieuwere versie van Tech Controllers. Werk de integratie bij en herstart Home Assistant."
         }
     },
     "options": {
