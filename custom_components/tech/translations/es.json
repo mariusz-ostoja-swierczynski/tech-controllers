@@ -44,7 +44,6 @@
                 "description": "Por favor, seleccione los controladores que desea integrar.",
                 "data": {
                     "controllers": "Controladores a importar",
-                    "include_hub_in_name": "Incluir nombre del concentrador (controlador) en los nombres de las entidades",
                     "configure_menu_codes": "Configurar códigos de menú",
                     "menu_code_mu": "Código del menú de usuario (MU)",
                     "menu_code_mi": "Código del menú de instalador (MI)",
@@ -52,7 +51,6 @@
                 },
                 "data_description": {
                     "controllers": "El controlador que se va a añadir. Añada la integración de nuevo para cada controlador adicional.",
-                    "include_hub_in_name": "Añada el nombre de la integración delante de los nombres de las entidades de las zonas de este controlador. Resulta útil cuando hay varios controladores configurados.",
                     "configure_menu_codes": "Algunos controladores guardan sus menús de instalador y de servicio tras un código. Introduce el código de cada menú que quieras que Home Assistant lea, o deja los campos vacíos. Un código incorrecto se comporta exactamente igual que ningún código."
                 }
             },
@@ -88,18 +86,6 @@
         },
         "entry_from_newer_version": {
             "message": "Esta entrada fue creada por una versión más reciente de Tech Controllers. Actualice la integración y reinicie Home Assistant."
-        }
-    },
-    "options": {
-        "step": {
-            "init": {
-                "data": {
-                    "include_hub_in_name": "Incluir nombre del concentrador (controlador) en los nombres de las entidades"
-                },
-                "data_description": {
-                    "include_hub_in_name": "Añada el nombre de la integración delante de los nombres de las entidades de las zonas de este controlador. Resulta útil cuando hay varios controladores configurados."
-                }
-            }
         }
     },
     "entity": {

@@ -44,7 +44,6 @@
                 "description": "Kérjük, válassza ki az integrálni kívánt vezérlőket.",
                 "data": {
                     "controllers": "Importálni kívánt vezérlők",
-                    "include_hub_in_name": "A hub (vezérlő) nevének belefoglalása az entitásnevekbe",
                     "configure_menu_codes": "Menükódok beállítása",
                     "menu_code_mu": "Felhasználói menü kódja (MU)",
                     "menu_code_mi": "Telepítői menü kódja (MI)",
@@ -52,7 +51,6 @@
                 },
                 "data_description": {
                     "controllers": "A hozzáadni kívánt vezérlő. Minden további vezérlőhöz adja hozzá újra az integrációt.",
-                    "include_hub_in_name": "Szúrja be az integráció nevét a vezérlő zónáinak entitásnevei elé. Akkor hasznos, ha több vezérlő van beállítva.",
                     "configure_menu_codes": "Egyes vezérlők a telepítői és szervizmenüket kód mögött tartják. Adja meg minden menü kódját, amelyet a Home Assistantnak olvasnia kell, vagy hagyja üresen a mezőket. A hibás kód pontosan úgy viselkedik, mint a kód hiánya."
                 }
             },
@@ -88,18 +86,6 @@
         },
         "entry_from_newer_version": {
             "message": "Ezt a bejegyzést a Tech Controllers újabb verziója hozta létre. Frissítse az integrációt, és indítsa újra a Home Assistantot."
-        }
-    },
-    "options": {
-        "step": {
-            "init": {
-                "data": {
-                    "include_hub_in_name": "A hub (vezérlő) nevének belefoglalása az entitásnevekbe"
-                },
-                "data_description": {
-                    "include_hub_in_name": "Szúrja be az integráció nevét a vezérlő zónáinak entitásnevei elé. Akkor hasznos, ha több vezérlő van beállítva."
-                }
-            }
         }
     },
     "entity": {

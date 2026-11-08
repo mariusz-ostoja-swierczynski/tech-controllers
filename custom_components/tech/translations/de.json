@@ -44,7 +44,6 @@
                 "description": "Bitte wählen Sie die Controller aus, die Sie integrieren möchten.",
                 "data": {
                     "controllers": "Zu importierende Controller",
-                    "include_hub_in_name": "Hub (Controller) Namen in Entitätsnamen einbeziehen",
                     "configure_menu_codes": "Menücodes konfigurieren",
                     "menu_code_mu": "Code für Benutzermenü (MU)",
                     "menu_code_mi": "Code für Installateurmenü (MI)",
@@ -52,7 +51,6 @@
                 },
                 "data_description": {
                     "controllers": "Der Controller, der hinzugefügt werden soll. Fügen Sie die Integration für jeden weiteren Controller erneut hinzu.",
-                    "include_hub_in_name": "Stellen Sie den Entitätsnamen der Zonen dieses Controllers den Namen der Integration voran. Hilfreich, wenn mehrere Controller eingerichtet sind.",
                     "configure_menu_codes": "Manche Regler halten ihre Installateur- und Servicemenüs hinter einem Code. Geben Sie den Code für jedes Menü ein, das Home Assistant lesen soll, oder lassen Sie die Felder leer. Ein falscher Code verhält sich genau wie kein Code."
                 }
             },
@@ -88,18 +86,6 @@
         },
         "entry_from_newer_version": {
             "message": "Dieser Eintrag wurde von einer neueren Version von Tech Controllers erstellt. Aktualisieren Sie die Integration und starten Sie Home Assistant neu."
-        }
-    },
-    "options": {
-        "step": {
-            "init": {
-                "data": {
-                    "include_hub_in_name": "Hub (Controller) Namen in Entitätsnamen einbeziehen"
-                },
-                "data_description": {
-                    "include_hub_in_name": "Stellen Sie den Entitätsnamen der Zonen dieses Controllers den Namen der Integration voran. Hilfreich, wenn mehrere Controller eingerichtet sind."
-                }
-            }
         }
     },
     "entity": {

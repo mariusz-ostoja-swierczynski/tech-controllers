@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from pytest_homeassistant.common import MockConfigEntry
@@ -33,7 +33,6 @@ from custom_components.tech.const import (
     CONTROLLER,
     CONTROLLERS,
     DOMAIN,
-    INCLUDE_HUB_IN_NAME,
     MENU_CODE_TREES,
     MENU_TYPE_INSTALLER,
     MENU_TYPE_MANUFACTURER,
@@ -99,22 +98,19 @@ async def _select(
     hass: HomeAssistant,
     flow_id: str,
     controller_id: Any,
-    include_hub_in_name: bool | None = None,
     codes: dict[str, str] | None = None,
     configure_menu_codes: bool | None = None,
 ) -> dict[str, Any]:
     """Submit the controller form and return the flow result.
 
-    The form creates the entry directly. ``include_hub_in_name`` and
-    ``configure_menu_codes`` are left out when they are ``None``, which is how
-    the form behaves when a checkbox is left as it is: the schema fills in its
-    default. Codes submitted without an explicit checkbox are submitted with it
-    ticked, which is what a user giving a code does; the checkbox is passed as
-    ``False`` to prove that a hidden field stores nothing.
+    The form creates the entry directly. ``configure_menu_codes`` is left out
+    when it is ``None``, which is how the form behaves when the checkbox is left
+    as it is: the schema fills in its default. Codes submitted without an
+    explicit checkbox are submitted with it ticked, which is what a user giving
+    a code does; the checkbox is passed as ``False`` to prove that a hidden
+    field stores nothing.
     """
     user_input: dict[str, Any] = {CONTROLLERS: str(controller_id)}
-    if include_hub_in_name is not None:
-        user_input[INCLUDE_HUB_IN_NAME] = include_hub_in_name
     if configure_menu_codes is not None:
         user_input[CONF_CONFIGURE_MENU_CODES] = configure_menu_codes
     elif codes:
@@ -161,7 +157,6 @@ async def test_credentials_lead_to_the_controller_selection(
     assert result["step_id"] == "select_controllers"
     assert _field_names(result["data_schema"]) == [
         CONTROLLERS,
-        INCLUDE_HUB_IN_NAME,
         CONF_CONFIGURE_MENU_CODES,
         menu_code_field(MENU_TYPE_USER),
         menu_code_field(MENU_TYPE_INSTALLER),
@@ -200,8 +195,7 @@ async def test_selecting_a_controller_creates_its_entry(hass: HomeAssistant) -> 
     assert entry.data[CONF_TOKEN] == "token"
     assert entry.data[CONTROLLER][CONF_NAME] == "L-8 DEMO"
     assert entry.data[VER] == "3.0.14: L-8 DEMO"
-    assert INCLUDE_HUB_IN_NAME not in entry.data
-    assert entry.options == {INCLUDE_HUB_IN_NAME: False}
+    assert entry.options == {}
 
     # The second controller is a second run of the same flow.
     flow_id = (await _start_flow(hass))["flow_id"]
@@ -213,30 +207,6 @@ async def test_selecting_a_controller_creates_its_entry(hass: HomeAssistant) -> 
         "a" * 32,
         "b" * 32,
     }
-
-
-@pytest.mark.parametrize(
-    ("given", "expected"),
-    [(None, False), (False, False), (True, True)],
-    ids=["left-alone", "unticked", "ticked"],
-)
-async def test_the_naming_preference_becomes_the_entry_option(
-    hass: HomeAssistant, given: bool | None, expected: bool
-) -> None:
-    """The checkbox is stored as the entry's option, by its value.
-
-    Asking it during setup keeps a setting from being buried in the options
-    dialog, and the answer is still stored where settings belong. Only the value
-    counts: the schema fills the key in even when the box was left unticked, so
-    reading the key's presence would store True for an untouched form.
-    """
-    flow_id = (await _start_flow(hass))["flow_id"]
-    await _submit_credentials(hass, flow_id)
-
-    await _select(hass, flow_id, 1, include_hub_in_name=given)
-
-    (entry,) = hass.config_entries.async_entries(DOMAIN)
-    assert entry.options == {INCLUDE_HUB_IN_NAME: expected}
 
 
 async def test_the_controller_form_offers_menu_codes_behind_a_checkbox(
@@ -255,7 +225,6 @@ async def test_the_controller_form_offers_menu_codes_behind_a_checkbox(
     schema = result["data_schema"]
     assert _field_names(schema) == [
         CONTROLLERS,
-        INCLUDE_HUB_IN_NAME,
         CONF_CONFIGURE_MENU_CODES,
         menu_code_field(MENU_TYPE_USER),
         menu_code_field(MENU_TYPE_INSTALLER),
@@ -429,42 +398,14 @@ async def test_a_controller_cannot_be_added_twice(hass: HomeAssistant) -> None:
     assert len(hass.config_entries.async_entries(DOMAIN)) == 1
 
 
-async def test_options_flow_stores_the_hub_name_flag(hass: HomeAssistant) -> None:
-    """The hub-name setting lives in the entry's options, and a change reloads it.
-
-    The flag is a preference, not something needed to connect, so it is stored
-    in the entry's options rather than its data, and can be changed afterwards.
-    """
-    flow_id = (await _start_flow(hass))["flow_id"]
-    await _submit_credentials(hass, flow_id)
-    await _select(hass, flow_id, 1)
-    entry = hass.config_entries.async_entries(DOMAIN)[0]
-
-    result = await hass.config_entries.options.async_init(entry.entry_id)
-
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "init"
-    assert _field_names(result["data_schema"]) == [INCLUDE_HUB_IN_NAME]
-
-    with patch.object(
-        hass.config_entries, "async_schedule_reload", Mock()
-    ) as reload_entry:
-        result = await hass.config_entries.options.async_configure(
-            result["flow_id"], {INCLUDE_HUB_IN_NAME: True}
-        )
-
-    assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert entry.options == {INCLUDE_HUB_IN_NAME: True}
-    reload_entry.assert_called_once_with(entry.entry_id)
-
-
-async def test_migration_moves_the_hub_name_flag_into_options(
+async def test_migration_drops_the_legacy_naming_flag(
     hass: HomeAssistant,
 ) -> None:
-    """A version 3 entry keeps its setting and loses it from the data.
+    """A version 3 entry loses the naming flag and moves to the current version.
 
-    Before version 4 the flag sat among the entry's data; the migration moves it
-    where the other preferences are, so the platforms read it from one place.
+    The hub-name preference is gone. An entry from before the removal may carry
+    the old key in its data or its options; the migration drops it and moves the
+    entry to the version this integration writes now.
     """
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -474,17 +415,18 @@ async def test_migration_moves_the_hub_name_flag_into_options(
         data={
             USER_ID: "42",
             CONF_TOKEN: "token",
-            INCLUDE_HUB_IN_NAME: True,
+            "include_hub_in_name": True,
             CONTROLLER: _MODULES[0],
         },
+        options={"include_hub_in_name": True},
     )
     entry.add_to_hass(hass)
 
     await async_migrate_entry(hass, entry)
 
     assert entry.version == ConfigFlow.VERSION
-    assert entry.options == {INCLUDE_HUB_IN_NAME: True}
-    assert INCLUDE_HUB_IN_NAME not in entry.data
+    assert entry.options == {}
+    assert "include_hub_in_name" not in entry.data
     assert entry.data[CONTROLLER] == _MODULES[0]
 
 

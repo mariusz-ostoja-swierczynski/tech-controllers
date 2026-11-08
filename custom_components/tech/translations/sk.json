@@ -44,7 +44,6 @@
         "description": "Prosím, vyberte moduly, ktoré chcete integrovať.",
         "data": {
           "controllers": "Moduly na import",
-          "include_hub_in_name": "Zahrňte názov hubu (modulu) do názvov entít",
           "configure_menu_codes": "Nastaviť kódy menu",
           "menu_code_mu": "Kód používateľského menu (MU)",
           "menu_code_mi": "Kód inštalačného menu (MI)",
@@ -52,7 +51,6 @@
         },
         "data_description": {
           "controllers": "Modul, ktorý chcete pridať. Pre každý ďalší modul pridajte integráciu znova.",
-          "include_hub_in_name": "Pred názvy entít zón tohto modulu pridajte názov integrácie. Hodí sa, ak je nastavených viac modulov.",
           "configure_menu_codes": "Niektoré regulátory držia menu inštalatéra a servisné menu za kódom. Zadajte kód pre každé menu, ktoré má Home Assistant čítať, alebo polia ponechajte prázdne. Nesprávny kód sa správa presne ako žiadny kód."
         }
       },
@@ -88,18 +86,6 @@
     },
     "entry_from_newer_version": {
       "message": "Tento záznam bol vytvorený novšou verziou Tech Controllers. Aktualizujte integráciu a reštartujte Home Assistant."
-    }
-  },
-  "options": {
-    "step": {
-      "init": {
-        "data": {
-          "include_hub_in_name": "Zahrňte názov hubu (modulu) do názvov entít"
-        },
-        "data_description": {
-          "include_hub_in_name": "Pred názvy entít zón tohto modulu pridajte názov integrácie. Hodí sa, ak je nastavených viac modulov."
-        }
-      }
     }
   },
   "entity": {

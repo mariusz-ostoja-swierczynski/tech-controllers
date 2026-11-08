@@ -44,7 +44,6 @@
                 "description": "Odaberite kontrolere koje želite integrirati.",
                 "data": {
                     "controllers": "Kontroleri za uvoz",
-                    "include_hub_in_name": "Uključi naziv glavnog uređaja (kontrolera) u nazive entiteta",
                     "configure_menu_codes": "Konfiguriraj kodove izbornika",
                     "menu_code_mu": "Kod korisničkog izbornika (MU)",
                     "menu_code_mi": "Kod instalaterskog izbornika (MI)",
@@ -52,7 +51,6 @@
                 },
                 "data_description": {
                     "controllers": "Kontroler koji želite dodati. Za svaki sljedeći kontroler ponovno dodajte integraciju.",
-                    "include_hub_in_name": "Dodajte naziv integracije ispred naziva entiteta zona ovog kontrolera. Korisno kada je postavljeno više kontrolera.",
                     "configure_menu_codes": "Neki regulatori drže instalaterski i servisni izbornik iza koda. Unesite kod za svaki izbornik koji Home Assistant treba čitati ili ostavite polja praznima. Pogrešan kod ponaša se točno kao da koda nema."
                 }
             },
@@ -88,18 +86,6 @@
         },
         "entry_from_newer_version": {
             "message": "Ovaj unos stvorila je novija verzija Tech Controllersa. Ažurirajte integraciju i ponovno pokrenite Home Assistant."
-        }
-    },
-    "options": {
-        "step": {
-            "init": {
-                "data": {
-                    "include_hub_in_name": "Uključi naziv glavnog uređaja (kontrolera) u nazive entiteta"
-                },
-                "data_description": {
-                    "include_hub_in_name": "Dodajte naziv integracije ispred naziva entiteta zona ovog kontrolera. Korisno kada je postavljeno više kontrolera."
-                }
-            }
         }
     },
     "entity": {

@@ -44,7 +44,6 @@
                 "description": "Prosím, vyberte ovladače, které chcete integrovat.",
                 "data": {
                     "controllers": "Ovladače k importu",
-                    "include_hub_in_name": "Zahrnout název hubu (ovladače) do názvů entit",
                     "configure_menu_codes": "Nastavit kódy menu",
                     "menu_code_mu": "Kód uživatelského menu (MU)",
                     "menu_code_mi": "Kód instalačního menu (MI)",
@@ -52,7 +51,6 @@
                 },
                 "data_description": {
                     "controllers": "Ovladač, který chcete přidat. Pro každý další ovladač přidejte integraci znovu.",
-                    "include_hub_in_name": "Před názvy entit zón tohoto ovladače přidejte název integrace. Hodí se, když je nastaveno několik ovladačů.",
                     "configure_menu_codes": "Některé regulátory drží menu instalatéra a servisní menu za kódem. Zadejte kód pro každé menu, které má Home Assistant číst, nebo pole ponechte prázdná. Špatný kód se chová přesně jako žádný kód."
                 }
             },
@@ -88,18 +86,6 @@
         },
         "entry_from_newer_version": {
             "message": "Tento záznam byl vytvořen novější verzí Tech Controllers. Aktualizujte integraci a restartujte Home Assistant."
-        }
-    },
-    "options": {
-        "step": {
-            "init": {
-                "data": {
-                    "include_hub_in_name": "Zahrnout název hubu (ovladače) do názvů entit"
-                },
-                "data_description": {
-                    "include_hub_in_name": "Před názvy entit zón tohoto ovladače přidejte název integrace. Hodí se, když je nastaveno několik ovladačů."
-                }
-            }
         }
     },
     "entity": {

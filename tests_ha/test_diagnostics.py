@@ -34,7 +34,7 @@ async def test_diagnostics_describe_what_the_controller_reported(
     diagnostics = await _diagnostics(hass, entry)
 
     assert diagnostics["entry"]["title"] == "l12"
-    assert diagnostics["entry"]["options"] == {"include_hub_in_name": False}
+    assert diagnostics["entry"]["options"] == {}
     assert diagnostics["controller"]["last_update_success"] is True
     assert diagnostics["controller"]["zones"] == 5
     assert diagnostics["controller"]["tiles"] == 6

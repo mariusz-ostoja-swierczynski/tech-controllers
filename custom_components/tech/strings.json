@@ -33,7 +33,6 @@
         "description": "Please select the controllers you want to integrate.",
         "data": {
           "controllers": "Controller to import",
-          "include_hub_in_name": "Include hub (controller) name in entity names",
           "configure_menu_codes": "Configure menu codes",
           "menu_code_mu": "User menu code (MU)",
           "menu_code_mi": "Installer menu code (MI)",
@@ -41,7 +40,6 @@
         },
         "data_description": {
           "controllers": "The controller to add. Run the flow again for each further controller.",
-          "include_hub_in_name": "Prefix the entity names of this controller's zones with the name of the integration, which helps when several controllers are set up.",
           "configure_menu_codes": "Some controllers keep their installer and service menus behind a code. Tick this to enter the codes; unticked, the fields stay hidden and no code is stored. A wrong code behaves exactly like no code."
         }
       },
@@ -89,18 +87,6 @@
     },
     "entry_from_newer_version": {
       "message": "This entry was written by a newer version of Tech Controllers. Update the integration and restart Home Assistant."
-    }
-  },
-  "options": {
-    "step": {
-      "init": {
-        "data": {
-          "include_hub_in_name": "Include hub (controller) name in entity names"
-        },
-        "data_description": {
-          "include_hub_in_name": "Prefix the entity names of this controller's zones with the name of the integration, which helps when several controllers are set up."
-        }
-      }
     }
   },
   "entity": {

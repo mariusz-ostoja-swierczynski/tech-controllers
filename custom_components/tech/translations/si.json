@@ -44,7 +44,6 @@
                 "description": "Izberite krmilnike, ki jih želite integrirati.",
                 "data": {
                     "controllers": "Krmilniki za uvoz",
-                    "include_hub_in_name": "Vključi ime glavnega krmilnika v imena entitet",
                     "configure_menu_codes": "Konfiguriraj kode menijev",
                     "menu_code_mu": "Koda uporabniškega menija (MU)",
                     "menu_code_mi": "Koda namestitvenega menija (MI)",
@@ -52,7 +51,6 @@
                 },
                 "data_description": {
                     "controllers": "Krmilnik, ki ga želite dodati. Za vsak naslednji krmilnik znova dodajte integracijo.",
-                    "include_hub_in_name": "Dodajte ime integracije pred imena entitet con tega krmilnika. Koristno, kadar je nastavljenih več krmilnikov.",
                     "configure_menu_codes": "Nekateri regulatorji hranijo namestitveni in servisni meni za kodo. Vnesite kodo za vsak meni, ki naj ga Home Assistant bere, ali pustite polja prazna. Napačna koda se obnaša popolnoma enako kot nobena koda."
                 }
             },
@@ -88,18 +86,6 @@
         },
         "entry_from_newer_version": {
             "message": "Ta vnos je ustvarila novejša različica Tech Controllers. Posodobite integracijo in znova zaženite Home Assistant."
-        }
-    },
-    "options": {
-        "step": {
-            "init": {
-                "data": {
-                    "include_hub_in_name": "Vključi ime glavnega krmilnika v imena entitet"
-                },
-                "data_description": {
-                    "include_hub_in_name": "Dodajte ime integracije pred imena entitet con tega krmilnika. Koristno, kadar je nastavljenih več krmilnikov."
-                }
-            }
         }
     },
     "entity": {

@@ -70,7 +70,6 @@ from .const import (
     DOMAIN,
     EVENTS,
     FLOOR_PUMP,
-    INCLUDE_HUB_IN_NAME,
     LOW_BATTERY,
     LOW_SIGNAL,
     MANUFACTURER,
@@ -731,11 +730,7 @@ class ZoneSensor(
         self._unique_id: str = (
             config_entry.data[CONTROLLER][UDID] + "_" + str(device[CONF_ZONE][CONF_ID])
         )
-        self._device_name = (
-            device[CONF_DESCRIPTION][CONF_NAME]
-            if not self._config_entry.options.get(INCLUDE_HUB_IN_NAME, False)
-            else f"{self._config_entry.title} {device[CONF_DESCRIPTION][CONF_NAME]}"
-        )
+        self._device_name = device[CONF_DESCRIPTION][CONF_NAME]
         self._attr_translation_placeholders = {"entity_name": ""}
         self.update_properties(device)
 

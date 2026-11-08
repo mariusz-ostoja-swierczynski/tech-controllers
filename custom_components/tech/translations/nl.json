@@ -44,7 +44,6 @@
                 "description": "Selecteer de controllers die u wilt integreren.",
                 "data": {
                     "controllers": "Te importeren controllers",
-                    "include_hub_in_name": "Inclusief hub (controller) naam in entiteitnamen",
                     "configure_menu_codes": "Menucodes configureren",
                     "menu_code_mu": "Code gebruikersmenu (MU)",
                     "menu_code_mi": "Code installateursmenu (MI)",
@@ -52,7 +51,6 @@
                 },
                 "data_description": {
                     "controllers": "De controller die u wilt toevoegen. Voeg de integratie opnieuw toe voor elke volgende controller.",
-                    "include_hub_in_name": "Zet de naam van de integratie voor de entiteitnamen van de zones van deze controller. Handig wanneer meerdere controllers zijn ingesteld.",
                     "configure_menu_codes": "Sommige regelaars houden hun installateurs- en servicemenu's achter een code. Voer de code in voor elk menu dat Home Assistant moet lezen, of laat de velden leeg. Een verkeerde code gedraagt zich precies zoals geen code."
                 }
             },
@@ -88,18 +86,6 @@
         },
         "entry_from_newer_version": {
             "message": "Dit item is gemaakt door een nieuwere versie van Tech Controllers. Werk de integratie bij en herstart Home Assistant."
-        }
-    },
-    "options": {
-        "step": {
-            "init": {
-                "data": {
-                    "include_hub_in_name": "Inclusief hub (controller) naam in entiteitnamen"
-                },
-                "data_description": {
-                    "include_hub_in_name": "Zet de naam van de integratie voor de entiteitnamen van de zones van deze controller. Handig wanneer meerdere controllers zijn ingesteld."
-                }
-            }
         }
     },
     "entity": {

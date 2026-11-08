@@ -25,9 +25,7 @@ Entity-naming protocol (relevant when reading :mod:`entity` and the tile
 sensor classes): ``_attr_has_entity_name = True`` causes Home Assistant to
 prepend the *device* name to the entity name automatically. The integration
 therefore stores only the per-tile label in ``self._name`` and lets HA
-combine it with the device. The ``INCLUDE_HUB_IN_NAME`` config flag is
-preserved for backward compatibility but is now effectively a no-op for
-tile-derived entities.
+combine it with the device.
 """
 
 from datetime import timedelta
@@ -66,9 +64,6 @@ WORKING_STATUS = "workingStatus"  # bool: relay/pump on/off in tile payload
 ACTUATORS = "actuators"  # zone payload: list of valve actuator descriptors
 BATTERY_LEVEL = "batteryLevel"  # wireless temp sensor %, may be None
 ACTUATORS_OPEN = "actuatorsOpen"  # zone payload: count of opened actuators
-INCLUDE_HUB_IN_NAME = (
-    "include_hub_in_name"  # config flag (now effectively a no-op for tile entities)
-)
 UNDERFLOOR = "underfloor"  # zone payload: optional underfloor sub-config
 WINDOW_SENSORS = "windowsSensors"  # zone payload: list of window-sensor descriptors
 WINDOW_STATE = "windowState"  # individual window sensor open/closed key

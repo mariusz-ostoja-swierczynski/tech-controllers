@@ -670,13 +670,12 @@ class _Coordinator:
 class _Entry:
     """Stand-in for the config entry, with just the fields the code reads."""
 
-    def __init__(self, title: str = _HUB, include_hub_in_name: bool = False) -> None:
-        """Build an entry carrying the controller udid and the naming flag."""
+    def __init__(self, title: str = _HUB) -> None:
+        """Build an entry carrying the controller udid."""
         self.title = title
         self.entry_id = "entry-id"
         self.data = {
             const.CONTROLLER: {const.UDID: _UDID, const.VER: _TECH_VERSION},
-            const.INCLUDE_HUB_IN_NAME: include_hub_in_name,
         }
         # The coordinator lives on the entry (``runtime_data``) rather than in a
         # ``hass.data`` mapping; a platform setup reads it from here.
@@ -852,29 +851,12 @@ def test_a_zone_entity_needs_the_controller_device() -> None:
 
 
 @pytest.mark.parametrize(("module_name", "class_name"), PLATFORMS, ids=_PLATFORM_IDS)
-def test_zone_names_built_with_the_hub_prefix_reach_the_device(
+def test_zone_names_reach_the_device(
     module_name: str, class_name: str
 ) -> None:
-    """The prefixed mapping built for ``include_hub_in_name`` is what gets used."""
+    """The zone names built from the payload reach the zone device."""
     zone_names = assets.build_zone_names(
-        {101: {"zone": {"id": 101, "index": 0}, "description": {"name": "Strefa 1"}}},
-        _HUB,
-        include_hub_in_name=True,
-    )
-    entity = _build(module_name, class_name, zone_id=101, zone_names=zone_names)
-
-    assert entity.device_info.name == "L-8 DEMO Strefa 1"
-
-
-@pytest.mark.parametrize(("module_name", "class_name"), PLATFORMS, ids=_PLATFORM_IDS)
-def test_zone_names_built_without_the_prefix_reach_the_device(
-    module_name: str, class_name: str
-) -> None:
-    """With the flag off the device takes the bare zone name, as before."""
-    zone_names = assets.build_zone_names(
-        {101: {"zone": {"id": 101, "index": 0}, "description": {"name": "Strefa 1"}}},
-        _HUB,
-        include_hub_in_name=False,
+        {101: {"zone": {"id": 101, "index": 0}, "description": {"name": "Strefa 1"}}}
     )
     entity = _build(module_name, class_name, zone_id=101, zone_names=zone_names)
 

@@ -14,7 +14,6 @@ from . import assets
 from .const import (
     CONTROLLER,
     DOMAIN,
-    INCLUDE_HUB_IN_NAME,
     MANUFACTURER,
     MENU_DEPTH_DEFAULT_ENABLED_LIMIT,
     MENU_DEPTH_REGISTRATION_LIMIT,
@@ -56,11 +55,7 @@ async def async_setup_entry(
     menus = await coordinator.api.get_module_menus(controller_udid)
     zones = await coordinator.api.get_module_zones(controller_udid)
     ctx = assets.build_menu_context(menus, zones, coordinator.translations)
-    zone_names = assets.build_zone_names(
-        zones,
-        config_entry.title,
-        config_entry.options.get(INCLUDE_HUB_IN_NAME, False),
-    )
+    zone_names = assets.build_zone_names(zones)
 
     entities: list[MenuNumberEntity] = []
     for key, item in menus.items():

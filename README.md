@@ -124,7 +124,6 @@ The setup form asks for:
 - **Username** — the account name (or email address) you use on <https://emodul.eu> or <https://emodul.pl>.
 - **Password** — the password for that account.
 - **Controller to import** — the controller to add, chosen from the ones the account holds. One controller is added per run of the flow, so repeat it for the next one.
-- **Include hub (controller) name in entity names** — the naming preference described under Configuration below, so it can be answered while the controller is being added.
 - **Menu codes** — tick **Configure menu codes** on the controller form to reveal one optional code per menu that can be kept behind one (user, installer, service). Leave a field empty when you have no code for that menu; nothing else about the setup changes. See [Menu codes](#menu-codes) for what a code unlocks and what a rejected one looks like.
 
 ### HACS
@@ -148,14 +147,6 @@ The setup form asks for:
 
 1. Now you should have controllers and entities representing your home zones available in Home Assistant. Go to your UI Lovelace configuration and add Thermostat card with your Climate entities.
    ![Tech Controllers Setup 4](./images/ha-tech-2.png)
-
-## :gear: Configuration
-
-Each controller entry has one option, reached through the gear button on the entry in `Settings` -> `Devices & services`:
-
-- **Include hub (controller) name in entity names** — prefixes the entity names of the controller's zones with the name of the integration, so a zone reads `L-8 DEMO Strefa 1` instead of `Strefa 1`. Useful when several controllers are set up and their zone names would otherwise be identical; leave it off when only one controller is configured.
-
-The same preference is asked during setup, it belongs to one controller entry at a time, and changing it afterwards reloads the entry so the renamed entities follow immediately.
 
 ## :wastebasket: Removal
 

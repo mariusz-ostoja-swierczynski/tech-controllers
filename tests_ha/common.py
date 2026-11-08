@@ -19,13 +19,7 @@ import pytest
 from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.tech.config_flow import ConfigFlow
-from custom_components.tech.const import (
-    CONTROLLER,
-    DOMAIN,
-    INCLUDE_HUB_IN_NAME,
-    USER_ID,
-    VER,
-)
+from custom_components.tech.const import CONTROLLER, DOMAIN, USER_ID, VER
 from custom_components.tech.tech import Tech
 from homeassistant.const import CONF_TOKEN, STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
@@ -71,7 +65,7 @@ def entry_for(name: str, *, token: str = "token") -> MockConfigEntry:
             CONTROLLER: controller_payload(name),
             VER: "1.0.0: " + name,
         },
-        options={INCLUDE_HUB_IN_NAME: False},
+        options={},
     )
 
 

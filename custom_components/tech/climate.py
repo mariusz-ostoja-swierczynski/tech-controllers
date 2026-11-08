@@ -25,7 +25,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import assets
-from .const import CONTROLLER, DOMAIN, INCLUDE_HUB_IN_NAME, UDID, scaled_number
+from .const import CONTROLLER, DOMAIN, UDID, scaled_number
 from .coordinator import TechConfigEntry, TechCoordinator
 from .entity import ReportedEntity, add_later
 from .schedules import climate_schedule_attributes
@@ -100,11 +100,7 @@ class TechThermostat(ReportedEntity, ClimateEntity, CoordinatorEntity[TechCoordi
         self._coordinator = coordinator
         self._id = device[CONF_ZONE][CONF_ID]
         self._unique_id = f"{self._udid}_{device[CONF_ZONE][CONF_ID]}"
-        self.device_name = (
-            device[CONF_DESCRIPTION][CONF_NAME]
-            if not self._config_entry.options.get(INCLUDE_HUB_IN_NAME, False)
-            else f"{self._config_entry.title} {device[CONF_DESCRIPTION][CONF_NAME]}"
-        )
+        self.device_name = device[CONF_DESCRIPTION][CONF_NAME]
 
         self._temperature: float | None = None
         self._target_temperature: float | None = None

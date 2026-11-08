@@ -44,7 +44,6 @@
                 "description": "Pasirinkite valdiklius, kuriuos norite integruoti.",
                 "data": {
                     "controllers": "Valdikliai importavimui",
-                    "include_hub_in_name": "Įtraukti centrinį mazgą (valdiklį) į sąvybių pavadinimus",
                     "configure_menu_codes": "Konfigūruoti meniu kodus",
                     "menu_code_mu": "Naudotojo meniu kodas (MU)",
                     "menu_code_mi": "Instaliuotojo meniu kodas (MI)",
@@ -52,7 +51,6 @@
                 },
                 "data_description": {
                     "controllers": "Valdiklis, kurį norite pridėti. Kiekvienam kitam valdikliui pridėkite integraciją iš naujo.",
-                    "include_hub_in_name": "Pridėkite integracijos pavadinimą prieš šio valdiklio zonų sąvybių pavadinimus. Naudinga, kai sukonfigūruoti keli valdikliai.",
                     "configure_menu_codes": "Kai kurie valdikliai instaliuotojo ir serviso meniu laiko už kodo. Įveskite kiekvieno meniu, kurį Home Assistant turi skaityti, kodą arba palikite laukus tuščius. Neteisingas kodas elgiasi lygiai taip pat, kaip jokio kodo."
                 }
             },
@@ -88,18 +86,6 @@
         },
         "entry_from_newer_version": {
             "message": "Šis įrašas buvo sukurtas naujesnės Tech Controllers versijos. Atnaujinkite integraciją ir paleiskite Home Assistant iš naujo."
-        }
-    },
-    "options": {
-        "step": {
-            "init": {
-                "data": {
-                    "include_hub_in_name": "Įtraukti centrinį mazgą (valdiklį) į sąvybių pavadinimus"
-                },
-                "data_description": {
-                    "include_hub_in_name": "Pridėkite integracijos pavadinimą prieš šio valdiklio zonų sąvybių pavadinimus. Naudinga, kai sukonfigūruoti keli valdikliai."
-                }
-            }
         }
     },
     "entity": {

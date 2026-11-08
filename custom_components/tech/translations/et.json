@@ -44,7 +44,6 @@
                 "description": "Palun valige kontrollerid, mida soovite integreerida.",
                 "data": {
                     "controllers": "Imporditavad kontrollerid",
-                    "include_hub_in_name": "Kaasa hubi (kontrolleri) nimi üksuste nimedes",
                     "configure_menu_codes": "Seadista menüükoodid",
                     "menu_code_mu": "Kasutajamenüü kood (MU)",
                     "menu_code_mi": "Paigaldajamenüü kood (MI)",
@@ -52,7 +51,6 @@
                 },
                 "data_description": {
                     "controllers": "Lisatav kontroller. Iga järgmise kontrolleri jaoks lisage integratsioon uuesti.",
-                    "include_hub_in_name": "Lisa integratsiooni nimi selle kontrolleri tsoonide üksuste nimede ette. Kasulik, kui on seadistatud mitu kontrollerit.",
                     "configure_menu_codes": "Mõned kontrollerid hoiavad paigaldaja- ja hooldusmenüüd koodi taga. Sisesta iga menüü kood, mida Home Assistant peab lugema, või jäta väljad tühjaks. Vale kood käitub täpselt nagu koodi puudumine."
                 }
             },
@@ -88,18 +86,6 @@
         },
         "entry_from_newer_version": {
             "message": "See kirje on loodud Tech Controllersi uuema versiooniga. Värskendage integratsiooni ja taaskäivitage Home Assistant."
-        }
-    },
-    "options": {
-        "step": {
-            "init": {
-                "data": {
-                    "include_hub_in_name": "Kaasa hubi (kontrolleri) nimi üksuste nimedes"
-                },
-                "data_description": {
-                    "include_hub_in_name": "Lisa integratsiooni nimi selle kontrolleri tsoonide üksuste nimede ette. Kasulik, kui on seadistatud mitu kontrollerit."
-                }
-            }
         }
     },
     "entity": {

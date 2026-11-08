@@ -448,22 +448,15 @@ def build_menu_zone_assignments(
 
 def build_zone_names(
     zones: dict[int, dict[str, Any]],
-    config_entry_title: str,
-    include_hub_in_name: bool = False,
 ) -> dict[int, str]:
     """Map zone IDs to the display names used for zone-level devices.
 
     Zone devices are shared by the zone sensor/climate entities and the
     menu-based platforms (switch, select, button, number); the name is taken
-    from the zone payload description, optionally prefixed with the hub
-    (config entry) title when ``include_hub_in_name`` is set -- the same
-    convention used by :class:`sensor.ZoneSensor` and
-    :class:`climate.TechThermostat`.
+    from the zone payload description.
 
     Args:
         zones: Mapping of zone ID to zone payload (as cached by the API client).
-        config_entry_title: Title of the owning config entry (the hub name).
-        include_hub_in_name: Whether to prefix the zone name with the hub title.
 
     Returns:
         Mapping of zone ID to device name. Zones without a usable name are
@@ -476,8 +469,6 @@ def build_zone_names(
         name = description.get(CONF_NAME) if isinstance(description, dict) else None
         if not name:
             continue
-        if include_hub_in_name:
-            name = f"{config_entry_title} {name}"
         zone_names[zone_id] = name
     return zone_names
 
