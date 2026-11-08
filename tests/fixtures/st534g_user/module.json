@@ -1,0 +1,222 @@
+{
+  "zones": {
+    "transaction_time": null,
+    "elements": [],
+    "globalSchedules": {
+      "time": null,
+      "duringChange": null,
+      "elements": []
+    },
+    "controllerParameters": {}
+  },
+  "tiles": [
+    {
+      "id": 10539,
+      "parentId": 0,
+      "type": 41,
+      "menuId": 0,
+      "orderId": 12,
+      "visibility": true,
+      "params": {
+        "description": "Date",
+        "year": 2024,
+        "month": 12,
+        "day": 30,
+        "dayId": 1,
+        "hours": 10,
+        "minutes": 57
+      }
+    },
+    {
+      "id": 10540,
+      "parentId": 0,
+      "type": 50,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Controller software version",
+        "version": "0.0.25",
+        "txtId": 1634,
+        "iconId": 29,
+        "companyId": 9
+      }
+    },
+    {
+      "id": 10541,
+      "parentId": 0,
+      "type": 40,
+      "menuId": 10541,
+      "orderId": 9,
+      "visibility": true,
+      "params": {
+        "description": "Text information",
+        "statusId": 4428,
+        "headerId": 820,
+        "iconId": 123,
+        "options": []
+      }
+    },
+    {
+      "id": 10546,
+      "parentId": 0,
+      "type": 1,
+      "menuId": 10589,
+      "orderId": 1,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 2438,
+        "value": 375,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 10550,
+      "parentId": 0,
+      "type": 11,
+      "menuId": 0,
+      "orderId": 2,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 575,
+        "iconId": 17
+      }
+    },
+    {
+      "id": 10551,
+      "parentId": 0,
+      "type": 11,
+      "menuId": 0,
+      "orderId": 3,
+      "visibility": false,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 576,
+        "iconId": 17
+      }
+    },
+    {
+      "id": 10554,
+      "parentId": 0,
+      "type": 11,
+      "menuId": 0,
+      "orderId": 4,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 1042,
+        "iconId": 153
+      }
+    },
+    {
+      "id": 10555,
+      "parentId": 0,
+      "type": 22,
+      "menuId": 0,
+      "orderId": 8,
+      "visibility": true,
+      "params": {
+        "description": "Fan",
+        "workingStatus": false,
+        "fanNumber": 1,
+        "gear": 0,
+        "txtId": 866
+      }
+    },
+    {
+      "id": 10556,
+      "parentId": 0,
+      "type": 11,
+      "menuId": 0,
+      "orderId": 5,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 1383,
+        "iconId": 101
+      }
+    },
+    {
+      "id": 10557,
+      "parentId": 0,
+      "type": 11,
+      "menuId": 0,
+      "orderId": 6,
+      "visibility": false,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 2577,
+        "iconId": 201
+      }
+    },
+    {
+      "id": 10560,
+      "parentId": 0,
+      "type": 11,
+      "menuId": 0,
+      "orderId": 7,
+      "visibility": false,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 2861,
+        "iconId": 200
+      }
+    },
+    {
+      "id": 10567,
+      "parentId": 0,
+      "type": 40,
+      "menuId": 10567,
+      "orderId": 10,
+      "visibility": true,
+      "params": {
+        "description": "Text information",
+        "statusId": 4453,
+        "headerId": 1448,
+        "iconId": 123,
+        "options": []
+      }
+    },
+    {
+      "id": 10578,
+      "parentId": 0,
+      "type": 40,
+      "menuId": 0,
+      "orderId": 11,
+      "visibility": false,
+      "params": {
+        "description": "Text information",
+        "statusId": 1042,
+        "headerId": 3467,
+        "iconId": 153,
+        "options": []
+      }
+    },
+    {
+      "type": "alarm",
+      "id": 30002,
+      "parentId": 0,
+      "txtId": 860,
+      "iconId": 25,
+      "value": "",
+      "unit": "",
+      "time": "1735553435",
+      "alarmType": "alarm",
+      "remoteCancel": "0",
+      "menuId": 0,
+      "visibility": true
+    }
+  ],
+  "tilesOrder": "10546|1,10550|1,10551|0,10554|1,10556|1,10557|0,10560|0,10555|1,10541|1,10567|1,10578|0,10539|1,",
+  "tilesLastUpdate": "2024-12-30 10:57:26.679351+01"
+}

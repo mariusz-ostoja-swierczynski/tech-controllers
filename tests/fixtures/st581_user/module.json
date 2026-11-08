@@ -1,0 +1,325 @@
+{
+  "zones": {
+    "transaction_time": null,
+    "elements": [],
+    "globalSchedules": {
+      "time": null,
+      "duringChange": null,
+      "elements": []
+    },
+    "controllerParameters": {}
+  },
+  "tiles": [
+    {
+      "id": 1000,
+      "parentId": 0,
+      "type": 21,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Additional pump",
+        "workingStatus": false,
+        "pumpNumber": 0,
+        "txtId": 922
+      }
+    },
+    {
+      "id": 1001,
+      "parentId": 0,
+      "type": 40,
+      "menuId": 2011,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Text information",
+        "statusId": 473,
+        "headerId": 820,
+        "iconId": 3,
+        "options": []
+      }
+    },
+    {
+      "id": 1002,
+      "parentId": 0,
+      "type": 11,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 550,
+        "iconId": 101
+      }
+    },
+    {
+      "id": 1003,
+      "parentId": 0,
+      "type": 11,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 1042,
+        "iconId": 9
+      }
+    },
+    {
+      "id": 1004,
+      "parentId": 0,
+      "type": 11,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 571,
+        "iconId": 17
+      }
+    },
+    {
+      "id": 1005,
+      "parentId": 0,
+      "type": 11,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 573,
+        "iconId": 17
+      }
+    },
+    {
+      "id": 1006,
+      "parentId": 0,
+      "type": 6,
+      "menuId": 2060,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 87,
+        "widget1": {
+          "txtId": 937,
+          "value": 0,
+          "unit": 7,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 1050,
+          "value": 376,
+          "unit": 7,
+          "type": 9,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 1007,
+      "parentId": 0,
+      "type": 1,
+      "menuId": 2061,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": false,
+        "txtId": 1041,
+        "value": -2030,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 1008,
+      "parentId": 0,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 791,
+        "value": 389,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 1009,
+      "parentId": 0,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": false,
+        "txtId": 795,
+        "value": -2030,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 1010,
+      "parentId": 0,
+      "type": 31,
+      "menuId": 252,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Fuel supply",
+        "percentage": 50,
+        "hours": -118
+      }
+    },
+    {
+      "id": 1011,
+      "parentId": 0,
+      "type": 22,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Fan",
+        "workingStatus": false,
+        "fanNumber": 0,
+        "gear": 0,
+        "txtId": -1
+      }
+    },
+    {
+      "id": 1016,
+      "parentId": 0,
+      "type": 2,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Fire sensor",
+        "workingStatus": false,
+        "value": 0
+      }
+    },
+    {
+      "id": 1017,
+      "parentId": 0,
+      "type": 6,
+      "menuId": 2089,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 0,
+        "iconId": 98,
+        "widget1": {
+          "txtId": 1075,
+          "value": 0,
+          "unit": 7,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 1432,
+          "value": 176,
+          "unit": 7,
+          "type": 9,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 1020,
+      "parentId": 0,
+      "type": 11,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 553,
+        "iconId": 101
+      }
+    },
+    {
+      "id": 2000,
+      "parentId": 0,
+      "type": 50,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Controller software version",
+        "version": "3.0.4",
+        "txtId": 873,
+        "iconId": 50,
+        "companyId": 25
+      }
+    },
+    {
+      "id": 2040,
+      "parentId": 0,
+      "type": 40,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Text information",
+        "statusId": 233,
+        "headerId": 1039,
+        "iconId": 50,
+        "options": []
+      }
+    },
+    {
+      "id": 3630,
+      "parentId": 0,
+      "type": 32,
+      "menuId": 255,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Disinfection",
+        "txtId": 0,
+        "percentage": 0
+      }
+    }
+  ],
+  "tilesOrder": null,
+  "tilesLastUpdate": "2024-12-09 09:37:29.509604+01"
+}

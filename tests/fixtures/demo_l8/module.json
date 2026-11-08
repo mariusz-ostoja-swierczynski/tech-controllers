@@ -1,0 +1,1287 @@
+{
+  "zones": {
+    "transaction_time": "2026-11-08T18:37:51.656901+01:00",
+    "elements": [
+      {
+        "zone": {
+          "id": 101,
+          "parentId": 1000,
+          "time": "2025-09-11T14:39:00.044006",
+          "duringChange": false,
+          "index": 0,
+          "currentTemperature": 219,
+          "setTemperature": 230,
+          "flags": {
+            "relayState": "on",
+            "minOneWindowOpen": false,
+            "algorithm": "heating",
+            "floorSensor": 0,
+            "humidityAlgorytm": 0,
+            "zoneExcluded": 0
+          },
+          "zoneState": "noAlarm",
+          "signalStrength": 91,
+          "batteryLevel": 95,
+          "actuatorsOpen": 85,
+          "humidity": null,
+          "visibility": true
+        },
+        "description": {
+          "id": 111,
+          "parentId": 101,
+          "name": "Strefa 1",
+          "styleId": 0,
+          "styleIcon": "living_room",
+          "duringChange": false
+        },
+        "mode": {
+          "id": 210,
+          "parentId": 101,
+          "mode": "constantTemp",
+          "constTempTime": 60,
+          "setTemperature": 230,
+          "scheduleIndex": 0
+        },
+        "schedule": {
+          "id": 121,
+          "parentId": 101,
+          "index": -1,
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0Intervals": [
+            {
+              "start": 0,
+              "stop": 360,
+              "temp": 200
+            },
+            {
+              "start": 480,
+              "stop": 960,
+              "temp": 185
+            },
+            {
+              "start": 1380,
+              "stop": 0,
+              "temp": 200
+            }
+          ],
+          "p0SetbackTemp": 230,
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1Intervals": [
+            {
+              "start": 0,
+              "stop": 420,
+              "temp": 200
+            },
+            {
+              "start": 1380,
+              "stop": 0,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p1SetbackTemp": 230
+        },
+        "actuators": [
+          {
+            "id": 211,
+            "parentId": 101,
+            "index": 1,
+            "state": "noAlarm",
+            "signalStrength": 95,
+            "batteryLevel": 99,
+            "errorCode": 0
+          },
+          {
+            "id": 212,
+            "parentId": 101,
+            "index": 2,
+            "state": "noAlarm",
+            "signalStrength": 94,
+            "batteryLevel": 99,
+            "errorCode": 0
+          }
+        ],
+        "underfloor": {},
+        "windowsSensors": [],
+        "additionalContacts": []
+      },
+      {
+        "zone": {
+          "id": 102,
+          "parentId": 1000,
+          "time": "2020-11-17T11:33:00.008858",
+          "duringChange": false,
+          "index": 1,
+          "currentTemperature": 227,
+          "setTemperature": 230,
+          "flags": {
+            "relayState": "on",
+            "minOneWindowOpen": false,
+            "algorithm": "heating",
+            "floorSensor": 0,
+            "humidityAlgorytm": 0,
+            "zoneExcluded": 0
+          },
+          "zoneState": "noAlarm",
+          "signalStrength": 96,
+          "batteryLevel": 89,
+          "actuatorsOpen": 30,
+          "humidity": null,
+          "visibility": true
+        },
+        "description": {
+          "id": 112,
+          "parentId": 102,
+          "name": "Strefa 2",
+          "styleId": 2,
+          "styleIcon": "kitchen",
+          "duringChange": false
+        },
+        "mode": {
+          "id": 220,
+          "parentId": 102,
+          "mode": "constantTemp",
+          "constTempTime": 60,
+          "setTemperature": 230,
+          "scheduleIndex": 0
+        },
+        "schedule": {
+          "id": 122,
+          "parentId": 102,
+          "index": -2,
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0Intervals": [
+            {
+              "start": 0,
+              "stop": 360,
+              "temp": 200
+            },
+            {
+              "start": 480,
+              "stop": 960,
+              "temp": 185
+            },
+            {
+              "start": 1380,
+              "stop": 0,
+              "temp": 200
+            }
+          ],
+          "p0SetbackTemp": 230,
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1Intervals": [
+            {
+              "start": 0,
+              "stop": 420,
+              "temp": 200
+            },
+            {
+              "start": 1380,
+              "stop": 0,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p1SetbackTemp": 230
+        },
+        "actuators": [
+          {
+            "id": 221,
+            "parentId": 102,
+            "index": 1,
+            "state": "noAlarm",
+            "signalStrength": 79,
+            "batteryLevel": 94,
+            "errorCode": 0
+          }
+        ],
+        "underfloor": {},
+        "windowsSensors": [],
+        "additionalContacts": []
+      },
+      {
+        "zone": {
+          "id": 103,
+          "parentId": 1000,
+          "time": "2020-11-15T20:14:00.005224",
+          "duringChange": false,
+          "index": 2,
+          "currentTemperature": 235,
+          "setTemperature": 240,
+          "flags": {
+            "relayState": "on",
+            "minOneWindowOpen": false,
+            "algorithm": "heating",
+            "floorSensor": 0,
+            "humidityAlgorytm": 0,
+            "zoneExcluded": 0
+          },
+          "zoneState": "noAlarm",
+          "signalStrength": 85,
+          "batteryLevel": 92,
+          "actuatorsOpen": 0,
+          "humidity": null,
+          "visibility": true
+        },
+        "description": {
+          "id": 113,
+          "parentId": 103,
+          "name": "Strefa 3",
+          "styleId": 1,
+          "styleIcon": "bathroom",
+          "duringChange": false
+        },
+        "mode": {
+          "id": 230,
+          "parentId": 103,
+          "mode": "constantTemp",
+          "constTempTime": 60,
+          "setTemperature": 240,
+          "scheduleIndex": 0
+        },
+        "schedule": {
+          "id": 123,
+          "parentId": 103,
+          "index": -3,
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0Intervals": [
+            {
+              "start": 0,
+              "stop": 360,
+              "temp": 200
+            },
+            {
+              "start": 480,
+              "stop": 960,
+              "temp": 185
+            },
+            {
+              "start": 1380,
+              "stop": 0,
+              "temp": 200
+            }
+          ],
+          "p0SetbackTemp": 230,
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1Intervals": [
+            {
+              "start": 0,
+              "stop": 420,
+              "temp": 200
+            },
+            {
+              "start": 1380,
+              "stop": 0,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p1SetbackTemp": 230
+        },
+        "actuators": [],
+        "underfloor": {},
+        "windowsSensors": [],
+        "additionalContacts": []
+      },
+      {
+        "zone": {
+          "id": 104,
+          "parentId": 1000,
+          "time": "2020-11-15T21:09:00.006286",
+          "duringChange": false,
+          "index": 3,
+          "currentTemperature": 218,
+          "setTemperature": 215,
+          "flags": {
+            "relayState": "off",
+            "minOneWindowOpen": false,
+            "algorithm": "heating",
+            "floorSensor": 0,
+            "humidityAlgorytm": 0,
+            "zoneExcluded": 0
+          },
+          "zoneState": "noAlarm",
+          "signalStrength": 89,
+          "batteryLevel": 78,
+          "actuatorsOpen": 0,
+          "humidity": null,
+          "visibility": true
+        },
+        "description": {
+          "id": 114,
+          "parentId": 104,
+          "name": "Strefa 4",
+          "styleId": 4,
+          "styleIcon": "bedroom",
+          "duringChange": false
+        },
+        "mode": {
+          "id": 240,
+          "parentId": 104,
+          "mode": "constantTemp",
+          "constTempTime": 60,
+          "setTemperature": 215,
+          "scheduleIndex": 0
+        },
+        "schedule": {
+          "id": 124,
+          "parentId": 104,
+          "index": -4,
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0Intervals": [
+            {
+              "start": 0,
+              "stop": 360,
+              "temp": 200
+            },
+            {
+              "start": 480,
+              "stop": 960,
+              "temp": 185
+            },
+            {
+              "start": 1380,
+              "stop": 0,
+              "temp": 200
+            }
+          ],
+          "p0SetbackTemp": 230,
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1Intervals": [
+            {
+              "start": 0,
+              "stop": 420,
+              "temp": 200
+            },
+            {
+              "start": 1380,
+              "stop": 0,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p1SetbackTemp": 230
+        },
+        "actuators": [
+          {
+            "id": 241,
+            "parentId": 104,
+            "index": 1,
+            "state": "noAlarm",
+            "signalStrength": 87,
+            "batteryLevel": 92,
+            "errorCode": 0
+          }
+        ],
+        "underfloor": {},
+        "windowsSensors": [],
+        "additionalContacts": []
+      },
+      {
+        "zone": {
+          "id": 105,
+          "parentId": 1000,
+          "time": "2020-11-14T11:23:00.005503",
+          "duringChange": false,
+          "index": 4,
+          "currentTemperature": 242,
+          "setTemperature": 240,
+          "flags": {
+            "relayState": "off",
+            "minOneWindowOpen": false,
+            "algorithm": "heating",
+            "floorSensor": 0,
+            "humidityAlgorytm": 0,
+            "zoneExcluded": 0
+          },
+          "zoneState": "noAlarm",
+          "signalStrength": 83,
+          "batteryLevel": 95,
+          "actuatorsOpen": 0,
+          "humidity": null,
+          "visibility": true
+        },
+        "description": {
+          "id": 115,
+          "parentId": 105,
+          "name": "Strefa 5",
+          "styleId": 3,
+          "styleIcon": "children",
+          "duringChange": false
+        },
+        "mode": {
+          "id": 250,
+          "parentId": 105,
+          "mode": "constantTemp",
+          "constTempTime": 60,
+          "setTemperature": 240,
+          "scheduleIndex": 1
+        },
+        "schedule": {
+          "id": 125,
+          "parentId": 105,
+          "index": -5,
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0Intervals": [
+            {
+              "start": 0,
+              "stop": 360,
+              "temp": 200
+            },
+            {
+              "start": 480,
+              "stop": 960,
+              "temp": 185
+            },
+            {
+              "start": 1380,
+              "stop": 0,
+              "temp": 200
+            }
+          ],
+          "p0SetbackTemp": 230,
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1Intervals": [
+            {
+              "start": 0,
+              "stop": 420,
+              "temp": 200
+            },
+            {
+              "start": 1380,
+              "stop": 0,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p1SetbackTemp": 230
+        },
+        "actuators": [
+          {
+            "id": 251,
+            "parentId": 105,
+            "index": 1,
+            "state": "noAlarm",
+            "signalStrength": 85,
+            "batteryLevel": 90,
+            "errorCode": 0
+          }
+        ],
+        "underfloor": {},
+        "windowsSensors": [],
+        "additionalContacts": []
+      },
+      {
+        "zone": {
+          "id": 106,
+          "parentId": 1000,
+          "time": "2020-11-18T07:16:00.005739",
+          "duringChange": false,
+          "index": 5,
+          "currentTemperature": 201,
+          "setTemperature": 200,
+          "flags": {
+            "relayState": "off",
+            "minOneWindowOpen": false,
+            "algorithm": "heating",
+            "floorSensor": 0,
+            "humidityAlgorytm": 0,
+            "zoneExcluded": 0
+          },
+          "zoneState": "noAlarm",
+          "signalStrength": 75,
+          "batteryLevel": 90,
+          "actuatorsOpen": 0,
+          "humidity": null,
+          "visibility": true
+        },
+        "description": {
+          "id": 116,
+          "parentId": 106,
+          "name": "Strefa 6",
+          "styleId": 6,
+          "styleIcon": "corridor",
+          "duringChange": false
+        },
+        "mode": {
+          "id": 260,
+          "parentId": 106,
+          "mode": "constantTemp",
+          "constTempTime": 60,
+          "setTemperature": 200,
+          "scheduleIndex": 1
+        },
+        "schedule": {
+          "id": 126,
+          "parentId": 106,
+          "index": -6,
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0Intervals": [
+            {
+              "start": 0,
+              "stop": 360,
+              "temp": 200
+            },
+            {
+              "start": 480,
+              "stop": 960,
+              "temp": 185
+            },
+            {
+              "start": 1380,
+              "stop": 0,
+              "temp": 200
+            }
+          ],
+          "p0SetbackTemp": 230,
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1Intervals": [
+            {
+              "start": 0,
+              "stop": 420,
+              "temp": 200
+            },
+            {
+              "start": 1380,
+              "stop": 0,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p1SetbackTemp": 230
+        },
+        "actuators": [
+          {
+            "id": 261,
+            "parentId": 106,
+            "index": 1,
+            "state": "noAlarm",
+            "signalStrength": 83,
+            "batteryLevel": 92,
+            "errorCode": 0
+          }
+        ],
+        "underfloor": {},
+        "windowsSensors": [],
+        "additionalContacts": []
+      },
+      {
+        "zone": {
+          "id": 107,
+          "parentId": 1000,
+          "time": "2020-11-18T09:55:00.007893",
+          "duringChange": false,
+          "index": 6,
+          "currentTemperature": 202,
+          "setTemperature": 200,
+          "flags": {
+            "relayState": "off",
+            "minOneWindowOpen": false,
+            "algorithm": "heating",
+            "floorSensor": 0,
+            "humidityAlgorytm": 0,
+            "zoneExcluded": 0
+          },
+          "zoneState": "noAlarm",
+          "signalStrength": 88,
+          "batteryLevel": 93,
+          "actuatorsOpen": 0,
+          "humidity": null,
+          "visibility": true
+        },
+        "description": {
+          "id": 117,
+          "parentId": 107,
+          "name": "Strefa 7",
+          "styleId": 5,
+          "styleIcon": "wardrobe",
+          "duringChange": false
+        },
+        "mode": {
+          "id": 270,
+          "parentId": 107,
+          "mode": "constantTemp",
+          "constTempTime": 60,
+          "setTemperature": 200,
+          "scheduleIndex": 1
+        },
+        "schedule": {
+          "id": 127,
+          "parentId": 107,
+          "index": -7,
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0Intervals": [
+            {
+              "start": 0,
+              "stop": 360,
+              "temp": 200
+            },
+            {
+              "start": 480,
+              "stop": 960,
+              "temp": 185
+            },
+            {
+              "start": 1380,
+              "stop": 0,
+              "temp": 200
+            }
+          ],
+          "p0SetbackTemp": 230,
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1Intervals": [
+            {
+              "start": 0,
+              "stop": 420,
+              "temp": 200
+            },
+            {
+              "start": 1380,
+              "stop": 0,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p1SetbackTemp": 230
+        },
+        "actuators": [
+          {
+            "id": 271,
+            "parentId": 107,
+            "index": 1,
+            "state": "noAlarm",
+            "signalStrength": 79,
+            "batteryLevel": 86,
+            "errorCode": 0
+          }
+        ],
+        "underfloor": {},
+        "windowsSensors": [],
+        "additionalContacts": []
+      },
+      {
+        "zone": {
+          "id": 108,
+          "parentId": 1000,
+          "time": "2020-11-15T16:54:00.008156",
+          "duringChange": false,
+          "index": 7,
+          "currentTemperature": 157,
+          "setTemperature": 150,
+          "flags": {
+            "relayState": "off",
+            "minOneWindowOpen": false,
+            "algorithm": "heating",
+            "floorSensor": 0,
+            "humidityAlgorytm": 0,
+            "zoneExcluded": 0
+          },
+          "zoneState": "noAlarm",
+          "signalStrength": 67,
+          "batteryLevel": 92,
+          "actuatorsOpen": 0,
+          "humidity": null,
+          "visibility": true
+        },
+        "description": {
+          "id": 118,
+          "parentId": 108,
+          "name": "Strefa 8",
+          "styleId": 7,
+          "styleIcon": "garage",
+          "duringChange": false
+        },
+        "mode": {
+          "id": 280,
+          "parentId": 108,
+          "mode": "constantTemp",
+          "constTempTime": 60,
+          "setTemperature": 150,
+          "scheduleIndex": 1
+        },
+        "schedule": {
+          "id": 128,
+          "parentId": 108,
+          "index": -8,
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0Intervals": [
+            {
+              "start": 0,
+              "stop": 360,
+              "temp": 200
+            },
+            {
+              "start": 480,
+              "stop": 960,
+              "temp": 185
+            },
+            {
+              "start": 1380,
+              "stop": 0,
+              "temp": 200
+            }
+          ],
+          "p0SetbackTemp": 230,
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1Intervals": [
+            {
+              "start": 0,
+              "stop": 420,
+              "temp": 200
+            },
+            {
+              "start": 1380,
+              "stop": 0,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ],
+          "p1SetbackTemp": 230
+        },
+        "actuators": [
+          {
+            "id": 281,
+            "parentId": 108,
+            "index": 1,
+            "state": "noAlarm",
+            "signalStrength": 65,
+            "batteryLevel": 96,
+            "errorCode": 0
+          }
+        ],
+        "underfloor": {},
+        "windowsSensors": [],
+        "additionalContacts": []
+      }
+    ],
+    "globalSchedules": {
+      "time": "2017-02-21T16:00:00.915201",
+      "duringChange": false,
+      "elements": [
+        {
+          "id": 129,
+          "parentId": 1000,
+          "index": 0,
+          "name": "default",
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0SetbackTemp": 230,
+          "p0Intervals": [
+            {
+              "start": 480,
+              "stop": 960,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 210
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 210
+            }
+          ],
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1SetbackTemp": 230,
+          "p1Intervals": [
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ]
+        },
+        {
+          "id": 130,
+          "parentId": 1000,
+          "index": 1,
+          "name": "default",
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0SetbackTemp": 230,
+          "p0Intervals": [
+            {
+              "start": 480,
+              "stop": 960,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 210
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 210
+            }
+          ],
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1SetbackTemp": 230,
+          "p1Intervals": [
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ]
+        },
+        {
+          "id": 131,
+          "parentId": 1000,
+          "index": 2,
+          "name": "default",
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0SetbackTemp": 230,
+          "p0Intervals": [
+            {
+              "start": 480,
+              "stop": 960,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 210
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 210
+            }
+          ],
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1SetbackTemp": 230,
+          "p1Intervals": [
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ]
+        },
+        {
+          "id": 132,
+          "parentId": 1000,
+          "index": 3,
+          "name": "default",
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0SetbackTemp": 230,
+          "p0Intervals": [
+            {
+              "start": 480,
+              "stop": 960,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 210
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 210
+            }
+          ],
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1SetbackTemp": 230,
+          "p1Intervals": [
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ]
+        },
+        {
+          "id": 133,
+          "parentId": 1000,
+          "index": 4,
+          "name": "default",
+          "p0Days": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "0",
+            "0"
+          ],
+          "p0SetbackTemp": 230,
+          "p0Intervals": [
+            {
+              "start": 480,
+              "stop": 960,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 210
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 210
+            }
+          ],
+          "p1Days": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1"
+          ],
+          "p1SetbackTemp": 230,
+          "p1Intervals": [
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            },
+            {
+              "start": 6100,
+              "stop": 6100,
+              "temp": 200
+            }
+          ]
+        }
+      ]
+    },
+    "controllerParameters": {
+      "controllerMode": {},
+      "globalSchedulesNumber": {}
+    }
+  },
+  "tiles": [
+    {
+      "id": 4063,
+      "parentId": 0,
+      "type": 24,
+      "menuId": 2270,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Built-in valve",
+        "workingStatus": true,
+        "valveNumber": 1,
+        "currentTemp": 240,
+        "returnTemp": 240,
+        "setTempCorrection": 0,
+        "openingPercentage": 5,
+        "valvePump": 1,
+        "boilerProtection": 1,
+        "returnProtection": 1,
+        "setTemp": 35,
+        "txtId": -1
+      }
+    },
+    {
+      "id": 88888,
+      "parentId": 0,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 795,
+        "value": 52,
+        "batteryLevel": 96,
+        "signalStrength": 67
+      }
+    },
+    {
+      "id": 99999,
+      "parentId": 0,
+      "type": 50,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Controller software version",
+        "version": "2.1.19",
+        "txtId": 873,
+        "iconId": 29,
+        "companyId": 6,
+        "controllerName": "L8",
+        "mainControllerId": 922551613
+      }
+    }
+  ],
+  "tilesOrder": null,
+  "tilesLastUpdate": "2026-11-08 18:37:51.659841+01"
+}
