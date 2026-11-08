@@ -80,6 +80,9 @@
         },
         "cannot_connect": {
             "message": "API eModul ni dosegljiv. Home Assistant bo poskušal naprej."
+        },
+        "entry_from_newer_version": {
+            "message": "Ta vnos je ustvarila novejša različica Tech Controllers. Posodobite integracijo in znova zaženite Home Assistant."
         }
     },
     "options": {

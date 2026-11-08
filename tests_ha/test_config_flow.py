@@ -48,6 +48,7 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_NAME, CONF_PASSWORD, CONF_TOKEN, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.exceptions import ConfigEntryError
 from homeassistant.helpers.selector import TextSelectorType
 
 _CREDENTIALS = {CONF_USERNAME: "test", CONF_PASSWORD: "test"}
@@ -449,7 +450,7 @@ async def test_migration_moves_the_hub_name_flag_into_options(
     )
     entry.add_to_hass(hass)
 
-    assert await async_migrate_entry(hass, entry)
+    await async_migrate_entry(hass, entry)
 
     assert entry.version == ConfigFlow.VERSION
     assert entry.options == {INCLUDE_HUB_IN_NAME: True}
@@ -468,11 +469,35 @@ async def test_migration_of_an_entry_without_the_flag(hass: HomeAssistant) -> No
     )
     entry.add_to_hass(hass)
 
-    assert await async_migrate_entry(hass, entry)
+    await async_migrate_entry(hass, entry)
 
     assert entry.version == ConfigFlow.VERSION
     assert entry.options == {}
     assert entry.data.keys() == {USER_ID, CONF_TOKEN, CONTROLLER}
+
+
+async def test_migration_refuses_an_entry_from_a_newer_version(
+    hass: HomeAssistant,
+) -> None:
+    """A version 5 entry is refused with a reason, not set up halfway.
+
+    The data of an entry written by a newer integration may carry keys this
+    version cannot read, so the migration raises: Home Assistant shows the
+    translated reason and leaves the entry in the migration-error state.
+    """
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="L-8 DEMO",
+        version=5,
+        unique_id="a" * 32,
+        data={USER_ID: "42", CONF_TOKEN: "token", CONTROLLER: _MODULES[0]},
+    )
+    entry.add_to_hass(hass)
+
+    with pytest.raises(ConfigEntryError, match="newer version"):
+        await async_migrate_entry(hass, entry)
+
+    assert entry.version == 5
 
 
 # ---------------------------------------------------------------------------

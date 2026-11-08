@@ -80,6 +80,9 @@
         },
         "cannot_connect": {
             "message": "eModul API pole kättesaadav. Home Assistant jätkab proovimist."
+        },
+        "entry_from_newer_version": {
+            "message": "See kirje on loodud Tech Controllersi uuema versiooniga. Värskendage integratsiooni ja taaskäivitage Home Assistant."
         }
     },
     "options": {

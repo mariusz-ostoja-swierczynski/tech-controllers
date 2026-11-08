@@ -5,6 +5,7 @@ from typing import Any
 
 from homeassistant.const import CONF_TOKEN
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryError
 from homeassistant.helpers import (
     config_validation as cv,
     device_registry as dr,
@@ -31,6 +32,14 @@ _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
+# An entry written by a newer version may carry data this version cannot
+# interpret: refusing it is safer than setting it up halfway.
+MIGRATION_NEWER_VERSION_KEY = "entry_from_newer_version"
+MIGRATION_NEWER_VERSION_MESSAGE = (
+    "This entry was written by a newer version of Tech Controllers. "
+    "Update the integration and restart Home Assistant."
+)
+
 # The runtime data of a Tech config entry is the coordinator that polls the
 # controller. Platforms reach it through ``config_entry.runtime_data`` instead
 # of a shared ``hass.data`` mapping: it is typed, and there is nothing left to
@@ -55,7 +64,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # pylin
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: TechConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: TechConfigEntry) -> None:
     """Initialize Tech Controllers from a config entry.
 
     The method creates a :class:`TechCoordinator`, refreshes the initial
@@ -66,8 +75,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: TechConfigEntry) -> bool
         hass: Home Assistant instance.
         entry: Active configuration entry for the integration.
 
-    Returns:
-        ``True`` if the entry was set up successfully.
+    Raises:
+        ConfigEntryNotReady: If the initial refresh fails. Home Assistant
+            retries the setup.
 
     """
     _LOGGER.debug("Setting up component's entry")
@@ -132,24 +142,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: TechConfigEntry) -> bool
 
     entry.async_on_unload(coordinator.async_add_listener(_watch_reported))
 
-    return True
 
-
-async def async_unload_entry(hass: HomeAssistant, entry: TechConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: TechConfigEntry) -> None:
     """Unload a config entry.
 
     Args:
         hass: Home Assistant instance.
         entry: Configuration entry to unload.
 
-    Returns:
-        ``True`` if all platforms were unloaded successfully.
+    Raises:
+        ConfigEntryError: If a platform fails to unload, which leaves the entry
+            in Home Assistant's failed-unload state.
 
     """
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    await hass.config_entries.async_unload_platforms_or_raise(entry, PLATFORMS)
 
 
-async def async_migrate_entry(hass: HomeAssistant, entry: TechConfigEntry) -> bool:
+async def async_migrate_entry(hass: HomeAssistant, entry: TechConfigEntry) -> None:
     """Migrate an entry written by an older version of this integration.
 
     Version 3 stored the hub-name setting among the entry's data; version 4
@@ -160,14 +169,19 @@ async def async_migrate_entry(hass: HomeAssistant, entry: TechConfigEntry) -> bo
         hass: Home Assistant instance.
         entry: Configuration entry to migrate.
 
-    Returns:
-        ``True`` when the entry can be set up, ``False`` to refuse it.
+    Raises:
+        ConfigEntryError: If a newer version wrote the entry, since this version
+            may not be able to interpret its data.
 
     """
     if entry.version > 4:
         # A newer version wrote this entry, and it may carry data this version
         # cannot interpret: refusing it is safer than setting it up halfway.
-        return False
+        raise ConfigEntryError(
+            MIGRATION_NEWER_VERSION_MESSAGE,
+            translation_domain=DOMAIN,
+            translation_key=MIGRATION_NEWER_VERSION_KEY,
+        )
 
     if entry.version < 4:
         data = dict(entry.data)
@@ -179,8 +193,6 @@ async def async_migrate_entry(hass: HomeAssistant, entry: TechConfigEntry) -> bo
             entry, data=data, options=options, version=4
         )
         _LOGGER.debug("Migrated config entry %s to version 4", entry.entry_id)
-
-    return True
 
 
 # How many polls in a row a controller has to leave a payload entry out before
