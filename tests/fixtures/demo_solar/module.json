@@ -1,0 +1,152 @@
+{
+  "zones": {
+    "transaction_time": null,
+    "elements": [],
+    "globalSchedules": {
+      "time": null,
+      "duringChange": null,
+      "elements": []
+    },
+    "controllerParameters": {}
+  },
+  "tiles": [
+    {
+      "id": 509,
+      "parentId": 0,
+      "type": 50,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Controller software version",
+        "version": "1.1.2",
+        "txtId": 1634,
+        "iconId": 29,
+        "companyId": 6,
+        "controllerName": "ST-402N PWM ",
+        "mainControllerId": 1844951406
+      }
+    },
+    {
+      "id": 664,
+      "parentId": 0,
+      "type": 41,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Date",
+        "year": 2017,
+        "month": 6,
+        "day": 8,
+        "dayId": 4,
+        "hours": 12,
+        "minutes": 6
+      }
+    },
+    {
+      "id": 889,
+      "parentId": 0,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 2437,
+        "value": 507,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 890,
+      "parentId": 0,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 2438,
+        "value": 373,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 891,
+      "parentId": 0,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 2439,
+        "value": 243,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 893,
+      "parentId": 0,
+      "type": 40,
+      "menuId": 893,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Text information",
+        "statusId": 808,
+        "headerId": 820,
+        "iconId": 95,
+        "options": []
+      }
+    },
+    {
+      "id": 975,
+      "parentId": 0,
+      "type": 6,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 17,
+        "widget1": {
+          "txtId": 2515,
+          "value": 28,
+          "unit": 8,
+          "type": 2,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 0,
+          "value": 0,
+          "unit": -1,
+          "type": 0,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    }
+  ],
+  "tilesOrder": null,
+  "tilesLastUpdate": "2026-11-08 18:37:51.887747+01"
+}

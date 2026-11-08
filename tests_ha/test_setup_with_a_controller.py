@@ -58,6 +58,14 @@ _EXPECTED = {
     "st521": {"binary_sensor": 65, "sensor": 84},
     "st2801": {"binary_sensor": 3, "sensor": 8},
     "pellet": {"binary_sensor": 4, "sensor": 12},
+    # The live demo account's current controllers. They were downloaded from
+    # the eModul API and are kept unchanged, so the tests cover the real
+    # installation, zones-controller and solar payload shapes.
+    "demo_i3": {"binary_sensor": 9, "sensor": 25},
+    "demo_l12": {"binary_sensor": 1, "climate": 8, "sensor": 46},
+    "demo_l8": {"binary_sensor": 1, "climate": 8, "sensor": 66},
+    "demo_pellet": {"binary_sensor": 4, "sensor": 12},
+    "demo_solar": {"binary_sensor": 1, "sensor": 5},
 }
 
 
