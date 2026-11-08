@@ -1,6 +1,9 @@
 {
   "domain": "tech",
   "name": "Tech Controllers",
+  "categories": [
+    "climate.thermostats_heating"
+  ],
   "codeowners": [
     "@mariusz-ostoja-swierczynski",
     "@anarion80"
