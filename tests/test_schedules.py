@@ -667,7 +667,7 @@ async def test_real_cache_and_setup_share_existing_gets_and_clear_removed_zones(
     assert diagnostic._attr_entity_registry_enabled_default is False
     assert diagnostic._attr_entity_category == "diagnostic"
     assert diagnostic._attr_translation_key == "controller_schedules"
-    assert diagnostic.device_info["identifiers"] == {(const.DOMAIN, _UDID)}
+    assert diagnostic.device_info.identifiers == {(const.DOMAIN, _UDID)}
     zone_schedules = [
         entity for entity in added if isinstance(entity, sensor.ZoneScheduleSensor)
     ]
