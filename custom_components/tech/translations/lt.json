@@ -44,11 +44,16 @@
                 "description": "Pasirinkite valdiklius, kuriuos norite integruoti.",
                 "data": {
                     "controllers": "Valdikliai importavimui",
-                    "include_hub_in_name": "Įtraukti centrinį mazgą (valdiklį) į sąvybių pavadinimus"
+                    "include_hub_in_name": "Įtraukti centrinį mazgą (valdiklį) į sąvybių pavadinimus",
+                    "configure_menu_codes": "Konfigūruoti meniu kodus",
+                    "menu_code_mu": "Naudotojo meniu kodas (MU)",
+                    "menu_code_mi": "Instaliuotojo meniu kodas (MI)",
+                    "menu_code_ms": "Serviso meniu kodas (MS)"
                 },
                 "data_description": {
                     "controllers": "Valdiklis, kurį norite pridėti. Kiekvienam kitam valdikliui pridėkite integraciją iš naujo.",
-                    "include_hub_in_name": "Pridėkite integracijos pavadinimą prieš šio valdiklio zonų sąvybių pavadinimus. Naudinga, kai sukonfigūruoti keli valdikliai."
+                    "include_hub_in_name": "Pridėkite integracijos pavadinimą prieš šio valdiklio zonų sąvybių pavadinimus. Naudinga, kai sukonfigūruoti keli valdikliai.",
+                    "configure_menu_codes": "Kai kurie valdikliai instaliuotojo ir serviso meniu laiko už kodo. Įveskite kiekvieno meniu, kurį Home Assistant turi skaityti, kodą arba palikite laukus tuščius. Neteisingas kodas elgiasi lygiai taip pat, kaip jokio kodo."
                 }
             },
             "reauth_confirm": {
@@ -93,15 +98,6 @@
                 },
                 "data_description": {
                     "include_hub_in_name": "Pridėkite integracijos pavadinimą prieš šio valdiklio zonų sąvybių pavadinimus. Naudinga, kai sukonfigūruoti keli valdikliai."
-                }
-            },
-            "menu_codes": {
-                "title": "Meniu kodai",
-                "description": "Kai kurie valdikliai instaliuotojo ir serviso meniu laiko už kodo. Įveskite kiekvieno meniu, kurį Home Assistant turi skaityti, kodą arba palikite laukus tuščius. Neteisingas kodas elgiasi lygiai taip pat, kaip jokio kodo.",
-                "data": {
-                    "menu_code_mu": "Naudotojo meniu kodas (MU)",
-                    "menu_code_mi": "Instaliuotojo meniu kodas (MI)",
-                    "menu_code_ms": "Serviso meniu kodas (MS)"
                 }
             }
         }

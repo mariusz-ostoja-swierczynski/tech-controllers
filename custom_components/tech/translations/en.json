@@ -44,11 +44,16 @@
         "description": "Please select the controllers you want to integrate.",
         "data": {
           "controllers": "Controller to import",
-          "include_hub_in_name": "Include hub (controller) name in entity names"
+          "include_hub_in_name": "Include hub (controller) name in entity names",
+          "configure_menu_codes": "Configure menu codes",
+          "menu_code_mu": "User menu code (MU)",
+          "menu_code_mi": "Installer menu code (MI)",
+          "menu_code_ms": "Service menu code (MS)"
         },
         "data_description": {
           "controllers": "The controller to add. Run the flow again for each further controller.",
-          "include_hub_in_name": "Prefix the entity names of this controller's zones with the name of the integration, which helps when several controllers are set up."
+          "include_hub_in_name": "Prefix the entity names of this controller's zones with the name of the integration, which helps when several controllers are set up.",
+          "configure_menu_codes": "Some controllers keep their installer and service menus behind a code. Tick this to enter the codes; unticked, the fields stay hidden and no code is stored. A wrong code behaves exactly like no code."
         }
       },
       "reauth_confirm": {
@@ -93,15 +98,6 @@
         },
         "data_description": {
           "include_hub_in_name": "Prefix the entity names of this controller's zones with the name of the integration, which helps when several controllers are set up."
-        }
-      },
-      "menu_codes": {
-        "title": "Menu codes",
-        "description": "Some controllers keep their installer and service menus behind a code. Enter the code for each menu you want Home Assistant to read, or leave the fields empty. A wrong code behaves exactly like no code.",
-        "data": {
-          "menu_code_mu": "User menu code (MU)",
-          "menu_code_mi": "Installer menu code (MI)",
-          "menu_code_ms": "Service menu code (MS)"
         }
       }
     }

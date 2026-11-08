@@ -8,7 +8,7 @@ from typing import Any
 
 import probatio
 
-from homeassistant import config_entries, core, exceptions
+from homeassistant import config_entries, core, data_entry_flow, exceptions
 from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlowResult,
@@ -36,6 +36,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import (
+    CONF_CONFIGURE_MENU_CODES,
     CONF_MENU_CODES,
     CONTROLLER,
     CONTROLLERS,
@@ -67,41 +68,20 @@ DATA_SCHEMA = probatio.Schema(
 )
 
 
-def menu_codes_schema() -> probatio.Schema:
-    """Build the optional per-tree menu-code form.
-
-    One field per tree that can be gated, every one optional. Some controllers
-    keep their installer and service menus behind a code, and a tree held behind
-    one answers with its root alone -- marked with ``params.password`` -- without
-    saying which code it wants, so the code can only be supplied, which is what
-    this form is for. Every field is a password field, because a code is a
-    credential of the same kind as the token.
-
-    Returns:
-        Schema with an optional code field for every menu tree that can be
-        gated.
-
-    """
-    return probatio.Schema(
-        {
-            probatio.Optional(menu_code_field(menu_type), default=""): TextSelector(
-                TextSelectorConfig(type=TextSelectorType.PASSWORD)
-            )
-            for menu_type in MENU_CODE_TREES
-        }
-    )
-
-
 def _menu_codes_from(user_input: dict[str, Any]) -> dict[str, str]:
     """Return the codes a payload carries, dropping the empty ones.
 
     An empty field means "no code", not "an empty code", so it is not stored at
     all: an entry is then indistinguishable from one configured before codes
-    existed, and no empty code is ever sent to the controller.
+    existed, and no empty code is ever sent to the controller. A payload from a
+    form whose menu-code checkbox was left unticked holds none of the fields at
+    all, because Home Assistant leaves a hidden field out of the submitted
+    input.
 
     Args:
         user_input: Validated payload holding the code fields, or any payload --
-            such as the controller selection alone -- that holds none of them.
+            such as a controller selection with the checkbox unticked -- that
+            holds none of them.
 
     Returns:
         Mapping of menu type to code, holding only the trees that were given
@@ -116,7 +96,10 @@ def _menu_codes_from(user_input: dict[str, Any]) -> dict[str, str]:
 
 
 def controllers_schema(
-    controllers: list[dict[str, Any]], *, with_naming: bool = True
+    controllers: list[dict[str, Any]],
+    *,
+    with_naming: bool = True,
+    with_menu_codes: bool = True,
 ) -> probatio.Schema:
     """Build the selection form for the provided controller list.
 
@@ -124,17 +107,23 @@ def controllers_schema(
     every entry stands for exactly one controller. The naming preference is
     asked when a controller is being added, because it is about the controller
     being added, and a setting is easiest to answer while the user is looking at
-    it; it is stored in the entry's options rather than its data. Reconfiguring
-    an entry asks for the controller alone: its naming preference belongs to
-    that entry, and the options flow is where it is changed.
+    it; it is stored in the entry's options rather than its data. A controller
+    can also keep its menus behind a code, so the form offers the per-tree codes
+    as well, behind a checkbox that reveals them: a user who keeps none never
+    sees the fields. Home Assistant leaves a hidden field out of the submitted
+    input, so an unticked form carries no codes at all. Reconfiguring an entry
+    asks for the controller alone: its naming preference belongs to that entry,
+    the options flow is where it is changed, and its codes are setup-time only.
 
     Args:
         controllers: Sequence returned by the Tech API describing modules.
         with_naming: Whether the form also asks for the naming preference.
+        with_menu_codes: Whether the form also offers the per-tree menu codes.
 
     Returns:
-        Voluptuous schema with a dropdown of the account's controllers, and the
-        naming preference when it was asked for.
+        Voluptuous schema with a dropdown of the account's controllers, the
+        naming preference when it was asked for, and the menu codes behind
+        their checkbox.
 
     """
     fields: dict[Any, Any] = {
@@ -156,6 +145,21 @@ def controllers_schema(
         fields[probatio.Required(INCLUDE_HUB_IN_NAME, default=False)] = (
             BooleanSelector()
         )
+
+    if with_menu_codes:
+        # The checkbox reveals the code fields; Home Assistant drops a hidden
+        # field from ``user_input``, so leaving it unticked stores nothing.
+        fields[data_entry_flow.Optional(CONF_CONFIGURE_MENU_CODES, default=False)] = (
+            BooleanSelector()
+        )
+        for menu_type in MENU_CODE_TREES:
+            fields[
+                data_entry_flow.Optional(
+                    menu_code_field(menu_type),
+                    default="",
+                    visible={"field": CONF_CONFIGURE_MENU_CODES, "value": True},
+                )
+            ] = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
 
     return probatio.Schema(fields)
 
@@ -218,11 +222,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """
         self._init_info: dict[str, Any] | None = None
         self._controllers: list[dict[str, Any]] = []
-        # The controller chosen on the selection step and the naming preference
-        # given with it, held between that step and the menu-code step that
-        # follows: the entry is created once both are in.
-        self._selected_controller: dict[str, Any] | None = None
-        self._include_hub_in_name: bool = False
 
     @staticmethod
     @callback
@@ -266,9 +265,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Display the controller selection form or create the chosen entry.
 
+        The form also asks for the per-tree menu codes, behind a checkbox that
+        reveals them; Home Assistant leaves a hidden field out of the submitted
+        input, so a user who keeps no menu behind a code never sees the fields
+        and the entry carries no codes.
+
         Args:
-            user_input: Optional mapping naming the controller to add and the
-                naming preference to start it with.
+            user_input: Optional mapping naming the controller to add, the
+                naming preference to start it with, and any menu codes given.
 
         Returns:
             The selection form, or the result of creating the entry for the
@@ -305,43 +309,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         await self.async_set_unique_id(controller[CONTROLLER][UDID])
         self._abort_if_unique_id_configured()
 
-        # The controller is chosen; the codes it may need are asked for on their
-        # own form, and the entry is created once both are in.
-        self._selected_controller = controller
-        self._include_hub_in_name = bool(user_input.get(INCLUDE_HUB_IN_NAME, False))
-        return await self.async_step_menu_codes()
-
-    async def async_step_menu_codes(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Ask for the per-tree menu codes and create the chosen entry.
-
-        A controller can keep its installer and service menus behind a code, and
-        a tree held behind one answers with its root alone rather than saying
-        which code it wants, so a code can only be supplied by the user. Every
-        field is optional and empty means "no code", so a user with none can
-        submit the form untouched and get exactly the behaviour of an entry that
-        predates this step.
-
-        Args:
-            user_input: Optional mapping holding the code given for each tree.
-
-        Returns:
-            The code form, or the result of creating the entry.
-
-        """
-        if self._selected_controller is None:
-            # Reached without a controller, which can only happen for a stale
-            # flow: go back to the step that picks one.
-            return await self.async_step_select_controllers()
-
-        if user_input is None:
-            return self.async_show_form(
-                step_id="menu_codes",
-                data_schema=menu_codes_schema(),
-            )
-
-        controller = self._selected_controller
         data = dict(controller)
         menu_codes = _menu_codes_from(user_input)
         if menu_codes:
@@ -357,11 +324,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(
             title=controller[CONTROLLER][CONF_NAME],
             data=data,
-            # A naming preference, not connection data: it is asked on the
-            # selection step, while the user is looking at the controller it
-            # applies to, stored where the settings belong, and editable
-            # afterwards in the options flow.
-            options={INCLUDE_HUB_IN_NAME: self._include_hub_in_name},
+            # A naming preference, not connection data: it is asked alongside the
+            # controller while the user is looking at the one it applies to,
+            # stored where the settings belong, and editable afterwards in the
+            # options flow.
+            options={
+                INCLUDE_HUB_IN_NAME: bool(user_input.get(INCLUDE_HUB_IN_NAME, False))
+            },
         )
 
     async def async_step_reconfigure(
@@ -438,7 +407,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="reconfigure",
-            data_schema=controllers_schema(self._controllers, with_naming=False),
+            data_schema=controllers_schema(
+                self._controllers, with_naming=False, with_menu_codes=False
+            ),
             errors=errors,
         )
 

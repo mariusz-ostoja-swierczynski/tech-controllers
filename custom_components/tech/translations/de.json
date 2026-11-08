@@ -44,11 +44,16 @@
                 "description": "Bitte wählen Sie die Controller aus, die Sie integrieren möchten.",
                 "data": {
                     "controllers": "Zu importierende Controller",
-                    "include_hub_in_name": "Hub (Controller) Namen in Entitätsnamen einbeziehen"
+                    "include_hub_in_name": "Hub (Controller) Namen in Entitätsnamen einbeziehen",
+                    "configure_menu_codes": "Menücodes konfigurieren",
+                    "menu_code_mu": "Code für Benutzermenü (MU)",
+                    "menu_code_mi": "Code für Installateurmenü (MI)",
+                    "menu_code_ms": "Code für Servicemenü (MS)"
                 },
                 "data_description": {
                     "controllers": "Der Controller, der hinzugefügt werden soll. Fügen Sie die Integration für jeden weiteren Controller erneut hinzu.",
-                    "include_hub_in_name": "Stellen Sie den Entitätsnamen der Zonen dieses Controllers den Namen der Integration voran. Hilfreich, wenn mehrere Controller eingerichtet sind."
+                    "include_hub_in_name": "Stellen Sie den Entitätsnamen der Zonen dieses Controllers den Namen der Integration voran. Hilfreich, wenn mehrere Controller eingerichtet sind.",
+                    "configure_menu_codes": "Manche Regler halten ihre Installateur- und Servicemenüs hinter einem Code. Geben Sie den Code für jedes Menü ein, das Home Assistant lesen soll, oder lassen Sie die Felder leer. Ein falscher Code verhält sich genau wie kein Code."
                 }
             },
             "reauth_confirm": {
@@ -93,15 +98,6 @@
                 },
                 "data_description": {
                     "include_hub_in_name": "Stellen Sie den Entitätsnamen der Zonen dieses Controllers den Namen der Integration voran. Hilfreich, wenn mehrere Controller eingerichtet sind."
-                }
-            },
-            "menu_codes": {
-                "title": "Menücodes",
-                "description": "Manche Regler halten ihre Installateur- und Servicemenüs hinter einem Code. Geben Sie den Code für jedes Menü ein, das Home Assistant lesen soll, oder lassen Sie die Felder leer. Ein falscher Code verhält sich genau wie kein Code.",
-                "data": {
-                    "menu_code_mu": "Code für Benutzermenü (MU)",
-                    "menu_code_mi": "Code für Installateurmenü (MI)",
-                    "menu_code_ms": "Code für Servicemenü (MS)"
                 }
             }
         }

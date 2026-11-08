@@ -44,11 +44,16 @@
                 "description": "Izberite krmilnike, ki jih želite integrirati.",
                 "data": {
                     "controllers": "Krmilniki za uvoz",
-                    "include_hub_in_name": "Vključi ime glavnega krmilnika v imena entitet"
+                    "include_hub_in_name": "Vključi ime glavnega krmilnika v imena entitet",
+                    "configure_menu_codes": "Konfiguriraj kode menijev",
+                    "menu_code_mu": "Koda uporabniškega menija (MU)",
+                    "menu_code_mi": "Koda namestitvenega menija (MI)",
+                    "menu_code_ms": "Koda servisnega menija (MS)"
                 },
                 "data_description": {
                     "controllers": "Krmilnik, ki ga želite dodati. Za vsak naslednji krmilnik znova dodajte integracijo.",
-                    "include_hub_in_name": "Dodajte ime integracije pred imena entitet con tega krmilnika. Koristno, kadar je nastavljenih več krmilnikov."
+                    "include_hub_in_name": "Dodajte ime integracije pred imena entitet con tega krmilnika. Koristno, kadar je nastavljenih več krmilnikov.",
+                    "configure_menu_codes": "Nekateri regulatorji hranijo namestitveni in servisni meni za kodo. Vnesite kodo za vsak meni, ki naj ga Home Assistant bere, ali pustite polja prazna. Napačna koda se obnaša popolnoma enako kot nobena koda."
                 }
             },
             "reauth_confirm": {
@@ -93,15 +98,6 @@
                 },
                 "data_description": {
                     "include_hub_in_name": "Dodajte ime integracije pred imena entitet con tega krmilnika. Koristno, kadar je nastavljenih več krmilnikov."
-                }
-            },
-            "menu_codes": {
-                "title": "Kode menijev",
-                "description": "Nekateri regulatorji hranijo namestitveni in servisni meni za kodo. Vnesite kodo za vsak meni, ki naj ga Home Assistant bere, ali pustite polja prazna. Napačna koda se obnaša popolnoma enako kot nobena koda.",
-                "data": {
-                    "menu_code_mu": "Koda uporabniškega menija (MU)",
-                    "menu_code_mi": "Koda namestitvenega menija (MI)",
-                    "menu_code_ms": "Koda servisnega menija (MS)"
                 }
             }
         }

@@ -88,12 +88,13 @@ installer would use — clearing a pressure-switch lockout, for example. The API
 refuses to serve such a menu at all until it is given the code, and its refusal
 says nothing about which code it wants, so the code can only be entered by hand.
 
-The config flow asks for one code per menu — user (`MU`), installer (`MI`) and
-service (`MS`) — right after you pick your controllers. The manufacturer menu
-(`MP`) is not asked about: it is refused on every consumer account, so a code
-would not help. Every field is optional: leave a field empty if you have no code
-for that menu, and the integration behaves exactly as it did before, since a
-field left empty stores no code at all. Two things are worth knowing:
+On the controller form, tick **Configure menu codes** to reveal one code field
+per menu — user (`MU`), installer (`MI`) and service (`MS`). Unticked, the
+fields stay hidden and no code is stored, so the form looks exactly as it did
+before. The manufacturer menu (`MP`) is not asked about: it is refused on every
+consumer account, so a code would not help. Leaving a field empty is the same as
+not ticking the box: no code is stored for that menu. Two things are worth
+knowing:
 
 - A wrong code looks exactly like no code. The API refuses the menu either way
   with the same answer, so a mistyped code cannot be told apart from a missing
@@ -124,7 +125,7 @@ The setup form asks for:
 - **Password** — the password for that account.
 - **Controller to import** — the controller to add, chosen from the ones the account holds. One controller is added per run of the flow, so repeat it for the next one.
 - **Include hub (controller) name in entity names** — the naming preference described under Configuration below, so it can be answered while the controller is being added.
-- **Menu codes** — one optional code per menu that can be kept behind one (user, installer, service). Leave a field empty when you have no code for that menu; nothing else about the setup changes. See [Menu codes](#menu-codes) for what a code unlocks and what a rejected one looks like.
+- **Menu codes** — tick **Configure menu codes** on the controller form to reveal one optional code per menu that can be kept behind one (user, installer, service). Leave a field empty when you have no code for that menu; nothing else about the setup changes. See [Menu codes](#menu-codes) for what a code unlocks and what a rejected one looks like.
 
 ### HACS
 

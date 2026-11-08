@@ -44,11 +44,16 @@
         "description": "Prosím, vyberte moduly, ktoré chcete integrovať.",
         "data": {
           "controllers": "Moduly na import",
-          "include_hub_in_name": "Zahrňte názov hubu (modulu) do názvov entít"
+          "include_hub_in_name": "Zahrňte názov hubu (modulu) do názvov entít",
+          "configure_menu_codes": "Nastaviť kódy menu",
+          "menu_code_mu": "Kód používateľského menu (MU)",
+          "menu_code_mi": "Kód inštalačného menu (MI)",
+          "menu_code_ms": "Kód servisného menu (MS)"
         },
         "data_description": {
           "controllers": "Modul, ktorý chcete pridať. Pre každý ďalší modul pridajte integráciu znova.",
-          "include_hub_in_name": "Pred názvy entít zón tohto modulu pridajte názov integrácie. Hodí sa, ak je nastavených viac modulov."
+          "include_hub_in_name": "Pred názvy entít zón tohto modulu pridajte názov integrácie. Hodí sa, ak je nastavených viac modulov.",
+          "configure_menu_codes": "Niektoré regulátory držia menu inštalatéra a servisné menu za kódom. Zadajte kód pre každé menu, ktoré má Home Assistant čítať, alebo polia ponechajte prázdne. Nesprávny kód sa správa presne ako žiadny kód."
         }
       },
       "reauth_confirm": {
@@ -93,15 +98,6 @@
         },
         "data_description": {
           "include_hub_in_name": "Pred názvy entít zón tohto modulu pridajte názov integrácie. Hodí sa, ak je nastavených viac modulov."
-        }
-      },
-      "menu_codes": {
-        "title": "Kódy menu",
-        "description": "Niektoré regulátory držia menu inštalatéra a servisné menu za kódom. Zadajte kód pre každé menu, ktoré má Home Assistant čítať, alebo polia ponechajte prázdne. Nesprávny kód sa správa presne ako žiadny kód.",
-        "data": {
-          "menu_code_mu": "Kód používateľského menu (MU)",
-          "menu_code_mi": "Kód inštalačného menu (MI)",
-          "menu_code_ms": "Kód servisného menu (MS)"
         }
       }
     }

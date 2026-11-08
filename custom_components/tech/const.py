@@ -540,6 +540,11 @@ MENU_CODE_TREES = [
 # run and VERSION does not move.
 CONF_MENU_CODES = "menu_codes"
 
+# The setup form's opt-in for the codes above: a flow-only field, never stored.
+# It reveals the per-tree code fields while it is checked, so a user who keeps
+# no menu behind a code never sees them.
+CONF_CONFIGURE_MENU_CODES = "configure_menu_codes"
+
 
 def menu_code_field(menu_type: str) -> str:
     """Return the config-flow field name that holds ``menu_type``'s code.
