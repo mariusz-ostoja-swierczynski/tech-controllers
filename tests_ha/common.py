@@ -9,6 +9,7 @@ instead of an empty envelope.
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Callable
 import json
 import pathlib
 from typing import Any
@@ -81,6 +82,7 @@ async def set_up(
     *,
     post: AsyncMock | None = None,
     token: str = "token",
+    before_setup: Callable[[MockConfigEntry], None] | None = None,
 ) -> MockConfigEntry:
     """Set an entry up while the API answers with the recorded payloads.
 
@@ -92,6 +94,9 @@ async def set_up(
             entity's action sent; the shared offline stub answers otherwise.
         token: Bearer token the entry holds, distinctive where a test needs to
             spot a leak of it.
+        before_setup: Optional callback run after the entry is added to Home
+            Assistant and before it is set up, for tests that need to prepare
+            registry state first.
 
     Returns:
         The config entry, now set up.
@@ -114,6 +119,8 @@ async def set_up(
 
     entry = entry_for(fixture, token=token)
     entry.add_to_hass(hass)
+    if before_setup is not None:
+        before_setup(entry)
 
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()

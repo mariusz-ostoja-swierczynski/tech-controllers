@@ -24,7 +24,7 @@ from common import EMPTY_MENU, UDID, entity_counts, entry_for, set_up
 import pytest
 from pytest_homeassistant.common import async_fire_time_changed
 
-from custom_components.tech.const import CONTROLLER, DOMAIN, SCAN_INTERVAL, VER
+from custom_components.tech.const import DOMAIN, SCAN_INTERVAL
 from custom_components.tech.tech import Tech
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
@@ -159,16 +159,18 @@ async def test_a_poll_hands_the_payload_to_every_entity_again(
     assert entity_counts(hass) == _EXPECTED[fixture]
 
 
-async def test_the_zone_devices_hang_under_the_controller(
+async def test_the_zone_devices_are_children_of_the_controller(
     hass: HomeAssistant,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Every device of the entry names the controller's device as its parent.
+    """Every zone device is a child of the controller's device.
 
-    Home Assistant resolves a parent by device id, which is why the controller's
-    device is created while the entry sets up; the deprecated tuple form would
-    say so in the log instead.
+    A zone is a logical part of the controller, not a separate product reached
+    through it, so the registry records a child relationship: the zone points at
+    its parent device, has no via link, and carries no hardware identity of its
+    own. The parent's manufacturer, model and firmware are what the frontend
+    shows for the child.
     """
     caplog.set_level(logging.WARNING, logger="homeassistant.helpers.frame")
     entry = await set_up(hass, "l12", monkeypatch)
@@ -177,29 +179,70 @@ async def test_the_zone_devices_hang_under_the_controller(
     controller = registry.async_get_device_by_identifier((DOMAIN, UDID), entry.entry_id)
     assert controller is not None
 
-    children = [
-        device
-        for device in dr.async_entries_for_config_entry(registry, entry.entry_id)
-        if device.id != controller.id
-    ]
+    children = dr.async_child_entries_for_config_entry(registry, entry.entry_id)
 
     assert children
-    assert {device.via_device_id for device in children} == {controller.id}
-    # Every device reports the firmware of the controller it belongs to, and no
-    # model: the API describes a controller with one string that carries its
-    # version, and a model would only repeat the device's name.
-    firmware = entry.data[CONTROLLER][VER]
-    assert firmware
-    assert controller.sw_version == firmware
-    assert {device.sw_version for device in children} == {firmware}
-    assert controller.model is None
-    assert {device.model for device in children} == {None}
+    assert {device.parent_device_id for device in children} == {controller.id}
+    # A child device is a lightweight entry: it has no via link and no
+    # manufacturer, model or firmware of its own.
+    for device in children:
+        assert not hasattr(device, "via_device_id")
+        assert not hasattr(device, "manufacturer")
+        assert not hasattr(device, "model")
+        assert not hasattr(device, "sw_version")
     # Every device keeps its name: the controller is named after the entry and a
     # child after the zone it stands for, and neither is emptied by the model
     # being cleared.
     assert controller.name == entry.title
     assert all(device.name for device in children)
     assert "deprecated `via_device`" not in caplog.text
+
+
+async def test_an_existing_zone_device_becomes_a_child_in_place(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A zone device from a previous setup is converted to a child, keeping its id.
+
+    The zone's identifiers have not changed, so Home Assistant finds the device
+    the integration created before the migration and adopts it as a child
+    instead of replacing it: device-based automations keep working.
+    """
+    registry = dr.async_get(hass)
+    existing_id: str | None = None
+
+    def _precreate(entry: Any) -> None:
+        nonlocal existing_id
+        existing = registry.async_get_or_create(
+            config_entry_id=entry.entry_id,
+            identifiers={(DOMAIN, f"{UDID}_9061")},
+            name="Old zone device",
+        )
+        existing_id = existing.id
+
+    entry = await set_up(hass, "l12", monkeypatch, before_setup=_precreate)
+
+    # The pre-created device is a live main device for this setup, so Home
+    # Assistant refuses the conversion. The next setup, after an unload, is what
+    # a user gets when they upgrade: the device from the previous setup can then
+    # be adopted as a child without changing its id.
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    controller = registry.async_get_device_by_identifier((DOMAIN, UDID), entry.entry_id)
+    zones = [
+        device
+        for device in dr.async_child_entries_for_config_entry(
+            registry, entry.entry_id
+        )
+        if (DOMAIN, f"{UDID}_9061") in device.identifiers
+    ]
+    assert controller is not None
+    assert zones
+    zone = zones[0]
+    assert zone.id == existing_id
+    assert zone.parent_device_id == controller.id
 
 
 async def test_unloading_the_entry_stops_the_polling(

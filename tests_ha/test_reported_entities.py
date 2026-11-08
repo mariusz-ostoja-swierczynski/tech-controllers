@@ -75,7 +75,10 @@ def _device_ids(hass: HomeAssistant, entry: MockConfigEntry) -> set[str]:
     registry = dr.async_get(hass)
     return {
         device.id
-        for device in dr.async_entries_for_config_entry(registry, entry.entry_id)
+        for device in (
+            *dr.async_entries_for_config_entry(registry, entry.entry_id),
+            *dr.async_child_entries_for_config_entry(registry, entry.entry_id),
+        )
     }
 
 
@@ -105,8 +108,13 @@ async def test_a_zone_the_controller_starts_reporting_gains_its_entities(
 
     identifiers = {
         identifier
-        for device in dr.async_entries_for_config_entry(
-            dr.async_get(hass), entry.entry_id
+        for device in (
+            *dr.async_entries_for_config_entry(
+                dr.async_get(hass), entry.entry_id
+            ),
+            *dr.async_child_entries_for_config_entry(
+                dr.async_get(hass), entry.entry_id
+            ),
         )
         for identifier in device.identifiers
     }
@@ -358,7 +366,10 @@ async def test_the_controller_device_cannot_be_removed_by_hand(
     registry = dr.async_get(hass)
     devices = {
         tuple(sorted(device.identifiers)): device
-        for device in dr.async_entries_for_config_entry(registry, entry.entry_id)
+        for device in (
+            *dr.async_entries_for_config_entry(registry, entry.entry_id),
+            *dr.async_child_entries_for_config_entry(registry, entry.entry_id),
+        )
     }
 
     controller = devices[((DOMAIN, UDID),)]

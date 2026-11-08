@@ -6,7 +6,7 @@ from typing import Any
 from homeassistant.components.select import SelectEntity
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import ChildDeviceInfo, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -172,16 +172,13 @@ class MenuSelectEntity(
         return f"menu_{self._menu_key}"
 
     @property
-    def device_info(self) -> DeviceInfo | None:
-        """Return device info for the zone or controller this entity belongs to."""
+    def device_info(self) -> ChildDeviceInfo | DeviceInfo | None:
+        """Return the zone child device or the controller device."""
         if self._zone_id is not None:
-            return DeviceInfo(
+            return ChildDeviceInfo(
                 identifiers={(DOMAIN, f"{self._udid}_{self._zone_id}")},
                 name=self._zone_name,
-                model=assets.controller_model(self._config_entry),
-                sw_version=assets.controller_firmware(self._config_entry),
-                manufacturer=self.manufacturer,
-                via_device_id=assets.via_controller(self.coordinator),
+                parent_device_id=assets.parent_controller(self.coordinator),
             )
         return DeviceInfo(
             identifiers={(DOMAIN, self._udid)},
