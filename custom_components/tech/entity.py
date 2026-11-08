@@ -110,6 +110,19 @@ class ReportedEntity(entity.Entity):
         for forget in self.coordinator.forget_callbacks:
             forget(self.unique_id)
 
+    @callback
+    def async_entity_id_changed(self, old_entity_id: str) -> None:
+        """Keep this entity when its entity_id changes in the registry.
+
+        Home Assistant removes and re-adds an entity whose class has not opted
+        in to the in-place rename. The removal would tell the platform this
+        entity left, and the next poll would then register a second object for
+        the same unique id, which Home Assistant refuses as a duplicate. Nothing
+        here is keyed by the entity_id -- the unique id, the source key and every
+        reading are independent of it -- so the in-place rename needs no work.
+        """
+        super().async_entity_id_changed(old_entity_id)
+
 
 def controller_device_info(config_entry: TechConfigEntry) -> DeviceInfo:
     """Return the shared device description for controller-level entities.
