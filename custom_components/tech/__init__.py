@@ -21,12 +21,12 @@ from .const import (
     CONTROLLER,
     DOMAIN,
     INCLUDE_HUB_IN_NAME,
-    MANUFACTURER,
     PLATFORMS,
     UDID,
     USER_ID,
 )
 from .coordinator import TechConfigEntry, TechCoordinator
+from .entity import controller_device_info
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -107,19 +107,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: TechConfigEntry) -> None
 
     # The controller's own device is created before the platforms run, because
     # the registry names a parent device by its id and an entity of one of the
-    # controller's zones or sensors can only point at a device that exists.
-    controller = entry.data[CONTROLLER]
-    controller_device = dr.async_get(hass).async_get_or_create(
+    # controller's zones or sensors can only point at a device that exists. The
+    # same DeviceInfo describes the controller for those entities, so it is
+    # built once and handed to the registry as it is.
+    controller_device = dr.async_get(hass).async_get_or_create_from_info(
         config_entry_id=entry.entry_id,
-        identifiers={(DOMAIN, controller[UDID])},
-        name=entry.title,
-        # The API's descriptor carries the model and the firmware in one string,
-        # so both are read from it: the model gives the device its heading in the
-        # UI, sw_version its firmware. A model field of its own does not exist,
-        # and the entry's title would only repeat the device name.
-        model=assets.controller_model(entry),
-        sw_version=assets.controller_firmware(entry),
-        manufacturer=MANUFACTURER,
+        device_info=controller_device_info(entry),
     )
     coordinator.controller_device_id = controller_device.id
 

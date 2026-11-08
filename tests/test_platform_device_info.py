@@ -146,7 +146,14 @@ class _ConfigEntry:
 
 
 class _DeviceInfo(dict):
-    """Stand-in for the ``DeviceInfo`` typed dict."""
+    """Stand-in for the ``DeviceInfo`` dataclass, which is read by attribute."""
+
+    def __getattr__(self, name: str) -> Any:
+        """Return a set field the way the dataclass does."""
+        try:
+            return self[name]
+        except KeyError as err:
+            raise AttributeError(name) from err
 
 
 class _AddEntitiesCallback:
@@ -831,10 +838,10 @@ def test_a_zone_entity_without_a_known_controller_device_has_no_parent() -> None
     )
 
     info = entity.device_info
-    assert info["identifiers"] == {(const.DOMAIN, f"{_UDID}_101")}
-    # ``DeviceInfo`` is a dataclass now, so a field that is not set is still
-    # readable: what says the entity has no parent is the missing value.
-    assert info["via_device_id"] is None
+    assert info.identifiers == {(const.DOMAIN, f"{_UDID}_101")}
+    # The entity has no parent because the controller's device id is not known
+    # yet, which the builder records as an explicit None.
+    assert info.via_device_id is None
 
 
 @pytest.mark.parametrize(("module_name", "class_name"), PLATFORMS, ids=_PLATFORM_IDS)
@@ -849,7 +856,7 @@ def test_zone_names_built_with_the_hub_prefix_reach_the_device(
     )
     entity = _build(module_name, class_name, zone_id=101, zone_names=zone_names)
 
-    assert entity.device_info["name"] == "L-8 DEMO Strefa 1"
+    assert entity.device_info.name == "L-8 DEMO Strefa 1"
 
 
 @pytest.mark.parametrize(("module_name", "class_name"), PLATFORMS, ids=_PLATFORM_IDS)
@@ -864,7 +871,7 @@ def test_zone_names_built_without_the_prefix_reach_the_device(
     )
     entity = _build(module_name, class_name, zone_id=101, zone_names=zone_names)
 
-    assert entity.device_info["name"] == "Strefa 1"
+    assert entity.device_info.name == "Strefa 1"
 
 
 def _flag_tile(*, txt_id: int = 4640, unit: int = 28) -> dict[str, Any]:
