@@ -66,6 +66,22 @@ _EXPECTED = {
     "demo_l8": {"binary_sensor": 1, "climate": 8, "sensor": 66},
     "demo_pellet": {"binary_sensor": 4, "sensor": 12},
     "demo_solar": {"binary_sensor": 1, "sensor": 5},
+    # Issue-provided dumps, sanitized: the controller name, mainControllerId
+    # and any menu passwords are removed or redacted before they are committed.
+    # The counts pin what each real-world payload builds.
+    "st581_user": {
+        "binary_sensor": 8,
+        "button": 18,
+        "number": 112,
+        "select": 27,
+        "sensor": 12,
+        "switch": 38,
+    },
+    "st534g_user": {"binary_sensor": 3, "sensor": 4},
+    "i3_plus_user": {"binary_sensor": 13, "sensor": 28},
+    "st9721_user": {"binary_sensor": 9, "sensor": 15},
+    "i1_cwu_user": {"binary_sensor": 2, "sensor": 10},
+    "i3_plus_solar_user": {"binary_sensor": 12, "sensor": 16},
 }
 
 

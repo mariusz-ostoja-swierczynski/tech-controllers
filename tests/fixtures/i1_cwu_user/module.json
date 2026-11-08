@@ -1,0 +1,184 @@
+{
+  "zones": {
+    "transaction_time": null,
+    "elements": [],
+    "globalSchedules": {
+      "time": null,
+      "duringChange": null,
+      "elements": []
+    },
+    "controllerParameters": {}
+  },
+  "tiles": [
+    {
+      "id": 6000,
+      "parentId": 0,
+      "type": 50,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Controller software version",
+        "version": "1.4.5",
+        "txtId": 873,
+        "iconId": 50,
+        "companyId": 6
+      }
+    },
+    {
+      "id": 6002,
+      "parentId": 0,
+      "type": 40,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Text information",
+        "statusId": 594,
+        "headerId": 1039,
+        "iconId": 50,
+        "options": []
+      }
+    },
+    {
+      "id": 6009,
+      "parentId": 0,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": true,
+        "txtId": 1050,
+        "value": 435,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 6012,
+      "parentId": 0,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": false,
+        "txtId": 795,
+        "value": -2000,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 6016,
+      "parentId": 0,
+      "type": 23,
+      "menuId": 2229,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Built-in valve",
+        "workingStatus": true,
+        "valveNumber": 0,
+        "currentTemp": 182,
+        "returnTemp": -2000,
+        "setTempCorrection": 0,
+        "openingPercentage": 5,
+        "valvePump": 1,
+        "boilerProtection": 0,
+        "returnProtection": 0,
+        "setTemp": 19,
+        "txtId": -1
+      }
+    },
+    {
+      "id": 6019,
+      "parentId": 0,
+      "type": 1,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Temperature sensor",
+        "workingStatus": false,
+        "txtId": 1040,
+        "value": -2000,
+        "batteryLevel": null,
+        "signalStrength": null
+      }
+    },
+    {
+      "id": 8405,
+      "parentId": 0,
+      "type": 11,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Relay",
+        "workingStatus": false,
+        "txtId": 573,
+        "iconId": 17
+      }
+    },
+    {
+      "id": 8406,
+      "parentId": 0,
+      "type": 6,
+      "menuId": 8400,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Universal status with widgets",
+        "statusId": 1,
+        "iconId": 87,
+        "widget1": {
+          "txtId": 1279,
+          "value": 0,
+          "unit": 6,
+          "type": 1,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "widget2": {
+          "txtId": 1041,
+          "value": 342,
+          "unit": 7,
+          "type": 9,
+          "params": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 8407,
+      "parentId": 0,
+      "type": 40,
+      "menuId": 0,
+      "orderId": null,
+      "visibility": true,
+      "params": {
+        "description": "Text information",
+        "statusId": 924,
+        "headerId": 729,
+        "iconId": 167,
+        "options": []
+      }
+    }
+  ],
+  "tilesOrder": null,
+  "tilesLastUpdate": "2026-03-18 03:25:23.23118+01"
+}
