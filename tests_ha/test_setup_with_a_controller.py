@@ -27,7 +27,7 @@ from pytest_homeassistant.common import async_fire_time_changed
 from custom_components.tech.const import CONTROLLER, DOMAIN, SCAN_INTERVAL, VER
 from custom_components.tech.tech import Tech
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.util import dt as dt_util
 
 # What each recorded controller produces, per entity domain. Pinned so that a
@@ -89,6 +89,36 @@ async def test_a_platform_never_claims_the_same_unique_id_twice(
 
     assert "does not generate unique IDs" not in caplog.text
     assert entity_counts(hass) == {"binary_sensor": 4, "sensor": 12}
+
+
+async def test_renaming_an_entity_keeps_it_in_place(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """An entity_id change is a rename, not a departure.
+
+    Home Assistant removes and re-adds an entity whose class has not opted in to
+    the in-place rename. That departure told the platform the entity left, and
+    the next poll registered a second object for the same unique id, which Home
+    Assistant refused with a duplicate-unique-id error. Assigning a device to an
+    area renames its entities, which is how a fresh install hit it.
+    """
+    entry = await set_up(hass, "pellet", monkeypatch)
+    registry = er.async_get(hass)
+    row = next(row for row in registry.entities.values() if row.platform == DOMAIN)
+    new_entity_id = row.entity_id.replace(".", ".renamed_", 1)
+
+    registry.async_update_entity(row.entity_id, new_entity_id=new_entity_id)
+    await hass.async_block_till_done()
+
+    await entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+
+    renamed = registry.async_get(new_entity_id)
+    assert renamed is not None
+    assert renamed.unique_id == row.unique_id
+    assert "does not generate unique IDs" not in caplog.text
 
 
 async def test_a_controller_that_reports_nothing_builds_nothing(
