@@ -287,9 +287,6 @@ def _async_translate_state(
 def _stub_const(module: types.ModuleType) -> None:
     """Fill the ``homeassistant.const`` stub: one attribute per constant read."""
     module.ATTR_ID = "id"
-    module.ATTR_IDENTIFIERS = "identifiers"
-    module.ATTR_MANUFACTURER = "manufacturer"
-    module.ATTR_SW_VERSION = "sw_version"
     module.CONF_DESCRIPTION = "description"
     module.CONF_ID = "id"
     module.CONF_MODEL = "model"
