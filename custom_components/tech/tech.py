@@ -24,7 +24,7 @@ from .const import (
     MODULE_DATA_CACHE_TTL,
     TECH_SUPPORTED_LANGUAGES,
 )
-from .schedules import schedule_snapshot
+from .schedules import PERMANENT_CONST_TEMP_TIME, schedule_snapshot
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -738,6 +738,130 @@ class Tech:
             _LOGGER.debug(result)
         else:
             raise TechError(401, "Unauthorized")
+        return result
+
+    async def set_zone_constant(
+        self,
+        module_udid: str,
+        zone_id: int,
+        mode_id: int,
+        target_temp: float,
+        duration_minutes: int | None = None,
+    ) -> dict[str, Any]:
+        """Set a zone to a constant temperature, optionally for a limited time.
+
+        Args:
+            module_udid: Tech module identifier.
+            zone_id: Numeric zone identifier.
+            mode_id: Identifier of the zone's mode object, supplied by the caller.
+            target_temp: Temperature in °C to maintain.
+            duration_minutes: Minutes to hold the temperature for; ``None`` or
+                ``0`` keeps it until changed.
+
+        Returns:
+            Parsed JSON response from the API.
+
+        Raises:
+            TechError: If the client is not currently authenticated.
+
+        """
+        if not self.authenticated:
+            raise TechError(401, "Unauthorized")
+        timed = bool(duration_minutes)
+        data = {
+            "mode": {
+                "id": mode_id,
+                "parentId": zone_id,
+                "mode": "timeLimit" if timed else "constantTemp",
+                "constTempTime": duration_minutes
+                if timed
+                else PERMANENT_CONST_TEMP_TIME,
+                "setTemperature": round(target_temp * 10),
+                "scheduleIndex": 0,
+            }
+        }
+        path = f"users/{self.user_id}/modules/{module_udid}/zones"
+        _LOGGER.debug("Setting zone %s constant temperature: %s", zone_id, data)
+        result = await self.post(path, json.dumps(data))
+        _LOGGER.debug(result)
+        return result
+
+    async def set_zone_local_schedule(
+        self,
+        module_udid: str,
+        zone_id: int,
+        mode_id: int,
+        schedule: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Write a zone's local schedule.
+
+        Args:
+            module_udid: Tech module identifier.
+            zone_id: Numeric zone identifier.
+            mode_id: Identifier of the zone's mode object, supplied by the caller.
+            schedule: Local schedule payload to store on the zone.
+
+        Returns:
+            Parsed JSON response from the API.
+
+        Raises:
+            TechError: If the client is not currently authenticated.
+
+        """
+        if not self.authenticated:
+            raise TechError(401, "Unauthorized")
+        path = (
+            f"users/{self.user_id}/modules/{module_udid}/zones/{zone_id}/local_schedule"
+        )
+        data = {"modeId": mode_id, "schedule": schedule}
+        _LOGGER.debug("Setting zone %s local schedule: %s", zone_id, data)
+        result = await self.post(path, json.dumps(data))
+        _LOGGER.debug(result)
+        return result
+
+    # Six inputs are the API's contract, and the caller passes them positionally,
+    # so the rule's five-argument shape cannot express this write.
+    async def set_zone_global_schedule(  # noqa: PLR0917
+        self,
+        module_udid: str,
+        zone_id: int,
+        mode_id: int,
+        schedule: dict[str, Any],
+        schedule_name: str,
+        set_in_zones: list[dict[str, int]],
+    ) -> dict[str, Any]:
+        """Write a zone's global schedule and the zones it applies to.
+
+        Args:
+            module_udid: Tech module identifier.
+            zone_id: Numeric zone identifier.
+            mode_id: Identifier of the zone's mode object, supplied by the caller.
+            schedule: Global schedule payload to store.
+            schedule_name: Name the schedule is given on the controller.
+            set_in_zones: Zones the schedule is assigned to.
+
+        Returns:
+            Parsed JSON response from the API.
+
+        Raises:
+            TechError: If the client is not currently authenticated.
+
+        """
+        if not self.authenticated:
+            raise TechError(401, "Unauthorized")
+        path = (
+            f"users/{self.user_id}/modules/{module_udid}/zones/"
+            f"{zone_id}/global_schedule"
+        )
+        data = {
+            "modeId": mode_id,
+            "schedule": schedule,
+            "scheduleName": schedule_name,
+            "setInZones": set_in_zones,
+        }
+        _LOGGER.debug("Setting zone %s global schedule: %s", zone_id, data)
+        result = await self.post(path, json.dumps(data))
+        _LOGGER.debug(result)
         return result
 
 
