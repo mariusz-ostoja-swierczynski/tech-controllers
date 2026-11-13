@@ -1,0 +1,293 @@
+{
+  "zones": {
+    "transaction_time": null,
+    "elements": [
+      {
+        "zone": {
+          "id": 1,
+          "parentId": 1000,
+          "duringChange": false,
+          "index": 0,
+          "currentTemperature": 210,
+          "setTemperature": 215,
+          "flags": {
+            "relayState": "off",
+            "algorithm": "heating"
+          },
+          "zoneState": "noAlarm",
+          "humidity": null,
+          "visibility": true
+        },
+        "description": {
+          "id": 11,
+          "parentId": 1,
+          "name": "Zone One",
+          "duringChange": false
+        },
+        "mode": {
+          "id": 101,
+          "parentId": 1,
+          "mode": "constantTemp",
+          "constTempTime": 0,
+          "setTemperature": 215,
+          "scheduleIndex": 0,
+          "duringChange": false
+        },
+        "schedule": {
+          "id": 201,
+          "parentId": 1,
+          "index": -1,
+          "p0Days": ["1", "1", "1", "1", "1", "0", "0"],
+          "p0Intervals": [
+            {"start": 360, "stop": 540, "temp": 215},
+            {"start": 1200, "stop": 0, "temp": 205}
+          ],
+          "p0SetbackTemp": 200,
+          "p1Days": ["0", "0", "0", "0", "0", "1", "1"],
+          "p1Intervals": [
+            {"start": 6100, "stop": 6100, "temp": 200}
+          ],
+          "p1SetbackTemp": 210,
+          "duringChange": false
+        }
+      },
+      {
+        "zone": {
+          "id": 2,
+          "parentId": 1000,
+          "duringChange": false,
+          "index": 1,
+          "currentTemperature": 205,
+          "setTemperature": 210,
+          "flags": {
+            "relayState": "off",
+            "algorithm": "heating"
+          },
+          "zoneState": "noAlarm",
+          "humidity": null,
+          "visibility": true
+        },
+        "description": {
+          "id": 12,
+          "parentId": 2,
+          "name": "Zone Two",
+          "duringChange": false
+        },
+        "mode": {
+          "id": 102,
+          "parentId": 2,
+          "mode": "globalSchedule",
+          "constTempTime": 0,
+          "setTemperature": 210,
+          "scheduleIndex": 2,
+          "duringChange": false
+        },
+        "schedule": {
+          "id": 202,
+          "parentId": 2,
+          "index": -1,
+          "p0Days": ["1", "1", "1", "1", "1", "0", "0"],
+          "p0Intervals": [
+            {"start": 420, "stop": 600, "temp": 210}
+          ],
+          "p0SetbackTemp": 200,
+          "p1Days": ["0", "0", "0", "0", "0", "1", "1"],
+          "p1Intervals": [
+            {"start": 480, "stop": 660, "temp": 195}
+          ],
+          "p1SetbackTemp": 220,
+          "duringChange": false
+        }
+      },
+      {
+        "zone": {
+          "id": 3,
+          "parentId": 1000,
+          "duringChange": false,
+          "index": 2,
+          "currentTemperature": 200,
+          "setTemperature": 205,
+          "flags": {
+            "relayState": "off",
+            "algorithm": "heating"
+          },
+          "zoneState": "noAlarm",
+          "humidity": null,
+          "visibility": true
+        },
+        "description": {
+          "id": 13,
+          "parentId": 3,
+          "name": "Zone Three",
+          "duringChange": false
+        },
+        "mode": {
+          "id": 103,
+          "parentId": 3,
+          "mode": "localSchedule",
+          "constTempTime": 0,
+          "setTemperature": 205,
+          "scheduleIndex": 0,
+          "duringChange": false
+        },
+        "schedule": {
+          "id": 203,
+          "parentId": 3,
+          "index": -1,
+          "p0Days": ["1", "1", "1", "1", "1", "0", "0"],
+          "p0Intervals": [
+            {"start": 300, "stop": 480, "temp": 205}
+          ],
+          "p0SetbackTemp": 190,
+          "p1Days": ["0", "0", "0", "0", "0", "1", "1"],
+          "p1Intervals": [
+            {"start": 540, "stop": 720, "temp": 190}
+          ],
+          "p1SetbackTemp": 200,
+          "duringChange": false
+        }
+      },
+      {
+        "zone": {
+          "id": 4,
+          "parentId": 1000,
+          "duringChange": false,
+          "index": 3,
+          "currentTemperature": 195,
+          "setTemperature": 200,
+          "flags": {
+            "relayState": "off",
+            "algorithm": "heating"
+          },
+          "zoneState": "noAlarm",
+          "humidity": null,
+          "visibility": true
+        },
+        "description": {
+          "id": 14,
+          "parentId": 4,
+          "name": "Zone Four",
+          "duringChange": false
+        },
+        "mode": {},
+        "schedule": {
+          "id": 204,
+          "parentId": 4,
+          "index": -1,
+          "p0Days": ["1", "1", "1", "1", "1", "0", "0"],
+          "p0Intervals": [
+            {"start": 360, "stop": 600, "temp": 200}
+          ],
+          "p0SetbackTemp": 190,
+          "p1Days": ["0", "0", "0", "0", "0", "1", "1"],
+          "p1Intervals": [
+            {"start": 600, "stop": 840, "temp": 200}
+          ],
+          "p1SetbackTemp": 190,
+          "duringChange": false
+        }
+      }
+    ],
+    "globalSchedules": {
+      "duringChange": false,
+      "elements": [
+        {
+          "id": 301,
+          "parentId": 1000,
+          "index": 0,
+          "name": "Global 0",
+          "p0Days": ["1", "1", "1", "1", "1", "0", "0"],
+          "p0Intervals": [
+            {"start": 300, "stop": 600, "temp": 200}
+          ],
+          "p0SetbackTemp": 200,
+          "p1Days": ["0", "0", "0", "0", "0", "1", "1"],
+          "p1Intervals": [
+            {"start": 600, "stop": 900, "temp": 190}
+          ],
+          "p1SetbackTemp": 210,
+          "duringChange": false
+        },
+        {
+          "id": 302,
+          "parentId": 1000,
+          "index": 1,
+          "name": "Global 1",
+          "p0Days": ["1", "1", "1", "1", "1", "0", "0"],
+          "p0Intervals": [
+            {"start": 360, "stop": 720, "temp": 205}
+          ],
+          "p0SetbackTemp": 210,
+          "p1Days": ["0", "0", "0", "0", "0", "1", "1"],
+          "p1Intervals": [
+            {"start": 720, "stop": 1020, "temp": 195}
+          ],
+          "p1SetbackTemp": 220,
+          "duringChange": false
+        },
+        {
+          "id": 303,
+          "parentId": 1000,
+          "index": 2,
+          "name": "Global 2",
+          "p0Days": ["1", "1", "1", "1", "1", "0", "0"],
+          "p0Intervals": [
+            {"start": 330, "stop": 660, "temp": 210},
+            {"start": 6100, "stop": 6100, "temp": 210}
+          ],
+          "p0SetbackTemp": 200,
+          "p1Days": ["0", "0", "0", "0", "0", "1", "1"],
+          "p1Intervals": [
+            {"start": 660, "stop": 990, "temp": 195},
+            {"start": 6100, "stop": 6100, "temp": 195}
+          ],
+          "p1SetbackTemp": 220,
+          "duringChange": false
+        },
+        {
+          "id": 304,
+          "parentId": 1000,
+          "index": 3,
+          "name": "Global 3",
+          "p0Days": ["1", "1", "1", "1", "1", "0", "0"],
+          "p0Intervals": [
+            {"start": 400, "stop": 800, "temp": 200}
+          ],
+          "p0SetbackTemp": 220,
+          "p1Days": ["0", "0", "0", "0", "0", "1", "1"],
+          "p1Intervals": [
+            {"start": 800, "stop": 1100, "temp": 190}
+          ],
+          "p1SetbackTemp": 230,
+          "duringChange": false
+        },
+        {
+          "id": 305,
+          "parentId": 1000,
+          "index": 4,
+          "name": "Global 4",
+          "p0Days": ["1", "1", "1", "1", "1", "0", "0"],
+          "p0Intervals": [
+            {"start": 900, "stop": 300, "temp": 200}
+          ],
+          "p0SetbackTemp": 230,
+          "p1Days": ["0", "0", "0", "0", "0", "1", "1"],
+          "p1Intervals": [
+            {"start": 600, "stop": 900, "temp": 190}
+          ],
+          "p1SetbackTemp": 240,
+          "duringChange": false
+        }
+      ]
+    },
+    "controllerParameters": {
+      "controllerMode": {
+        "type": 108,
+        "value": 0,
+        "duringChange": false
+      }
+    }
+  },
+  "tiles": [],
+  "transaction_time": null
+}
