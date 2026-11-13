@@ -340,3 +340,24 @@ async def test_set_zone_constant_maps_controller_refusal(
     assert excinfo.value.translation_key == "zone_write_failed"
     assert excinfo.value.translation_placeholders == {"error": "Invalid JSON data"}
     assert post.await_count == 1
+
+
+async def test_set_zone_schedule_maps_controller_refusal(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A refused schedule write reaches the user as a translated error."""
+    post = AsyncMock(side_effect=TechError(422, "Invalid JSON data"))
+    await set_up(hass, "zone_modes", monkeypatch, post=post)
+    entity_id = _climate_entity(hass, 1)
+
+    with pytest.raises(HomeAssistantError) as excinfo:
+        await hass.services.async_call(
+            DOMAIN,
+            "set_zone_schedule",
+            {"entity_id": entity_id, "source": "global", "index": 2},
+            blocking=True,
+        )
+
+    assert excinfo.value.translation_key == "zone_write_failed"
+    assert excinfo.value.translation_placeholders == {"error": "Invalid JSON data"}
+    assert post.await_count == 1
