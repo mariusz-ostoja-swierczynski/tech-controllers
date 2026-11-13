@@ -87,7 +87,8 @@ a global or a local schedule, and `tech.set_zone_constant` holds a fixed
 temperature. They act on the selected zones and never on the schedule templates
 themselves: no template is created, edited or renamed. The read-only sensors and
 attributes above still describe the result, so they show the new mode only after
-the next poll.
+the next poll. The action editor shows a climate entity target picker and the
+fields below, so no YAML is required.
 
 `tech.set_zone_schedule` takes `source` and, for a global schedule, `index`:
 
