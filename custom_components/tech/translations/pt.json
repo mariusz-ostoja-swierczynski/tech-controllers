@@ -86,6 +86,60 @@
         },
         "entry_from_newer_version": {
             "message": "Esta entrada foi criada por uma versão mais recente do Tech Controllers. Atualize a integração e reinicie o Home Assistant."
+        },
+        "zone_target_invalid": {
+            "message": "Target a Tech climate entity (a zone thermostat)."
+        },
+        "schedule_index_required": {
+            "message": "A global schedule selection needs an index between 0 and 4."
+        },
+        "schedule_unsupported": {
+            "message": "This controller does not report zone schedules."
+        },
+        "schedule_not_found": {
+            "message": "This zone has no {source} schedule to activate."
+        },
+        "schedule_not_settled": {
+            "message": "The controller is still applying a change to this schedule. Try again shortly."
+        },
+        "schedule_invalid": {
+            "message": "The selected schedule is incomplete or invalid, so it cannot be activated."
+        },
+        "zone_mode_missing": {
+            "message": "The controller did not report the zone's mode identifier."
+        },
+        "zone_write_failed": {
+            "message": "The controller refused the zone change: {error}"
+        }
+    },
+    "services": {
+        "set_zone_schedule": {
+            "name": "Set zone schedule",
+            "description": "Switch a zone to its local schedule or one of the five global schedules. Only schedule templates the controller already reports, and that are complete and stable, are applied.",
+            "fields": {
+                "source": {
+                    "name": "Schedule source",
+                    "description": "Use `global` for a shared schedule or `local` for the zone's own schedule."
+                },
+                "index": {
+                    "name": "Global schedule slot",
+                    "description": "Global slot 0-4; required for `global` and ignored for `local`."
+                }
+            }
+        },
+        "set_zone_constant": {
+            "name": "Set zone constant temperature",
+            "description": "Set a zone to a fixed temperature either permanently or for a limited number of minutes, after which the zone returns to its previous mode.",
+            "fields": {
+                "temperature": {
+                    "name": "Temperature",
+                    "description": "Target temperature in °C, from 5 to 35."
+                },
+                "duration_minutes": {
+                    "name": "Duration (minutes)",
+                    "description": "0 keeps the temperature until changed; 1-1440 limits it to that many minutes."
+                }
+            }
         }
     },
     "entity": {
