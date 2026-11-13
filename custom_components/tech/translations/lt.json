@@ -93,6 +93,15 @@
         "schedule_index_required": {
             "message": "Bendro tvarkaraščio pasirinkimui reikalingas indeksas nuo 0 iki 4."
         },
+        "schedule_selection_required": {
+            "message": "Pasirinkite tvarkaraščio pavadinimą arba `local`, arba naudokite senus šaltinio ir indekso laukus."
+        },
+        "schedule_name_not_found": {
+            "message": "Šiame valdiklyje nėra bendro tvarkaraščio pavadinimu {name}."
+        },
+        "schedule_name_ambiguous": {
+            "message": "Daugiau nei vienas bendras tvarkaraštis pavadintas {name}; naudokite senąjį indeksą."
+        },
         "schedule_unsupported": {
             "message": "Šis valdiklis nepateikia zonų tvarkaraščių."
         },
@@ -108,6 +117,9 @@
         "zone_mode_missing": {
             "message": "Valdiklis nepateikė zonos režimo identifikatoriaus."
         },
+        "zone_temperature_missing": {
+            "message": "Valdiklis nepranešė šios zonos temperatūros."
+        },
         "zone_write_failed": {
             "message": "Valdiklis atmetė zonos pakeitimą: {error}"
         }
@@ -117,13 +129,9 @@
             "name": "Nustatyti zonos tvarkaraštį",
             "description": "Perjunkite zoną į vietinį tvarkaraštį arba vieną iš penkių bendrų tvarkaraščių. Taikomi tik tie tvarkaraščių šablonai, kuriuos valdiklis jau pateikia ir kurie yra išsamūs bei stabilūs.",
             "fields": {
-                "source": {
-                    "name": "Tvarkaraščio šaltinis",
-                    "description": "Naudokite `global` bendram tvarkaraščiui arba `local` pačios zonos tvarkaraščiui."
-                },
-                "index": {
-                    "name": "Bendro tvarkaraščio vieta",
-                    "description": "Bendroji vieta 0-4; reikalinga `global` ir nepaisoma `local`."
+                "schedule": {
+                    "name": "Tvarkaraščio pavadinimas",
+                    "description": "Pasirinkite sukonfigūruotą bendrąjį grafiką arba `local` zonos pačios grafikui."
                 }
             }
         },
@@ -193,6 +201,11 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Tvarkaraščio problema"
+            }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "name": "Tvarkaraštis"
             }
         }
     },

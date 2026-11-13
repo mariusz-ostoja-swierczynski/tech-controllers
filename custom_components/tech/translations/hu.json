@@ -93,6 +93,15 @@
         "schedule_index_required": {
             "message": "A globális ütemterv kiválasztásához 0 és 4 közötti index szükséges."
         },
+        "schedule_selection_required": {
+            "message": "Válasszon ütemtervnevet, vagy `local` értéket, vagy használja a régi forrás- és indexmezőket."
+        },
+        "schedule_name_not_found": {
+            "message": "Ezen a vezérlőn nincs {name} nevű globális ütemterv."
+        },
+        "schedule_name_ambiguous": {
+            "message": "Több globális ütemterv is {name} néven szerepel; használja inkább a régi indexet."
+        },
         "schedule_unsupported": {
             "message": "Ez a vezérlő nem jelent zóna ütemterveket."
         },
@@ -108,6 +117,9 @@
         "zone_mode_missing": {
             "message": "A vezérlő nem jelentette a zóna módazonosítóját."
         },
+        "zone_temperature_missing": {
+            "message": "A vezérlő nem jelentett hőmérsékletet ehhez a zónához."
+        },
         "zone_write_failed": {
             "message": "A vezérlő elutasította a zóna módosítását: {error}"
         }
@@ -117,13 +129,9 @@
             "name": "Zóna ütemtervének beállítása",
             "description": "Átváltja a zónát a helyi ütemtervére vagy az öt globális ütemterv egyikére. Csak a vezérlő által már jelentett, teljes és stabil ütemtervsablonok lesznek alkalmazva.",
             "fields": {
-                "source": {
-                    "name": "Ütemterv forrása",
-                    "description": "Használjon `global` értéket a megosztott ütemtervhez, vagy `local` értéket a zóna saját ütemtervéhez."
-                },
-                "index": {
-                    "name": "Globális ütemterv helye",
-                    "description": "Globális hely 0-4; a `global` esetén kötelező, a `local` esetén figyelmen kívül hagyva."
+                "schedule": {
+                    "name": "Ütemterv neve",
+                    "description": "Válasszon egy beállított globális ütemezést, vagy a `local` értéket a zóna saját ütemezéséhez."
                 }
             }
         },
@@ -193,6 +201,11 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Ütemterv probléma"
+            }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "name": "Ütemterv"
             }
         }
     },

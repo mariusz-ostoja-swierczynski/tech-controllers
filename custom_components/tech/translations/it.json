@@ -93,6 +93,15 @@
         "schedule_index_required": {
             "message": "Una selezione di programmazione globale richiede un indice tra 0 e 4."
         },
+        "schedule_selection_required": {
+            "message": "Scegli un nome di programmazione, oppure `local`, oppure usa i vecchi campi origine e indice."
+        },
+        "schedule_name_not_found": {
+            "message": "Nessuna programmazione globale di questo controller si chiama {name}."
+        },
+        "schedule_name_ambiguous": {
+            "message": "Più di una programmazione globale si chiama {name}; usa invece l'indice precedente."
+        },
         "schedule_unsupported": {
             "message": "Questo controller non segnala programmazioni di zona."
         },
@@ -108,6 +117,9 @@
         "zone_mode_missing": {
             "message": "Il controller non ha segnalato l'identificatore di modalità della zona."
         },
+        "zone_temperature_missing": {
+            "message": "Il controller non ha segnalato una temperatura per questa zona."
+        },
         "zone_write_failed": {
             "message": "Il controller ha rifiutato la modifica della zona: {error}"
         }
@@ -117,13 +129,9 @@
             "name": "Imposta la programmazione della zona",
             "description": "Passa una zona alla sua programmazione locale o a una delle cinque programmazioni globali. Vengono applicati solo i modelli di programmazione già segnalati dal controller e completi e stabili.",
             "fields": {
-                "source": {
-                    "name": "Origine della programmazione",
-                    "description": "Usa `global` per una programmazione condivisa o `local` per la programmazione della zona."
-                },
-                "index": {
-                    "name": "Slot programmazione globale",
-                    "description": "Slot globale 0-4; obbligatorio per `global` e ignorato per `local`."
+                "schedule": {
+                    "name": "Nome della programmazione",
+                    "description": "Seleziona una pianificazione globale configurata oppure `local` per la pianificazione propria della zona."
                 }
             }
         },
@@ -193,6 +201,11 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Problema di programmazione"
+            }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "name": "Programmazione"
             }
         }
     },

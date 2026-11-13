@@ -88,24 +88,36 @@ temperature. They act on the selected zones and never on the schedule templates
 themselves: no template is created, edited or renamed. The read-only sensors and
 attributes above still describe the result, so they show the new mode only after
 the next poll. The action editor shows a climate entity target picker and the
-fields below, so no YAML is required.
+fields below, so no YAML is required. Its `Schedule` dropdown lists `local` and
+every configured global schedule name the controller reports; a name that two
+global templates share on one controller is left out because it is ambiguous,
+and the legacy `index` field still selects those slots. The per-zone
+**Schedule** select lists every slot, duplicate names included.
 
-`tech.set_zone_schedule` takes `source` and, for a global schedule, `index`:
+Each zone also has a **Schedule** select entity. Its options are `Constant
+Temperature`, `Local Schedule`, and `Global Schedule N: <name>` for each of the
+controller's five global slots. Selecting a global option switches the zone to
+that template, selecting `Local Schedule` applies the zone's own template, and
+selecting `Constant Temperature` holds the zone's current target temperature
+permanently.
+
+`tech.set_zone_schedule` takes a `schedule` name:
 
 ```yaml
 action: tech.set_zone_schedule
 target:
   entity_id: climate.l_9r_living_room
 data:
-  source: global
-  index: 2
+  schedule: "Weekend"
 ```
 
-`source` is `global` or `local`. With `global`, `index` picks one of the
-controller's global templates: `0` to `4` map to Schedule 1 to 5 in the eModul
-app, and the index is required. With `local`, the zone's own local schedule is
-applied and `index` is ignored. Only a template the controller already reports
-is accepted, and it has to be complete, valid and no longer changing.
+`schedule` accepts the name of a configured global schedule, matched
+case-insensitively, or `local` for the zone's own schedule. Only a template the
+controller already reports is accepted, and it has to be complete, valid and no
+longer changing. The legacy `source: global|local` and `index: 0-4` fields still
+work in YAML, where `index` 0 to 4 maps to Schedule 1 to 5 in the eModul app. Use
+`index` when two global schedules share a name: a name that matches more than one
+template is rejected as ambiguous.
 
 `tech.set_zone_constant` takes a temperature and a duration:
 

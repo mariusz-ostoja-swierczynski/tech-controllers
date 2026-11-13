@@ -93,6 +93,15 @@
         "schedule_index_required": {
             "message": "Odabir globalnog rasporeda zahtijeva indeks između 0 i 4."
         },
+        "schedule_selection_required": {
+            "message": "Odaberite naziv rasporeda, ili `local`, ili upotrijebite stara polja izvora i indeksa."
+        },
+        "schedule_name_not_found": {
+            "message": "Na ovom regulatoru nema globalnog rasporeda s nazivom {name}."
+        },
+        "schedule_name_ambiguous": {
+            "message": "Više od jednog globalnog rasporeda ima naziv {name}; upotrijebite stari indeks."
+        },
         "schedule_unsupported": {
             "message": "Ovaj regulator ne prijavljuje rasporede zona."
         },
@@ -108,6 +117,9 @@
         "zone_mode_missing": {
             "message": "Regulator nije prijavio identifikator načina rada zone."
         },
+        "zone_temperature_missing": {
+            "message": "Regulator nije prijavio temperaturu za ovu zonu."
+        },
         "zone_write_failed": {
             "message": "Regulator je odbio promjenu zone: {error}"
         }
@@ -117,13 +129,9 @@
             "name": "Postavi raspored zone",
             "description": "Prebacuje zonu na njezin lokalni raspored ili jedan od pet globalnih rasporeda. Primjenjuju se samo predlošci rasporeda koje regulator već prijavljuje i koji su potpuni i stabilni.",
             "fields": {
-                "source": {
-                    "name": "Izvor rasporeda",
-                    "description": "Upotrijebite `global` za zajednički raspored ili `local` za vlastiti raspored zone."
-                },
-                "index": {
-                    "name": "Mjesto globalnog rasporeda",
-                    "description": "Globalno mjesto 0-4; obavezno za `global` i zanemareno za `local`."
+                "schedule": {
+                    "name": "Naziv rasporeda",
+                    "description": "Odaberite konfigurirani globalni raspored ili `local` za vlastiti raspored zone."
                 }
             }
         },
@@ -193,6 +201,11 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Problem s rasporedom"
+            }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "name": "Raspored"
             }
         }
     },

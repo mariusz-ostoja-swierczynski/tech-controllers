@@ -93,6 +93,15 @@
         "schedule_index_required": {
             "message": "Una selección de horario global necesita un índice entre 0 y 4."
         },
+        "schedule_selection_required": {
+            "message": "Elige un nombre de horario, o `local`, o usa los campos antiguos de origen e índice."
+        },
+        "schedule_name_not_found": {
+            "message": "Ningún horario global de este controlador se llama {name}."
+        },
+        "schedule_name_ambiguous": {
+            "message": "Más de un horario global se llama {name}; usa el índice antiguo en su lugar."
+        },
         "schedule_unsupported": {
             "message": "Este controlador no informa de horarios de zona."
         },
@@ -108,6 +117,9 @@
         "zone_mode_missing": {
             "message": "El controlador no informó del identificador de modo de la zona."
         },
+        "zone_temperature_missing": {
+            "message": "El controlador no informó de una temperatura para esta zona."
+        },
         "zone_write_failed": {
             "message": "El controlador rechazó el cambio de la zona: {error}"
         }
@@ -117,13 +129,9 @@
             "name": "Establecer el horario de la zona",
             "description": "Cambia una zona a su horario local o a uno de los cinco horarios globales. Solo se aplican las plantillas de horario que el controlador ya informa y que están completas y estables.",
             "fields": {
-                "source": {
-                    "name": "Origen del horario",
-                    "description": "Usa `global` para un horario compartido o `local` para el horario propio de la zona."
-                },
-                "index": {
-                    "name": "Posición del horario global",
-                    "description": "Posición global 0-4; obligatoria para `global` e ignorada para `local`."
+                "schedule": {
+                    "name": "Nombre del horario",
+                    "description": "Seleccione un horario global configurado o `local` para el horario propio de la zona."
                 }
             }
         },
@@ -193,6 +201,11 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Problema de horario"
+            }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "name": "Horario"
             }
         }
     },

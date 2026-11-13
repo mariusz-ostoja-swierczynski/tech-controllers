@@ -19,7 +19,7 @@ from . import assets, identity
 from .const import CONF_MENU_CODES, CONTROLLER, DOMAIN, PLATFORMS, UDID, USER_ID
 from .coordinator import TechConfigEntry, TechCoordinator
 from .entity import controller_device_info
-from .services import async_register_services
+from .services import async_register_services, async_update_schedule_service_schema
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -99,6 +99,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: TechConfigEntry) -> None
     entry.runtime_data = coordinator
 
     await coordinator.async_config_entry_first_refresh()
+
+    # The action editor's dropdown lists the schedule names this controller
+    # reports. The schema is updated after every poll as well, so a rename in
+    # the eModul app reaches the editor without an integration reload.
+    await async_update_schedule_service_schema(hass)
+
+    def _refresh_schedule_schema() -> None:
+        hass.async_create_task(async_update_schedule_service_schema(hass))
+
+    entry.async_on_unload(coordinator.async_add_listener(_refresh_schedule_schema))
 
     # The controller's own device is created before the platforms run, because
     # the registry names a parent device by its id and an entity of one of the

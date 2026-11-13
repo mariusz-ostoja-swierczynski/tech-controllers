@@ -248,7 +248,7 @@
           "id": 304,
           "parentId": 1000,
           "index": 3,
-          "name": "Global 3",
+          "name": "Duplicate",
           "p0Days": ["1", "1", "1", "1", "1", "0", "0"],
           "p0Intervals": [
             {"start": 400, "stop": 800, "temp": 200}
@@ -265,7 +265,7 @@
           "id": 305,
           "parentId": 1000,
           "index": 4,
-          "name": "Global 4",
+          "name": "Duplicate",
           "p0Days": ["1", "1", "1", "1", "1", "0", "0"],
           "p0Intervals": [
             {"start": 900, "stop": 300, "temp": 200}

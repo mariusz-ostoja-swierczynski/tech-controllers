@@ -249,6 +249,34 @@ async def test_resolve_targets_deduplicates_zone_targets(
     assert targets[0][1] == 1
 
 
+async def test_resolve_targets_accepts_the_schedule_select_entity(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The zone's schedule select names the same controller and zone."""
+    coordinator = _coordinator({}, {CONTROLLER: {"udid": UDID_VALUE}})
+    entry = _config_entry(
+        runtime_data=coordinator, controller={"udid": UDID_VALUE}
+    )
+    registry_entry = _registry_entry(
+        "select.fake",
+        unique_id=f"{UDID_VALUE}_1_zone_schedule_select",
+    )
+
+    call = _patch_resolution(
+        hass,
+        monkeypatch,
+        entry=entry,
+        registry_entry=registry_entry,
+        entity_id="select.fake",
+    )
+
+    targets = services._resolve_targets(hass, call)
+
+    assert len(targets) == 1
+    assert targets[0][0] is coordinator
+    assert targets[0][1] == 1
+
+
 async def test_controller_udid_without_controller_raises(
     hass: HomeAssistant,
 ) -> None:

@@ -11,6 +11,7 @@ coordinator. The next poll reconciles the zone with the controller.
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Mapping
 import logging
 from typing import Any, cast
@@ -25,6 +26,8 @@ from homeassistant.helpers import (
     entity_registry as er,
     target as target_helpers,
 )
+from homeassistant.helpers.service import async_set_service_schema
+from homeassistant.helpers.translation import async_get_translations
 
 from .const import CONTROLLER, DOMAIN, UDID
 from .coordinator import TechCoordinator
@@ -32,6 +35,7 @@ from .schedules import (
     SCHEDULE_INDEX_MAX,
     SCHEDULE_INDEX_MIN,
     ScheduleSelectionError,
+    global_schedule_index_by_name,
     global_schedule_write,
     local_schedule_write,
     zone_mode_id,
@@ -43,18 +47,28 @@ _LOGGER = logging.getLogger(__name__)
 SERVICE_SET_ZONE_SCHEDULE = "set_zone_schedule"
 SERVICE_SET_ZONE_CONSTANT = "set_zone_constant"
 
+# The computed options live in ``hass.data`` rather than in a module global: a
+# test creates several Home Assistant instances in one process, and a global
+# would carry one instance's controllers into the next one's dropdown.
+SCHEDULE_SERVICE_SCHEMA_CACHE = f"{DOMAIN}_schedule_service_schema"
+
+ATTR_SCHEDULE = "schedule"
 ATTR_SOURCE = "source"
 ATTR_INDEX = "index"
 ATTR_DURATION_MINUTES = "duration_minutes"
 
 # A zone climate entity reports ``{udid}_{zone_id}_zone_climate`` as its unique
-# id, which is the only registry key that carries both the controller and the
-# zone the action has to write to.
+# id, and the zone's schedule select reports
+# ``{udid}_{zone_id}_zone_schedule_select``. Either carries both the controller
+# and the zone the action has to write to.
 ZONE_CLIMATE_SUFFIX = "_zone_climate"
+ZONE_SCHEDULE_SELECT_SUFFIX = "_zone_schedule_select"
+ZONE_TARGET_SUFFIXES = (ZONE_CLIMATE_SUFFIX, ZONE_SCHEDULE_SELECT_SUFFIX)
 
 SET_ZONE_SCHEDULE_SCHEMA = cv.make_entity_service_schema(
     {
-        vol.Required(ATTR_SOURCE): vol.In(["global", "local"]),
+        vol.Optional(ATTR_SCHEDULE): vol.All(str, vol.Length(min=1)),
+        vol.Optional(ATTR_SOURCE): vol.In(["global", "local"]),
         vol.Optional(ATTR_INDEX): vol.All(
             vol.Coerce(int),
             vol.Range(min=SCHEDULE_INDEX_MIN, max=SCHEDULE_INDEX_MAX),
@@ -82,6 +96,8 @@ _SCHEDULE_ERROR_KEYS = {
     "not_settled": "schedule_not_settled",
     "invalid": "schedule_invalid",
     "mode_missing": "zone_mode_missing",
+    "name_not_found": "schedule_name_not_found",
+    "name_ambiguous": "schedule_name_ambiguous",
 }
 
 # English fallbacks, kept in step with the translated exception messages. They
@@ -101,25 +117,39 @@ _SCHEDULE_ERROR_MESSAGES = {
     "zone_mode_missing": (
         "The controller did not report the zone's mode identifier."
     ),
+    "schedule_name_not_found": (
+        "No global schedule is named {name} on this controller."
+    ),
+    "schedule_name_ambiguous": (
+        "More than one global schedule is named {name}; use the legacy index "
+        "instead."
+    ),
 }
 
 # A target plus the payload that was validated for it before any write started.
 type _PreparedWrite = tuple[TechCoordinator, int, dict[str, Any]]
 
 
-def _schedule_error(error: ScheduleSelectionError, source: str) -> HomeAssistantError:
+def _schedule_error(
+    error: ScheduleSelectionError, source: str, name: str | None = None
+) -> HomeAssistantError:
     """Translate a schedule preparation failure into a service error.
 
     Args:
         error: Failure raised while preparing a write.
         source: Selected schedule source, used by the missing-schedule message.
+        name: Entered schedule name, used by the name lookup messages.
 
     Returns:
         The translated error the service call raises.
 
     """
     key = _SCHEDULE_ERROR_KEYS.get(error.reason, "schedule_invalid")
-    placeholders = {"source": source} if key == "schedule_not_found" else {}
+    placeholders: dict[str, str] = {}
+    if key == "schedule_not_found":
+        placeholders = {"source": source}
+    elif key in ("schedule_name_not_found", "schedule_name_ambiguous"):
+        placeholders = {"name": name or ""}
     message = _SCHEDULE_ERROR_MESSAGES[key].format(**placeholders)
     return HomeAssistantError(
         message,
@@ -160,10 +190,10 @@ def _resolve_targets(
     """Resolve entity, device, area, floor and label targets to their zones.
 
     Home Assistant expands every target form through its target helpers before
-    the Tech-entity filter runs. Only a Tech climate entity carries both the
-    controller and the zone in its unique id; sibling entities of the same zone
-    device are ignored, so a zone device target still resolves through its
-    climate entity.
+    the Tech-entity filter runs. A Tech climate entity and the zone's schedule
+    select entity each carry both the controller and the zone in their unique
+    id; sibling entities of the same zone device are ignored, so a zone device
+    target still resolves through its climate entity.
 
     Args:
         hass: Home Assistant instance.
@@ -194,9 +224,13 @@ def _resolve_targets(
         if registry_entry is None or registry_entry.platform != DOMAIN:
             continue
         unique_id = registry_entry.unique_id
-        if not unique_id.endswith(ZONE_CLIMATE_SUFFIX):
+        matched_suffix = next(
+            (suffix for suffix in ZONE_TARGET_SUFFIXES if unique_id.endswith(suffix)),
+            None,
+        )
+        if matched_suffix is None:
             continue
-        udid, separator, zone_part = unique_id[: -len(ZONE_CLIMATE_SUFFIX)].rpartition(
+        udid, separator, zone_part = unique_id[: -len(matched_suffix)].rpartition(
             "_"
         )
         if not separator or not zone_part.isdigit():
@@ -255,24 +289,52 @@ def _write_error(error: TechError) -> HomeAssistantError:
 
 
 async def _async_set_zone_schedule(call: ServiceCall) -> None:
-    """Switch one or more zones to a global or a local schedule.
+    """Switch one or more zones to a named global or a local schedule.
 
-    ``index`` selects the global template and is ignored for a local schedule.
-    Every target is validated before the first write, so a selection that
-    cannot be prepared leaves the controller untouched.
+    ``schedule`` names a configured global template (or ``local``) and takes
+    precedence over the legacy ``source``/``index`` fields. ``index`` still
+    selects a global template by slot. Every target is validated before the
+    first write, so a selection that cannot be prepared leaves the controller
+    untouched.
 
     Args:
         call: Home Assistant service call.
 
     Raises:
-        HomeAssistantError: If a target is not a Tech climate entity, a global
-            selection omits ``index``, the snapshot cannot be prepared for a
-            write, or the controller refuses it.
+        HomeAssistantError: If a target is not a Tech zone entity, the call
+            names no schedule, a global selection omits both a name and an
+            index, the snapshot cannot be prepared for a write, or the
+            controller refuses it.
 
     """
-    source = cast("str", call.data[ATTR_SOURCE])
+    schedule = cast("str | None", call.data.get(ATTR_SCHEDULE))
+    source = cast("str | None", call.data.get(ATTR_SOURCE))
     index = cast("int | None", call.data.get(ATTR_INDEX))
-    if source == "global" and index is None:
+    name: str | None = None
+
+    if schedule is not None:
+        name = schedule.strip()
+        if not name:
+            raise HomeAssistantError(
+                "Choose a schedule name, or `local`, or use the legacy source "
+                "and index fields.",
+                translation_domain=DOMAIN,
+                translation_key="schedule_selection_required",
+            )
+        if name.casefold() == "local":
+            source = "local"
+            index = None
+            name = None
+        else:
+            source = "global"
+    elif source is None:
+        raise HomeAssistantError(
+            "Choose a schedule name, or `local`, or use the legacy source and "
+            "index fields.",
+            translation_domain=DOMAIN,
+            translation_key="schedule_selection_required",
+        )
+    elif source == "global" and index is None:
         raise HomeAssistantError(
             "A global schedule selection needs an index between 0 and 4.",
             translation_domain=DOMAIN,
@@ -281,22 +343,21 @@ async def _async_set_zone_schedule(call: ServiceCall) -> None:
 
     targets = _resolve_targets(call.hass, call)
     try:
-        prepared: list[_PreparedWrite] = [
-            (
-                coordinator,
-                zone_id,
-                global_schedule_write(
-                    coordinator.data.get("schedules"), zone_id, cast("int", index)
+        prepared: list[_PreparedWrite] = []
+        for coordinator, zone_id in targets:
+            snapshot = coordinator.data.get("schedules")
+            if source == "global":
+                selected_index = (
+                    global_schedule_index_by_name(snapshot, name)
+                    if name is not None
+                    else cast("int", index)
                 )
-                if source == "global"
-                else local_schedule_write(
-                    coordinator.data.get("schedules"), zone_id
-                ),
-            )
-            for coordinator, zone_id in targets
-        ]
+                payload = global_schedule_write(snapshot, zone_id, selected_index)
+            else:
+                payload = local_schedule_write(snapshot, zone_id)
+            prepared.append((coordinator, zone_id, payload))
     except ScheduleSelectionError as err:
-        raise _schedule_error(err, source) from err
+        raise _schedule_error(err, source, name) from err
 
     try:
         for coordinator, zone_id, payload in prepared:
@@ -362,6 +423,101 @@ async def _async_set_zone_constant(call: ServiceCall) -> None:
             _LOGGER.debug("Set zone %s to a constant temperature", zone_id)
     except TechError as err:
         raise _write_error(err) from err
+
+
+async def async_update_schedule_service_schema(hass: HomeAssistant) -> None:
+    """Refresh the set_zone_schedule dropdown from the loaded controllers.
+
+    The options are every configured global schedule name the loaded
+    controllers report, plus ``local``. A name that appears more than once on
+    one controller is left out, because the service cannot tell those templates
+    apart by name; the legacy ``source``/``index`` fields still select them.
+
+    Args:
+        hass: Home Assistant instance.
+
+    """
+    names: list[str] = []
+    ambiguous: set[str] = set()
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        runtime_data = getattr(entry, "runtime_data", None)
+        if not isinstance(runtime_data, TechCoordinator):
+            continue
+        data = runtime_data.data
+        if not isinstance(data, dict):
+            continue
+        snapshot = data.get("schedules")
+        globals_ = (
+            snapshot.get("globalSchedules") if isinstance(snapshot, dict) else None
+        )
+        elements = globals_.get("elements") if isinstance(globals_, dict) else None
+        if not isinstance(elements, list):
+            continue
+        templates = [
+            (item["index"], item["name"])
+            for item in elements
+            if isinstance(item, dict)
+            and type(item.get("index")) is int
+            and isinstance(item.get("name"), str)
+            and item["name"]
+        ]
+        counts = Counter(template_name.casefold() for _, template_name in templates)
+        ambiguous.update(
+            folded for folded, count in counts.items() if count > 1
+        )
+        names.extend(template_name for _, template_name in templates)
+
+    unique: dict[str, str] = {}
+    for template_name in names:
+        folded = template_name.casefold()
+        if folded not in ambiguous:
+            unique.setdefault(folded, template_name)
+    sorted_names = tuple(sorted(unique.values(), key=str.casefold))
+
+    translations = await async_get_translations(
+        hass, hass.config.language, "entity", [DOMAIN]
+    )
+    local_label = translations.get(
+        "component.tech.entity.sensor.zone_schedule_entity.state.local-schedule",
+        "Local Schedule",
+    )
+    service_translations = await async_get_translations(
+        hass, hass.config.language, "services", [DOMAIN]
+    )
+    service_name = service_translations.get(
+        "component.tech.services.set_zone_schedule.name", "Set zone schedule"
+    )
+    description = service_translations.get(
+        "component.tech.services.set_zone_schedule.description", ""
+    )
+
+    current = (sorted_names, local_label, service_name, description)
+    if hass.data.get(SCHEDULE_SERVICE_SCHEMA_CACHE) == current:
+        return
+
+    options = [{"value": "local", "label": local_label}]
+    options.extend(
+        {"value": template_name, "label": template_name}
+        for template_name in sorted_names
+    )
+    async_set_service_schema(
+        hass,
+        DOMAIN,
+        SERVICE_SET_ZONE_SCHEDULE,
+        {
+            "name": service_name,
+            "description": description,
+            "target": {"entity": {"integration": DOMAIN, "domain": "climate"}},
+            "fields": {
+                "schedule": {
+                    "required": True,
+                    "example": "Weekend",
+                    "selector": {"select": {"options": options, "mode": "dropdown"}},
+                }
+            },
+        },
+    )
+    hass.data[SCHEDULE_SERVICE_SCHEMA_CACHE] = current
 
 
 async def async_register_services(hass: HomeAssistant) -> None:
