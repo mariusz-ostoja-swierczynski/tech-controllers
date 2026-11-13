@@ -93,6 +93,15 @@
         "schedule_index_required": {
             "message": "Výběr globálního harmonogramu vyžaduje index mezi 0 a 4."
         },
+        "schedule_selection_required": {
+            "message": "Zvolte název harmonogramu, nebo `local`, nebo použijte starší pole zdroje a indexu."
+        },
+        "schedule_name_not_found": {
+            "message": "Na tomto regulátoru není žádný globální harmonogram s názvem {name}."
+        },
+        "schedule_name_ambiguous": {
+            "message": "Více než jeden globální harmonogram se jmenuje {name}; použijte místo toho starší index."
+        },
         "schedule_unsupported": {
             "message": "Tento regulátor nehlásí harmonogramy zón."
         },
@@ -108,6 +117,9 @@
         "zone_mode_missing": {
             "message": "Regulátor nehlásí identifikátor režimu zóny."
         },
+        "zone_temperature_missing": {
+            "message": "Regulátor nehlásí teplotu pro tuto zónu."
+        },
         "zone_write_failed": {
             "message": "Regulátor odmítl změnu zóny: {error}"
         }
@@ -117,13 +129,9 @@
             "name": "Nastavit harmonogram zóny",
             "description": "Přepne zónu na její místní harmonogram nebo jeden z pěti globálních harmonogramů. Použijí se pouze šablony harmonogramů, které regulátor již hlásí a které jsou kompletní a stabilní.",
             "fields": {
-                "source": {
-                    "name": "Zdroj harmonogramu",
-                    "description": "Použijte `global` pro sdílený harmonogram nebo `local` pro vlastní harmonogram zóny."
-                },
-                "index": {
-                    "name": "Slot globálního harmonogramu",
-                    "description": "Globální slot 0-4; povinný pro `global` a ignorovaný pro `local`."
+                "schedule": {
+                    "name": "Název harmonogramu",
+                    "description": "Vyberte nakonfigurovaný globální harmonogram nebo `local` pro vlastní harmonogram zóny."
                 }
             }
         },
@@ -193,6 +201,11 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Problém s harmonogramem"
+            }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "name": "Harmonogram"
             }
         }
     },

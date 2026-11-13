@@ -93,6 +93,15 @@
         "schedule_index_required": {
             "message": "Globaalse ajakava valik vajab indeksit vahemikus 0 kuni 4."
         },
+        "schedule_selection_required": {
+            "message": "Valige ajakava nimi või `local`, või kasutage vanu allika ja indeksi välju."
+        },
+        "schedule_name_not_found": {
+            "message": "Sellel kontrolleril ei ole ühtegi globaalset ajakava nimega {name}."
+        },
+        "schedule_name_ambiguous": {
+            "message": "Rohkem kui üks globaalne ajakava kannab nime {name}; kasutage selle asemel vana indeksit."
+        },
         "schedule_unsupported": {
             "message": "See kontroller ei edasta tsoonide ajakavu."
         },
@@ -108,6 +117,9 @@
         "zone_mode_missing": {
             "message": "Kontroller ei edastanud tsooni režiimi identifikaatorit."
         },
+        "zone_temperature_missing": {
+            "message": "Kontroller ei edastanud selle tsooni temperatuuri."
+        },
         "zone_write_failed": {
             "message": "Kontroller keeldus tsooni muudatusest: {error}"
         }
@@ -117,13 +129,9 @@
             "name": "Sea tsooni ajakava",
             "description": "Lülitage tsoon oma kohalikule ajakavale või ühele viiest globaalsest ajakavast. Rakendatakse ainult neid ajakavamalle, mida kontroller juba edastab ning mis on terviklikud ja stabiilsed.",
             "fields": {
-                "source": {
-                    "name": "Ajakava allikas",
-                    "description": "Kasutage `global` jagatud ajakava jaoks või `local` tsooni enda ajakava jaoks."
-                },
-                "index": {
-                    "name": "Globaalse ajakava koht",
-                    "description": "Globaalne koht 0-4; nõutav `global` jaoks ja eiratakse `local` jaoks."
+                "schedule": {
+                    "name": "Ajakava nimi",
+                    "description": "Valige konfigureeritud globaalne ajakava või `local` tsooni enda ajakava jaoks."
                 }
             }
         },
@@ -193,6 +201,11 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Ajakava probleem"
+            }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "name": "Ajakava"
             }
         }
     },

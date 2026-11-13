@@ -93,6 +93,15 @@
         "schedule_index_required": {
             "message": "Selectarea unei programări globale necesită un index între 0 și 4."
         },
+        "schedule_selection_required": {
+            "message": "Alegeți un nume de programare, sau `local`, sau folosiți câmpurile vechi sursă și index."
+        },
+        "schedule_name_not_found": {
+            "message": "Pe această centrală nu există nicio programare globală cu numele {name}."
+        },
+        "schedule_name_ambiguous": {
+            "message": "Mai mult de o programare globală poartă numele {name}; folosiți în schimb indexul vechi."
+        },
         "schedule_unsupported": {
             "message": "Această centrală nu raportează programări de zonă."
         },
@@ -108,6 +117,9 @@
         "zone_mode_missing": {
             "message": "Centrala nu a raportat identificatorul modului zonei."
         },
+        "zone_temperature_missing": {
+            "message": "Centrala nu a raportat o temperatură pentru această zonă."
+        },
         "zone_write_failed": {
             "message": "Centrala a refuzat modificarea zonei: {error}"
         }
@@ -117,13 +129,9 @@
             "name": "Setare programare zonă",
             "description": "Comută o zonă pe programarea sa locală sau pe una dintre cele cinci programări globale. Sunt aplicate doar șabloanele de programare pe care centrala le raportează deja și care sunt complete și stabile.",
             "fields": {
-                "source": {
-                    "name": "Sursa programării",
-                    "description": "Folosiți `global` pentru o programare partajată sau `local` pentru programarea proprie a zonei."
-                },
-                "index": {
-                    "name": "Slotul programării globale",
-                    "description": "Slot global 0-4; obligatoriu pentru `global` și ignorat pentru `local`."
+                "schedule": {
+                    "name": "Numele programării",
+                    "description": "Selectați un program global configurat sau `local` pentru programul propriu al zonei."
                 }
             }
         },
@@ -193,6 +201,11 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Problemă de programare"
+            }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "name": "Programare"
             }
         }
     },

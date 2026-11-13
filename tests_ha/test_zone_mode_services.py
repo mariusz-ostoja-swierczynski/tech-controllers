@@ -18,11 +18,12 @@ import pytest
 
 from custom_components.tech.const import DOMAIN
 from custom_components.tech.schedules import ScheduleSelectionError
-from custom_components.tech.services import _schedule_error
+from custom_components.tech.services import SERVICE_SET_ZONE_SCHEDULE, _schedule_error
 from custom_components.tech.tech import TechError
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.service import async_get_all_descriptions
 
 
 class _PostCall(Protocol):
@@ -66,6 +67,14 @@ def _body(call: _PostCall) -> dict:
     return json.loads(call.args[1])
 
 
+async def _schedule_options(hass: HomeAssistant) -> list[dict[str, str]]:
+    """Return the schedule action's dropdown options as the editor sees them."""
+    descriptions = await async_get_all_descriptions(hass)
+    return descriptions[DOMAIN][SERVICE_SET_ZONE_SCHEDULE]["fields"]["schedule"][
+        "selector"
+    ]["select"]["options"]
+
+
 async def test_services_are_registered(
     hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -74,6 +83,49 @@ async def test_services_are_registered(
 
     assert hass.services.has_service(DOMAIN, "set_zone_schedule")
     assert hass.services.has_service(DOMAIN, "set_zone_constant")
+
+
+async def test_schedule_action_dropdown_lists_named_schedules(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The action offers local plus the configured global schedule names."""
+    await set_up(hass, "zone_modes", monkeypatch)
+
+    options = await _schedule_options(hass)
+
+    assert options == [
+        {"value": "local", "label": "Local Schedule"},
+        {"value": "Global 0", "label": "Global 0"},
+        {"value": "Global 1", "label": "Global 1"},
+        {"value": "Global 2", "label": "Global 2"},
+    ]
+
+
+async def test_schedule_action_dropdown_refreshes_after_rename(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Renaming a global template updates the dropdown after the next poll."""
+    entry = await set_up(hass, "zone_modes", monkeypatch)
+    schedules = entry.runtime_data.data["schedules"]["globalSchedules"]["elements"]
+    schedules[2]["name"] = "Weekend"
+
+    entry.runtime_data.async_set_updated_data(entry.runtime_data.data)
+    await hass.async_block_till_done()
+
+    values = [option["value"] for option in await _schedule_options(hass)]
+    assert "Weekend" in values
+    assert "Global 2" not in values
+
+
+async def test_schedule_action_dropdown_without_schedules(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A controller without schedules offers only the local option."""
+    await set_up(hass, "st491", monkeypatch)
+
+    options = await _schedule_options(hass)
+
+    assert [option["value"] for option in options] == ["local"]
 
 
 async def test_set_zone_schedule_global_posts_expected_body(
@@ -136,6 +188,128 @@ async def test_set_zone_schedule_local_posts_expected_body(
     ]
     assert body["schedule"]["p1Intervals"] == []
     assert "6100" not in json.dumps(body)
+
+
+async def test_set_zone_schedule_by_name_posts_expected_body(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A configured global schedule name resolves to its slot before writing."""
+    post = AsyncMock(return_value={"status": "success"})
+    await set_up(hass, "zone_modes", monkeypatch, post=post)
+    entity_id = _climate_entity(hass, 1)
+
+    await hass.services.async_call(
+        DOMAIN,
+        "set_zone_schedule",
+        {"entity_id": entity_id, "schedule": "Global 2"},
+        blocking=True,
+    )
+
+    assert post.await_count == 1
+    call = post.await_args
+    assert call is not None
+    assert call.args[0] == f"users/42/modules/{UDID}/zones/1/global_schedule"
+    body = _body(call)
+    assert body["modeId"] == 101
+    assert body["schedule"]["id"] == 303
+    assert body["schedule"]["index"] == 2
+    assert body["schedule"]["p0Intervals"] == [
+        {"start": 330, "stop": 660, "temp": 210}
+    ]
+    assert body["scheduleName"] == "Global 2"
+    assert body["setInZones"] == [
+        {"zoneId": 1, "modeId": 101},
+        {"zoneId": 2, "modeId": 102},
+    ]
+
+
+async def test_set_zone_schedule_by_local_name_posts_local_body(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The name ``local`` selects the zone's own template."""
+    post = AsyncMock(return_value={"status": "success"})
+    await set_up(hass, "zone_modes", monkeypatch, post=post)
+    entity_id = _climate_entity(hass, 1)
+
+    await hass.services.async_call(
+        DOMAIN,
+        "set_zone_schedule",
+        {"entity_id": entity_id, "schedule": "local"},
+        blocking=True,
+    )
+
+    assert post.await_count == 1
+    call = post.await_args
+    assert call is not None
+    assert call.args[0] == f"users/42/modules/{UDID}/zones/1/local_schedule"
+    body = _body(call)
+    assert body["modeId"] == 101
+    assert body["schedule"]["id"] == 201
+    assert {"start": 1200, "stop": 1440, "temp": 205} in body["schedule"][
+        "p0Intervals"
+    ]
+
+
+async def test_set_zone_schedule_rejects_unknown_name(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An unknown configured name raises before any write."""
+    post = AsyncMock(return_value={"status": "success"})
+    await set_up(hass, "zone_modes", monkeypatch, post=post)
+    entity_id = _climate_entity(hass, 1)
+
+    with pytest.raises(HomeAssistantError) as excinfo:
+        await hass.services.async_call(
+            DOMAIN,
+            "set_zone_schedule",
+            {"entity_id": entity_id, "schedule": "Nope"},
+            blocking=True,
+        )
+
+    assert excinfo.value.translation_key == "schedule_name_not_found"
+    assert excinfo.value.translation_placeholders == {"name": "Nope"}
+    assert post.await_count == 0
+
+
+async def test_set_zone_schedule_rejects_ambiguous_name(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Two global schedules sharing a name raise before any write."""
+    post = AsyncMock(return_value={"status": "success"})
+    await set_up(hass, "zone_modes", monkeypatch, post=post)
+    entity_id = _climate_entity(hass, 1)
+
+    with pytest.raises(HomeAssistantError) as excinfo:
+        await hass.services.async_call(
+            DOMAIN,
+            "set_zone_schedule",
+            {"entity_id": entity_id, "schedule": "Duplicate"},
+            blocking=True,
+        )
+
+    assert excinfo.value.translation_key == "schedule_name_ambiguous"
+    assert excinfo.value.translation_placeholders == {"name": "Duplicate"}
+    assert post.await_count == 0
+
+
+async def test_set_zone_schedule_requires_a_selection(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A call without a name or a legacy source raises before any write."""
+    post = AsyncMock(return_value={"status": "success"})
+    await set_up(hass, "zone_modes", monkeypatch, post=post)
+    entity_id = _climate_entity(hass, 1)
+
+    with pytest.raises(HomeAssistantError) as excinfo:
+        await hass.services.async_call(
+            DOMAIN,
+            "set_zone_schedule",
+            {"entity_id": entity_id},
+            blocking=True,
+        )
+
+    assert excinfo.value.translation_key == "schedule_selection_required"
+    assert post.await_count == 0
 
 
 async def test_set_zone_constant_permanent_omits_duration(
@@ -307,18 +481,27 @@ async def test_set_zone_schedule_accepts_zone_device_target(
         ("not_settled", "schedule_not_settled"),
         ("invalid", "schedule_invalid"),
         ("mode_missing", "zone_mode_missing"),
+        ("name_not_found", "schedule_name_not_found"),
+        ("name_ambiguous", "schedule_name_ambiguous"),
     ],
 )
 def test_schedule_error_reasons_map_to_translation_keys(
     reason: str, translation_key: str
 ) -> None:
     """Every preparation reason becomes its own translated service error."""
-    error = _schedule_error(ScheduleSelectionError(reason), "global")
+    error = _schedule_error(ScheduleSelectionError(reason), "global", "Weekend")
 
     assert error.translation_key == translation_key
     assert str(error)
     if reason == "missing":
         assert str(error) == "This zone has no global schedule to activate."
+    if reason == "name_not_found":
+        assert error.translation_placeholders == {"name": "Weekend"}
+        assert (
+            str(error) == "No global schedule is named Weekend on this controller."
+        )
+    if reason == "name_ambiguous":
+        assert error.translation_placeholders == {"name": "Weekend"}
 
 
 async def test_set_zone_constant_maps_controller_refusal(

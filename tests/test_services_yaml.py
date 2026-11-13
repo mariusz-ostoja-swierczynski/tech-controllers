@@ -48,21 +48,18 @@ def test_action_targets_tech_climate_entities(action: str) -> None:
 
 
 def test_set_zone_schedule_fields() -> None:
-    """The schedule action asks for a source and an optional global index."""
+    """The schedule action offers one dropdown and no legacy fields."""
     fields = _services()["set_zone_schedule"]["fields"]
 
-    source = fields["source"]
-    assert source["required"] is True
-    assert source["selector"]["select"]["options"] == ["global", "local"]
-
-    index = fields["index"]
-    assert index["required"] is False
-    assert index["selector"]["number"] == {
-        "min": 0,
-        "max": 4,
-        "step": 1,
-        "mode": "box",
-    }
+    assert set(fields) == {"schedule"}
+    schedule = fields["schedule"]
+    assert schedule["required"] is True
+    assert schedule["example"] == "Weekend"
+    selector = schedule["selector"]
+    assert selector["select"]["mode"] == "dropdown"
+    assert {"value": "local", "label": "Local schedule"} in selector["select"][
+        "options"
+    ]
 
 
 def test_set_zone_constant_fields() -> None:

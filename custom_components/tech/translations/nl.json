@@ -93,6 +93,15 @@
         "schedule_index_required": {
             "message": "Voor een globale schemakeuze is een index tussen 0 en 4 nodig."
         },
+        "schedule_selection_required": {
+            "message": "Kies een schemanaam, of `local`, of gebruik de oude velden voor bron en index."
+        },
+        "schedule_name_not_found": {
+            "message": "Er is geen globaal schema met de naam {name} op deze regelaar."
+        },
+        "schedule_name_ambiguous": {
+            "message": "Meer dan één globaal schema heet {name}; gebruik in plaats daarvan de oude index."
+        },
         "schedule_unsupported": {
             "message": "Deze regelaar meldt geen zonaschema's."
         },
@@ -108,6 +117,9 @@
         "zone_mode_missing": {
             "message": "De regelaar heeft de modusidentificatie van de zone niet gemeld."
         },
+        "zone_temperature_missing": {
+            "message": "De regelaar heeft geen temperatuur voor deze zone gemeld."
+        },
         "zone_write_failed": {
             "message": "De regelaar heeft de zonnewijziging geweigerd: {error}"
         }
@@ -117,13 +129,9 @@
             "name": "Zonaschema instellen",
             "description": "Schakelt een zone naar het lokale schema of een van de vijf globale schema's. Alleen schemasjablonen die de regelaar al meldt en die compleet en stabiel zijn, worden toegepast.",
             "fields": {
-                "source": {
-                    "name": "Schemabron",
-                    "description": "Gebruik `global` voor een gedeeld schema of `local` voor het eigen schema van de zone."
-                },
-                "index": {
-                    "name": "Globaal schemaslot",
-                    "description": "Globaal slot 0-4; vereist voor `global` en genegeerd voor `local`."
+                "schedule": {
+                    "name": "Naam van schema",
+                    "description": "Selecteer een geconfigureerd globaal schema of `local` voor het eigen schema van de zone."
                 }
             }
         },
@@ -193,6 +201,11 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Schemaprobleem"
+            }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "name": "Schema"
             }
         }
     },

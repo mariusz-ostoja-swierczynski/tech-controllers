@@ -51,10 +51,10 @@ _EXPECTED = {
         "switch": 28,
     },
     # The L-12 reports schedules, so each of its five zones also gets the
-    # schedule reading and the local template, the controller gets the five
-    # global slots and the compact diagnostic, and the problem indicator is a
-    # binary sensor.
-    "l12": {"binary_sensor": 1, "climate": 5, "sensor": 35},
+    # schedule reading, the local template and the schedule select, the
+    # controller gets the five global slots and the compact diagnostic, and the
+    # problem indicator is a binary sensor.
+    "l12": {"binary_sensor": 1, "climate": 5, "select": 5, "sensor": 35},
     "st521": {"binary_sensor": 65, "sensor": 84},
     "st2801": {"binary_sensor": 3, "sensor": 8},
     "pellet": {"binary_sensor": 4, "sensor": 12},
@@ -62,8 +62,8 @@ _EXPECTED = {
     # the eModul API and are kept unchanged, so the tests cover the real
     # installation, zones-controller and solar payload shapes.
     "demo_i3": {"binary_sensor": 9, "sensor": 25},
-    "demo_l12": {"binary_sensor": 1, "climate": 8, "sensor": 46},
-    "demo_l8": {"binary_sensor": 1, "climate": 8, "sensor": 66},
+    "demo_l12": {"binary_sensor": 1, "climate": 8, "select": 8, "sensor": 46},
+    "demo_l8": {"binary_sensor": 1, "climate": 8, "select": 8, "sensor": 66},
     "demo_pellet": {"binary_sensor": 4, "sensor": 12},
     "demo_solar": {"binary_sensor": 1, "sensor": 5},
     # Issue-provided dumps, sanitized: the controller name, mainControllerId

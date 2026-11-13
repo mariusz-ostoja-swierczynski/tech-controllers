@@ -4,21 +4,15 @@ set_zone_schedule:
       integration: tech
       domain: climate
   fields:
-    source:
+    schedule:
       required: true
+      example: "Weekend"
       selector:
         select:
           options:
-            - global
-            - local
-    index:
-      required: false
-      selector:
-        number:
-          min: 0
-          max: 4
-          step: 1
-          mode: box
+            - value: local
+              label: Local schedule
+          mode: dropdown
 
 set_zone_constant:
   target:

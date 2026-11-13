@@ -16,10 +16,11 @@ rules:
     status: done
     comment: >-
       async_setup registers both actions once with cv.make_entity_service_schema,
-      targeting climate entities, and the schemas constrain source, index,
-      temperature and duration_minutes. services.yaml supplies the action editor
-      target and the select and number selectors, while strings.json keeps the
-      names and descriptions.
+      targeting climate entities, and the schemas constrain the schedule name
+      along with the legacy source and index, plus temperature and
+      duration_minutes. services.yaml supplies the action editor target and the
+      schedule name text field as well as the number selectors, while
+      strings.json keeps the names and descriptions.
   appropriate_polling:
     status: done
     comment: >-

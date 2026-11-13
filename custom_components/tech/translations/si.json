@@ -93,6 +93,15 @@
         "schedule_index_required": {
             "message": "Izbira globalnega urnika zahteva indeks med 0 in 4."
         },
+        "schedule_selection_required": {
+            "message": "Izberite ime urnika ali `local`, ali uporabite stara polja vira in indeksa."
+        },
+        "schedule_name_not_found": {
+            "message": "Na tem regulatorju ni globalnega urnika z imenom {name}."
+        },
+        "schedule_name_ambiguous": {
+            "message": "Več kot en globalni urnik ima ime {name}; uporabite namesto tega stari indeks."
+        },
         "schedule_unsupported": {
             "message": "Ta regulator ne poroča urnikov cone."
         },
@@ -108,6 +117,9 @@
         "zone_mode_missing": {
             "message": "Regulator ni poročal identifikatorja načina cone."
         },
+        "zone_temperature_missing": {
+            "message": "Regulator ni poročal temperature za to cono."
+        },
         "zone_write_failed": {
             "message": "Regulator je zavrnil spremembo cone: {error}"
         }
@@ -117,13 +129,9 @@
             "name": "Nastavi urnik cone",
             "description": "Preklopi cono na njen lokalni urnik ali enega od petih globalnih urnikov. Uporabljene bodo samo predloge urnikov, ki jih regulator že poroča in so popolne ter stabilne.",
             "fields": {
-                "source": {
-                    "name": "Vir urnika",
-                    "description": "Uporabite `global` za skupni urnik ali `local` za conin lastni urnik."
-                },
-                "index": {
-                    "name": "Mesto globalnega urnika",
-                    "description": "Globalno mesto 0-4; obvezno za `global` in prezrto za `local`."
+                "schedule": {
+                    "name": "Ime urnika",
+                    "description": "Izberite konfigurirani globalni urnik ali `local` za urnik, ki pripada območju."
                 }
             }
         },
@@ -193,6 +201,11 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Težava z urnikom"
+            }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "name": "Urnik"
             }
         }
     },

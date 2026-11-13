@@ -354,6 +354,46 @@ def _global_template(snapshot: Any, index: int | None) -> dict[str, Any] | None:
     return matches[0] if len(matches) == 1 else None
 
 
+def global_schedule_index_by_name(snapshot: Any, name: str) -> int:
+    """Return the unique global slot whose template name matches, case-insensitively.
+
+    Args:
+        snapshot: Schedule snapshot from the current refresh.
+        name: Configured global schedule name, matched after trimming.
+
+    Returns:
+        The index of the one global template whose name matches.
+
+    Raises:
+        ScheduleSelectionError: If no template matches (``name_not_found``) or
+            more than one does (``name_ambiguous``).
+
+    """
+    wanted = name.strip().casefold()
+    matches: list[int] = []
+    for item in _global_templates(
+        snapshot
+        if isinstance(snapshot, dict) and snapshot.get("supported")
+        else {}
+    ):
+        if not isinstance(item, dict):
+            continue
+        index = item.get("index")
+        template_name = item.get("name")
+        if (
+            type(index) is int
+            and isinstance(template_name, str)
+            and template_name
+            and template_name.casefold() == wanted
+        ):
+            matches.append(index)
+    if not matches:
+        raise ScheduleSelectionError("name_not_found")
+    if len(matches) > 1:
+        raise ScheduleSelectionError("name_ambiguous")
+    return matches[0]
+
+
 def _template_details(raw: Any, *, settled: bool, label: str) -> dict[str, Any]:
     """Normalize one template and keep its pending/missing state explicit."""
     result = normalize_schedule(raw)

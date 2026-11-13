@@ -1121,6 +1121,63 @@ def test_zone_mode_id_returns_an_integer_mode_id() -> None:
     assert schedules.zone_mode_id(snapshot, 999) is None
 
 
+def test_global_schedule_index_by_name_trims_and_ignores_case() -> None:
+    """A configured name resolves to its slot despite case and padding."""
+    snapshot = _snapshot()
+    snapshot["globalSchedules"]["elements"][0]["name"] = "Weekend"
+    assert schedules.global_schedule_index_by_name(snapshot, "  wEeKeNd  ") == 1
+
+
+@pytest.mark.parametrize("name", ["Nope", "   ", ""])
+def test_global_schedule_index_by_name_reports_unknown_names(name: str) -> None:
+    """An unmatched, blank or empty request names no global slot."""
+    assert (
+        _reason(schedules.global_schedule_index_by_name, _snapshot(), name)
+        == "name_not_found"
+    )
+
+
+def test_global_schedule_index_by_name_ignores_missing_and_empty_names() -> None:
+    """A template without a usable name never matches, and a missing snapshot is empty."""
+    snapshot = _snapshot()
+    template = snapshot["globalSchedules"]["elements"][0]
+    for missing in ("", None):
+        template["name"] = missing
+        assert (
+            _reason(schedules.global_schedule_index_by_name, snapshot, "Synthetic")
+            == "name_not_found"
+        )
+    template.pop("name")
+    assert (
+        _reason(schedules.global_schedule_index_by_name, snapshot, "Synthetic")
+        == "name_not_found"
+    )
+    assert (
+        _reason(schedules.global_schedule_index_by_name, None, "Synthetic")
+        == "name_not_found"
+    )
+    unsupported = _snapshot()
+    unsupported["supported"] = False
+    assert (
+        _reason(
+            schedules.global_schedule_index_by_name, unsupported, "Synthetic global"
+        )
+        == "name_not_found"
+    )
+
+
+def test_global_schedule_index_by_name_rejects_duplicate_names() -> None:
+    """Two global templates sharing a name cannot be selected by that name."""
+    snapshot = _snapshot()
+    snapshot["globalSchedules"]["elements"].append(
+        _schedule(2, "Synthetic global", schedule_id=2)
+    )
+    assert (
+        _reason(schedules.global_schedule_index_by_name, snapshot, "synthetic GLOBAL")
+        == "name_ambiguous"
+    )
+
+
 def test_global_schedule_write_includes_assigned_and_target_zones() -> None:
     """Zones already on the slot are included once, sorted by zone id."""
     payload = _payload(_zone(101, mode="globalSchedule", index=1, mode_id=55))

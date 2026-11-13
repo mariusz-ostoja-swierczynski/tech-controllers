@@ -93,6 +93,15 @@
     "schedule_index_required": {
       "message": "A global schedule selection needs an index between 0 and 4."
     },
+    "schedule_selection_required": {
+      "message": "Choose a schedule name, or `local`, or use the legacy source and index fields."
+    },
+    "schedule_name_not_found": {
+      "message": "No global schedule is named {name} on this controller."
+    },
+    "schedule_name_ambiguous": {
+      "message": "More than one global schedule is named {name}; use the legacy index instead."
+    },
     "schedule_unsupported": {
       "message": "This controller does not report zone schedules."
     },
@@ -108,6 +117,9 @@
     "zone_mode_missing": {
       "message": "The controller did not report the zone's mode identifier."
     },
+    "zone_temperature_missing": {
+      "message": "The controller did not report a temperature for this zone."
+    },
     "zone_write_failed": {
       "message": "The controller refused the zone change: {error}"
     }
@@ -117,13 +129,9 @@
       "name": "Set zone schedule",
       "description": "Switch a zone to its local schedule or one of the five global schedules. Only schedule templates the controller already reports, and that are complete and stable, are applied.",
       "fields": {
-        "source": {
-          "name": "Schedule source",
-          "description": "Use `global` for a shared schedule or `local` for the zone's own schedule."
-        },
-        "index": {
-          "name": "Global schedule slot",
-          "description": "Global slot 0-4; required for `global` and ignored for `local`."
+        "schedule": {
+          "name": "Schedule name",
+          "description": "Select a configured global schedule, or `local` for the zone's own schedule."
         }
       }
     },
@@ -193,6 +201,11 @@
     "binary_sensor": {
       "schedule_problem_entity": {
         "name": "Schedule problem"
+      }
+    },
+    "select": {
+      "zone_schedule_select": {
+        "name": "Schedule"
       }
     }
   },
