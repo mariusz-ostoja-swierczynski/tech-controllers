@@ -80,6 +80,53 @@ These are read-only configuration details from the existing poll. They add no
 API requests, do not change schedules or targets, and do not calculate the current
 or next target from the controller's clock.
 
+### Changing a zone's mode
+
+Two actions change how a zone is heated: `tech.set_zone_schedule` switches it to
+a global or a local schedule, and `tech.set_zone_constant` holds a fixed
+temperature. They act on the selected zones and never on the schedule templates
+themselves: no template is created, edited or renamed. The read-only sensors and
+attributes above still describe the result, so they show the new mode only after
+the next poll.
+
+`tech.set_zone_schedule` takes `source` and, for a global schedule, `index`:
+
+```yaml
+action: tech.set_zone_schedule
+target:
+  entity_id: climate.l_9r_living_room
+data:
+  source: global
+  index: 2
+```
+
+`source` is `global` or `local`. With `global`, `index` picks one of the
+controller's global templates: `0` to `4` map to Schedule 1 to 5 in the eModul
+app, and the index is required. With `local`, the zone's own local schedule is
+applied and `index` is ignored. Only a template the controller already reports
+is accepted, and it has to be complete, valid and no longer changing.
+
+`tech.set_zone_constant` takes a temperature and a duration:
+
+```yaml
+action: tech.set_zone_constant
+target:
+  entity_id: climate.l_9r_living_room
+data:
+  temperature: 20
+  duration_minutes: 120
+```
+
+`duration_minutes: 0` keeps the temperature until it is changed again. A value
+from `1` to `1440` holds it for that many minutes. The temperature range is 5 to
+35 °C.
+
+A selection that cannot be used fails instead of writing: a missing, invalid or
+still-changing template raises an error and no schedule is sent. A controller
+that refuses the change also raises an error. A validation failure sends nothing
+to the controller. A successful action does not refresh the entities; their
+state updates on the normal 60-second poll.
+
 ### Menu codes
 
 Some controllers keep their installer and service menus behind a numeric code.
