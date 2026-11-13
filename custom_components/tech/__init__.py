@@ -19,6 +19,7 @@ from . import assets, identity
 from .const import CONF_MENU_CODES, CONTROLLER, DOMAIN, PLATFORMS, UDID, USER_ID
 from .coordinator import TechConfigEntry, TechCoordinator
 from .entity import controller_device_info
+from .services import async_register_services
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,9 +42,10 @@ MIGRATION_NEWER_VERSION_MESSAGE = (
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # pylint: disable=unused-argument
     """Set up the Tech Controllers integration via YAML configuration.
 
-    This entry point exists for completeness; the integration relies on
-    config entries, so the function simply returns ``True`` to signal
-    successful initialization.
+    The integration relies on config entries, but this entry point runs once
+    per Home Assistant start and is where the domain-wide actions are
+    registered, so they exist before any entry sets up and outlive an entry
+    reload.
 
     Args:
         hass: Home Assistant instance.
@@ -53,6 +55,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # pylin
         ``True`` to indicate setup should continue.
 
     """
+    await async_register_services(hass)
     return True
 
 
