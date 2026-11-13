@@ -11,6 +11,14 @@
         "menu_code_rejected": {
             "title": "Menucode niet geaccepteerd",
             "description": "De code die is ingesteld voor het menu ({menu_type}) van de regelaar is niet geaccepteerd, daarom ontbreken de bedieningen van dat menu. Verwijder de integratie en voeg deze opnieuw toe om de code opnieuw in te voeren. Een verkeerde code ziet er precies hetzelfde uit als geen code."
+        },
+        "zone_state_sensor_deprecated": {
+            "title": "Verouderde sensor gedetecteerd",
+            "description": "De sensor `{entity_id}` is verouderd: de alarmstatus van de zone is nu een binaire sensor met dezelfde naam.\n\nWerk je dashboards, templates, automatiseringen en scripts bij om in plaats daarvan de binaire sensor te gebruiken, schakel daarna de verouderde sensor uit en herstart Home Assistant."
+        },
+        "zone_state_sensor_used": {
+            "title": "Verouderde sensor gedetecteerd",
+            "description": "De sensor `{entity_id}` is verouderd: de alarmstatus van de zone is nu een binaire sensor met dezelfde naam.\n\nHij wordt gebruikt in de volgende automatiseringen of scripts:\n{items}\n\nWerk die bij, samen met de dashboards en templates die hem gebruiken, om in plaats daarvan de binaire sensor te gebruiken, schakel daarna de verouderde sensor uit en herstart Home Assistant."
         }
     },
     "config": {
@@ -139,6 +147,9 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Schemaprobleem"
+            },
+            "zone_state_entity": {
+                "name": "{entity_name} Alarmstatus"
             }
         }
     },

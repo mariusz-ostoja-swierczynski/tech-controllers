@@ -42,9 +42,18 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.components.binary_sensor.const import BinarySensorDeviceClass
 from homeassistant.components.sensor.const import SensorDeviceClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_PARAMS, CONF_TYPE, PERCENTAGE, EntityCategory
+from homeassistant.const import (
+    CONF_DESCRIPTION,
+    CONF_ID,
+    CONF_NAME,
+    CONF_PARAMS,
+    CONF_TYPE,
+    CONF_ZONE,
+    PERCENTAGE,
+    EntityCategory,
+)
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import ChildDeviceInfo, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import UndefinedType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -52,6 +61,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import assets
 from .const import (
     CONTROLLER,
+    DOMAIN,
     TYPE_ADDITIONAL_PUMP,
     TYPE_FIRE_SENSOR,
     TYPE_RELAY,
@@ -61,10 +71,12 @@ from .const import (
     VISIBILITY,
     WIDGET_COLLECTOR_PUMP,
     WIDGET_DHW_PUMP,
+    ZONE_STATE,
+    ZONE_STATE_NORMAL,
     widget_unit,
 )
 from .coordinator import TechConfigEntry, TechCoordinator
-from .entity import TileEntity, add_later, controller_device_info
+from .entity import ReportedEntity, TileEntity, add_later, controller_device_info
 from .schedules import schedule_problem
 
 _LOGGER = logging.getLogger(__name__)
@@ -246,11 +258,19 @@ async def async_setup_entry(
                         TileWidgetStatusSensor(tile, coordinator, config_entry)
                     )
 
+        zones = assets.zone_payloads(coordinator.data.get("zones"))
+        zone_state_entities = [
+            ZoneStateSensor(zone, coordinator, config_entry)
+            for zone in zones.values()
+            if isinstance(zone.get(CONF_ZONE), dict)
+            and zone[CONF_ZONE].get(ZONE_STATE) is not None
+        ]
+
         schedule_data = (coordinator.data or {}).get("schedules")
         if isinstance(schedule_data, dict) and schedule_data.get("supported"):
             entities.append(ScheduleProblemSensor(coordinator, config_entry))
 
-        return entities
+        return [*entities, *zone_state_entities]
 
     add_later(config_entry, coordinator, async_add_entities, _build)
 
@@ -469,6 +489,89 @@ class TileWidgetStatusSensor(TileBinarySensor):
         if status_id == 0:
             return False
         return None
+
+
+class ZoneStateSensor(
+    ReportedEntity, CoordinatorEntity[TechCoordinator], BinarySensorEntity
+):
+    """Representation of a zone's alarm state.
+
+    The zone alarm state used to be exposed by the sensor platform. Existing
+    installs keep that deprecated ``sensor.*`` entity for the transition
+    period, while every install gets this binary sensor, which is what
+    dashboards and automations should use from now on.
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "zone_state_entity"
+    _attr_device_class = BinarySensorDeviceClass.PROBLEM
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self,
+        device: dict[str, Any],
+        coordinator: TechCoordinator,
+        config_entry: TechConfigEntry,
+    ) -> None:
+        """Initialise the zone alarm state binary sensor.
+
+        Args:
+            device: Zone payload returned by the Tech API.
+            coordinator: Shared Tech data coordinator instance.
+            config_entry: Config entry that owns the coordinator.
+
+        """
+        super().__init__(coordinator)
+        self._config_entry = config_entry
+        self._coordinator = coordinator
+        self._id = device[CONF_ZONE][CONF_ID]
+        self._udid = config_entry.data[CONTROLLER][UDID]
+        self._unique_id = f"{self._udid}_{self._id}_zone_alarm_state"
+        self._attr_translation_placeholders = {"entity_name": ""}
+        self.attrs: dict[str, Any] = {}
+        self.update_properties(device)
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return self._unique_id
+
+    @property
+    def source_key(self) -> str:
+        """Return the zone this entity was built from."""
+        return f"zone_{self._id}"
+
+    @property
+    def device_info(self) -> ChildDeviceInfo:
+        """Attach the entity to the zone's child device."""
+        return ChildDeviceInfo(
+            identifiers={(DOMAIN, f"{self._udid}_{self._id}")},
+            name=self._name,
+            parent_device_id=assets.parent_controller(self._coordinator),
+        )
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the raw zone state alongside the binary state."""
+        return dict(self.attrs)
+
+    def update_properties(self, device: dict[str, Any]) -> None:
+        """Update the alarm state from the latest zone payload.
+
+        Args:
+            device: Zone dictionary containing the latest telemetry values.
+
+        """
+        self._name = device[CONF_DESCRIPTION][CONF_NAME]
+        raw_state = device[CONF_ZONE][ZONE_STATE]
+        self.attrs[ZONE_STATE] = raw_state
+        self._attr_is_on = raw_state not in ZONE_STATE_NORMAL
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Re-read the zone from the coordinator's latest payload."""
+        self.update_properties(self._coordinator.data["zones"][self._id])
+        self.async_write_ha_state()
 
 
 class ScheduleProblemSensor(CoordinatorEntity, BinarySensorEntity):

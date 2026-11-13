@@ -11,6 +11,14 @@
         "menu_code_rejected": {
             "title": "Kód menu nebyl přijat",
             "description": "Kód nastavený pro menu ({menu_type}) regulátoru nebyl přijat, proto chybí prvky tohoto menu. Odeberte integraci a přidejte ji znovu a zadejte kód znovu. Špatný kód vypadá přesně jako žádný kód."
+        },
+        "zone_state_sensor_deprecated": {
+            "title": "Byl zjištěn zastaralý senzor",
+            "description": "Senzor `{entity_id}` je zastaralý: stav alarmu zóny je nyní binární senzor se stejným názvem.\n\nAktualizujte své dashboardy, šablony, automatizace a skripty, aby používaly binární senzor, poté zastaralý senzor zakažte a restartujte Home Assistant."
+        },
+        "zone_state_sensor_used": {
+            "title": "Byl zjištěn zastaralý senzor",
+            "description": "Senzor `{entity_id}` je zastaralý: stav alarmu zóny je nyní binární senzor se stejným názvem.\n\nPoužívá se v následujících automatizacích nebo skriptech:\n{items}\n\nAktualizujte je spolu s dashboardy a šablonami, které jej používají, aby používaly binární senzor, poté zastaralý senzor zakažte a restartujte Home Assistant."
         }
     },
     "config": {
@@ -139,6 +147,9 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Problém s harmonogramem"
+            },
+            "zone_state_entity": {
+                "name": "{entity_name} Stav alarmu"
             }
         }
     },

@@ -11,6 +11,14 @@
         "menu_code_rejected": {
             "title": "Kod izbornika nije prihvaćen",
             "description": "Kod postavljen za izbornik ({menu_type}) regulatora nije prihvaćen, zato nedostaju elementi tog izbornika. Uklonite integraciju i ponovno je dodajte kako biste ponovno unijeli kod. Pogrešan kod izgleda točno kao da koda nema."
+        },
+        "zone_state_sensor_deprecated": {
+            "title": "Otkriven zastarjeli senzor",
+            "description": "Senzor `{entity_id}` je zastario: alarmno stanje zone sada je binarni senzor s istim nazivom.\n\nAžurirajte svoje nadzorne ploče, predloške, automatizacije i skripte da koriste binarni senzor, zatim onemogućite zastarjeli senzor i ponovno pokrenite Home Assistant."
+        },
+        "zone_state_sensor_used": {
+            "title": "Otkriven zastarjeli senzor",
+            "description": "Senzor `{entity_id}` je zastario: alarmno stanje zone sada je binarni senzor s istim nazivom.\n\nKoristi se u sljedećim automatizacijama ili skriptama:\n{items}\n\nAžurirajte ih, zajedno s nadzornim pločama i predlošcima koji ga koriste, da koriste binarni senzor, zatim onemogućite zastarjeli senzor i ponovno pokrenite Home Assistant."
         }
     },
     "config": {
@@ -139,6 +147,9 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Problem s rasporedom"
+            },
+            "zone_state_entity": {
+                "name": "{entity_name} Alarmno stanje"
             }
         }
     },

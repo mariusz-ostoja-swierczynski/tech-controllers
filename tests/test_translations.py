@@ -86,3 +86,23 @@ def test_schedule_problem_name_uses_binary_sensor_namespace(path: pathlib.Path) 
     )
     assert binary_sensor_names[translation_key]["name"].strip()
     assert translation_key not in entities.get("sensor", {})
+
+
+@pytest.mark.parametrize(
+    "path", [_STRINGS_PATH, *_translation_files()], ids=lambda path: path.name
+)
+def test_zone_alarm_state_name_uses_binary_sensor_namespace(
+    path: pathlib.Path,
+) -> None:
+    """Resolve the zone alarm state binary sensor's name in its own platform."""
+    entity_type = support.binary_sensor.ZoneStateSensor
+    assert issubclass(entity_type, support.BinarySensorEntity)
+    translation_key = entity_type._attr_translation_key
+    assert translation_key == "zone_state_entity"
+    entities = _load(path)["entity"]
+    binary_sensor_names = entities.get("binary_sensor", {})
+
+    assert translation_key in binary_sensor_names, (
+        f"{path.name} lacks entity.binary_sensor.{translation_key}"
+    )
+    assert binary_sensor_names[translation_key]["name"].strip()

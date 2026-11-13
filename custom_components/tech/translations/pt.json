@@ -11,6 +11,14 @@
         "menu_code_rejected": {
             "title": "Código do menu não aceite",
             "description": "O código configurado para o menu ({menu_type}) do controlador não foi aceite, por isso faltam os controlos desse menu. Remova a integração e adicione-a novamente para introduzir o código de novo. Um código errado é igual a nenhum código."
+        },
+        "zone_state_sensor_deprecated": {
+            "title": "Sensor obsoleto detetado",
+            "description": "O sensor `{entity_id}` está obsoleto: o estado de alarme da zona é agora um sensor binário com o mesmo nome.\n\nAtualize os seus painéis, modelos, automações e scripts para usar o sensor binário, depois desative o sensor obsoleto e reinicie o Home Assistant."
+        },
+        "zone_state_sensor_used": {
+            "title": "Sensor obsoleto detetado",
+            "description": "O sensor `{entity_id}` está obsoleto: o estado de alarme da zona é agora um sensor binário com o mesmo nome.\n\nÉ usado nas seguintes automações ou scripts:\n{items}\n\nAtualize esses, juntamente com os painéis e modelos que o usam, para usar o sensor binário, depois desative o sensor obsoleto e reinicie o Home Assistant."
         }
     },
     "config": {
@@ -139,6 +147,9 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Problema de horário"
+            },
+            "zone_state_entity": {
+                "name": "Estado de alarme de {entity_name}"
             }
         }
     },

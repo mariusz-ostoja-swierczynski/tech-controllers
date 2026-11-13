@@ -11,6 +11,14 @@
         "menu_code_rejected": {
             "title": "Koda menija ni bila sprejeta",
             "description": "Koda, nastavljena za meni ({menu_type}) regulatorja, ni bila sprejeta, zato elementi tega menija manjkajo. Odstranite integracijo in jo znova dodajte, da kodo vnesete znova. Napačna koda je videti popolnoma enako kot nobena koda."
+        },
+        "zone_state_sensor_deprecated": {
+            "title": "Zaznan zastarel senzor",
+            "description": "Senzor `{entity_id}` je zastarel: alarmno stanje cone je zdaj binarni senzor z istim imenom.\n\nPosodobite svoje nadzorne plošče, predloge, avtomatizacije in skripte, da uporabljajo binarni senzor, nato onemogočite zastarel senzor in znova zaženite Home Assistant."
+        },
+        "zone_state_sensor_used": {
+            "title": "Zaznan zastarel senzor",
+            "description": "Senzor `{entity_id}` je zastarel: alarmno stanje cone je zdaj binarni senzor z istim imenom.\n\nUporablja se v naslednjih avtomatizacijah ali skriptah:\n{items}\n\nPosodobite te skupaj z nadzornimi ploščami in predlogami, ki ga uporabljajo, da uporabljajo binarni senzor, nato onemogočite zastarel senzor in znova zaženite Home Assistant."
         }
     },
     "config": {
@@ -139,6 +147,9 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Težava z urnikom"
+            },
+            "zone_state_entity": {
+                "name": "{entity_name} Stanje alarma"
             }
         }
     },

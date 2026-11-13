@@ -221,7 +221,17 @@ def _build_zone_entities(
         entities.append(ZoneTemperatureSensor(zone, coordinator, config_entry))
 
     if zone_state.get(ZONE_STATE) is not None:
-        entities.append(ZoneStateSensor(zone, coordinator, config_entry))
+        # Removal checklist for 2027.5.0, the version this deprecation announces
+        # via breaks_in_ha_version: delete ZoneStateSensor, its call below,
+        # _async_deprecate_zone_state_sensor, and the two
+        # "zone_state_sensor_*" issue keys from strings.json and every
+        # translations file, then remove the sensor registry rows still left.
+        # The zone alarm state itself lives in the binary_sensor platform.
+        entity = ZoneStateSensor(zone, coordinator, config_entry)
+        if _async_deprecate_zone_state_sensor(
+            coordinator.hass, er.async_get(coordinator.hass), entity.unique_id
+        ):
+            entities.append(entity)
 
     humidity = zone_state.get("humidity")
     if humidity is not None and humidity >= 0:
@@ -545,6 +555,60 @@ def _async_deprecate_flag_sensor(
         severity=ir.IssueSeverity.WARNING,
         translation_key=(
             "deprecated_flag_sensor_used" if references else "deprecated_flag_sensor"
+        ),
+        translation_placeholders=(
+            {"entity_id": entity_id, "items": "\n".join(references)}
+            if references
+            else {"entity_id": entity_id}
+        ),
+    )
+    return True
+
+
+def _async_deprecate_zone_state_sensor(
+    hass: HomeAssistant, registry: er.EntityRegistry, unique_id: str
+) -> bool:
+    """Return whether the deprecated zone state sensor should still be created.
+
+    The zone alarm state is a binary sensor now, but the deprecation policy does
+    not allow removing an entity without a transition: one referenced from an
+    automation or a dashboard would break silently. The old sensor is therefore
+    rebuilt for installs that already have it, and a repair issue tells those
+    users to migrate. Installs that never had it never get it.
+
+    Args:
+        hass: Home Assistant instance.
+        registry: Entity registry to look the deprecated sensor up in.
+        unique_id: Unique ID the sensor platform registered the zone under.
+
+    Returns:
+        ``True`` when the deprecated entity should be added.
+
+    """
+    entity_id = registry.async_get_entity_id("sensor", DOMAIN, unique_id)
+    if entity_id is None:
+        return False
+
+    entry = registry.async_get(entity_id)
+    references = automations_with_entity(hass, entity_id) + scripts_with_entity(
+        hass, entity_id
+    )
+    if entry is not None and entry.disabled and not references:
+        _LOGGER.debug("Removing deprecated zone state sensor %s", entity_id)
+        registry.async_remove(entity_id)
+        return False
+
+    # The issue id is scoped by the unique id, which carries the controller udid,
+    # so entries for several controllers do not collide.
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        f"zone_state_sensor_{unique_id}",
+        breaks_in_ha_version="2027.5.0",
+        is_fixable=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key=(
+            "zone_state_sensor_used" if references else "zone_state_sensor_deprecated"
         ),
         translation_placeholders=(
             {"entity_id": entity_id, "items": "\n".join(references)}

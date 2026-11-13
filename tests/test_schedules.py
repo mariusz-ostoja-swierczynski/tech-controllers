@@ -146,6 +146,7 @@ def _context(snapshot: dict) -> tuple[SimpleNamespace, SimpleNamespace]:
         last_update_success=True,
         translations=support._Translations(),
         forget_callbacks=[],
+        hass=SimpleNamespace(),
     )
     coordinator.async_add_listener = lambda callback, context=None: (lambda: None)
     # The platforms read the coordinator from the entry, as production does.

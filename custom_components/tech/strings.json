@@ -12,6 +12,14 @@
     "menu_code_rejected": {
       "title": "Menu code not accepted",
       "description": "The code configured for the controller's {menu_type} menu was not accepted, so that menu's controls are missing. Remove and re-add the integration to enter the code again. A wrong code looks exactly like no code, so it cannot be checked any other way."
+    },
+    "zone_state_sensor_deprecated": {
+      "title": "Deprecated sensor detected",
+      "description": "The sensor `{entity_id}` is deprecated: the zone alarm state is now a binary sensor with the same name.\n\nUpdate your dashboards, templates, automations and scripts to use the binary sensor instead, then disable the deprecated sensor and restart Home Assistant."
+    },
+    "zone_state_sensor_used": {
+      "title": "Deprecated sensor detected",
+      "description": "The sensor `{entity_id}` is deprecated: the zone alarm state is now a binary sensor with the same name.\n\nIt is used in the following automations or scripts:\n{items}\n\nUpdate those, along with any dashboards and templates that use it, to use the binary sensor instead, then disable the deprecated sensor and restart Home Assistant."
     }
   },
   "config": {
@@ -140,6 +148,9 @@
     "binary_sensor": {
       "schedule_problem_entity": {
         "name": "schedule problem"
+      },
+      "zone_state_entity": {
+        "name": "{entity_name} alarm state"
       }
     }
   }

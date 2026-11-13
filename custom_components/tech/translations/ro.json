@@ -11,6 +11,14 @@
         "menu_code_rejected": {
             "title": "Codul meniului nu a fost acceptat",
             "description": "Codul configurat pentru meniul ({menu_type}) al centralei nu a fost acceptat, de aceea lipsesc elementele acelui meniu. Eliminați integrarea și adăugați-o din nou pentru a introduce codul din nou. Un cod greșit arată exact ca lipsa codului."
+        },
+        "zone_state_sensor_deprecated": {
+            "title": "Senzor învechit detectat",
+            "description": "Senzorul `{entity_id}` este învechit: starea de alarmă a zonei este acum un senzor binar cu același nume.\n\nActualizează tablourile de bord, șabloanele, automatizările și scripturile pentru a folosi senzorul binar, apoi dezactivează senzorul învechit și repornește Home Assistant."
+        },
+        "zone_state_sensor_used": {
+            "title": "Senzor învechit detectat",
+            "description": "Senzorul `{entity_id}` este învechit: starea de alarmă a zonei este acum un senzor binar cu același nume.\n\nEste folosit în următoarele automatizări sau scripturi:\n{items}\n\nActualizează-le, împreună cu tablourile de bord și șabloanele care îl folosesc, pentru a folosi senzorul binar, apoi dezactivează senzorul învechit și repornește Home Assistant."
         }
     },
     "config": {
@@ -139,6 +147,9 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Problemă de programare"
+            },
+            "zone_state_entity": {
+                "name": "{entity_name} Stare de alarmă"
             }
         }
     },
