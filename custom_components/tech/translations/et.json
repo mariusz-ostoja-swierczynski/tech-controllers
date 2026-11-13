@@ -11,6 +11,14 @@
         "menu_code_rejected": {
             "title": "Menüü koodi ei võetud vastu",
             "description": "Kontrolleri menüüle ({menu_type}) seadistatud koodi ei võetud vastu, seetõttu puuduvad selle menüü elemendid. Eemalda integreerimine ja lisa see uuesti, et kood uuesti sisestada. Vale kood näeb välja täpselt sama, kui koodi puudumine."
+        },
+        "zone_state_sensor_deprecated": {
+            "title": "Tuvastati aegunud andur",
+            "description": "Andur `{entity_id}` on aegunud: tsooni häire olek on nüüd sama nimega binaarandur.\n\nUuenda oma töölaudu, malle, automatiseeringuid ja skripte, et need kasutaksid binaarandurit, seejärel keela aegunud andur ja taaskäivita Home Assistant."
+        },
+        "zone_state_sensor_used": {
+            "title": "Tuvastati aegunud andur",
+            "description": "Andur `{entity_id}` on aegunud: tsooni häire olek on nüüd sama nimega binaarandur.\n\nSeda kasutatakse järgmistes automatiseeringutes või skriptides:\n{items}\n\nUuenda need koos töölaudade ja mallidega, mis seda kasutavad, et need kasutaksid binaarandurit, seejärel keela aegunud andur ja taaskäivita Home Assistant."
         }
     },
     "config": {
@@ -139,6 +147,9 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Ajakava probleem"
+            },
+            "zone_state_entity": {
+                "name": "{entity_name} Häire olek"
             }
         }
     },

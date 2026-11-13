@@ -11,6 +11,14 @@
         "menu_code_rejected": {
             "title": "Meniu kodas nepriimtas",
             "description": "Valdiklio meniu ({menu_type}) nustatytas kodas nebuvo priimtas, todėl to meniu elementų trūksta. Pašalinkite integraciją ir pridėkite ją iš naujo, kad įvestumėte kodą iš naujo. Neteisingas kodas atrodo lygiai taip pat, kaip jo nebuvimas."
+        },
+        "zone_state_sensor_deprecated": {
+            "title": "Aptiktas pasenęs jutiklis",
+            "description": "Jutiklis `{entity_id}` yra pasenęs: zonos signalizacijos būsena dabar pateikiama kaip dvejetainis jutiklis tuo pačiu pavadinimu.\n\nAtnaujinkite savo prietaisų skydus, šablonus, automatizavimus ir scenarijus, kad jie naudotų dvejetainį jutiklį, tada išjunkite pasenusį jutiklį ir iš naujo paleiskite Home Assistant."
+        },
+        "zone_state_sensor_used": {
+            "title": "Aptiktas pasenęs jutiklis",
+            "description": "Jutiklis `{entity_id}` yra pasenęs: zonos signalizacijos būsena dabar pateikiama kaip dvejetainis jutiklis tuo pačiu pavadinimu.\n\nJis naudojamas šiuose automatizavimuose arba scenarijuose:\n{items}\n\nAtnaujinkite juos kartu su prietaisų skydais ir šablonais, kurie jį naudoja, kad jie naudotų dvejetainį jutiklį, tada išjunkite pasenusį jutiklį ir iš naujo paleiskite Home Assistant."
         }
     },
     "config": {
@@ -139,6 +147,9 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Tvarkaraščio problema"
+            },
+            "zone_state_entity": {
+                "name": "{entity_name} Signalizacijos būsena"
             }
         }
     },

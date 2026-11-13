@@ -10,15 +10,18 @@ so a renamed key shows up here rather than silently skipping a class.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
-from common import EMPTY_MENU, entity_counts, entry_for
+from common import EMPTY_MENU, UDID, entity_counts, entry_for
 import pytest
+from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.tech import const
 from custom_components.tech.tech import Tech
 from homeassistant.const import CONF_DESCRIPTION, CONF_NAME, CONF_ZONE
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er, issue_registry as ir
 
 _ACTUATOR = {const.BATTERY_LEVEL: 80, const.SIGNAL_STRENGTH: 60}
 
@@ -108,6 +111,7 @@ async def _set_up_payload(
     monkeypatch: pytest.MonkeyPatch,
     module: dict[str, Any],
     menus: dict[str, Any] | None = None,
+    before_setup: Callable[[MockConfigEntry], None] | None = None,
 ) -> None:
     """Set an entry up while the API answers with the given payload."""
 
@@ -120,6 +124,8 @@ async def _set_up_payload(
     monkeypatch.setattr(Tech, "get", _get)
     entry = entry_for("payload")
     entry.add_to_hass(hass)
+    if before_setup is not None:
+        before_setup(entry)
 
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
@@ -150,10 +156,95 @@ async def test_a_zone_with_every_reading_builds_each_zone_sensor(
     ]
     await _set_up_payload(hass, monkeypatch, _module(zones, []))
 
-    # Two thermostats and the thirteen zone sensors these zones describe: the
-    # temperature, state, humidity, signal, battery, actuator, window and
-    # underfloor readings of the first, and the four the second still yields.
-    assert entity_counts(hass) == {"climate": 2, "sensor": 13}
+    # Two thermostats, the two zone alarm state binary sensors, and the eleven
+    # zone sensors these zones describe: the temperature, humidity, signal,
+    # battery, actuator, window and underfloor readings of the first, and the
+    # four the second still yields.
+    assert entity_counts(hass) == {
+        "climate": 2,
+        "binary_sensor": 2,
+        "sensor": 11,
+    }
+
+
+async def test_zone_alarm_state_only_for_problem_states(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A normal zone state stays off; lost communication and unknown alarms are on."""
+    zones = [
+        _zone(1, **{const.ZONE_STATE: "noAlarm"}),
+        _zone(2, **{const.ZONE_STATE: "zoneOn"}),
+        _zone(3, **{const.ZONE_STATE: "zoneOff"}),
+        _zone(4, **{const.ZONE_STATE: "noCommunication"}),
+        _zone(5, **{const.ZONE_STATE: "futureAlarm"}),
+    ]
+    await _set_up_payload(hass, monkeypatch, _module(zones, []))
+
+    registry = er.async_get(hass)
+    zone_states = {}
+    for entity in registry.entities.values():
+        if entity.platform == const.DOMAIN and entity.unique_id.endswith(
+            "_zone_alarm_state"
+        ):
+            assert entity.entity_id.startswith("binary_sensor.")
+            state = hass.states.get(entity.entity_id)
+            assert state is not None
+            zone_states[entity.unique_id] = state
+
+    assert {unique_id: state.state for unique_id, state in zone_states.items()} == {
+        f"{UDID}_{index}_zone_alarm_state": expected
+        for index, expected in enumerate(("off", "off", "off", "on", "on"), start=1)
+    }
+    assert (
+        zone_states[f"{UDID}_4_zone_alarm_state"].attributes[const.ZONE_STATE]
+        == "noCommunication"
+    )
+    # A fresh install never gets the old sensor platform entity.
+    assert not any(
+        entity.unique_id.endswith("_zone_state")
+        for entity in registry.entities.values()
+    )
+
+
+async def test_an_existing_zone_state_sensor_is_deprecated_in_place(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An install that already had the sensor keeps it, beside the binary sensor."""
+    registry = er.async_get(hass)
+
+    def _precreate(entry: MockConfigEntry) -> None:
+        registry.async_get_or_create(
+            domain="sensor",
+            platform=const.DOMAIN,
+            unique_id=f"{UDID}_1_zone_state",
+            suggested_object_id="zone_1_alarm_state",
+            config_entry=entry,
+        )
+
+    await _set_up_payload(
+        hass,
+        monkeypatch,
+        _module([_zone(1)], []),
+        before_setup=_precreate,
+    )
+
+    old = registry.async_get_entity_id(
+        "sensor", const.DOMAIN, f"{UDID}_1_zone_state"
+    )
+    new = registry.async_get_entity_id(
+        "binary_sensor", const.DOMAIN, f"{UDID}_1_zone_alarm_state"
+    )
+    assert old is not None
+    assert old.startswith("sensor.")
+    assert new is not None
+    assert new.startswith("binary_sensor.")
+
+    issue = ir.async_get(hass).async_get_issue(
+        const.DOMAIN, f"zone_state_sensor_{UDID}_1_zone_state"
+    )
+    assert issue is not None
+    assert issue.translation_key == "zone_state_sensor_deprecated"
+    assert issue.translation_placeholders == {"entity_id": old}
 
 
 async def test_a_temperature_tile_with_wireless_readings_adds_its_sensors(

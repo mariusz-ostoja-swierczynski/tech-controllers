@@ -11,6 +11,14 @@
         "menu_code_rejected": {
             "title": "Code de menu non accepté",
             "description": "Le code configuré pour le menu ({menu_type}) du régulateur n'a pas été accepté, c'est pourquoi les commandes de ce menu sont absentes. Supprimez l'intégration et rajoutez-la pour saisir à nouveau le code. Un mauvais code ressemble exactement à l'absence de code."
+        },
+        "zone_state_sensor_deprecated": {
+            "title": "Capteur obsolète détecté",
+            "description": "Le capteur `{entity_id}` est obsolète : l'état d'alarme de la zone est désormais un capteur binaire portant le même nom.\n\nMettez à jour vos tableaux de bord, modèles, automatisations et scripts pour utiliser le capteur binaire à la place, puis désactivez le capteur obsolète et redémarrez Home Assistant."
+        },
+        "zone_state_sensor_used": {
+            "title": "Capteur obsolète détecté",
+            "description": "Le capteur `{entity_id}` est obsolète : l'état d'alarme de la zone est désormais un capteur binaire portant le même nom.\n\nIl est utilisé dans les automatisations ou scripts suivants :\n{items}\n\nMettez à jour ceux-ci, ainsi que les tableaux de bord et modèles qui l'utilisent, pour utiliser le capteur binaire à la place, puis désactivez le capteur obsolète et redémarrez Home Assistant."
         }
     },
     "config": {
@@ -139,6 +147,9 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Problème de programmation"
+            },
+            "zone_state_entity": {
+                "name": "{entity_name} État d'alarme"
             }
         }
     },
