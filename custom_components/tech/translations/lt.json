@@ -88,56 +88,56 @@
             "message": "Šis įrašas buvo sukurtas naujesnės Tech Controllers versijos. Atnaujinkite integraciją ir paleiskite Home Assistant iš naujo."
         },
         "zone_target_invalid": {
-            "message": "Target a Tech climate entity (a zone thermostat)."
+            "message": "Pasirinkite Tech klimato įrenginį (zonos termostatą)."
         },
         "schedule_index_required": {
-            "message": "A global schedule selection needs an index between 0 and 4."
+            "message": "Bendro tvarkaraščio pasirinkimui reikalingas indeksas nuo 0 iki 4."
         },
         "schedule_unsupported": {
-            "message": "This controller does not report zone schedules."
+            "message": "Šis valdiklis nepateikia zonų tvarkaraščių."
         },
         "schedule_not_found": {
-            "message": "This zone has no {source} schedule to activate."
+            "message": "Ši zona neturi {source} tvarkaraščio, kurį būtų galima suaktyvinti."
         },
         "schedule_not_settled": {
-            "message": "The controller is still applying a change to this schedule. Try again shortly."
+            "message": "Valdiklis vis dar taiko šio tvarkaraščio pakeitimą. Bandykite dar kartą netrukus."
         },
         "schedule_invalid": {
-            "message": "The selected schedule is incomplete or invalid, so it cannot be activated."
+            "message": "Pasirinktas tvarkaraštis yra neišsamus arba netinkamas, todėl jo negalima suaktyvinti."
         },
         "zone_mode_missing": {
-            "message": "The controller did not report the zone's mode identifier."
+            "message": "Valdiklis nepateikė zonos režimo identifikatoriaus."
         },
         "zone_write_failed": {
-            "message": "The controller refused the zone change: {error}"
+            "message": "Valdiklis atmetė zonos pakeitimą: {error}"
         }
     },
     "services": {
         "set_zone_schedule": {
-            "name": "Set zone schedule",
-            "description": "Switch a zone to its local schedule or one of the five global schedules. Only schedule templates the controller already reports, and that are complete and stable, are applied.",
+            "name": "Nustatyti zonos tvarkaraštį",
+            "description": "Perjunkite zoną į vietinį tvarkaraštį arba vieną iš penkių bendrų tvarkaraščių. Taikomi tik tie tvarkaraščių šablonai, kuriuos valdiklis jau pateikia ir kurie yra išsamūs bei stabilūs.",
             "fields": {
                 "source": {
-                    "name": "Schedule source",
-                    "description": "Use `global` for a shared schedule or `local` for the zone's own schedule."
+                    "name": "Tvarkaraščio šaltinis",
+                    "description": "Naudokite `global` bendram tvarkaraščiui arba `local` pačios zonos tvarkaraščiui."
                 },
                 "index": {
-                    "name": "Global schedule slot",
-                    "description": "Global slot 0-4; required for `global` and ignored for `local`."
+                    "name": "Bendro tvarkaraščio vieta",
+                    "description": "Bendroji vieta 0-4; reikalinga `global` ir nepaisoma `local`."
                 }
             }
         },
         "set_zone_constant": {
-            "name": "Set zone constant temperature",
-            "description": "Set a zone to a fixed temperature either permanently or for a limited number of minutes, after which the zone returns to its previous mode.",
+            "name": "Nustatyti zonos pastovią temperatūrą",
+            "description": "Nustatykite zonai fiksuotą temperatūrą visam laikui arba ribotam minučių skaičiui, po kurio zona grįš į ankstesnį režimą.",
             "fields": {
                 "temperature": {
-                    "name": "Temperature",
-                    "description": "Target temperature in °C, from 5 to 35."
+                    "name": "Temperatūra",
+                    "description": "Tikslinė temperatūra °C, nuo 5 iki 35."
                 },
                 "duration_minutes": {
-                    "name": "Duration (minutes)",
-                    "description": "0 keeps the temperature until changed; 1-1440 limits it to that many minutes."
+                    "name": "Trukmė (minutės)",
+                    "description": "0 išlaiko temperatūrą, kol ji bus pakeista; 1-1440 riboja ją iki atitinkamo minučių skaičiaus."
                 }
             }
         }
