@@ -12,13 +12,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from common import EMPTY_MENU, entity_counts, entry_for
+from common import EMPTY_MENU, UDID, entity_counts, entry_for
 import pytest
 
 from custom_components.tech import const
 from custom_components.tech.tech import Tech
 from homeassistant.const import CONF_DESCRIPTION, CONF_NAME, CONF_ZONE
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 
 _ACTUATOR = {const.BATTERY_LEVEL: 80, const.SIGNAL_STRENGTH: 60}
 
@@ -154,6 +155,37 @@ async def test_a_zone_with_every_reading_builds_each_zone_sensor(
     # temperature, state, humidity, signal, battery, actuator, window and
     # underfloor readings of the first, and the four the second still yields.
     assert entity_counts(hass) == {"climate": 2, "sensor": 13}
+
+
+async def test_zone_alarm_state_only_for_problem_states(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A normal zone state stays off; lost communication and unknown alarms are on."""
+    zones = [
+        _zone(1, **{const.ZONE_STATE: "noAlarm"}),
+        _zone(2, **{const.ZONE_STATE: "zoneOn"}),
+        _zone(3, **{const.ZONE_STATE: "zoneOff"}),
+        _zone(4, **{const.ZONE_STATE: "noCommunication"}),
+        _zone(5, **{const.ZONE_STATE: "futureAlarm"}),
+    ]
+    await _set_up_payload(hass, monkeypatch, _module(zones, []))
+
+    registry = er.async_get(hass)
+    zone_states = {}
+    for entity in registry.entities.values():
+        if entity.platform == const.DOMAIN and entity.unique_id.endswith("_zone_state"):
+            state = hass.states.get(entity.entity_id)
+            assert state is not None
+            zone_states[entity.unique_id] = state
+
+    assert {unique_id: state.state for unique_id, state in zone_states.items()} == {
+        f"{UDID}_{index}_zone_state": expected
+        for index, expected in enumerate(("off", "off", "off", "on", "on"), start=1)
+    }
+    assert (
+        zone_states[f"{UDID}_4_zone_state"].attributes[const.ZONE_STATE]
+        == "noCommunication"
+    )
 
 
 async def test_a_temperature_tile_with_wireless_readings_adds_its_sensors(

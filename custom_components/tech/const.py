@@ -82,6 +82,11 @@ TEMP_TOO_LOW = "tempTooLow"
 SERVICE_ERROR = "serviceError"
 ZONE_STATE = "zoneState"  # "noAlarm", "zoneOff", "zoneOn", "zoneUnregistered"
 
+# `zoneState` values that describe normal operation rather than a fault.
+# `zoneOn`/`zoneOff` are the zone's own switch, `noAlarm` is the normal
+# operating state; anything else (noCommunication, a future alarm) is a problem.
+ZONE_STATE_NORMAL: Final = frozenset({"noAlarm", "zoneOn", "zoneOff"})
+
 DEFAULT_ICON = "mdi:eye"  # fallback when neither iconId nor type maps to an icon
 
 # ---------------------------------------------------------------------------

@@ -109,6 +109,7 @@ from .const import (
     WINDOW_STATE,
     WORKING_STATUS,
     ZONE_STATE,
+    ZONE_STATE_NORMAL,
     reading_is_working,
     scaled_number,
     valid_number,
@@ -1161,11 +1162,11 @@ class ZoneStateSensor(BinarySensorEntity, ZoneSensor):  # type: ignore[misc]
         update_properties, which does not know attrs and _window_index already.
 
         """
-        self._attr_is_on = device[CONF_ZONE][ZONE_STATE] != "noAlarm"
+        self._attr_is_on = device[CONF_ZONE][ZONE_STATE] not in ZONE_STATE_NORMAL
         self.attrs: dict[str, Any] = {}
         super().__init__(device, coordinator, config_entry)
         self._attr_translation_key = "zone_state_entity"
-        self._attr_is_on = device[CONF_ZONE][ZONE_STATE] != "noAlarm"
+        self._attr_is_on = device[CONF_ZONE][ZONE_STATE] not in ZONE_STATE_NORMAL
 
     @property
     def unique_id(self) -> str:
@@ -1190,7 +1191,7 @@ class ZoneStateSensor(BinarySensorEntity, ZoneSensor):  # type: ignore[misc]
 
         self.attrs[ZONE_STATE] = device[CONF_ZONE][ZONE_STATE]
 
-        self._attr_is_on = device[CONF_ZONE][ZONE_STATE] != "noAlarm"
+        self._attr_is_on = device[CONF_ZONE][ZONE_STATE] not in ZONE_STATE_NORMAL
 
 
 class TileSensor(TileEntity, CoordinatorEntity[TechCoordinator]):
