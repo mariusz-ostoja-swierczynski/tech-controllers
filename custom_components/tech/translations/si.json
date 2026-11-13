@@ -177,10 +177,10 @@
             "zone_schedule_entity": {
                 "name": "Urnik",
                 "state": {
-                    "constant-temp": "Konstantna temperatura",
-                    "global-schedule": "Globalni urnik",
-                    "local-schedule": "Lokalni urnik",
-                    "time-limit": "Časovna omejitev"
+                  "constant-temp": "Konstantna temperatura",
+                  "global-schedule": "Globalni urnik",
+                  "local-schedule": "Lokalni urnik",
+                  "time-limit": "Časovna omejitev"
                 }
             },
             "local_schedule_entity": {

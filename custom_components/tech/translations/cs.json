@@ -177,10 +177,10 @@
             "zone_schedule_entity": {
                 "name": "Harmonogram",
                 "state": {
-                    "constant-temp": "Konstantní teplota",
-                    "global-schedule": "Globální harmonogram",
-                    "local-schedule": "Místní harmonogram",
-                    "time-limit": "Časový limit"
+                  "constant-temp": "Konstantní teplota",
+                  "global-schedule": "Globální harmonogram",
+                  "local-schedule": "Místní harmonogram",
+                  "time-limit": "Časový limit"
                 }
             },
             "local_schedule_entity": {
