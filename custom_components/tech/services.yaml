@@ -1,0 +1,46 @@
+set_zone_schedule:
+  target:
+    entity:
+      integration: tech
+      domain: climate
+  fields:
+    source:
+      required: true
+      selector:
+        select:
+          options:
+            - global
+            - local
+    index:
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 4
+          step: 1
+          mode: box
+
+set_zone_constant:
+  target:
+    entity:
+      integration: tech
+      domain: climate
+  fields:
+    temperature:
+      required: true
+      selector:
+        number:
+          min: 5
+          max: 35
+          step: 0.1
+          unit_of_measurement: "°C"
+          mode: box
+    duration_minutes:
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 1440
+          step: 1
+          unit_of_measurement: "min"
+          mode: box
