@@ -88,56 +88,56 @@
             "message": "Эта запись создана более новой версией Tech Controllers. Обновите интеграцию и перезапустите Home Assistant."
         },
         "zone_target_invalid": {
-            "message": "Target a Tech climate entity (a zone thermostat)."
+            "message": "Выберите климатическое устройство Tech (термостат зоны)."
         },
         "schedule_index_required": {
-            "message": "A global schedule selection needs an index between 0 and 4."
+            "message": "Для выбора глобального расписания нужен индекс от 0 до 4."
         },
         "schedule_unsupported": {
-            "message": "This controller does not report zone schedules."
+            "message": "Этот контроллер не передаёт расписания зон."
         },
         "schedule_not_found": {
-            "message": "This zone has no {source} schedule to activate."
+            "message": "У этой зоны нет {source} расписания для активации."
         },
         "schedule_not_settled": {
-            "message": "The controller is still applying a change to this schedule. Try again shortly."
+            "message": "Контроллер всё ещё применяет изменение этого расписания. Повторите попытку чуть позже."
         },
         "schedule_invalid": {
-            "message": "The selected schedule is incomplete or invalid, so it cannot be activated."
+            "message": "Выбранное расписание неполное или недопустимое, поэтому его нельзя активировать."
         },
         "zone_mode_missing": {
-            "message": "The controller did not report the zone's mode identifier."
+            "message": "Контроллер не передал идентификатор режима зоны."
         },
         "zone_write_failed": {
-            "message": "The controller refused the zone change: {error}"
+            "message": "Контроллер отклонил изменение зоны: {error}"
         }
     },
     "services": {
         "set_zone_schedule": {
-            "name": "Set zone schedule",
-            "description": "Switch a zone to its local schedule or one of the five global schedules. Only schedule templates the controller already reports, and that are complete and stable, are applied.",
+            "name": "Задать расписание зоны",
+            "description": "Переключите зону на местное расписание или одно из пяти глобальных расписаний. Применяются только те шаблоны расписания, которые контроллер уже передаёт и которые полны и стабильны.",
             "fields": {
                 "source": {
-                    "name": "Schedule source",
-                    "description": "Use `global` for a shared schedule or `local` for the zone's own schedule."
+                    "name": "Источник расписания",
+                    "description": "Используйте `global` для общего расписания или `local` для собственного расписания зоны."
                 },
                 "index": {
-                    "name": "Global schedule slot",
-                    "description": "Global slot 0-4; required for `global` and ignored for `local`."
+                    "name": "Слот глобального расписания",
+                    "description": "Глобальный слот 0-4; требуется для `global` и игнорируется для `local`."
                 }
             }
         },
         "set_zone_constant": {
-            "name": "Set zone constant temperature",
-            "description": "Set a zone to a fixed temperature either permanently or for a limited number of minutes, after which the zone returns to its previous mode.",
+            "name": "Задать постоянную температуру зоны",
+            "description": "Установите для зоны фиксированную температуру навсегда или на ограниченное число минут, после чего зона вернётся в предыдущий режим.",
             "fields": {
                 "temperature": {
-                    "name": "Temperature",
-                    "description": "Target temperature in °C, from 5 to 35."
+                    "name": "Температура",
+                    "description": "Целевая температура в °C, от 5 до 35."
                 },
                 "duration_minutes": {
-                    "name": "Duration (minutes)",
-                    "description": "0 keeps the temperature until changed; 1-1440 limits it to that many minutes."
+                    "name": "Длительность (минуты)",
+                    "description": "0 сохраняет температуру до изменения; 1-1440 ограничивает её указанным числом минут."
                 }
             }
         }

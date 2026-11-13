@@ -88,56 +88,56 @@
             "message": "Dit item is gemaakt door een nieuwere versie van Tech Controllers. Werk de integratie bij en herstart Home Assistant."
         },
         "zone_target_invalid": {
-            "message": "Target a Tech climate entity (a zone thermostat)."
+            "message": "Richt je op een Tech-klimaatentiteit (een zonethermostaat)."
         },
         "schedule_index_required": {
-            "message": "A global schedule selection needs an index between 0 and 4."
+            "message": "Voor een globale schemakeuze is een index tussen 0 en 4 nodig."
         },
         "schedule_unsupported": {
-            "message": "This controller does not report zone schedules."
+            "message": "Deze regelaar meldt geen zonaschema's."
         },
         "schedule_not_found": {
-            "message": "This zone has no {source} schedule to activate."
+            "message": "Deze zone heeft geen {source}-schema om te activeren."
         },
         "schedule_not_settled": {
-            "message": "The controller is still applying a change to this schedule. Try again shortly."
+            "message": "De regelaar is nog een wijziging aan dit schema aan het toepassen. Probeer het zo meteen opnieuw."
         },
         "schedule_invalid": {
-            "message": "The selected schedule is incomplete or invalid, so it cannot be activated."
+            "message": "Het geselecteerde schema is onvolledig of ongeldig en kan daarom niet worden geactiveerd."
         },
         "zone_mode_missing": {
-            "message": "The controller did not report the zone's mode identifier."
+            "message": "De regelaar heeft de modusidentificatie van de zone niet gemeld."
         },
         "zone_write_failed": {
-            "message": "The controller refused the zone change: {error}"
+            "message": "De regelaar heeft de zonnewijziging geweigerd: {error}"
         }
     },
     "services": {
         "set_zone_schedule": {
-            "name": "Set zone schedule",
-            "description": "Switch a zone to its local schedule or one of the five global schedules. Only schedule templates the controller already reports, and that are complete and stable, are applied.",
+            "name": "Zonaschema instellen",
+            "description": "Schakelt een zone naar het lokale schema of een van de vijf globale schema's. Alleen schemasjablonen die de regelaar al meldt en die compleet en stabiel zijn, worden toegepast.",
             "fields": {
                 "source": {
-                    "name": "Schedule source",
-                    "description": "Use `global` for a shared schedule or `local` for the zone's own schedule."
+                    "name": "Schemabron",
+                    "description": "Gebruik `global` voor een gedeeld schema of `local` voor het eigen schema van de zone."
                 },
                 "index": {
-                    "name": "Global schedule slot",
-                    "description": "Global slot 0-4; required for `global` and ignored for `local`."
+                    "name": "Globaal schemaslot",
+                    "description": "Globaal slot 0-4; vereist voor `global` en genegeerd voor `local`."
                 }
             }
         },
         "set_zone_constant": {
-            "name": "Set zone constant temperature",
-            "description": "Set a zone to a fixed temperature either permanently or for a limited number of minutes, after which the zone returns to its previous mode.",
+            "name": "Constante temperatuur van zone instellen",
+            "description": "Stelt een zone permanent of voor een beperkt aantal minuten op een vaste temperatuur in, waarna de zone terugkeert naar de vorige modus.",
             "fields": {
                 "temperature": {
-                    "name": "Temperature",
-                    "description": "Target temperature in °C, from 5 to 35."
+                    "name": "Temperatuur",
+                    "description": "Doeltemperatuur in °C, van 5 tot 35."
                 },
                 "duration_minutes": {
-                    "name": "Duration (minutes)",
-                    "description": "0 keeps the temperature until changed; 1-1440 limits it to that many minutes."
+                    "name": "Duur (minuten)",
+                    "description": "0 houdt de temperatuur aan tot deze wordt gewijzigd; 1-1440 beperkt dit tot dat aantal minuten."
                 }
             }
         }

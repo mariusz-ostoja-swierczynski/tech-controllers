@@ -88,56 +88,56 @@
       "message": "Ten wpis został utworzony przez nowszą wersję Tech Controllers. Zaktualizuj integrację i uruchom ponownie Home Assistant."
     },
     "zone_target_invalid": {
-      "message": "Target a Tech climate entity (a zone thermostat)."
+      "message": "Wybierz encję klimatu Tech (termostat strefy)."
     },
     "schedule_index_required": {
-      "message": "A global schedule selection needs an index between 0 and 4."
+      "message": "Wybór harmonogramu globalnego wymaga indeksu od 0 do 4."
     },
     "schedule_unsupported": {
-      "message": "This controller does not report zone schedules."
+      "message": "Ten sterownik nie zgłasza harmonogramów stref."
     },
     "schedule_not_found": {
-      "message": "This zone has no {source} schedule to activate."
+      "message": "Ta strefa nie ma harmonogramu {source} do aktywowania."
     },
     "schedule_not_settled": {
-      "message": "The controller is still applying a change to this schedule. Try again shortly."
+      "message": "Sterownik wciąż stosuje zmianę tego harmonogramu. Spróbuj ponownie za chwilę."
     },
     "schedule_invalid": {
-      "message": "The selected schedule is incomplete or invalid, so it cannot be activated."
+      "message": "Wybrany harmonogram jest niekompletny lub nieprawidłowy, więc nie można go aktywować."
     },
     "zone_mode_missing": {
-      "message": "The controller did not report the zone's mode identifier."
+      "message": "Sterownik nie zgłosił identyfikatora trybu strefy."
     },
     "zone_write_failed": {
-      "message": "The controller refused the zone change: {error}"
+      "message": "Sterownik odrzucił zmianę strefy: {error}"
     }
   },
   "services": {
     "set_zone_schedule": {
-      "name": "Set zone schedule",
-      "description": "Switch a zone to its local schedule or one of the five global schedules. Only schedule templates the controller already reports, and that are complete and stable, are applied.",
+      "name": "Ustaw harmonogram strefy",
+      "description": "Przełącz strefę na jej harmonogram lokalny lub jeden z pięciu harmonogramów globalnych. Stosowane są tylko szablony harmonogramów, które sterownik już zgłasza i które są kompletne oraz stabilne.",
       "fields": {
         "source": {
-          "name": "Schedule source",
-          "description": "Use `global` for a shared schedule or `local` for the zone's own schedule."
+          "name": "Źródło harmonogramu",
+          "description": "Użyj `global` dla harmonogramu współdzielonego lub `local` dla harmonogramu własnego strefy."
         },
         "index": {
-          "name": "Global schedule slot",
-          "description": "Global slot 0-4; required for `global` and ignored for `local`."
+          "name": "Slot harmonogramu globalnego",
+          "description": "Slot globalny 0-4; wymagany dla `global` i ignorowany dla `local`."
         }
       }
     },
     "set_zone_constant": {
-      "name": "Set zone constant temperature",
-      "description": "Set a zone to a fixed temperature either permanently or for a limited number of minutes, after which the zone returns to its previous mode.",
+      "name": "Ustaw stałą temperaturę strefy",
+      "description": "Ustaw strefie stałą temperaturę trwale lub na ograniczoną liczbę minut, po której strefa wróci do poprzedniego trybu.",
       "fields": {
         "temperature": {
-          "name": "Temperature",
-          "description": "Target temperature in °C, from 5 to 35."
+          "name": "Temperatura",
+          "description": "Temperatura docelowa w °C, od 5 do 35."
         },
         "duration_minutes": {
-          "name": "Duration (minutes)",
-          "description": "0 keeps the temperature until changed; 1-1440 limits it to that many minutes."
+          "name": "Czas trwania (minuty)",
+          "description": "0 utrzymuje temperaturę do zmiany; 1-1440 ogranicza ją do tylu minut."
         }
       }
     }

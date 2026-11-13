@@ -88,56 +88,56 @@
             "message": "Ezt a bejegyzést a Tech Controllers újabb verziója hozta létre. Frissítse az integrációt, és indítsa újra a Home Assistantot."
         },
         "zone_target_invalid": {
-            "message": "Target a Tech climate entity (a zone thermostat)."
+            "message": "Válasszon egy Tech klíma entitást (zóna termosztát)."
         },
         "schedule_index_required": {
-            "message": "A global schedule selection needs an index between 0 and 4."
+            "message": "A globális ütemterv kiválasztásához 0 és 4 közötti index szükséges."
         },
         "schedule_unsupported": {
-            "message": "This controller does not report zone schedules."
+            "message": "Ez a vezérlő nem jelent zóna ütemterveket."
         },
         "schedule_not_found": {
-            "message": "This zone has no {source} schedule to activate."
+            "message": "Ehhez a zónához nincs aktiválható {source} ütemterv."
         },
         "schedule_not_settled": {
-            "message": "The controller is still applying a change to this schedule. Try again shortly."
+            "message": "A vezérlő még alkalmazza az ütemterv módosítását. Próbálja újra hamarosan."
         },
         "schedule_invalid": {
-            "message": "The selected schedule is incomplete or invalid, so it cannot be activated."
+            "message": "A kiválasztott ütemterv hiányos vagy érvénytelen, ezért nem aktiválható."
         },
         "zone_mode_missing": {
-            "message": "The controller did not report the zone's mode identifier."
+            "message": "A vezérlő nem jelentette a zóna módazonosítóját."
         },
         "zone_write_failed": {
-            "message": "The controller refused the zone change: {error}"
+            "message": "A vezérlő elutasította a zóna módosítását: {error}"
         }
     },
     "services": {
         "set_zone_schedule": {
-            "name": "Set zone schedule",
-            "description": "Switch a zone to its local schedule or one of the five global schedules. Only schedule templates the controller already reports, and that are complete and stable, are applied.",
+            "name": "Zóna ütemtervének beállítása",
+            "description": "Átváltja a zónát a helyi ütemtervére vagy az öt globális ütemterv egyikére. Csak a vezérlő által már jelentett, teljes és stabil ütemtervsablonok lesznek alkalmazva.",
             "fields": {
                 "source": {
-                    "name": "Schedule source",
-                    "description": "Use `global` for a shared schedule or `local` for the zone's own schedule."
+                    "name": "Ütemterv forrása",
+                    "description": "Használjon `global` értéket a megosztott ütemtervhez, vagy `local` értéket a zóna saját ütemtervéhez."
                 },
                 "index": {
-                    "name": "Global schedule slot",
-                    "description": "Global slot 0-4; required for `global` and ignored for `local`."
+                    "name": "Globális ütemterv helye",
+                    "description": "Globális hely 0-4; a `global` esetén kötelező, a `local` esetén figyelmen kívül hagyva."
                 }
             }
         },
         "set_zone_constant": {
-            "name": "Set zone constant temperature",
-            "description": "Set a zone to a fixed temperature either permanently or for a limited number of minutes, after which the zone returns to its previous mode.",
+            "name": "Zóna állandó hőmérsékletének beállítása",
+            "description": "Állandó hőmérsékletet állít be a zónának véglegesen vagy korlátozott számú percre, ami után a zóna visszatér az előző módba.",
             "fields": {
                 "temperature": {
-                    "name": "Temperature",
-                    "description": "Target temperature in °C, from 5 to 35."
+                    "name": "Hőmérséklet",
+                    "description": "Célhőmérséklet °C-ban, 5 és 35 között."
                 },
                 "duration_minutes": {
-                    "name": "Duration (minutes)",
-                    "description": "0 keeps the temperature until changed; 1-1440 limits it to that many minutes."
+                    "name": "Időtartam (perc)",
+                    "description": "A 0 a változtatásig tartja a hőmérsékletet; az 1-1440 ennyi percre korlátozza."
                 }
             }
         }
@@ -177,10 +177,10 @@
             "zone_schedule_entity": {
                 "name": "Ütemterv",
                 "state": {
-                  "constant-temp": "Állandó hőmérséklet",
-                  "global-schedule": "Globális ütemterv",
-                  "local-schedule": "Helyi ütemterv",
-                  "time-limit": "Időkorlát"
+                    "constant-temp": "Állandó hőmérséklet",
+                    "global-schedule": "Globális ütemterv",
+                    "local-schedule": "Helyi ütemterv",
+                    "time-limit": "Időkorlát"
                 }
             },
             "local_schedule_entity": {

@@ -88,56 +88,56 @@
             "message": "Esta entrada fue creada por una versión más reciente de Tech Controllers. Actualice la integración y reinicie Home Assistant."
         },
         "zone_target_invalid": {
-            "message": "Target a Tech climate entity (a zone thermostat)."
+            "message": "Selecciona una entidad climática Tech (un termostato de zona)."
         },
         "schedule_index_required": {
-            "message": "A global schedule selection needs an index between 0 and 4."
+            "message": "Una selección de horario global necesita un índice entre 0 y 4."
         },
         "schedule_unsupported": {
-            "message": "This controller does not report zone schedules."
+            "message": "Este controlador no informa de horarios de zona."
         },
         "schedule_not_found": {
-            "message": "This zone has no {source} schedule to activate."
+            "message": "Esta zona no tiene ningún horario {source} que activar."
         },
         "schedule_not_settled": {
-            "message": "The controller is still applying a change to this schedule. Try again shortly."
+            "message": "El controlador todavía está aplicando un cambio en este horario. Inténtalo de nuevo en un momento."
         },
         "schedule_invalid": {
-            "message": "The selected schedule is incomplete or invalid, so it cannot be activated."
+            "message": "El horario seleccionado está incompleto o no es válido, por lo que no se puede activar."
         },
         "zone_mode_missing": {
-            "message": "The controller did not report the zone's mode identifier."
+            "message": "El controlador no informó del identificador de modo de la zona."
         },
         "zone_write_failed": {
-            "message": "The controller refused the zone change: {error}"
+            "message": "El controlador rechazó el cambio de la zona: {error}"
         }
     },
     "services": {
         "set_zone_schedule": {
-            "name": "Set zone schedule",
-            "description": "Switch a zone to its local schedule or one of the five global schedules. Only schedule templates the controller already reports, and that are complete and stable, are applied.",
+            "name": "Establecer el horario de la zona",
+            "description": "Cambia una zona a su horario local o a uno de los cinco horarios globales. Solo se aplican las plantillas de horario que el controlador ya informa y que están completas y estables.",
             "fields": {
                 "source": {
-                    "name": "Schedule source",
-                    "description": "Use `global` for a shared schedule or `local` for the zone's own schedule."
+                    "name": "Origen del horario",
+                    "description": "Usa `global` para un horario compartido o `local` para el horario propio de la zona."
                 },
                 "index": {
-                    "name": "Global schedule slot",
-                    "description": "Global slot 0-4; required for `global` and ignored for `local`."
+                    "name": "Posición del horario global",
+                    "description": "Posición global 0-4; obligatoria para `global` e ignorada para `local`."
                 }
             }
         },
         "set_zone_constant": {
-            "name": "Set zone constant temperature",
-            "description": "Set a zone to a fixed temperature either permanently or for a limited number of minutes, after which the zone returns to its previous mode.",
+            "name": "Establecer la temperatura constante de la zona",
+            "description": "Establece una zona a una temperatura fija de forma permanente o durante un número limitado de minutos, tras lo cual la zona vuelve a su modo anterior.",
             "fields": {
                 "temperature": {
-                    "name": "Temperature",
-                    "description": "Target temperature in °C, from 5 to 35."
+                    "name": "Temperatura",
+                    "description": "Temperatura objetivo en °C, de 5 a 35."
                 },
                 "duration_minutes": {
-                    "name": "Duration (minutes)",
-                    "description": "0 keeps the temperature until changed; 1-1440 limits it to that many minutes."
+                    "name": "Duración (minutos)",
+                    "description": "0 mantiene la temperatura hasta que se cambie; 1-1440 la limita a ese número de minutos."
                 }
             }
         }
