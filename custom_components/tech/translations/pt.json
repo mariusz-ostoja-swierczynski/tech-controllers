@@ -203,6 +203,11 @@
                 "name": "Problema de horário"
             }
         },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Duração da temperatura constante"
+            }
+        },
         "select": {
             "zone_schedule_select": {
                 "name": "Horário"

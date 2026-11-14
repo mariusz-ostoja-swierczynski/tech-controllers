@@ -203,6 +203,11 @@
                 "name": "Ütemterv probléma"
             }
         },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Állandó hőmérséklet időtartama"
+            }
+        },
         "select": {
             "zone_schedule_select": {
                 "name": "Ütemterv"

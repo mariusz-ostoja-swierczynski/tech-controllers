@@ -203,6 +203,11 @@
                 "name": "Schemaprobleem"
             }
         },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Duur van constante temperatuur"
+            }
+        },
         "select": {
             "zone_schedule_select": {
                 "name": "Schema"

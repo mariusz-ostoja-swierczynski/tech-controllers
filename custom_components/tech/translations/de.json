@@ -203,6 +203,11 @@
                 "name": "Zeitplanproblem"
             }
         },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Dauer der konstanten Temperatur"
+            }
+        },
         "select": {
             "zone_schedule_select": {
                 "name": "Zeitplan"

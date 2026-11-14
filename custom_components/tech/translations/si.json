@@ -203,6 +203,11 @@
                 "name": "Težava z urnikom"
             }
         },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Trajanje konstantne temperature"
+            }
+        },
         "select": {
             "zone_schedule_select": {
                 "name": "Urnik"

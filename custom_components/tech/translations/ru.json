@@ -203,6 +203,11 @@
                 "name": "Проблема расписания"
             }
         },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Длительность постоянной температуры"
+            }
+        },
         "select": {
             "zone_schedule_select": {
                 "name": "Расписание"

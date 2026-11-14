@@ -203,6 +203,11 @@
         "name": "Schedule problem"
       }
     },
+    "number": {
+      "zone_constant_duration": {
+        "name": "Constant temperature duration"
+      }
+    },
     "select": {
       "zone_schedule_select": {
         "name": "Schedule"

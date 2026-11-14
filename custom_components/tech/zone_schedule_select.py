@@ -33,6 +33,7 @@ from .schedules import (
     SCHEDULE_TEMPERATURE_MAX,
     SCHEDULE_TEMPERATURE_MIN,
     global_schedule_details,
+    zone_mode_pending,
     zone_schedule_info,
 )
 from .services import SERVICE_SET_ZONE_CONSTANT, SERVICE_SET_ZONE_SCHEDULE
@@ -152,8 +153,16 @@ class ZoneScheduleSelect(
         """Return the current schedule snapshot."""
         return (self.coordinator.data or {}).get("schedules")
 
-    def _refresh_options(self) -> None:
-        """Rebuild the options from the names the snapshot carries now."""
+    def _refresh_options(self, *, hold_current: bool = False) -> None:
+        """Rebuild the options from the names the snapshot carries now.
+
+        Args:
+            hold_current: Keep the option this entity last published. The
+                controller reports the previous mode while it applies a write,
+                so a poll that lands inside that window must not undo the
+                selection the user just made.
+
+        """
         snapshot = self._schedule_data()
         options = [self._constant_label, self._local_label]
         actions: dict[str, tuple[str, int | None]] = {
@@ -172,7 +181,8 @@ class ZoneScheduleSelect(
         self._global_options = global_options
         self._option_actions = actions
         self._attr_options = options
-        self._attr_current_option = self._current_option(snapshot)
+        if not hold_current:
+            self._attr_current_option = self._current_option(snapshot)
 
     def _current_option(self, snapshot: Any) -> str | None:
         """Map the zone's configured mode to one of the published labels."""
@@ -198,6 +208,11 @@ class ZoneScheduleSelect(
             return value
         return None
 
+    def _constant_duration(self) -> int:
+        """Return the minutes the duration number set for this zone."""
+        duration = self._coordinator.zone_constant_durations.get(self._id)
+        return duration if type(duration) is int and duration > 0 else 0
+
     async def async_select_option(self, option: str) -> None:
         """Route the chosen option through the matching zone-mode action."""
         action = self._option_actions.get(option)
@@ -222,7 +237,7 @@ class ZoneScheduleSelect(
                 {
                     "entity_id": self.entity_id,
                     "temperature": setpoint / 10,
-                    "duration_minutes": 0,
+                    "duration_minutes": self._constant_duration(),
                 },
                 blocking=True,
             )
@@ -246,5 +261,7 @@ class ZoneScheduleSelect(
     @callback
     def _handle_coordinator_update(self) -> None:
         """Refresh the option labels from the coordinator's latest snapshot."""
-        self._refresh_options()
+        self._refresh_options(
+            hold_current=zone_mode_pending(self._schedule_data(), self._id)
+        )
         self.async_write_ha_state()
