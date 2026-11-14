@@ -62,6 +62,7 @@ _FAKE_MODULES = (
     "homeassistant.core",
     "homeassistant.exceptions",
     "homeassistant.helpers",
+    "homeassistant.helpers.config_validation",
     "homeassistant.helpers.device_registry",
     "homeassistant.helpers.entity",
     "homeassistant.helpers.entity_platform",
@@ -69,6 +70,8 @@ _FAKE_MODULES = (
     "homeassistant.helpers.storage",
     "homeassistant.helpers.icon",
     "homeassistant.helpers.issue_registry",
+    "homeassistant.helpers.service",
+    "homeassistant.helpers.target",
     "homeassistant.helpers.translation",
     "homeassistant.helpers.typing",
     "homeassistant.helpers.update_coordinator",
@@ -284,9 +287,28 @@ def _async_translate_state(
     return state
 
 
+async def _async_get_translations(
+    hass: Any, language: str, category: str, integrations: Any
+) -> dict[str, str]:
+    """Report no translations; tests that need them install their own."""
+    return {}
+
+
+def _async_set_service_schema(
+    hass: Any, domain: str, service: str, schema: Any
+) -> None:
+    """Accept a runtime schema without registering it; tests install their own."""
+
+
+def _make_entity_service_schema(schema: Any) -> Any:
+    """Return the service field schema unchanged."""
+    return schema
+
+
 def _stub_const(module: types.ModuleType) -> None:
     """Fill the ``homeassistant.const`` stub: one attribute per constant read."""
     module.ATTR_ID = "id"
+    module.ATTR_TEMPERATURE = "temperature"
     module.CONF_DESCRIPTION = "description"
     module.CONF_ID = "id"
     module.CONF_MODEL = "model"
@@ -326,6 +348,7 @@ def _fake_module(name: str) -> types.ModuleType:
         module.SelectEntity = globals()["select"]
     elif name == "homeassistant.components.number":
         module.NumberEntity = globals()["number"]
+        module.RestoreNumber = globals()["number"]
         module.NumberMode = _NumberMode
     elif name == "homeassistant.config_entries":
         module.ConfigEntry = _ConfigEntry
@@ -334,6 +357,7 @@ def _fake_module(name: str) -> types.ModuleType:
         module.SOURCE_USER = "user"
     elif name == "homeassistant.core":
         module.HomeAssistant = _Entity
+        module.ServiceCall = type("ServiceCall", (), {})
         module.callback = lambda func: func
     elif name == "homeassistant.exceptions":
         module.ConfigEntryAuthFailed = _ConfigEntryAuthFailed
@@ -396,6 +420,19 @@ def _fake_module(name: str) -> types.ModuleType:
 def _install_stubs() -> None:
     """Install the stubs and wire the parent/child attributes."""
     modules = {name: _fake_module(name) for name in _FAKE_MODULES}
+    modules["homeassistant.helpers.config_validation"].make_entity_service_schema = (
+        _make_entity_service_schema
+    )
+    modules["homeassistant.helpers.target"].TargetSelection = object
+    modules["homeassistant.helpers.target"].async_extract_referenced_entity_ids = (
+        lambda *args: None
+    )
+    modules["homeassistant.helpers.translation"].async_get_translations = (
+        _async_get_translations
+    )
+    modules["homeassistant.helpers.service"].async_set_service_schema = (
+        _async_set_service_schema
+    )
     modules["homeassistant"].__path__ = []
     modules["homeassistant.components"].__path__ = []
     modules["homeassistant.helpers"].__path__ = []
@@ -421,12 +458,15 @@ def _install_stubs() -> None:
             "homeassistant.helpers",
             (
                 "device_registry",
+                "config_validation",
                 "entity",
                 "entity_platform",
                 "entity_registry",
                 "storage",
                 "icon",
                 "issue_registry",
+                "service",
+                "target",
                 "translation",
                 "typing",
                 "update_coordinator",

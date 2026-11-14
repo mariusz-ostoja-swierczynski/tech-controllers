@@ -23,7 +23,8 @@ from .const import (
     VALUE_FORMAT_TENTH,
 )
 from .coordinator import TechConfigEntry, TechCoordinator
-from .entity import ReportedEntity
+from .entity import ReportedEntity, add_later
+from .zone_constant_duration import ZoneConstantDurationNumber
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -82,6 +83,22 @@ async def async_setup_entry(
         )
 
     async_add_entities(entities, True)
+
+    def _build_zone_durations() -> list[ZoneConstantDurationNumber]:
+        schedules = (coordinator.data or {}).get("schedules")
+        if not isinstance(schedules, dict) or not schedules.get("supported"):
+            return []
+        schedule_zones = schedules.get("zones")
+        if not isinstance(schedule_zones, dict):
+            return []
+        zones = assets.zone_payloads(coordinator.data.get("zones"))
+        return [
+            ZoneConstantDurationNumber(zone, coordinator, config_entry)
+            for zone_id, zone in zones.items()
+            if zone_id in schedule_zones
+        ]
+
+    add_later(config_entry, coordinator, async_add_entities, _build_zone_durations)
 
 
 class MenuNumberEntity(

@@ -86,6 +86,68 @@
         },
         "entry_from_newer_version": {
             "message": "See kirje on loodud Tech Controllersi uuema versiooniga. Värskendage integratsiooni ja taaskäivitage Home Assistant."
+        },
+        "zone_target_invalid": {
+            "message": "Valige Techi kliimaseade (tsooni termostaat)."
+        },
+        "schedule_index_required": {
+            "message": "Globaalse ajakava valik vajab indeksit vahemikus 0 kuni 4."
+        },
+        "schedule_selection_required": {
+            "message": "Valige ajakava nimi või `local`, või kasutage vanu allika ja indeksi välju."
+        },
+        "schedule_name_not_found": {
+            "message": "Sellel kontrolleril ei ole ühtegi globaalset ajakava nimega {name}."
+        },
+        "schedule_name_ambiguous": {
+            "message": "Rohkem kui üks globaalne ajakava kannab nime {name}; kasutage selle asemel vana indeksit."
+        },
+        "schedule_unsupported": {
+            "message": "See kontroller ei edasta tsoonide ajakavu."
+        },
+        "schedule_not_found": {
+            "message": "Sellel tsoonil pole aktiveerimiseks {source} ajakava."
+        },
+        "schedule_not_settled": {
+            "message": "Kontroller rakendab veel selle ajakava muudatust. Proovige hetke pärast uuesti."
+        },
+        "schedule_invalid": {
+            "message": "Valitud ajakava on puudulik või kehtetu, seega ei saa seda aktiveerida."
+        },
+        "zone_mode_missing": {
+            "message": "Kontroller ei edastanud tsooni režiimi identifikaatorit."
+        },
+        "zone_temperature_missing": {
+            "message": "Kontroller ei edastanud selle tsooni temperatuuri."
+        },
+        "zone_write_failed": {
+            "message": "Kontroller keeldus tsooni muudatusest: {error}"
+        }
+    },
+    "services": {
+        "set_zone_schedule": {
+            "name": "Sea tsooni ajakava",
+            "description": "Lülitage tsoon oma kohalikule ajakavale või ühele viiest globaalsest ajakavast. Rakendatakse ainult neid ajakavamalle, mida kontroller juba edastab ning mis on terviklikud ja stabiilsed.",
+            "fields": {
+                "schedule": {
+                    "name": "Ajakava nimi",
+                    "description": "Valige konfigureeritud globaalne ajakava või `local` tsooni enda ajakava jaoks."
+                }
+            }
+        },
+        "set_zone_constant": {
+            "name": "Sea tsooni püsitemperatuur",
+            "description": "Määrake tsoonile kindel temperatuur kas jäädavalt või piiratud arvu minutiteks, mille järel tsoon naaseb oma eelmisesse režiimi.",
+            "fields": {
+                "temperature": {
+                    "name": "Temperatuur",
+                    "description": "Sihttemperatuur °C-des, vahemikus 5 kuni 35."
+                },
+                "duration_minutes": {
+                    "name": "Kestus (minutites)",
+                    "description": "0 hoiab temperatuuri kuni muutmiseni; 1-1440 piirab selle vastava arvu minutitega."
+                }
+            }
         }
     },
     "entity": {
@@ -139,6 +201,16 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Ajakava probleem"
+            }
+        },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Püsiva temperatuuri kestus"
+            }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "name": "Ajakava"
             }
         }
     },

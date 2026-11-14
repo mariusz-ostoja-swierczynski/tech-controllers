@@ -86,6 +86,68 @@
         },
         "entry_from_newer_version": {
             "message": "Dieser Eintrag wurde von einer neueren Version von Tech Controllers erstellt. Aktualisieren Sie die Integration und starten Sie Home Assistant neu."
+        },
+        "zone_target_invalid": {
+            "message": "Wähle eine Tech-Klimaentität (ein Zonenthermostat) als Ziel."
+        },
+        "schedule_index_required": {
+            "message": "Eine globale Zeitplanauswahl benötigt einen Index zwischen 0 und 4."
+        },
+        "schedule_selection_required": {
+            "message": "Wähle einen Zeitplannamen oder `local` oder verwende die alten Felder für Quelle und Index."
+        },
+        "schedule_name_not_found": {
+            "message": "Auf diesem Regler gibt es keinen globalen Zeitplan mit dem Namen {name}."
+        },
+        "schedule_name_ambiguous": {
+            "message": "Mehr als ein globaler Zeitplan heißt {name}; verwende stattdessen den alten Index."
+        },
+        "schedule_unsupported": {
+            "message": "Dieser Regler meldet keine Zonenzeitpläne."
+        },
+        "schedule_not_found": {
+            "message": "Diese Zone hat keinen {source}-Zeitplan zum Aktivieren."
+        },
+        "schedule_not_settled": {
+            "message": "Der Regler wendet noch eine Änderung an diesem Zeitplan an. Versuche es gleich noch einmal."
+        },
+        "schedule_invalid": {
+            "message": "Der ausgewählte Zeitplan ist unvollständig oder ungültig und kann daher nicht aktiviert werden."
+        },
+        "zone_mode_missing": {
+            "message": "Der Regler hat die Moduskennung der Zone nicht gemeldet."
+        },
+        "zone_temperature_missing": {
+            "message": "Der Regler hat keine Temperatur für diese Zone gemeldet."
+        },
+        "zone_write_failed": {
+            "message": "Der Regler hat die Änderung der Zone abgelehnt: {error}"
+        }
+    },
+    "services": {
+        "set_zone_schedule": {
+            "name": "Zeitplan der Zone festlegen",
+            "description": "Schaltet eine Zone auf ihren lokalen Zeitplan oder einen der fünf globalen Zeitpläne um. Es werden nur Zeitplanvorlagen angewendet, die der Regler bereits meldet und die vollständig und stabil sind.",
+            "fields": {
+                "schedule": {
+                    "name": "Name des Zeitplans",
+                    "description": "Wählen Sie einen konfigurierten globalen Zeitplan oder `local` für den eigenen Zeitplan der Zone."
+                }
+            }
+        },
+        "set_zone_constant": {
+            "name": "Konstante Temperatur der Zone festlegen",
+            "description": "Legt eine Zone dauerhaft oder für eine begrenzte Anzahl von Minuten auf eine feste Temperatur fest; danach kehrt die Zone in ihren vorherigen Modus zurück.",
+            "fields": {
+                "temperature": {
+                    "name": "Temperatur",
+                    "description": "Zieltemperatur in °C, von 5 bis 35."
+                },
+                "duration_minutes": {
+                    "name": "Dauer (Minuten)",
+                    "description": "0 behält die Temperatur bis zur Änderung bei; 1-1440 begrenzt sie auf diese Anzahl Minuten."
+                }
+            }
         }
     },
     "entity": {
@@ -139,6 +201,16 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Zeitplanproblem"
+            }
+        },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Dauer der konstanten Temperatur"
+            }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "name": "Zeitplan"
             }
         }
     },

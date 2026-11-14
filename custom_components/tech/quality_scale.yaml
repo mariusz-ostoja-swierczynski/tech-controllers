@@ -13,8 +13,14 @@
 # untrue.
 rules:
   action_setup:
-    status: exempt
-    comment: The integration registers no service actions.
+    status: done
+    comment: >-
+      async_setup registers both actions once with cv.make_entity_service_schema,
+      targeting climate entities, and the schemas constrain the schedule name
+      along with the legacy source and index, plus temperature and
+      duration_minutes. services.yaml supplies the action editor target and the
+      schedule name text field as well as the number selectors, while
+      strings.json keeps the names and descriptions.
   appropriate_polling:
     status: done
     comment: >-
@@ -53,8 +59,12 @@ rules:
     status: exempt
     comment: The manifest declares no external requirements; the API client is part of this repository.
   docs_actions:
-    status: exempt
-    comment: The integration registers no service actions.
+    status: done
+    comment: >-
+      The README's "Changing a zone's mode" section documents both actions,
+      their climate targets and fields, that index 0 to 4 selects Schedule 1 to
+      5 and is ignored for a local schedule, that duration_minutes 0 is
+      permanent and 1 to 1440 is time-limited, and the 5 to 35 °C range.
   docs_conditions:
     status: exempt
     comment: The integration registers no conditions.
@@ -103,8 +113,12 @@ rules:
   # Silver
   # ---------------------------------------------------------------------------
   action_exceptions:
-    status: exempt
-    comment: The integration registers no service actions to raise from.
+    status: done
+    comment: >-
+      Every failure path raises a translated HomeAssistantError: an invalid
+      target, an unsupported, missing, unsettled or invalid schedule, a missing
+      zone mode id, or a controller TechError. Validation writes nothing, so a
+      rejected call leaves the controller untouched.
   config_entry_unloading:
     status: done
     comment: >-

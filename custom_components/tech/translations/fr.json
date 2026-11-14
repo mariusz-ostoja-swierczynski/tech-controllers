@@ -86,6 +86,68 @@
         },
         "entry_from_newer_version": {
             "message": "Cette entrée a été créée par une version plus récente de Tech Controllers. Mettez à jour l'intégration et redémarrez Home Assistant."
+        },
+        "zone_target_invalid": {
+            "message": "Ciblez une entité climatique Tech (un thermostat de zone)."
+        },
+        "schedule_index_required": {
+            "message": "Une sélection de programmation globale nécessite un index entre 0 et 4."
+        },
+        "schedule_selection_required": {
+            "message": "Choisissez un nom de programmation, ou `local`, ou utilisez les anciens champs source et index."
+        },
+        "schedule_name_not_found": {
+            "message": "Aucune programmation globale de ce régulateur ne porte le nom {name}."
+        },
+        "schedule_name_ambiguous": {
+            "message": "Plusieurs programmations globales portent le nom {name} ; utilisez plutôt l'ancien index."
+        },
+        "schedule_unsupported": {
+            "message": "Ce régulateur ne signale pas de programmations de zone."
+        },
+        "schedule_not_found": {
+            "message": "Cette zone n'a aucune programmation {source} à activer."
+        },
+        "schedule_not_settled": {
+            "message": "Le régulateur applique encore une modification à cette programmation. Réessayez dans un instant."
+        },
+        "schedule_invalid": {
+            "message": "La programmation sélectionnée est incomplète ou invalide, elle ne peut donc pas être activée."
+        },
+        "zone_mode_missing": {
+            "message": "Le régulateur n'a pas signalé l'identifiant de mode de la zone."
+        },
+        "zone_temperature_missing": {
+            "message": "Le régulateur n'a pas signalé de température pour cette zone."
+        },
+        "zone_write_failed": {
+            "message": "Le régulateur a refusé la modification de la zone : {error}"
+        }
+    },
+    "services": {
+        "set_zone_schedule": {
+            "name": "Définir la programmation de la zone",
+            "description": "Bascule une zone sur sa programmation locale ou sur l'une des cinq programmations globales. Seuls les modèles de programmation déjà signalés par le régulateur, complets et stables, sont appliqués.",
+            "fields": {
+                "schedule": {
+                    "name": "Nom de la programmation",
+                    "description": "Sélectionnez un programme global configuré ou `local` pour le programme propre à la zone."
+                }
+            }
+        },
+        "set_zone_constant": {
+            "name": "Définir la température constante de la zone",
+            "description": "Définit une zone à une température fixe, de façon permanente ou pour un nombre limité de minutes, après quoi la zone revient à son mode précédent.",
+            "fields": {
+                "temperature": {
+                    "name": "Température",
+                    "description": "Température cible en °C, de 5 à 35."
+                },
+                "duration_minutes": {
+                    "name": "Durée (minutes)",
+                    "description": "0 maintient la température jusqu'à modification ; 1-1440 la limite à ce nombre de minutes."
+                }
+            }
         }
     },
     "entity": {
@@ -139,6 +201,16 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Problème de programmation"
+            }
+        },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Durée de la température constante"
+            }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "name": "Programmation"
             }
         }
     },

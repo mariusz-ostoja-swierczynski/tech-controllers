@@ -86,6 +86,68 @@
     },
     "entry_from_newer_version": {
       "message": "Ten wpis został utworzony przez nowszą wersję Tech Controllers. Zaktualizuj integrację i uruchom ponownie Home Assistant."
+    },
+    "zone_target_invalid": {
+      "message": "Wybierz encję klimatu Tech (termostat strefy)."
+    },
+    "schedule_index_required": {
+      "message": "Wybór harmonogramu globalnego wymaga indeksu od 0 do 4."
+    },
+    "schedule_selection_required": {
+      "message": "Wybierz nazwę harmonogramu lub `local`, albo użyj starych pól źródła i indeksu."
+    },
+    "schedule_name_not_found": {
+      "message": "Na tym sterowniku nie ma harmonogramu globalnego o nazwie {name}."
+    },
+    "schedule_name_ambiguous": {
+      "message": "Więcej niż jeden harmonogram globalny nosi nazwę {name}; użyj zamiast tego starego indeksu."
+    },
+    "schedule_unsupported": {
+      "message": "Ten sterownik nie zgłasza harmonogramów stref."
+    },
+    "schedule_not_found": {
+      "message": "Ta strefa nie ma harmonogramu {source} do aktywowania."
+    },
+    "schedule_not_settled": {
+      "message": "Sterownik wciąż stosuje zmianę tego harmonogramu. Spróbuj ponownie za chwilę."
+    },
+    "schedule_invalid": {
+      "message": "Wybrany harmonogram jest niekompletny lub nieprawidłowy, więc nie można go aktywować."
+    },
+    "zone_mode_missing": {
+      "message": "Sterownik nie zgłosił identyfikatora trybu strefy."
+    },
+    "zone_temperature_missing": {
+      "message": "Sterownik nie zgłosił temperatury dla tej strefy."
+    },
+    "zone_write_failed": {
+      "message": "Sterownik odrzucił zmianę strefy: {error}"
+    }
+  },
+  "services": {
+    "set_zone_schedule": {
+      "name": "Ustaw harmonogram strefy",
+      "description": "Przełącz strefę na jej harmonogram lokalny lub jeden z pięciu harmonogramów globalnych. Stosowane są tylko szablony harmonogramów, które sterownik już zgłasza i które są kompletne oraz stabilne.",
+      "fields": {
+        "schedule": {
+          "name": "Nazwa harmonogramu",
+          "description": "Wybierz skonfigurowany harmonogram globalny lub `local` dla harmonogramu własnego strefy."
+        }
+      }
+    },
+    "set_zone_constant": {
+      "name": "Ustaw stałą temperaturę strefy",
+      "description": "Ustaw strefie stałą temperaturę trwale lub na ograniczoną liczbę minut, po której strefa wróci do poprzedniego trybu.",
+      "fields": {
+        "temperature": {
+          "name": "Temperatura",
+          "description": "Temperatura docelowa w °C, od 5 do 35."
+        },
+        "duration_minutes": {
+          "name": "Czas trwania (minuty)",
+          "description": "0 utrzymuje temperaturę do zmiany; 1-1440 ogranicza ją do tylu minut."
+        }
+      }
     }
   },
   "entity": {
@@ -139,6 +201,16 @@
     "binary_sensor": {
       "schedule_problem_entity": {
         "name": "Problem z harmonogramem"
+      }
+    },
+    "number": {
+      "zone_constant_duration": {
+        "name": "Czas trwania stałej temperatury"
+      }
+    },
+    "select": {
+      "zone_schedule_select": {
+        "name": "Harmonogram"
       }
     }
   },

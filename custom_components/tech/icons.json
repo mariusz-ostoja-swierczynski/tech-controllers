@@ -16,6 +16,11 @@
             "global_schedule_entity": {
                 "default": "mdi:calendar-week"
             }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "default": "mdi:calendar-week"
+            }
         }
     }
 }

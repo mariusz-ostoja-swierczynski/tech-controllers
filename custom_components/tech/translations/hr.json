@@ -86,6 +86,68 @@
         },
         "entry_from_newer_version": {
             "message": "Ovaj unos stvorila je novija verzija Tech Controllersa. Ažurirajte integraciju i ponovno pokrenite Home Assistant."
+        },
+        "zone_target_invalid": {
+            "message": "Odaberite Tech entitet klime (termostat zone)."
+        },
+        "schedule_index_required": {
+            "message": "Odabir globalnog rasporeda zahtijeva indeks između 0 i 4."
+        },
+        "schedule_selection_required": {
+            "message": "Odaberite naziv rasporeda, ili `local`, ili upotrijebite stara polja izvora i indeksa."
+        },
+        "schedule_name_not_found": {
+            "message": "Na ovom regulatoru nema globalnog rasporeda s nazivom {name}."
+        },
+        "schedule_name_ambiguous": {
+            "message": "Više od jednog globalnog rasporeda ima naziv {name}; upotrijebite stari indeks."
+        },
+        "schedule_unsupported": {
+            "message": "Ovaj regulator ne prijavljuje rasporede zona."
+        },
+        "schedule_not_found": {
+            "message": "Ova zona nema raspored {source} za aktiviranje."
+        },
+        "schedule_not_settled": {
+            "message": "Regulator još primjenjuje promjenu ovog rasporeda. Pokušajte ponovno uskoro."
+        },
+        "schedule_invalid": {
+            "message": "Odabrani raspored je nepotpun ili nevažeći pa se ne može aktivirati."
+        },
+        "zone_mode_missing": {
+            "message": "Regulator nije prijavio identifikator načina rada zone."
+        },
+        "zone_temperature_missing": {
+            "message": "Regulator nije prijavio temperaturu za ovu zonu."
+        },
+        "zone_write_failed": {
+            "message": "Regulator je odbio promjenu zone: {error}"
+        }
+    },
+    "services": {
+        "set_zone_schedule": {
+            "name": "Postavi raspored zone",
+            "description": "Prebacuje zonu na njezin lokalni raspored ili jedan od pet globalnih rasporeda. Primjenjuju se samo predlošci rasporeda koje regulator već prijavljuje i koji su potpuni i stabilni.",
+            "fields": {
+                "schedule": {
+                    "name": "Naziv rasporeda",
+                    "description": "Odaberite konfigurirani globalni raspored ili `local` za vlastiti raspored zone."
+                }
+            }
+        },
+        "set_zone_constant": {
+            "name": "Postavi konstantnu temperaturu zone",
+            "description": "Postavlja zoni fiksnu temperaturu trajno ili na ograničen broj minuta, nakon čega se zona vraća u prethodni način rada.",
+            "fields": {
+                "temperature": {
+                    "name": "Temperatura",
+                    "description": "Ciljna temperatura u °C, od 5 do 35."
+                },
+                "duration_minutes": {
+                    "name": "Trajanje (minute)",
+                    "description": "0 zadržava temperaturu do promjene; 1-1440 ograničava je na toliko minuta."
+                }
+            }
         }
     },
     "entity": {
@@ -139,6 +201,16 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Problem s rasporedom"
+            }
+        },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Trajanje stalne temperature"
+            }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "name": "Raspored"
             }
         }
     },
