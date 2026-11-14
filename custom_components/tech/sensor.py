@@ -1705,6 +1705,12 @@ class TileValveSensor(TileSensor, SensorEntity):
     def update_properties(self, device: dict[str, Any]) -> None:
         """Update the properties of the device based on the provided device information.
 
+        The reading goes through the base class, which publishes it as well as
+        caching it: Home Assistant serves a sensor's state from
+        ``_attr_native_value``, so writing ``_state`` alone left the valve's
+        opening frozen at whatever it was when the entity was built (issue
+        #249).
+
         Args:
         device: dict, the device information containing description, zone, setTemperature, and currentTemperature
 
@@ -1712,7 +1718,7 @@ class TileValveSensor(TileSensor, SensorEntity):
         None
 
         """
-        self._state = self.get_state(device)
+        super().update_properties(device)
         self.attrs["setTempCorrection"] = device[CONF_PARAMS]["setTempCorrection"]
         self.attrs["valvePump"] = (
             STATE_ON if device[CONF_PARAMS]["valvePump"] == 1 else STATE_OFF
@@ -1893,6 +1899,11 @@ class TileOpenThermPercentageSensor(TileGenericOpenThermSensor):
     def update_properties(self, device: dict[str, Any]) -> None:
         """Update the properties of the device based on the provided device information.
 
+        The reading goes through the base class for the same reason as the
+        valve sensor's: the state Home Assistant serves is ``_attr_native_value``,
+        and an override that writes only ``_state`` leaves it at the value the
+        entity was built with (issue #249).
+
         Args:
         device: dict, the device information containing description, zone, setTemperature, and currentTemperature
 
@@ -1900,7 +1911,7 @@ class TileOpenThermPercentageSensor(TileGenericOpenThermSensor):
         None
 
         """
-        self._state = self.get_state(device)
+        super().update_properties(device)
 
         def set_attr(key: str, flag: bool = False) -> None:
             try:
