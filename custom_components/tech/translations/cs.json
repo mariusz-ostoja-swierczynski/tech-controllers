@@ -203,6 +203,11 @@
                 "name": "Problém s harmonogramem"
             }
         },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Doba trvání konstantní teploty"
+            }
+        },
         "select": {
             "zone_schedule_select": {
                 "name": "Harmonogram"

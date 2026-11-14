@@ -203,6 +203,11 @@
                 "name": "Problema di programmazione"
             }
         },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Durata della temperatura costante"
+            }
+        },
         "select": {
             "zone_schedule_select": {
                 "name": "Programmazione"

@@ -27,10 +27,12 @@ SCHEDULE_TEMPERATURE_DIVISOR = 10
 MINUTES_IN_A_DAY = 24 * 60
 
 # Local templates are stored per zone and use their own index range. A write
-# carries the permanent constant-temperature duration as zero.
+# carries the permanent constant-temperature duration as zero; a time-limited
+# constant holds for up to one day.
 LOCAL_SCHEDULE_INDEX_MIN = -40
 LOCAL_SCHEDULE_INDEX_MAX = -1
 PERMANENT_CONST_TEMP_TIME = 0
+TIME_LIMIT_MINUTES_MAX = MINUTES_IN_A_DAY
 
 
 class ScheduleSelectionError(Exception):
@@ -224,6 +226,32 @@ def zone_mode_id(snapshot: Any, zone_id: int) -> int | None:
     mode = zone.get("mode") if zone is not None else None
     mode_id = mode.get("id") if isinstance(mode, dict) else None
     return mode_id if type(mode_id) is int else None
+
+
+def zone_mode_pending(snapshot: Any, zone_id: int) -> bool:
+    """Return whether the controller is still applying a change to a zone's mode.
+
+    The eModul API answers ``duringChange: "t"`` (or ``True``) while a write is
+    being applied, the same flag the menu entities read. Only an explicit
+    pending value counts: a payload that omits the flag carries the settled mode,
+    and treating ``None`` as pending would freeze the selection for good.
+
+    Args:
+        snapshot: Schedule snapshot from the current refresh.
+        zone_id: Numeric zone identifier.
+
+    Returns:
+        ``True`` while the reported mode cannot be trusted yet.
+
+    """
+    zone = _zone_entry(snapshot, zone_id)
+    if zone is None:
+        return False
+    mode = zone.get("mode")
+    return any(
+        isinstance(raw, dict) and raw.get("duringChange") in ("t", True)
+        for raw in (zone.get("zone"), mode)
+    )
 
 
 def _wire_days(raw: dict[str, Any], prefix: str) -> list[str]:

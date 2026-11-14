@@ -203,6 +203,11 @@
                 "name": "Ajakava probleem"
             }
         },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Püsiva temperatuuri kestus"
+            }
+        },
         "select": {
             "zone_schedule_select": {
                 "name": "Ajakava"

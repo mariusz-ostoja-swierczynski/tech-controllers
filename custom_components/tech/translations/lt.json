@@ -203,6 +203,11 @@
                 "name": "Tvarkaraščio problema"
             }
         },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Pastovios temperatūros trukmė"
+            }
+        },
         "select": {
             "zone_schedule_select": {
                 "name": "Tvarkaraštis"

@@ -203,6 +203,11 @@
         "name": "Problem z harmonogramem"
       }
     },
+    "number": {
+      "zone_constant_duration": {
+        "name": "Czas trwania stałej temperatury"
+      }
+    },
     "select": {
       "zone_schedule_select": {
         "name": "Harmonogram"

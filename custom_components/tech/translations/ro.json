@@ -203,6 +203,11 @@
                 "name": "Problemă de programare"
             }
         },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Durata temperaturii constante"
+            }
+        },
         "select": {
             "zone_schedule_select": {
                 "name": "Programare"

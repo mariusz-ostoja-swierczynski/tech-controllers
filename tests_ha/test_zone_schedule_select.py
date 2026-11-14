@@ -131,6 +131,25 @@ async def test_selecting_a_global_slot_calls_the_schedule_action(
     assert _state(hass, 1) == option
 
 
+async def test_a_poll_during_the_change_window_keeps_the_chosen_option(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A poll inside the controller's change window must not undo the choice."""
+    post = AsyncMock(return_value={"status": "success"})
+    entry = await set_up(hass, "zone_modes", monkeypatch, post=post)
+    option = "Global Schedule 3: Global 2"
+
+    await _choose(hass, 1, option)
+
+    # The controller still reports the previous constant mode, marked pending.
+    zone = entry.runtime_data.data["schedules"]["zones"][1]
+    zone["zone"]["duringChange"] = "t"
+    entry.runtime_data.async_set_updated_data(entry.runtime_data.data)
+    await hass.async_block_till_done()
+
+    assert _state(hass, 1) == option
+
+
 async def test_selecting_local_calls_the_local_schedule_action(
     hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
 ) -> None:

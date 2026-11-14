@@ -348,6 +348,7 @@ def _fake_module(name: str) -> types.ModuleType:
         module.SelectEntity = globals()["select"]
     elif name == "homeassistant.components.number":
         module.NumberEntity = globals()["number"]
+        module.RestoreNumber = globals()["number"]
         module.NumberMode = _NumberMode
     elif name == "homeassistant.config_entries":
         module.ConfigEntry = _ConfigEntry

@@ -98,8 +98,18 @@ Each zone also has a **Schedule** select entity. Its options are `Constant
 Temperature`, `Local Schedule`, and `Global Schedule N: <name>` for each of the
 controller's five global slots. Selecting a global option switches the zone to
 that template, selecting `Local Schedule` applies the zone's own template, and
-selecting `Constant Temperature` holds the zone's current target temperature
-permanently.
+selecting `Constant Temperature` holds the zone's current target temperature.
+
+The per-zone **Constant temperature duration** number sets how long that
+constant-temperature choice lasts. `0` keeps the temperature until it is changed;
+`1` to `1440` holds it for that many minutes, after which the controller returns
+the zone to its previous mode by itself. Set the number first, then choose
+`Constant Temperature`; the selection uses the zone's current target temperature
+and the configured duration. The number is a local setting for the select, not a
+controller reading: it is restored after a restart and is only sent to the
+controller when the select applies a constant temperature. The
+`tech.set_zone_constant` action has its own `duration_minutes` field and does not
+read this number.
 
 `tech.set_zone_schedule` takes a `schedule` name:
 
@@ -137,8 +147,12 @@ from `1` to `1440` holds it for that many minutes. The temperature range is 5 to
 A selection that cannot be used fails instead of writing: a missing, invalid or
 still-changing template raises an error and no schedule is sent. A controller
 that refuses the change also raises an error. A validation failure sends nothing
-to the controller. A successful action does not refresh the entities; their
-state updates on the normal 60-second poll.
+to the controller. A successful action does not request an immediate refresh. The
+**Schedule** select shows the choice straight away and keeps it while the
+controller reports the change as pending. The read-only schedule sensors and the
+climate attributes describe what the controller itself reports, so they follow on
+the normal 60-second poll; if the controller has not applied the change by then,
+they can show the previous mode until the poll after that.
 
 ### Menu codes
 
