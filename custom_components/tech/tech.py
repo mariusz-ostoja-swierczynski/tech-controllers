@@ -491,11 +491,7 @@ class Tech:
             ]
 
             if visible_zones:
-                _LOGGER.debug(
-                    "Updating %s zones for controller: %s",
-                    len(visible_zones),
-                    module_udid,
-                )
+                _LOGGER.debug("Updating %s zones", len(visible_zones))
                 cache["zones"].update(
                     {zone["zone"]["id"]: zone for zone in visible_zones}
                 )
@@ -515,11 +511,7 @@ class Tech:
             # as the populated one.
             cache["menu_code_rejections"] = set(self.menu_code_rejections)
             if menu_items:
-                _LOGGER.debug(
-                    "Updating %s menu items for controller: %s",
-                    len(menu_items),
-                    module_udid,
-                )
+                _LOGGER.debug("Updating %s menu items", len(menu_items))
                 cache.setdefault("menus", {}).update(menu_items)
 
             # What the controller reported *this* poll, as opposed to what the
@@ -613,10 +605,8 @@ class Tech:
         code = self.menu_codes.get(menu_type)
         if code is None:
             _LOGGER.debug(
-                "Menu tree %s of module %s is behind a code and none is "
-                "configured for it",
+                "Menu tree %s is behind a code and none is configured for it",
                 menu_type,
-                module_udid,
             )
             return elements, False
         try:
@@ -627,24 +617,21 @@ class Tech:
             if getattr(err, "status_code", None) != MENU_PIN_REJECTION_STATUS:
                 raise
             _LOGGER.warning(
-                "The %s menu of module %s did not accept the configured code",
+                "The %s menu did not accept the configured code",
                 menu_type,
-                module_udid,
             )
             return elements, True
         unlocked = result.get("data", {}).get("elements")
         if not unlocked:
             # An answer with no elements is not an unlock either.
             _LOGGER.warning(
-                "The %s menu of module %s stayed locked with the configured code",
+                "The %s menu stayed locked with the configured code",
                 menu_type,
-                module_udid,
             )
             return elements, True
         _LOGGER.debug(
-            "The %s menu of module %s opened with the configured code",
+            "The %s menu opened with the configured code",
             menu_type,
-            module_udid,
         )
         return unlocked, False
 

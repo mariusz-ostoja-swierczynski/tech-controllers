@@ -115,23 +115,35 @@ async def test_a_platform_never_claims_the_same_unique_id_twice(
     assert entity_counts(hass) == {"binary_sensor": 4, "sensor": 12}
 
 
+@pytest.mark.parametrize(
+    ("fixture", "expected"),
+    [
+        # The zones line: 8 visible zones, no menu items of its own.
+        ("demo_l8", "Updating 8 zones"),
+        # The menu-items line: four trees, so the fetch counts what it stored.
+        ("st491", "menu items"),
+    ],
+)
 async def test_setup_logging_names_the_controller_not_its_identifier(
     hass: HomeAssistant,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
+    fixture: str,
+    expected: str,
 ) -> None:
     """The setup and data lines name the controller, not the identifier.
 
     A log pasted into an issue is the other half of the diagnostics policy: the
     module identifier and the menu code are the values the download redacts, so
     they stay out of the lines too, while the name the user gave the controller
-    stays readable.
+    stays readable. The two fixtures are the ones whose payload logs the zone and
+    menu-item counts; a controller with neither left those lines uncovered.
     """
     caplog.set_level(logging.DEBUG, logger="custom_components.tech")
 
     await set_up(
         hass,
-        "pellet",
+        fixture,
         monkeypatch,
         menu_codes={MENU_TYPE_SERVICE: "2468"},
     )
@@ -145,8 +157,9 @@ async def test_setup_logging_names_the_controller_not_its_identifier(
     assert "+48123456789" not in caplog.text
     assert "00-001" not in caplog.text
     assert "2468" not in caplog.text
-    assert "Setting up the climate entry for pellet" in caplog.text
-    assert "Setting up the sensor entry for pellet" in caplog.text
+    assert f"Setting up the climate entry for {fixture}" in caplog.text
+    assert f"Setting up the sensor entry for {fixture}" in caplog.text
+    assert expected in caplog.text
 
 
 async def test_renaming_an_entity_keeps_it_in_place(
