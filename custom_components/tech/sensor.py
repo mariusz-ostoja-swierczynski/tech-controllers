@@ -146,8 +146,10 @@ async def async_setup_entry(
         async_add_entities: Callback used to register entities with Home Assistant.
 
     """
-    controller_udid = config_entry.data[CONTROLLER][UDID]
-    _LOGGER.debug("Setting up sensor entry, controller udid: %s", controller_udid)
+    controller = config_entry.data[CONTROLLER]
+    # The name the user gave the controller, never its module identifier: that
+    # is the value the diagnostics redact, so it stays out of the log too.
+    _LOGGER.debug("Setting up the sensor entry for %s", controller[CONF_NAME])
 
     coordinator = config_entry.runtime_data
 

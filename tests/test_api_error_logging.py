@@ -1,8 +1,8 @@
 """Regression tests for the TECH API's error diagnostics.
 
-The request line and the error line name the route and the resource, never the
-account, the controller or the menu code they carried: these are the lines a
-user pastes into an issue.
+The request line, the error line and the module-data debug lines name the route
+and the resource, never the account, the controller or the menu code they
+carried: these are the lines a user pastes into an issue.
 """
 
 from __future__ import annotations
@@ -140,6 +140,26 @@ async def test_http_error_logging_redacts_and_preserves_exception(
     assert "secret-pin" not in messages
     assert "secret-token" not in messages
     assert body not in messages
+
+
+async def test_module_data_logging_names_no_identifier(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The module-data debug lines name the operation, not the controller."""
+    response = MagicMock()
+    response.status = 200
+    response.json = AsyncMock(return_value={"status": "success"})
+    session = MagicMock()
+    session.get.return_value.__aenter__.return_value = response
+    client = Tech(session, user_id="secret-user", token="secret-token")
+
+    with caplog.at_level(logging.DEBUG, logger="custom_components.tech.tech"):
+        assert await client.get_module_data("secret-module") == {"status": "success"}
+
+    messages = "\n".join(record.getMessage() for record in caplog.records)
+    assert "Getting module data" in messages
+    assert "secret-module" not in messages
+    assert "secret-user" not in messages
 
 
 @pytest.mark.parametrize("method", ["get", "post"])

@@ -359,7 +359,10 @@ class Tech:
             TechError: If the client is not currently authenticated.
 
         """
-        _LOGGER.debug("Getting module data...  %s", module_udid)
+        # No identifier in this line: the client belongs to one controller, so
+        # the module id would only repeat what the entry already says, and it
+        # is the one value the diagnostics redact.
+        _LOGGER.debug("Getting module data")
         if self.authenticated:
             path = f"users/{self.user_id}/modules/{module_udid}"
             result = await self.get(path)
@@ -463,10 +466,10 @@ class Tech:
                 and last_update is not None
                 and time.monotonic() - last_update < MODULE_DATA_CACHE_TTL
             ):
-                _LOGGER.debug("Reusing cached module data for %s", module_udid)
+                _LOGGER.debug("Reusing cached module data")
                 return cache
 
-            _LOGGER.debug("Updating module zones & tiles ... %s", module_udid)
+            _LOGGER.debug("Updating module zones & tiles")
             result = await self.get_module_data(module_udid)
 
             zones_envelope = result.get("zones")
@@ -503,11 +506,7 @@ class Tech:
             ]
 
             if visible_tiles:
-                _LOGGER.debug(
-                    "Updating %s tiles for controller: %s",
-                    len(visible_tiles),
-                    module_udid,
-                )
+                _LOGGER.debug("Updating %s tiles", len(visible_tiles))
                 cache["tiles"].update({tile["id"]: tile for tile in visible_tiles})
 
             menu_items = await self._fetch_menu_data(module_udid)
@@ -684,9 +683,8 @@ class Tech:
                     # and nothing is reported: this is how those menus have always
                     # behaved.
                     _LOGGER.debug(
-                        "Menu tree %s of module %s answered without elements: %s",
+                        "Menu tree %s answered without elements: %s",
                         menu_type,
-                        module_udid,
                         result,
                     )
                     continue
@@ -704,17 +702,12 @@ class Tech:
                         key = f"{menu_type}_{item_id}"
                         items[key] = element
                 _LOGGER.debug(
-                    "Menu tree %s of module %s carries %s items",
+                    "Menu tree %s carries %s items",
                     menu_type,
-                    module_udid,
                     len(elements),
                 )
             except TechError:
-                _LOGGER.debug(
-                    "Menu type %s not available for module %s",
-                    menu_type,
-                    module_udid,
-                )
+                _LOGGER.debug("Menu type %s not available", menu_type)
         self.menu_code_rejections = rejections
         return items
 
