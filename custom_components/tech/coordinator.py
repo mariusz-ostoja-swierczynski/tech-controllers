@@ -157,10 +157,13 @@ class TechCoordinator(DataUpdateCoordinator):
                 self.hass.config.language, self.api
             )
         except TechError as err:
+            # Only the status is logged. An error body can echo what was sent,
+            # and the catalog is retried on the next refresh anyway, so the
+            # line does not need to carry it.
             _LOGGER.warning(
-                "Could not fetch the Tech subtitle catalog, entity names fall "
-                "back to their text ids: %s",
-                err,
+                "Could not fetch the Tech subtitle catalog (API status %s), "
+                "entity names fall back to their text ids",
+                err.status_code,
             )
             return
         self.translations_loaded = True

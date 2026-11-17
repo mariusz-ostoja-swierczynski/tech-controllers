@@ -24,7 +24,7 @@ from common import EMPTY_MENU, UDID, entity_counts, entry_for, set_up
 import pytest
 from pytest_homeassistant.common import async_fire_time_changed
 
-from custom_components.tech.const import DOMAIN, SCAN_INTERVAL
+from custom_components.tech.const import DOMAIN, MENU_TYPE_SERVICE, SCAN_INTERVAL
 from custom_components.tech.tech import Tech
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
@@ -113,6 +113,53 @@ async def test_a_platform_never_claims_the_same_unique_id_twice(
 
     assert "does not generate unique IDs" not in caplog.text
     assert entity_counts(hass) == {"binary_sensor": 4, "sensor": 12}
+
+
+@pytest.mark.parametrize(
+    ("fixture", "expected"),
+    [
+        # The zones line: 8 visible zones, no menu items of its own.
+        ("demo_l8", "Updating 8 zones"),
+        # The menu-items line: four trees, so the fetch counts what it stored.
+        ("st491", "menu items"),
+    ],
+)
+async def test_setup_logging_names_the_controller_not_its_identifier(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    fixture: str,
+    expected: str,
+) -> None:
+    """The setup and data lines name the controller, not the identifier.
+
+    A log pasted into an issue is the other half of the diagnostics policy: the
+    module identifier and the menu code are the values the download redacts, so
+    they stay out of the lines too, while the name the user gave the controller
+    stays readable. The two fixtures are the ones whose payload logs the zone and
+    menu-item counts; a controller with neither left those lines uncovered.
+    """
+    caplog.set_level(logging.DEBUG, logger="custom_components.tech")
+
+    await set_up(
+        hass,
+        fixture,
+        monkeypatch,
+        menu_codes={MENU_TYPE_SERVICE: "2468"},
+    )
+    await hass.async_block_till_done()
+
+    assert UDID not in caplog.text
+    # The entry line carries everything the entry holds, so it is redacted with
+    # the same set the diagnostics use: the owner's contact details and postcode
+    # came back with the controller payload, and the code unlocked a menu tree.
+    assert "owner@example.com" not in caplog.text
+    assert "+48123456789" not in caplog.text
+    assert "00-001" not in caplog.text
+    assert "2468" not in caplog.text
+    assert f"Setting up the climate entry for {fixture}" in caplog.text
+    assert f"Setting up the sensor entry for {fixture}" in caplog.text
+    assert expected in caplog.text
 
 
 async def test_renaming_an_entity_keeps_it_in_place(

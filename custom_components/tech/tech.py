@@ -34,6 +34,15 @@ _LOGGER = logging.getLogger(__name__)
 # secret, and the documented multi-element form has one code per pair.
 _MENU_PIN_SEGMENT = re.compile(r"(?<=\d:)[^,/]+")
 
+# An identifier in a request path: the numeric account, zone, tile and menu
+# item ids, and the hexadecimal controller id. A reader needs the route and the
+# resource it addressed, never the value, so anything shaped like one is
+# replaced before the path reaches a log line.
+_ID_SEGMENT = re.compile(r"^(?:\d+|[0-9a-fA-F]{8,})$")
+
+# What a request that carries no path of its own is called in a log line.
+_UNKNOWN_ENDPOINT = "<unknown endpoint>"
+
 
 def _redact_menu_pin(path: str) -> str:
     """Mask any menu code carried in a path.
@@ -46,6 +55,110 @@ def _redact_menu_pin(path: str) -> str:
 
     """
     return _MENU_PIN_SEGMENT.sub("**REDACTED**", path)
+
+
+def _mask_identifier(segment: str) -> str:
+    """Return ``{id}`` in place of an identifier-shaped path segment.
+
+    Args:
+        segment: One path segment of an API request.
+
+    Returns:
+        The placeholder for an identifier, or the segment itself when it reads
+        as a route name.
+
+    """
+    return "{id}" if _ID_SEGMENT.match(segment) else segment
+
+
+def _safe_api_endpoint(request_path: str) -> str:
+    """Return the route a request addressed, with every identifier replaced.
+
+    Args:
+        request_path: Request path, with or without a query string.
+
+    Returns:
+        The route with named placeholders where the client puts identifiers,
+        for example
+        ``users/{user_id}/modules/{module_id}/zones/{zone_id}/local_schedule``.
+        A route family this module does not describe keeps its family name and
+        masks everything below it, so a route added later still produces a
+        usable log line without publishing what it carried. A request with no
+        path answers ``<unknown endpoint>``.
+
+    """
+    path = request_path.split("?", 1)[0].split("#", 1)[0]
+    parts = [part for part in path.strip("/").split("/") if part]
+    if not parts:
+        return _UNKNOWN_ENDPOINT
+
+    if parts == ["authentication"]:
+        return "authentication"
+
+    if parts[0] == "i18n":
+        # The language names which catalog was asked for. It is not a secret,
+        # and it is what makes a catalog that answers with an error
+        # diagnosable.
+        return "/".join(parts)
+
+    if len(parts) < 3 or parts[0] != "users" or parts[2] != "modules":
+        # A route family this module does not describe: a segment below the
+        # family could be a value rather than a route name, so all of them are
+        # masked and only the family stays readable.
+        return "/".join([parts[0], *("{id}" for _ in parts[1:])])
+
+    template = ["users/{user_id}/modules"]
+    rest = parts[3:]
+    if rest:
+        template.append("{module_id}")
+        rest = rest[1:]
+
+    if rest[:1] == ["zones"]:
+        template.append("zones")
+        rest = rest[1:]
+        if rest:
+            template.append("{zone_id}")
+            rest = rest[1:]
+    elif rest[:1] == ["menu"] and len(rest) > 1 and rest[1] in MENU_TYPES:
+        template.append(f"menu/{rest[1]}")
+        rest = rest[2:]
+        if len(rest) > 1 and rest[0] == "ido":
+            template.append("ido/{item_id}")
+            rest = rest[2:]
+        elif rest:
+            # ``0:1989`` pairs an element id with a menu code. The element id
+            # is not a secret and names the item that failed; the code is a
+            # credential and is masked.
+            template.append(_redact_menu_pin(rest[0]))
+            rest = rest[1:]
+
+    return "/".join([*template, *(_mask_identifier(segment) for segment in rest)])
+
+
+def _safe_response_kind(body: str) -> str:
+    """Describe an API error response without logging sensitive values.
+
+    Args:
+        body: Response body the API answered with.
+
+    Returns:
+        Which kind of answer it was: ``empty response``, ``non-JSON response``,
+        ``JSON error response`` or ``JSON response``. The body itself never
+        reaches the description.
+
+    """
+    if not body:
+        return "empty response"
+
+    try:
+        data = json.loads(body)
+    except ValueError:
+        return "non-JSON response"
+
+    if isinstance(data, dict) and "error" in data:
+        return "JSON error response"
+
+    return "JSON response"
 
 
 class Tech:
@@ -132,13 +245,19 @@ class Tech:
 
         """
         url = self.base_url + request_path
-        _LOGGER.debug("Sending GET request: %s", _redact_menu_pin(url))
+        _LOGGER.debug("Sending GET request: %s", _safe_api_endpoint(request_path))
         async with self.session.get(
             url, headers=self.headers, timeout=self.timeout
         ) as response:
             if response.status != 200:
-                _LOGGER.warning("Invalid response from Tech API: %s", response.status)
-                raise TechError(response.status, await response.text())
+                body = await response.text()
+                _LOGGER.warning(
+                    "Tech API GET %s returned HTTP %s (%s)",
+                    _safe_api_endpoint(request_path),
+                    response.status,
+                    _safe_response_kind(body),
+                )
+                raise TechError(response.status, body)
 
             return await self._json_object(response)
 
@@ -157,13 +276,19 @@ class Tech:
 
         """
         url = self.base_url + request_path
-        _LOGGER.debug("Sending POST request: %s", url)
+        _LOGGER.debug("Sending POST request: %s", _safe_api_endpoint(request_path))
         async with self.session.post(
             url, data=post_data, headers=self.headers, timeout=self.timeout
         ) as response:
             if response.status != 200:
-                _LOGGER.warning("Invalid response from Tech API: %s", response.status)
-                raise TechError(response.status, await response.text())
+                body = await response.text()
+                _LOGGER.warning(
+                    "Tech API POST %s returned HTTP %s (%s)",
+                    _safe_api_endpoint(request_path),
+                    response.status,
+                    _safe_response_kind(body),
+                )
+                raise TechError(response.status, body)
 
             return await self._json_object(response)
 
@@ -234,7 +359,10 @@ class Tech:
             TechError: If the client is not currently authenticated.
 
         """
-        _LOGGER.debug("Getting module data...  %s", module_udid)
+        # No identifier in this line: the client belongs to one controller, so
+        # the module id would only repeat what the entry already says, and it
+        # is the one value the diagnostics redact.
+        _LOGGER.debug("Getting module data")
         if self.authenticated:
             path = f"users/{self.user_id}/modules/{module_udid}"
             result = await self.get(path)
@@ -338,10 +466,10 @@ class Tech:
                 and last_update is not None
                 and time.monotonic() - last_update < MODULE_DATA_CACHE_TTL
             ):
-                _LOGGER.debug("Reusing cached module data for %s", module_udid)
+                _LOGGER.debug("Reusing cached module data")
                 return cache
 
-            _LOGGER.debug("Updating module zones & tiles ... %s", module_udid)
+            _LOGGER.debug("Updating module zones & tiles")
             result = await self.get_module_data(module_udid)
 
             zones_envelope = result.get("zones")
@@ -363,11 +491,7 @@ class Tech:
             ]
 
             if visible_zones:
-                _LOGGER.debug(
-                    "Updating %s zones for controller: %s",
-                    len(visible_zones),
-                    module_udid,
-                )
+                _LOGGER.debug("Updating %s zones", len(visible_zones))
                 cache["zones"].update(
                     {zone["zone"]["id"]: zone for zone in visible_zones}
                 )
@@ -378,11 +502,7 @@ class Tech:
             ]
 
             if visible_tiles:
-                _LOGGER.debug(
-                    "Updating %s tiles for controller: %s",
-                    len(visible_tiles),
-                    module_udid,
-                )
+                _LOGGER.debug("Updating %s tiles", len(visible_tiles))
                 cache["tiles"].update({tile["id"]: tile for tile in visible_tiles})
 
             menu_items = await self._fetch_menu_data(module_udid)
@@ -391,11 +511,7 @@ class Tech:
             # as the populated one.
             cache["menu_code_rejections"] = set(self.menu_code_rejections)
             if menu_items:
-                _LOGGER.debug(
-                    "Updating %s menu items for controller: %s",
-                    len(menu_items),
-                    module_udid,
-                )
+                _LOGGER.debug("Updating %s menu items", len(menu_items))
                 cache.setdefault("menus", {}).update(menu_items)
 
             # What the controller reported *this* poll, as opposed to what the
@@ -489,10 +605,8 @@ class Tech:
         code = self.menu_codes.get(menu_type)
         if code is None:
             _LOGGER.debug(
-                "Menu tree %s of module %s is behind a code and none is "
-                "configured for it",
+                "Menu tree %s is behind a code and none is configured for it",
                 menu_type,
-                module_udid,
             )
             return elements, False
         try:
@@ -503,24 +617,21 @@ class Tech:
             if getattr(err, "status_code", None) != MENU_PIN_REJECTION_STATUS:
                 raise
             _LOGGER.warning(
-                "The %s menu of module %s did not accept the configured code",
+                "The %s menu did not accept the configured code",
                 menu_type,
-                module_udid,
             )
             return elements, True
         unlocked = result.get("data", {}).get("elements")
         if not unlocked:
             # An answer with no elements is not an unlock either.
             _LOGGER.warning(
-                "The %s menu of module %s stayed locked with the configured code",
+                "The %s menu stayed locked with the configured code",
                 menu_type,
-                module_udid,
             )
             return elements, True
         _LOGGER.debug(
-            "The %s menu of module %s opened with the configured code",
+            "The %s menu opened with the configured code",
             menu_type,
-            module_udid,
         )
         return unlocked, False
 
@@ -559,9 +670,8 @@ class Tech:
                     # and nothing is reported: this is how those menus have always
                     # behaved.
                     _LOGGER.debug(
-                        "Menu tree %s of module %s answered without elements: %s",
+                        "Menu tree %s answered without elements: %s",
                         menu_type,
-                        module_udid,
                         result,
                     )
                     continue
@@ -579,17 +689,12 @@ class Tech:
                         key = f"{menu_type}_{item_id}"
                         items[key] = element
                 _LOGGER.debug(
-                    "Menu tree %s of module %s carries %s items",
+                    "Menu tree %s carries %s items",
                     menu_type,
-                    module_udid,
                     len(elements),
                 )
             except TechError:
-                _LOGGER.debug(
-                    "Menu type %s not available for module %s",
-                    menu_type,
-                    module_udid,
-                )
+                _LOGGER.debug("Menu type %s not available", menu_type)
         self.menu_code_rejections = rejections
         return items
 

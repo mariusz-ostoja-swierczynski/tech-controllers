@@ -55,9 +55,11 @@ async def async_setup_entry(
         async_add_entities: Callback to register entities with Home Assistant.
 
     """
-    udid = config_entry.data[CONTROLLER][UDID]
+    controller = config_entry.data[CONTROLLER]
     coordinator = config_entry.runtime_data
-    _LOGGER.debug("Setting up entry, controller udid: %s", udid)
+    # The controller's name is what the user knows it by; its module identifier
+    # is the value the diagnostics redact, so it stays out of the log too.
+    _LOGGER.debug("Setting up the climate entry for %s", controller[CONF_NAME])
 
     # Only usable zone payloads: a controller without zones, or one whose payload
     # carries entries that are not zone payloads, must not take the whole climate
