@@ -78,12 +78,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: TechConfigEntry) -> None
     _LOGGER.debug(
         "Entry -> title: %s, data: %s, id: %s, domain: %s",
         entry.title,
-        # The menu codes are credentials like the token, and sit under one key,
-        # so redacting that key hides all of them: nothing here may log a code.
-        # The rest is the diagnostics redaction set -- the account id, the
-        # controller's identifier and the owner's contact details -- so a debug
-        # log carries no more than a downloaded dump does.
-        async_redact_data(dict(entry.data), {*TO_REDACT, CONF_MENU_CODES}),
+        # The entry's data is redacted with the same set the diagnostics use:
+        # the token, the menu codes, the account id, the controller's
+        # identifier and the owner's contact details. A debug log is meant to
+        # travel as far as a downloaded dump does.
+        async_redact_data(dict(entry.data), TO_REDACT),
         entry.entry_id,
         entry.domain,
     )

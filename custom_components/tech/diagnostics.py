@@ -5,7 +5,7 @@ reporter is asked for when something looks wrong. It carries the entry's data
 with the secrets and the account's personal data taken out and a summary of
 what the controller last reported, so a controller's zones, tiles and menu
 items can be reasoned about without publishing the account's token, contact
-details or the module's identifier.
+details, the module's identifier or a menu code.
 """
 
 from __future__ import annotations
@@ -16,9 +16,14 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.redact import async_redact_data
 
+from .const import CONF_MENU_CODES
+
 TO_REDACT = {
     # The bearer token authenticates as the account.
     "token",
+    # A menu code unlocks a tree the controller keeps behind it, and every code
+    # sits under one key, so redacting that key hides all of them.
+    CONF_MENU_CODES,
     # The user id identifies the account, and no debugging needs it.
     "user_id",
     "username",

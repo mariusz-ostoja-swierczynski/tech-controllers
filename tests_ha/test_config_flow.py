@@ -10,6 +10,7 @@ paths, every error branch and both aborts -- plus ``async_migrate_entry``.
 
 from __future__ import annotations
 
+import logging
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -207,6 +208,36 @@ async def test_selecting_a_controller_creates_its_entry(hass: HomeAssistant) -> 
         "a" * 32,
         "b" * 32,
     }
+
+
+async def test_the_entry_log_carries_no_identifier(
+    hass: HomeAssistant,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The line that records a new entry names the controller, nothing else.
+
+    The entry holds the account id, the module identifier and the menu code the
+    user supplied, so the line is redacted with the diagnostics set: a debug log
+    is meant to travel as far as a downloaded dump does.
+    """
+    caplog.set_level(logging.DEBUG, logger="custom_components.tech.config_flow")
+    flow_id = (await _start_flow(hass))["flow_id"]
+    await _submit_credentials(hass, flow_id)
+
+    result = await _select(
+        hass,
+        flow_id,
+        1,
+        codes={menu_code_field(MENU_TYPE_SERVICE): "2468"},
+    )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    messages = caplog.text
+    assert "Adding config entry for" in messages
+    assert "L-8 DEMO" in messages
+    assert "a" * 32 not in messages
+    assert f"'{USER_ID}': '{_VALIDATED[USER_ID]}'" not in messages
+    assert "2468" not in messages
 
 
 async def test_the_controller_form_offers_menu_codes_behind_a_checkbox(

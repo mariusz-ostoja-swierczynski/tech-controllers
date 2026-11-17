@@ -42,6 +42,7 @@ from .const import (
     VER,
     menu_code_field,
 )
+from .diagnostics import TO_REDACT
 from .tech import Tech, TechError, TechLoginError
 
 _LOGGER = logging.getLogger(__name__)
@@ -293,7 +294,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         _LOGGER.debug(
             "Adding config entry for: %s",
-            async_redact_data(data, ["token", CONF_MENU_CODES]),
+            async_redact_data(data, TO_REDACT),
         )
 
         return self.async_create_entry(
@@ -360,7 +361,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.debug(
                 "Reconfiguring entry %s for controller: %s",
                 entry.entry_id,
-                async_redact_data(controller, ["token"]),
+                async_redact_data(controller, TO_REDACT),
             )
 
             return self.async_update_reload_and_abort(

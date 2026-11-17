@@ -24,7 +24,7 @@ from common import EMPTY_MENU, UDID, entity_counts, entry_for, set_up
 import pytest
 from pytest_homeassistant.common import async_fire_time_changed
 
-from custom_components.tech.const import DOMAIN, SCAN_INTERVAL
+from custom_components.tech.const import DOMAIN, MENU_TYPE_SERVICE, SCAN_INTERVAL
 from custom_components.tech.tech import Tech
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
@@ -123,21 +123,28 @@ async def test_setup_logging_names_the_controller_not_its_identifier(
     """The setup and data lines name the controller, not the identifier.
 
     A log pasted into an issue is the other half of the diagnostics policy: the
-    module identifier is the value the download redacts, so it stays out of the
-    lines too, while the name the user gave the controller stays readable.
+    module identifier and the menu code are the values the download redacts, so
+    they stay out of the lines too, while the name the user gave the controller
+    stays readable.
     """
     caplog.set_level(logging.DEBUG, logger="custom_components.tech")
 
-    await set_up(hass, "pellet", monkeypatch)
+    await set_up(
+        hass,
+        "pellet",
+        monkeypatch,
+        menu_codes={MENU_TYPE_SERVICE: "2468"},
+    )
     await hass.async_block_till_done()
 
     assert UDID not in caplog.text
     # The entry line carries everything the entry holds, so it is redacted with
     # the same set the diagnostics use: the owner's contact details and postcode
-    # came back with the controller payload.
+    # came back with the controller payload, and the code unlocked a menu tree.
     assert "owner@example.com" not in caplog.text
     assert "+48123456789" not in caplog.text
     assert "00-001" not in caplog.text
+    assert "2468" not in caplog.text
     assert "Setting up the climate entry for pellet" in caplog.text
     assert "Setting up the sensor entry for pellet" in caplog.text
 

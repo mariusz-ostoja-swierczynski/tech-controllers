@@ -13,11 +13,17 @@ from common import UDID, USER_ID, set_up
 import pytest
 from pytest_homeassistant.common import MockConfigEntry
 
+from custom_components.tech.const import (
+    CONF_MENU_CODES,
+    MENU_TYPE_SERVICE,
+    MENU_TYPE_USER,
+)
 from custom_components.tech.diagnostics import async_get_config_entry_diagnostics
 from homeassistant.const import CONF_TOKEN
 from homeassistant.core import HomeAssistant
 
 _TOKEN = "secret-account-token"
+_MENU_CODES = {MENU_TYPE_USER: "1111", MENU_TYPE_SERVICE: "2222"}
 
 
 async def _diagnostics(hass: HomeAssistant, entry: MockConfigEntry) -> dict:
@@ -44,14 +50,17 @@ async def test_diagnostics_describe_what_the_controller_reported(
 async def test_diagnostics_never_carry_the_account_secrets(
     hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The token, account id, contact details and module id are redacted.
+    """The token, account id, contact details, module id and codes are redacted.
 
     The entry's data holds the bearer token, which authenticates as the
-    account, and the controller payload carries the owner's email, phone and
-    postcode plus the module's stable identifier. A diagnostics file is meant
-    to be pasted into a public issue, so none of those may survive.
+    account, the codes that unlock the controller's gated trees, and a
+    controller payload that carries the owner's email, phone and postcode plus
+    the module's stable identifier. A diagnostics file is meant to be pasted
+    into a public issue, so none of those may survive.
     """
-    entry = await set_up(hass, "l12", monkeypatch, token=_TOKEN)
+    entry = await set_up(
+        hass, "l12", monkeypatch, token=_TOKEN, menu_codes=_MENU_CODES
+    )
 
     diagnostics = await _diagnostics(hass, entry)
     dumped = json.dumps(diagnostics)
@@ -61,6 +70,8 @@ async def test_diagnostics_never_carry_the_account_secrets(
     assert diagnostics["entry"]["data"][CONF_TOKEN] == "**REDACTED**"
     assert entry.data[CONF_TOKEN] != diagnostics["entry"]["data"][CONF_TOKEN]
     assert entry.data[USER_ID] != diagnostics["entry"]["data"][USER_ID]
+    assert diagnostics["entry"]["data"][CONF_MENU_CODES] == "**REDACTED**"
+    assert all(code not in dumped for code in _MENU_CODES.values())
     assert controller["udid"] == "**REDACTED**"
     assert controller["email"] == "**REDACTED**"
     assert controller["phoneNumber"] == "**REDACTED**"

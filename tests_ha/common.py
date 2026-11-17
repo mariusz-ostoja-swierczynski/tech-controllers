@@ -19,7 +19,13 @@ import pytest
 from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.tech.config_flow import ConfigFlow
-from custom_components.tech.const import CONTROLLER, DOMAIN, USER_ID, VER
+from custom_components.tech.const import (
+    CONF_MENU_CODES,
+    CONTROLLER,
+    DOMAIN,
+    USER_ID,
+    VER,
+)
 from custom_components.tech.tech import Tech
 from homeassistant.const import CONF_TOKEN, STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
@@ -48,23 +54,34 @@ def controller_payload(name: str) -> dict[str, Any]:
     }
 
 
-def entry_for(name: str, *, token: str = "token") -> MockConfigEntry:
+def entry_for(
+    name: str,
+    *,
+    token: str = "token",
+    menu_codes: dict[str, str] | None = None,
+) -> MockConfigEntry:
     """Return an entry for one controller, not yet added to Home Assistant.
 
     The options mirror what the config flow stores, and the token is a parameter
-    so a test can tell a secret apart from the word "token" in a dump.
+    so a test can tell a secret apart from the word "token" in a dump. The menu
+    codes are stored the way the flow stores them: under one key, and only when
+    the user supplied at least one.
     """
+    data: dict[str, Any] = {
+        USER_ID: "42",
+        CONF_TOKEN: token,
+        CONTROLLER: controller_payload(name),
+        VER: "1.0.0: " + name,
+    }
+    if menu_codes:
+        data[CONF_MENU_CODES] = dict(menu_codes)
+
     return MockConfigEntry(
         domain=DOMAIN,
         title=name,
         version=ConfigFlow.VERSION,
         unique_id=UDID,
-        data={
-            USER_ID: "42",
-            CONF_TOKEN: token,
-            CONTROLLER: controller_payload(name),
-            VER: "1.0.0: " + name,
-        },
+        data=data,
         options={},
     )
 
@@ -76,6 +93,7 @@ async def set_up(
     *,
     post: AsyncMock | None = None,
     token: str = "token",
+    menu_codes: dict[str, str] | None = None,
     before_setup: Callable[[MockConfigEntry], None] | None = None,
 ) -> MockConfigEntry:
     """Set an entry up while the API answers with the recorded payloads.
@@ -88,6 +106,8 @@ async def set_up(
             entity's action sent; the shared offline stub answers otherwise.
         token: Bearer token the entry holds, distinctive where a test needs to
             spot a leak of it.
+        menu_codes: Optional codes the entry holds, as the flow would store the
+            ones a user supplied, distinctive where a test needs to spot a leak.
         before_setup: Optional callback run after the entry is added to Home
             Assistant and before it is set up, for tests that need to prepare
             registry state first.
@@ -111,7 +131,7 @@ async def set_up(
     if post is not None:
         monkeypatch.setattr(Tech, "post", post)
 
-    entry = entry_for(fixture, token=token)
+    entry = entry_for(fixture, token=token, menu_codes=menu_codes)
     entry.add_to_hass(hass)
     if before_setup is not None:
         before_setup(entry)
