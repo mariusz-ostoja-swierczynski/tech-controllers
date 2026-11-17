@@ -26,6 +26,23 @@ SCHEDULE_TEMPERATURE_MAX = 350
 SCHEDULE_TEMPERATURE_DIVISOR = 10
 MINUTES_IN_A_DAY = 24 * 60
 
+# Local templates are stored per zone and use their own index range. A write
+# carries the permanent constant-temperature duration as zero; a time-limited
+# constant holds for up to one day.
+LOCAL_SCHEDULE_INDEX_MIN = -40
+LOCAL_SCHEDULE_INDEX_MAX = -1
+PERMANENT_CONST_TEMP_TIME = 0
+TIME_LIMIT_MINUTES_MAX = MINUTES_IN_A_DAY
+
+
+class ScheduleSelectionError(Exception):
+    """A write request that cannot be proven safe for the controller."""
+
+    def __init__(self, reason: str) -> None:
+        """Keep the stable reason without leaking controller payloads."""
+        self.reason = reason
+
+
 # `controllerMode` is the same type-108/value-0 "normal operation" marker the
 # eModul app reads. Anything else (holiday, eco, manual override, a pending
 # change) means the selected schedule is not proven applicable.
@@ -203,6 +220,131 @@ def normalize_schedule(raw: Any) -> dict[str, Any]:
     return result
 
 
+def zone_mode_id(snapshot: Any, zone_id: int) -> int | None:
+    """Return the zone's configured mode id only when it is a real integer."""
+    zone = _zone_entry(snapshot, zone_id)
+    mode = zone.get("mode") if zone is not None else None
+    mode_id = mode.get("id") if isinstance(mode, dict) else None
+    return mode_id if type(mode_id) is int else None
+
+
+def zone_mode_pending(snapshot: Any, zone_id: int) -> bool:
+    """Return whether the controller is still applying a change to a zone's mode.
+
+    The eModul API answers ``duringChange: "t"`` (or ``True``) while a write is
+    being applied, the same flag the menu entities read. Only an explicit
+    pending value counts: a payload that omits the flag carries the settled mode,
+    and treating ``None`` as pending would freeze the selection for good.
+
+    Args:
+        snapshot: Schedule snapshot from the current refresh.
+        zone_id: Numeric zone identifier.
+
+    Returns:
+        ``True`` while the reported mode cannot be trusted yet.
+
+    """
+    zone = _zone_entry(snapshot, zone_id)
+    if zone is None:
+        return False
+    mode = zone.get("mode")
+    return any(
+        isinstance(raw, dict) and raw.get("duringChange") in ("t", True)
+        for raw in (zone.get("zone"), mode)
+    )
+
+
+def _wire_days(raw: dict[str, Any], prefix: str) -> list[str]:
+    """Return one validated 7-entry day mask, rejecting non-string flags."""
+    mask = raw.get(f"{prefix}Days")
+    if not (
+        isinstance(mask, list)
+        and len(mask) == 7
+        and all(type(day) is str and day in ("0", "1") for day in mask)
+    ):
+        raise ScheduleSelectionError("invalid")
+    return list(mask)
+
+
+def _wire_setback(raw: dict[str, Any], prefix: str) -> int:
+    """Return one validated tenths-of-a-degree setback temperature."""
+    value = raw.get(f"{prefix}SetbackTemp")
+    if not (
+        type(value) is int
+        and SCHEDULE_TEMPERATURE_MIN <= value <= SCHEDULE_TEMPERATURE_MAX
+    ):
+        raise ScheduleSelectionError("invalid")
+    return value
+
+
+def _wire_intervals(raw: dict[str, Any], prefix: str) -> list[dict[str, int]]:
+    """Return sorted, non-overlapping intervals without placeholders or metadata."""
+    intervals = raw.get(f"{prefix}Intervals")
+    if not isinstance(intervals, list):
+        raise ScheduleSelectionError("invalid")
+    decoded: list[dict[str, int]] = []
+    for interval in intervals:
+        if not isinstance(interval, dict):
+            raise ScheduleSelectionError("invalid")
+        start = interval.get("start")
+        stop = interval.get("stop")
+        if type(start) is not int or type(stop) is not int:
+            raise ScheduleSelectionError("invalid")
+        if (start, stop) in ((6100, 6100), (0, 0)):
+            continue
+        if start > 0 and stop == 0:
+            stop = MINUTES_IN_A_DAY
+        temp = interval.get("temp")
+        if not 0 <= start < stop <= MINUTES_IN_A_DAY:
+            raise ScheduleSelectionError("invalid")
+        if not (
+            type(temp) is int
+            and SCHEDULE_TEMPERATURE_MIN <= temp <= SCHEDULE_TEMPERATURE_MAX
+        ):
+            raise ScheduleSelectionError("invalid")
+        decoded.append({"start": start, "stop": stop, "temp": temp})
+    decoded.sort(key=lambda item: item["start"])
+    if any(a["stop"] > b["start"] for a, b in zip(decoded, decoded[1:])):
+        raise ScheduleSelectionError("invalid")
+    return decoded
+
+
+def wire_schedule(raw: Any, *, source: str) -> dict[str, Any]:
+    """Validate a controller template into the exact shape the API accepts.
+
+    The result is a fresh dict; polling metadata, the display name and the
+    controller's own placeholder slots never reach a write payload.
+    """
+    if source == "global":
+        index_min, index_max = SCHEDULE_INDEX_MIN, SCHEDULE_INDEX_MAX
+    elif source == "local":
+        index_min, index_max = LOCAL_SCHEDULE_INDEX_MIN, LOCAL_SCHEDULE_INDEX_MAX
+    else:
+        raise ScheduleSelectionError("invalid")
+    if not isinstance(raw, dict):
+        raise ScheduleSelectionError("invalid")
+    schedule_id = raw.get("id")
+    index = raw.get("index")
+    if type(schedule_id) is not int:
+        raise ScheduleSelectionError("invalid")
+    if type(index) is not int or not index_min <= index <= index_max:
+        raise ScheduleSelectionError("invalid")
+    first_days = _wire_days(raw, "p0")
+    second_days = _wire_days(raw, "p1")
+    if any(a == b for a, b in zip(first_days, second_days)):
+        raise ScheduleSelectionError("invalid")
+    return {
+        "id": schedule_id,
+        "index": index,
+        "p0Days": first_days,
+        "p0Intervals": _wire_intervals(raw, "p0"),
+        "p0SetbackTemp": _wire_setback(raw, "p0"),
+        "p1Days": second_days,
+        "p1Intervals": _wire_intervals(raw, "p1"),
+        "p1SetbackTemp": _wire_setback(raw, "p1"),
+    }
+
+
 def _settled(raw: Any, *, required: bool = False) -> bool:
     """Missing required change flags and unknown flag values are not settled."""
     return isinstance(raw, dict) and (
@@ -238,6 +380,46 @@ def _global_template(snapshot: Any, index: int | None) -> dict[str, Any] | None:
         and item["index"] == index
     ]
     return matches[0] if len(matches) == 1 else None
+
+
+def global_schedule_index_by_name(snapshot: Any, name: str) -> int:
+    """Return the unique global slot whose template name matches, case-insensitively.
+
+    Args:
+        snapshot: Schedule snapshot from the current refresh.
+        name: Configured global schedule name, matched after trimming.
+
+    Returns:
+        The index of the one global template whose name matches.
+
+    Raises:
+        ScheduleSelectionError: If no template matches (``name_not_found``) or
+            more than one does (``name_ambiguous``).
+
+    """
+    wanted = name.strip().casefold()
+    matches: list[int] = []
+    for item in _global_templates(
+        snapshot
+        if isinstance(snapshot, dict) and snapshot.get("supported")
+        else {}
+    ):
+        if not isinstance(item, dict):
+            continue
+        index = item.get("index")
+        template_name = item.get("name")
+        if (
+            type(index) is int
+            and isinstance(template_name, str)
+            and template_name
+            and template_name.casefold() == wanted
+        ):
+            matches.append(index)
+    if not matches:
+        raise ScheduleSelectionError("name_not_found")
+    if len(matches) > 1:
+        raise ScheduleSelectionError("name_ambiguous")
+    return matches[0]
 
 
 def _template_details(raw: Any, *, settled: bool, label: str) -> dict[str, Any]:
@@ -281,6 +463,74 @@ def local_schedule_details(snapshot: Any, zone_id: int) -> dict[str, Any]:
         "name": name if isinstance(name, str) and name else None,
         **result,
     }
+
+
+def _require_supported(snapshot: Any) -> None:
+    """Reject a write before any lookup when schedules are not supported."""
+    if not isinstance(snapshot, dict) or not snapshot.get("supported"):
+        raise ScheduleSelectionError("unsupported")
+
+
+def _require_details(details: dict[str, Any]) -> None:
+    """Map a template's found/settled/valid flags onto stable write reasons."""
+    if not details["found"]:
+        raise ScheduleSelectionError("missing")
+    if not details["settled"]:
+        raise ScheduleSelectionError("not_settled")
+    if not details["valid"]:
+        raise ScheduleSelectionError("invalid")
+
+
+def global_schedule_write(
+    snapshot: Any, zone_id: int, index: int
+) -> dict[str, Any]:
+    """Prepare a global template write from the current snapshot without sending it."""
+    _require_supported(snapshot)
+    mode_id = zone_mode_id(snapshot, zone_id)
+    if mode_id is None:
+        raise ScheduleSelectionError("mode_missing")
+    _require_details(global_schedule_details(snapshot, index))
+    raw = _global_template(snapshot, index)
+    schedule = wire_schedule(raw, source="global")
+    name = raw.get("name") if isinstance(raw, dict) else None
+    assigned: dict[int, int] = {}
+    zone_map = snapshot.get("zones")
+    for other_id, entry in (zone_map if isinstance(zone_map, dict) else {}).items():
+        mode = entry.get("mode") if isinstance(entry, dict) else None
+        other_mode_id = mode.get("id") if isinstance(mode, dict) else None
+        if (
+            isinstance(mode, dict)
+            and mode.get("mode") == "globalSchedule"
+            and type(mode.get("scheduleIndex")) is int
+            and mode["scheduleIndex"] == index
+            and type(other_id) is int
+            and type(other_mode_id) is int
+        ):
+            assigned[other_id] = other_mode_id
+    assigned[zone_id] = mode_id
+    return {
+        "mode_id": mode_id,
+        "schedule": schedule,
+        "schedule_name": name if isinstance(name, str) and name else "",
+        "set_in_zones": [
+            {"zoneId": other_id, "modeId": assigned[other_id]}
+            for other_id in sorted(assigned)
+        ],
+    }
+
+
+def local_schedule_write(snapshot: Any, zone_id: int) -> dict[str, Any]:
+    """Prepare a zone-local template write from the current snapshot without sending it."""
+    _require_supported(snapshot)
+    mode_id = zone_mode_id(snapshot, zone_id)
+    if mode_id is None:
+        raise ScheduleSelectionError("mode_missing")
+    _require_details(local_schedule_details(snapshot, zone_id))
+    zone = _zone_entry(snapshot, zone_id)
+    raw = zone.get("schedule") if zone is not None else None
+    if not isinstance(raw, dict) or type(raw.get("id")) is not int:
+        raise ScheduleSelectionError("missing")
+    return {"mode_id": mode_id, "schedule": wire_schedule(raw, source="local")}
 
 
 def selected_schedule(

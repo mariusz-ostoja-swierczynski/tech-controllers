@@ -86,6 +86,68 @@
         },
         "entry_from_newer_version": {
             "message": "Tento záznam byl vytvořen novější verzí Tech Controllers. Aktualizujte integraci a restartujte Home Assistant."
+        },
+        "zone_target_invalid": {
+            "message": "Vyberte entitu klimatu Tech (termostat zóny)."
+        },
+        "schedule_index_required": {
+            "message": "Výběr globálního harmonogramu vyžaduje index mezi 0 a 4."
+        },
+        "schedule_selection_required": {
+            "message": "Zvolte název harmonogramu, nebo `local`, nebo použijte starší pole zdroje a indexu."
+        },
+        "schedule_name_not_found": {
+            "message": "Na tomto regulátoru není žádný globální harmonogram s názvem {name}."
+        },
+        "schedule_name_ambiguous": {
+            "message": "Více než jeden globální harmonogram se jmenuje {name}; použijte místo toho starší index."
+        },
+        "schedule_unsupported": {
+            "message": "Tento regulátor nehlásí harmonogramy zón."
+        },
+        "schedule_not_found": {
+            "message": "Tato zóna nemá harmonogram {source} k aktivaci."
+        },
+        "schedule_not_settled": {
+            "message": "Regulátor stále aplikuje změnu tohoto harmonogramu. Zkuste to znovu za chvíli."
+        },
+        "schedule_invalid": {
+            "message": "Vybraný harmonogram je neúplný nebo neplatný, proto jej nelze aktivovat."
+        },
+        "zone_mode_missing": {
+            "message": "Regulátor nehlásí identifikátor režimu zóny."
+        },
+        "zone_temperature_missing": {
+            "message": "Regulátor nehlásí teplotu pro tuto zónu."
+        },
+        "zone_write_failed": {
+            "message": "Regulátor odmítl změnu zóny: {error}"
+        }
+    },
+    "services": {
+        "set_zone_schedule": {
+            "name": "Nastavit harmonogram zóny",
+            "description": "Přepne zónu na její místní harmonogram nebo jeden z pěti globálních harmonogramů. Použijí se pouze šablony harmonogramů, které regulátor již hlásí a které jsou kompletní a stabilní.",
+            "fields": {
+                "schedule": {
+                    "name": "Název harmonogramu",
+                    "description": "Vyberte nakonfigurovaný globální harmonogram nebo `local` pro vlastní harmonogram zóny."
+                }
+            }
+        },
+        "set_zone_constant": {
+            "name": "Nastavit konstantní teplotu zóny",
+            "description": "Nastaví zóně pevnou teplotu trvale nebo na omezený počet minut, po kterých se zóna vrátí do předchozího režimu.",
+            "fields": {
+                "temperature": {
+                    "name": "Teplota",
+                    "description": "Cílová teplota v °C, od 5 do 35."
+                },
+                "duration_minutes": {
+                    "name": "Doba trvání (minuty)",
+                    "description": "0 udržuje teplotu až do změny; 1-1440 ji omezuje na daný počet minut."
+                }
+            }
         }
     },
     "entity": {
@@ -139,6 +201,16 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Problém s harmonogramem"
+            }
+        },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Doba trvání konstantní teploty"
+            }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "name": "Harmonogram"
             }
         }
     },

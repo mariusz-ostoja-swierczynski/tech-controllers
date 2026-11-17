@@ -86,6 +86,68 @@
         },
         "entry_from_newer_version": {
             "message": "Esta entrada foi criada por uma versão mais recente do Tech Controllers. Atualize a integração e reinicie o Home Assistant."
+        },
+        "zone_target_invalid": {
+            "message": "Escolha uma entidade climática Tech (um termostato de zona)."
+        },
+        "schedule_index_required": {
+            "message": "Uma seleção de horário global precisa de um índice entre 0 e 4."
+        },
+        "schedule_selection_required": {
+            "message": "Escolha um nome de horário, ou `local`, ou use os antigos campos de origem e índice."
+        },
+        "schedule_name_not_found": {
+            "message": "Nenhum horário global deste controlador tem o nome {name}."
+        },
+        "schedule_name_ambiguous": {
+            "message": "Mais de um horário global tem o nome {name}; use antes o índice antigo."
+        },
+        "schedule_unsupported": {
+            "message": "Este controlador não comunica horários de zona."
+        },
+        "schedule_not_found": {
+            "message": "Esta zona não tem nenhum horário {source} para ativar."
+        },
+        "schedule_not_settled": {
+            "message": "O controlador ainda está a aplicar uma alteração a este horário. Tente novamente daqui a pouco."
+        },
+        "schedule_invalid": {
+            "message": "O horário selecionado está incompleto ou é inválido, por isso não pode ser ativado."
+        },
+        "zone_mode_missing": {
+            "message": "O controlador não comunicou o identificador de modo da zona."
+        },
+        "zone_temperature_missing": {
+            "message": "O controlador não comunicou uma temperatura para esta zona."
+        },
+        "zone_write_failed": {
+            "message": "O controlador recusou a alteração da zona: {error}"
+        }
+    },
+    "services": {
+        "set_zone_schedule": {
+            "name": "Definir o horário da zona",
+            "description": "Muda uma zona para o seu horário local ou para um dos cinco horários globais. Só são aplicados os modelos de horário que o controlador já comunica e que estão completos e estáveis.",
+            "fields": {
+                "schedule": {
+                    "name": "Nome do horário",
+                    "description": "Selecione um horário global configurado ou `local` para o horário próprio da zona."
+                }
+            }
+        },
+        "set_zone_constant": {
+            "name": "Definir a temperatura constante da zona",
+            "description": "Define uma zona para uma temperatura fixa, de forma permanente ou durante um número limitado de minutos, após os quais a zona regressa ao modo anterior.",
+            "fields": {
+                "temperature": {
+                    "name": "Temperatura",
+                    "description": "Temperatura pretendida em °C, de 5 a 35."
+                },
+                "duration_minutes": {
+                    "name": "Duração (minutos)",
+                    "description": "0 mantém a temperatura até ser alterada; 1-1440 limita-a a esse número de minutos."
+                }
+            }
         }
     },
     "entity": {
@@ -139,6 +201,16 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Problema de horário"
+            }
+        },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Duração da temperatura constante"
+            }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "name": "Horário"
             }
         }
     },

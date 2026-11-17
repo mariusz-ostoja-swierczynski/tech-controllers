@@ -86,6 +86,68 @@
     },
     "entry_from_newer_version": {
       "message": "Tento záznam bol vytvorený novšou verziou Tech Controllers. Aktualizujte integráciu a reštartujte Home Assistant."
+    },
+    "zone_target_invalid": {
+      "message": "Vyberte entitu klímy Tech (termostat zóny)."
+    },
+    "schedule_index_required": {
+      "message": "Výber globálneho harmonogramu vyžaduje index medzi 0 a 4."
+    },
+    "schedule_selection_required": {
+      "message": "Vyberte názov harmonogramu alebo `local`, alebo použite staré polia zdroja a indexu."
+    },
+    "schedule_name_not_found": {
+      "message": "Na tomto regulátore nie je žiadny globálny harmonogram s názvom {name}."
+    },
+    "schedule_name_ambiguous": {
+      "message": "Viac ako jeden globálny harmonogram má názov {name}; použite namiesto toho starý index."
+    },
+    "schedule_unsupported": {
+      "message": "Tento regulátor nehlási harmonogramy zón."
+    },
+    "schedule_not_found": {
+      "message": "Táto zóna nemá harmonogram {source} na aktiváciu."
+    },
+    "schedule_not_settled": {
+      "message": "Regulátor stále aplikuje zmenu tohto harmonogramu. Skúste to znova o chvíľu."
+    },
+    "schedule_invalid": {
+      "message": "Vybraný harmonogram je neúplný alebo neplatný, preto ho nemožno aktivovať."
+    },
+    "zone_mode_missing": {
+      "message": "Regulátor nehlásil identifikátor režimu zóny."
+    },
+    "zone_temperature_missing": {
+      "message": "Regulátor nehlásil teplotu pre túto zónu."
+    },
+    "zone_write_failed": {
+      "message": "Regulátor odmietol zmenu zóny: {error}"
+    }
+  },
+  "services": {
+    "set_zone_schedule": {
+      "name": "Nastaviť harmonogram zóny",
+      "description": "Prepne zónu na jej miestny harmonogram alebo jeden z piatich globálnych harmonogramov. Použijú sa iba šablóny harmonogramov, ktoré regulátor už hlási a ktoré sú kompletné a stabilné.",
+      "fields": {
+        "schedule": {
+          "name": "Názov harmonogramu",
+          "description": "Vyberte nakonfigurovaný globálny harmonogram alebo `local` pre vlastný harmonogram zóny."
+        }
+      }
+    },
+    "set_zone_constant": {
+      "name": "Nastaviť konštantnú teplotu zóny",
+      "description": "Nastaví zóne pevnú teplotu trvalo alebo na obmedzený počet minút, po ktorých sa zóna vráti do predchádzajúceho režimu.",
+      "fields": {
+        "temperature": {
+          "name": "Teplota",
+          "description": "Cieľová teplota v °C, od 5 do 35."
+        },
+        "duration_minutes": {
+          "name": "Trvanie (minúty)",
+          "description": "0 udržiava teplotu až do zmeny; 1-1440 ju obmedzuje na daný počet minút."
+        }
+      }
     }
   },
   "entity": {
@@ -139,6 +201,16 @@
     "binary_sensor": {
       "schedule_problem_entity": {
         "name": "Problém s harmonogramom"
+      }
+    },
+    "number": {
+      "zone_constant_duration": {
+        "name": "Trvanie konštantnej teploty"
+      }
+    },
+    "select": {
+      "zone_schedule_select": {
+        "name": "Harmonogram"
       }
     }
   },

@@ -86,6 +86,68 @@
         },
         "entry_from_newer_version": {
             "message": "Questa voce è stata creata da una versione più recente di Tech Controllers. Aggiorna l'integrazione e riavvia Home Assistant."
+        },
+        "zone_target_invalid": {
+            "message": "Seleziona un'entità climatica Tech (un termostato di zona)."
+        },
+        "schedule_index_required": {
+            "message": "Una selezione di programmazione globale richiede un indice tra 0 e 4."
+        },
+        "schedule_selection_required": {
+            "message": "Scegli un nome di programmazione, oppure `local`, oppure usa i vecchi campi origine e indice."
+        },
+        "schedule_name_not_found": {
+            "message": "Nessuna programmazione globale di questo controller si chiama {name}."
+        },
+        "schedule_name_ambiguous": {
+            "message": "Più di una programmazione globale si chiama {name}; usa invece l'indice precedente."
+        },
+        "schedule_unsupported": {
+            "message": "Questo controller non segnala programmazioni di zona."
+        },
+        "schedule_not_found": {
+            "message": "Questa zona non ha una programmazione {source} da attivare."
+        },
+        "schedule_not_settled": {
+            "message": "Il controller sta ancora applicando una modifica a questa programmazione. Riprova tra poco."
+        },
+        "schedule_invalid": {
+            "message": "La programmazione selezionata è incompleta o non valida, quindi non può essere attivata."
+        },
+        "zone_mode_missing": {
+            "message": "Il controller non ha segnalato l'identificatore di modalità della zona."
+        },
+        "zone_temperature_missing": {
+            "message": "Il controller non ha segnalato una temperatura per questa zona."
+        },
+        "zone_write_failed": {
+            "message": "Il controller ha rifiutato la modifica della zona: {error}"
+        }
+    },
+    "services": {
+        "set_zone_schedule": {
+            "name": "Imposta la programmazione della zona",
+            "description": "Passa una zona alla sua programmazione locale o a una delle cinque programmazioni globali. Vengono applicati solo i modelli di programmazione già segnalati dal controller e completi e stabili.",
+            "fields": {
+                "schedule": {
+                    "name": "Nome della programmazione",
+                    "description": "Seleziona una pianificazione globale configurata oppure `local` per la pianificazione propria della zona."
+                }
+            }
+        },
+        "set_zone_constant": {
+            "name": "Imposta la temperatura costante della zona",
+            "description": "Imposta una zona a una temperatura fissa in modo permanente o per un numero limitato di minuti, dopodiché la zona torna alla modalità precedente.",
+            "fields": {
+                "temperature": {
+                    "name": "Temperatura",
+                    "description": "Temperatura target in °C, da 5 a 35."
+                },
+                "duration_minutes": {
+                    "name": "Durata (minuti)",
+                    "description": "0 mantiene la temperatura fino alla modifica; 1-1440 la limita a quel numero di minuti."
+                }
+            }
         }
     },
     "entity": {
@@ -139,6 +201,16 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Problema di programmazione"
+            }
+        },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Durata della temperatura costante"
+            }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "name": "Programmazione"
             }
         }
     },

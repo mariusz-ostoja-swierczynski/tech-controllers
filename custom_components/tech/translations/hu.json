@@ -86,6 +86,68 @@
         },
         "entry_from_newer_version": {
             "message": "Ezt a bejegyzést a Tech Controllers újabb verziója hozta létre. Frissítse az integrációt, és indítsa újra a Home Assistantot."
+        },
+        "zone_target_invalid": {
+            "message": "Válasszon egy Tech klíma entitást (zóna termosztát)."
+        },
+        "schedule_index_required": {
+            "message": "A globális ütemterv kiválasztásához 0 és 4 közötti index szükséges."
+        },
+        "schedule_selection_required": {
+            "message": "Válasszon ütemtervnevet, vagy `local` értéket, vagy használja a régi forrás- és indexmezőket."
+        },
+        "schedule_name_not_found": {
+            "message": "Ezen a vezérlőn nincs {name} nevű globális ütemterv."
+        },
+        "schedule_name_ambiguous": {
+            "message": "Több globális ütemterv is {name} néven szerepel; használja inkább a régi indexet."
+        },
+        "schedule_unsupported": {
+            "message": "Ez a vezérlő nem jelent zóna ütemterveket."
+        },
+        "schedule_not_found": {
+            "message": "Ehhez a zónához nincs aktiválható {source} ütemterv."
+        },
+        "schedule_not_settled": {
+            "message": "A vezérlő még alkalmazza az ütemterv módosítását. Próbálja újra hamarosan."
+        },
+        "schedule_invalid": {
+            "message": "A kiválasztott ütemterv hiányos vagy érvénytelen, ezért nem aktiválható."
+        },
+        "zone_mode_missing": {
+            "message": "A vezérlő nem jelentette a zóna módazonosítóját."
+        },
+        "zone_temperature_missing": {
+            "message": "A vezérlő nem jelentett hőmérsékletet ehhez a zónához."
+        },
+        "zone_write_failed": {
+            "message": "A vezérlő elutasította a zóna módosítását: {error}"
+        }
+    },
+    "services": {
+        "set_zone_schedule": {
+            "name": "Zóna ütemtervének beállítása",
+            "description": "Átváltja a zónát a helyi ütemtervére vagy az öt globális ütemterv egyikére. Csak a vezérlő által már jelentett, teljes és stabil ütemtervsablonok lesznek alkalmazva.",
+            "fields": {
+                "schedule": {
+                    "name": "Ütemterv neve",
+                    "description": "Válasszon egy beállított globális ütemezést, vagy a `local` értéket a zóna saját ütemezéséhez."
+                }
+            }
+        },
+        "set_zone_constant": {
+            "name": "Zóna állandó hőmérsékletének beállítása",
+            "description": "Állandó hőmérsékletet állít be a zónának véglegesen vagy korlátozott számú percre, ami után a zóna visszatér az előző módba.",
+            "fields": {
+                "temperature": {
+                    "name": "Hőmérséklet",
+                    "description": "Célhőmérséklet °C-ban, 5 és 35 között."
+                },
+                "duration_minutes": {
+                    "name": "Időtartam (perc)",
+                    "description": "A 0 a változtatásig tartja a hőmérsékletet; az 1-1440 ennyi percre korlátozza."
+                }
+            }
         }
     },
     "entity": {
@@ -139,6 +201,16 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Ütemterv probléma"
+            }
+        },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Állandó hőmérséklet időtartama"
+            }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "name": "Ütemterv"
             }
         }
     },

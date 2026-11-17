@@ -1,0 +1,40 @@
+set_zone_schedule:
+  target:
+    entity:
+      integration: tech
+      domain: climate
+  fields:
+    schedule:
+      required: true
+      example: "Weekend"
+      selector:
+        select:
+          options:
+            - value: local
+              label: Local schedule
+          mode: dropdown
+
+set_zone_constant:
+  target:
+    entity:
+      integration: tech
+      domain: climate
+  fields:
+    temperature:
+      required: true
+      selector:
+        number:
+          min: 5
+          max: 35
+          step: 0.1
+          unit_of_measurement: "°C"
+          mode: box
+    duration_minutes:
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 1440
+          step: 1
+          unit_of_measurement: "min"
+          mode: box

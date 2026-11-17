@@ -67,9 +67,12 @@ def _entity_contract(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def _schedule(index: int = 1, name: str = "Synthetic global") -> dict[str, Any]:
+def _schedule(
+    index: int = 1, name: str = "Synthetic global", schedule_id: int = 1
+) -> dict[str, Any]:
     """Build two complementary profiles using the public zone schedule schema."""
     return {
+        "id": schedule_id,
         "index": index,
         "name": name,
         "p0Days": ["1", "1", "1", "1", "1", "0", "0"],
@@ -84,7 +87,12 @@ def _schedule(index: int = 1, name: str = "Synthetic global") -> dict[str, Any]:
     }
 
 
-def _zone(zone_id: int = 101, mode: str = "globalSchedule", index: Any = 1) -> dict:
+def _zone(
+    zone_id: int = 101,
+    mode: str = "globalSchedule",
+    index: Any = 1,
+    mode_id: Any = 55,
+) -> dict:
     """Provide the minimal normal zone telemetry used by actual HA entities."""
     local = _schedule(-1)
     local.pop("name")
@@ -102,7 +110,7 @@ def _zone(zone_id: int = 101, mode: str = "globalSchedule", index: Any = 1) -> d
             "flags": {"relayState": "off", "algorithm": "heating"},
         },
         "description": {"name": f"Synthetic zone {zone_id}"},
-        "mode": {"mode": mode, "scheduleIndex": index},
+        "mode": {"id": mode_id, "mode": mode, "scheduleIndex": index},
         "schedule": local,
     }
 
@@ -949,3 +957,370 @@ async def test_real_cache_handles_missing_or_malformed_zones(envelope: Any) -> N
     assert data["schedules"]["zones"] == {}
     assert data["schedules"]["globalSchedules"] is None
     assert len(transport.requests) == 1 + len(const.MENU_TYPES)
+
+
+def _reason(function: Any, *args: Any) -> str:
+    """Return the stable reason carried by a rejected schedule write."""
+    with pytest.raises(schedules.ScheduleSelectionError) as excinfo:
+        function(*args)
+    return excinfo.value.reason
+
+
+def test_wire_schedule_drops_placeholders_and_ends_at_midnight() -> None:
+    """Placeholders vanish, midnight is 1440 and the source stays untouched."""
+    raw = _schedule()
+    raw["p0Intervals"] = [
+        {"start": 1380, "stop": 0, "temp": 200},
+        {"start": 6100, "stop": 6100, "temp": 200},
+        {"start": 0, "stop": 0, "temp": 200},
+        {"start": 480, "stop": 900, "temp": 210},
+    ]
+    raw["p1Intervals"] = [{"start": 6100, "stop": 6100, "temp": 190}]
+    before = deepcopy(raw)
+
+    wire = schedules.wire_schedule(raw, source="global")
+
+    assert wire["p0Intervals"] == [
+        {"start": 480, "stop": 900, "temp": 210},
+        {"start": 1380, "stop": 1440, "temp": 200},
+    ]
+    assert wire["p1Intervals"] == []
+    assert raw == before
+
+
+def test_wire_schedule_returns_only_the_api_fields() -> None:
+    """Polling metadata and the display name never reach the write payload."""
+    raw = _schedule()
+    raw["time"] = "synthetic-server-time"
+    raw["transaction_time"] = "synthetic-server-time"
+    raw["duringChange"] = False
+
+    wire = schedules.wire_schedule(raw, source="global")
+
+    assert set(wire) == {
+        "id",
+        "index",
+        "p0Days",
+        "p0Intervals",
+        "p0SetbackTemp",
+        "p1Days",
+        "p1Intervals",
+        "p1SetbackTemp",
+    }
+    assert wire["id"] == 1
+    assert wire["index"] == 1
+    assert wire["p0Days"] == ["1", "1", "1", "1", "1", "0", "0"]
+    assert wire["p0SetbackTemp"] == 200
+    assert wire["p1SetbackTemp"] == 190
+    assert "name" not in wire
+    assert "time" not in wire
+    assert "duringChange" not in wire
+
+
+def test_wire_schedule_accepts_the_local_index_range() -> None:
+    """Local templates use the negative index range, not the global slots."""
+    raw = _schedule(index=-40)
+    assert schedules.wire_schedule(raw, source="local")["index"] == -40
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda raw: raw.update(id=True),
+        lambda raw: raw.update(id="1"),
+        lambda raw: raw.update(index=True),
+        lambda raw: raw.update(index=5),
+        lambda raw: raw.update(p0Days=["1"] * 6),
+        lambda raw: raw.update(p0Days=[1] * 7),
+        lambda raw: raw.update(p0Days=["0"] * 7),
+        lambda raw: raw.update(p1Days=["0", "0", "0", "0", "0", "1"]),
+        lambda raw: raw.update(p0SetbackTemp=49),
+        lambda raw: raw.update(p1SetbackTemp=351),
+        lambda raw: raw.update(p0SetbackTemp=True),
+        lambda raw: raw["p0Intervals"].__setitem__(
+            0, {"start": 480, "stop": 400, "temp": 200}
+        ),
+        lambda raw: raw["p0Intervals"].__setitem__(
+            0, {"start": 0, "stop": 480, "temp": 49}
+        ),
+        lambda raw: raw["p0Intervals"].__setitem__(
+            0, {"start": 0, "stop": 480, "temp": True}
+        ),
+        lambda raw: raw["p0Intervals"].__setitem__(
+            0, {"start": True, "stop": 480, "temp": 200}
+        ),
+        lambda raw: raw["p0Intervals"].__setitem__(
+            0, {"start": "0", "stop": 480, "temp": 200}
+        ),
+        lambda raw: raw["p0Intervals"].__setitem__(
+            0, {"start": 0, "stop": 1441, "temp": 200}
+        ),
+        lambda raw: raw.update(p0Intervals=None),
+    ],
+)
+def test_wire_schedule_rejects_malformed_global_templates(mutation: Any) -> None:
+    """Every schema breach is reported as a stable invalid reason."""
+    raw = _schedule()
+    mutation(raw)
+    with pytest.raises(schedules.ScheduleSelectionError) as excinfo:
+        schedules.wire_schedule(raw, source="global")
+    assert excinfo.value.reason == "invalid"
+
+
+@pytest.mark.parametrize(
+    ("source", "index"),
+    [
+        ("global", 5),
+        ("global", -1),
+        ("global", True),
+        ("local", 0),
+        ("local", -41),
+        ("local", 1),
+        ("local", True),
+        ("other", 1),
+    ],
+)
+def test_wire_schedule_rejects_the_wrong_index_for_its_source(
+    source: str, index: Any
+) -> None:
+    """An index outside the source's range, or an unknown source, is invalid."""
+    raw = _schedule(index=index)
+    with pytest.raises(schedules.ScheduleSelectionError) as excinfo:
+        schedules.wire_schedule(raw, source=source)
+    assert excinfo.value.reason == "invalid"
+
+
+def test_wire_schedule_rejects_overlapping_intervals() -> None:
+    """Intervals are sorted by start, and a crossing span is invalid."""
+    raw = _schedule()
+    raw["p0Intervals"] = [
+        {"start": 480, "stop": 900, "temp": 200},
+        {"start": 400, "stop": 600, "temp": 210},
+    ]
+    with pytest.raises(schedules.ScheduleSelectionError) as excinfo:
+        schedules.wire_schedule(raw, source="global")
+    assert excinfo.value.reason == "invalid"
+
+
+@pytest.mark.parametrize(
+    "mode",
+    [None, {}, {"id": True}, {"id": "5"}, {"id": 5.0}],
+)
+def test_zone_mode_id_requires_a_real_integer(mode: Any) -> None:
+    """Booleans, strings and floats never masquerade as a mode id."""
+    snapshot = {"zones": {101: {"mode": mode}}}
+    assert schedules.zone_mode_id(snapshot, 101) is None
+
+
+def test_zone_mode_id_returns_an_integer_mode_id() -> None:
+    """A real integer id is returned; missing snapshots and zones are None."""
+    snapshot = {"zones": {101: {"mode": {"id": 55}}}}
+    assert schedules.zone_mode_id(snapshot, 101) == 55
+    assert schedules.zone_mode_id(None, 101) is None
+    assert schedules.zone_mode_id({}, 101) is None
+    assert schedules.zone_mode_id(snapshot, 999) is None
+
+
+def test_global_schedule_index_by_name_trims_and_ignores_case() -> None:
+    """A configured name resolves to its slot despite case and padding."""
+    snapshot = _snapshot()
+    snapshot["globalSchedules"]["elements"][0]["name"] = "Weekend"
+    assert schedules.global_schedule_index_by_name(snapshot, "  wEeKeNd  ") == 1
+
+
+@pytest.mark.parametrize("name", ["Nope", "   ", ""])
+def test_global_schedule_index_by_name_reports_unknown_names(name: str) -> None:
+    """An unmatched, blank or empty request names no global slot."""
+    assert (
+        _reason(schedules.global_schedule_index_by_name, _snapshot(), name)
+        == "name_not_found"
+    )
+
+
+def test_global_schedule_index_by_name_ignores_missing_and_empty_names() -> None:
+    """A template without a usable name never matches, and a missing snapshot is empty."""
+    snapshot = _snapshot()
+    template = snapshot["globalSchedules"]["elements"][0]
+    for missing in ("", None):
+        template["name"] = missing
+        assert (
+            _reason(schedules.global_schedule_index_by_name, snapshot, "Synthetic")
+            == "name_not_found"
+        )
+    template.pop("name")
+    assert (
+        _reason(schedules.global_schedule_index_by_name, snapshot, "Synthetic")
+        == "name_not_found"
+    )
+    assert (
+        _reason(schedules.global_schedule_index_by_name, None, "Synthetic")
+        == "name_not_found"
+    )
+    unsupported = _snapshot()
+    unsupported["supported"] = False
+    assert (
+        _reason(
+            schedules.global_schedule_index_by_name, unsupported, "Synthetic global"
+        )
+        == "name_not_found"
+    )
+
+
+def test_global_schedule_index_by_name_rejects_duplicate_names() -> None:
+    """Two global templates sharing a name cannot be selected by that name."""
+    snapshot = _snapshot()
+    snapshot["globalSchedules"]["elements"].append(
+        _schedule(2, "Synthetic global", schedule_id=2)
+    )
+    assert (
+        _reason(schedules.global_schedule_index_by_name, snapshot, "synthetic GLOBAL")
+        == "name_ambiguous"
+    )
+
+
+def test_global_schedule_write_includes_assigned_and_target_zones() -> None:
+    """Zones already on the slot are included once, sorted by zone id."""
+    payload = _payload(_zone(101, mode="globalSchedule", index=1, mode_id=55))
+    payload["zones"]["elements"].append(
+        _zone(102, mode="globalSchedule", index=1, mode_id=66)
+    )
+    payload["zones"]["elements"].append(
+        _zone(103, mode="localSchedule", index=1, mode_id=77)
+    )
+    snapshot = _snapshot(payload)
+    before = deepcopy(snapshot)
+
+    result = schedules.global_schedule_write(snapshot, 101, 1)
+
+    assert result["mode_id"] == 55
+    assert result["schedule_name"] == "Synthetic global"
+    assert result["set_in_zones"] == [
+        {"zoneId": 101, "modeId": 55},
+        {"zoneId": 102, "modeId": 66},
+    ]
+    assert result["schedule"]["id"] == 1
+    assert result["schedule"]["index"] == 1
+    assert result["schedule"]["p0Intervals"] == [
+        {"start": 0, "stop": 480, "temp": 180},
+        {"start": 480, "stop": 1440, "temp": 235},
+    ]
+    assert "name" not in result["schedule"]
+    assert snapshot == before
+
+
+def test_global_schedule_write_always_includes_the_target_zone() -> None:
+    """The target joins the assignment even when it uses another mode."""
+    payload = _payload(_zone(101, mode="constantTemp", index=1, mode_id=88))
+    payload["zones"]["elements"].append(
+        _zone(102, mode="globalSchedule", index=1, mode_id=66)
+    )
+
+    result = schedules.global_schedule_write(_snapshot(payload), 101, 1)
+
+    assert result["set_in_zones"] == [
+        {"zoneId": 101, "modeId": 88},
+        {"zoneId": 102, "modeId": 66},
+    ]
+
+
+def test_global_schedule_write_uses_an_empty_name_when_absent() -> None:
+    """A nameless template is written with an empty name, never a placeholder."""
+    payload = _payload()
+    payload["zones"]["globalSchedules"]["elements"][0]["name"] = ""
+    assert schedules.global_schedule_write(_snapshot(payload), 101, 1)[
+        "schedule_name"
+    ] == ""
+    payload["zones"]["globalSchedules"]["elements"][0].pop("name")
+    assert schedules.global_schedule_write(_snapshot(payload), 101, 1)[
+        "schedule_name"
+    ] == ""
+
+
+def test_global_schedule_write_reports_unsupported_and_missing_mode() -> None:
+    """A missing/unsupported snapshot and a zone without a mode id are distinct."""
+    assert _reason(schedules.global_schedule_write, None, 101, 1) == "unsupported"
+    unsupported = _snapshot()
+    unsupported["supported"] = False
+    assert (
+        _reason(schedules.global_schedule_write, unsupported, 101, 1) == "unsupported"
+    )
+    no_mode = _snapshot()
+    no_mode["zones"][101]["mode"].pop("id")
+    assert _reason(schedules.global_schedule_write, no_mode, 101, 1) == "mode_missing"
+
+
+def test_global_schedule_write_reports_missing_pending_and_invalid() -> None:
+    """Template failures map to missing, not_settled and invalid in that order."""
+    assert _reason(schedules.global_schedule_write, _snapshot(), 101, 3) == "missing"
+
+    pending = _snapshot()
+    pending["globalSchedules"]["elements"][0]["duringChange"] = True
+    assert (
+        _reason(schedules.global_schedule_write, pending, 101, 1) == "not_settled"
+    )
+
+    invalid = _snapshot()
+    invalid["globalSchedules"]["elements"][0]["p0Intervals"] = [
+        {"start": 480, "stop": 400, "temp": 200}
+    ]
+    assert _reason(schedules.global_schedule_write, invalid, 101, 1) == "invalid"
+
+
+def test_local_schedule_write_returns_mode_and_cleaned_schedule() -> None:
+    """A local write carries the zone's mode id and a wire-shaped template."""
+    payload = _payload(_zone(101, mode="localSchedule"))
+    payload["zones"]["elements"][0]["schedule"]["p0Intervals"] = [
+        {"start": 1380, "stop": 0, "temp": 200}
+    ]
+    snapshot = _snapshot(payload)
+    before = deepcopy(snapshot)
+
+    result = schedules.local_schedule_write(snapshot, 101)
+
+    assert result["mode_id"] == 55
+    assert result["schedule"]["index"] == -1
+    assert result["schedule"]["p0Intervals"] == [
+        {"start": 1380, "stop": 1440, "temp": 200}
+    ]
+    assert result["schedule"]["p1Intervals"] == []
+    assert "name" not in result["schedule"]
+    assert snapshot == before
+
+
+def test_local_schedule_write_reports_unsupported_and_missing_mode() -> None:
+    """The shared capability and mode-id gates apply to local writes too."""
+    assert _reason(schedules.local_schedule_write, None, 101) == "unsupported"
+    unsupported = _snapshot()
+    unsupported["supported"] = False
+    assert _reason(schedules.local_schedule_write, unsupported, 101) == "unsupported"
+    no_mode = _snapshot()
+    no_mode["zones"][101]["mode"].pop("id")
+    assert _reason(schedules.local_schedule_write, no_mode, 101) == "mode_missing"
+
+
+def test_local_schedule_write_reports_a_missing_template() -> None:
+    """An absent local template and a template without an id are both missing."""
+    missing = _payload(_zone(101, mode="localSchedule"))
+    missing["zones"]["elements"][0]["schedule"] = None
+    assert (
+        _reason(schedules.local_schedule_write, _snapshot(missing), 101) == "missing"
+    )
+
+    no_id = _payload(_zone(101, mode="localSchedule"))
+    no_id["zones"]["elements"][0]["schedule"].pop("id")
+    assert _reason(schedules.local_schedule_write, _snapshot(no_id), 101) == "missing"
+
+
+def test_local_schedule_write_reports_pending_and_invalid() -> None:
+    """A change in progress is pending; a broken template is invalid."""
+    pending = _snapshot()
+    pending["zones"][101]["zone"]["duringChange"] = True
+    assert _reason(schedules.local_schedule_write, pending, 101) == "not_settled"
+
+    invalid = _payload(_zone(101, mode="localSchedule"))
+    invalid["zones"]["elements"][0]["schedule"]["p0Intervals"] = [
+        {"start": 480, "stop": 400, "temp": 200}
+    ]
+    assert (
+        _reason(schedules.local_schedule_write, _snapshot(invalid), 101) == "invalid"
+    )

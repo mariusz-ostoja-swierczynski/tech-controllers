@@ -86,6 +86,68 @@
         },
         "entry_from_newer_version": {
             "message": "Ta vnos je ustvarila novejša različica Tech Controllers. Posodobite integracijo in znova zaženite Home Assistant."
+        },
+        "zone_target_invalid": {
+            "message": "Izberite entiteto klime Tech (termostat cone)."
+        },
+        "schedule_index_required": {
+            "message": "Izbira globalnega urnika zahteva indeks med 0 in 4."
+        },
+        "schedule_selection_required": {
+            "message": "Izberite ime urnika ali `local`, ali uporabite stara polja vira in indeksa."
+        },
+        "schedule_name_not_found": {
+            "message": "Na tem regulatorju ni globalnega urnika z imenom {name}."
+        },
+        "schedule_name_ambiguous": {
+            "message": "Več kot en globalni urnik ima ime {name}; uporabite namesto tega stari indeks."
+        },
+        "schedule_unsupported": {
+            "message": "Ta regulator ne poroča urnikov cone."
+        },
+        "schedule_not_found": {
+            "message": "Ta cona nima urnika {source} za aktiviranje."
+        },
+        "schedule_not_settled": {
+            "message": "Regulator še vedno uveljavlja spremembo tega urnika. Poskusite znova kmalu."
+        },
+        "schedule_invalid": {
+            "message": "Izbrani urnik je nepopoln ali neveljaven, zato ga ni mogoče aktivirati."
+        },
+        "zone_mode_missing": {
+            "message": "Regulator ni poročal identifikatorja načina cone."
+        },
+        "zone_temperature_missing": {
+            "message": "Regulator ni poročal temperature za to cono."
+        },
+        "zone_write_failed": {
+            "message": "Regulator je zavrnil spremembo cone: {error}"
+        }
+    },
+    "services": {
+        "set_zone_schedule": {
+            "name": "Nastavi urnik cone",
+            "description": "Preklopi cono na njen lokalni urnik ali enega od petih globalnih urnikov. Uporabljene bodo samo predloge urnikov, ki jih regulator že poroča in so popolne ter stabilne.",
+            "fields": {
+                "schedule": {
+                    "name": "Ime urnika",
+                    "description": "Izberite konfigurirani globalni urnik ali `local` za urnik, ki pripada območju."
+                }
+            }
+        },
+        "set_zone_constant": {
+            "name": "Nastavi konstantno temperaturo cone",
+            "description": "Coni nastavi fiksno temperaturo trajno ali za omejeno število minut, po katerih se cona vrne v prejšnji način.",
+            "fields": {
+                "temperature": {
+                    "name": "Temperatura",
+                    "description": "Ciljna temperatura v °C, od 5 do 35."
+                },
+                "duration_minutes": {
+                    "name": "Trajanje (minute)",
+                    "description": "0 ohranja temperaturo do spremembe; 1-1440 jo omeji na toliko minut."
+                }
+            }
         }
     },
     "entity": {
@@ -139,6 +201,16 @@
         "binary_sensor": {
             "schedule_problem_entity": {
                 "name": "Težava z urnikom"
+            }
+        },
+        "number": {
+            "zone_constant_duration": {
+                "name": "Trajanje konstantne temperature"
+            }
+        },
+        "select": {
+            "zone_schedule_select": {
+                "name": "Urnik"
             }
         }
     },

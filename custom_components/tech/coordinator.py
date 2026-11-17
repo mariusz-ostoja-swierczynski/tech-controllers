@@ -98,6 +98,11 @@ class TechCoordinator(DataUpdateCoordinator):
         # ``__init__._drop_unreported_entities``.
         self.reported: dict[str, set[Any]] = {}
         self.reported_misses: dict[str, int] = {}
+        # The time limit, in minutes, the user picked for each zone's next
+        # constant-temperature selection; zero (or no entry) means permanent.
+        # The per-zone duration number writes it and the schedule select reads
+        # it, so the value survives a poll and is restored on a restart.
+        self.zone_constant_durations: dict[int, int] = {}
         # Platforms that register entities from the payload append a callback
         # here, to be told by an entity when it leaves Home Assistant. An entity
         # that has left may be registered again, which is what lets a payload
