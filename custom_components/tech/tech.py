@@ -34,7 +34,6 @@ _LOGGER = logging.getLogger(__name__)
 # secret, and the documented multi-element form has one code per pair.
 _MENU_PIN_SEGMENT = re.compile(r"(?<=\d:)[^,/]+")
 
-
 def _redact_menu_pin(path: str) -> str:
     """Mask any menu code carried in a path.
 
@@ -46,6 +45,58 @@ def _redact_menu_pin(path: str) -> str:
 
     """
     return _MENU_PIN_SEGMENT.sub("**REDACTED**", path)
+
+
+def _safe_api_endpoint(request_path: str) -> str:
+    """Return an API endpoint without sensitive identifiers."""
+    path = request_path.split("?", 1)[0].split("#", 1)[0]
+    parts = path.strip("/").split("/")
+
+    if parts == ["authentication"]:
+        return "authentication"
+
+    if len(parts) == 2 and parts[0] == "i18n":
+        return "i18n/{language}"
+
+    if len(parts) >= 3 and parts[0] == "users" and parts[2] == "modules":
+        endpoint = "users/{user_id}/modules"
+
+        if len(parts) == 3:
+            return endpoint
+
+        endpoint += "/{module_id}"
+        if len(parts) == 4:
+            return endpoint
+
+        if len(parts) == 5 and parts[4] == "zones":
+            return endpoint + "/zones"
+
+        if len(parts) >= 6 and parts[4] == "menu" and parts[5] in MENU_TYPES:
+            endpoint += f"/menu/{parts[5]}"
+            if len(parts) == 6:
+                return endpoint
+            if len(parts) == 7:
+                return endpoint + "/{item}"
+            if len(parts) == 8 and parts[6] == "ido":
+                return endpoint + "/ido/{item_id}"
+
+    return "<unknown endpoint>"
+
+
+def _safe_response_kind(body: str) -> str:
+    """Describe an API error response without logging sensitive values."""
+    if not body:
+        return "empty response"
+
+    try:
+        data = json.loads(body)
+    except ValueError:
+        return "non-JSON response"
+
+    if isinstance(data, dict) and "error" in data:
+        return "JSON error response"
+
+    return "JSON response"
 
 
 class Tech:
@@ -132,13 +183,19 @@ class Tech:
 
         """
         url = self.base_url + request_path
-        _LOGGER.debug("Sending GET request: %s", _redact_menu_pin(url))
+        _LOGGER.debug("Sending GET request: %s", _safe_api_endpoint(request_path))
         async with self.session.get(
             url, headers=self.headers, timeout=self.timeout
         ) as response:
             if response.status != 200:
-                _LOGGER.warning("Invalid response from Tech API: %s", response.status)
-                raise TechError(response.status, await response.text())
+                body = await response.text()
+                _LOGGER.warning(
+                    "Tech API GET %s returned HTTP %s (%s)",
+                    _safe_api_endpoint(request_path),
+                    response.status,
+                    _safe_response_kind(body),
+                )
+                raise TechError(response.status, body)
 
             return await self._json_object(response)
 
@@ -157,13 +214,19 @@ class Tech:
 
         """
         url = self.base_url + request_path
-        _LOGGER.debug("Sending POST request: %s", url)
+        _LOGGER.debug("Sending POST request: %s", _safe_api_endpoint(request_path))
         async with self.session.post(
             url, data=post_data, headers=self.headers, timeout=self.timeout
         ) as response:
             if response.status != 200:
-                _LOGGER.warning("Invalid response from Tech API: %s", response.status)
-                raise TechError(response.status, await response.text())
+                body = await response.text()
+                _LOGGER.warning(
+                    "Tech API POST %s returned HTTP %s (%s)",
+                    _safe_api_endpoint(request_path),
+                    response.status,
+                    _safe_response_kind(body),
+                )
+                raise TechError(response.status, body)
 
             return await self._json_object(response)
 
