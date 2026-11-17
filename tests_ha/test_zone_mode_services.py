@@ -507,7 +507,11 @@ def test_schedule_error_reasons_map_to_translation_keys(
 async def test_set_zone_constant_maps_controller_refusal(
     hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A controller refusal reaches the user as a translated write error."""
+    """A controller refusal reaches the user as a translated write error.
+
+    The status travels with it, not the response body: Home Assistant logs a
+    failed call with the error's message, and the body can echo what was sent.
+    """
     post = AsyncMock(side_effect=TechError(422, "Invalid JSON data"))
     await set_up(hass, "zone_modes", monkeypatch, post=post)
     entity_id = _climate_entity(hass, 1)
@@ -521,7 +525,8 @@ async def test_set_zone_constant_maps_controller_refusal(
         )
 
     assert excinfo.value.translation_key == "zone_write_failed"
-    assert excinfo.value.translation_placeholders == {"error": "Invalid JSON data"}
+    assert excinfo.value.translation_placeholders == {"error": "422"}
+    assert "Invalid JSON data" not in str(excinfo.value)
     assert post.await_count == 1
 
 
@@ -542,5 +547,6 @@ async def test_set_zone_schedule_maps_controller_refusal(
         )
 
     assert excinfo.value.translation_key == "zone_write_failed"
-    assert excinfo.value.translation_placeholders == {"error": "Invalid JSON data"}
+    assert excinfo.value.translation_placeholders == {"error": "422"}
+    assert "Invalid JSON data" not in str(excinfo.value)
     assert post.await_count == 1

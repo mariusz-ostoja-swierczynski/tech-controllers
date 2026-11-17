@@ -273,6 +273,10 @@ def _resolve_targets(
 def _write_error(error: TechError) -> HomeAssistantError:
     """Translate a controller refusal into a service error.
 
+    Only the status travels on. Home Assistant logs a failed service call with
+    the error's message, and an API error body can echo what was sent, so the
+    body stays on ``TechError`` where the client's own logging policy puts it.
+
     Args:
         error: Refusal returned by the Tech client.
 
@@ -281,10 +285,10 @@ def _write_error(error: TechError) -> HomeAssistantError:
 
     """
     return HomeAssistantError(
-        f"The controller refused the zone change: {error.status}",
+        f"The controller refused the zone change: {error.status_code}",
         translation_domain=DOMAIN,
         translation_key="zone_write_failed",
-        translation_placeholders={"error": str(error.status)},
+        translation_placeholders={"error": str(error.status_code)},
     )
 
 
