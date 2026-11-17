@@ -34,6 +34,16 @@ _LOGGER = logging.getLogger(__name__)
 # secret, and the documented multi-element form has one code per pair.
 _MENU_PIN_SEGMENT = re.compile(r"(?<=\d:)[^,/]+")
 
+# An identifier in a request path: the numeric account, zone, tile and menu
+# item ids, and the hexadecimal controller id. A reader needs the route and the
+# resource it addressed, never the value, so anything shaped like one is
+# replaced before the path reaches a log line.
+_ID_SEGMENT = re.compile(r"^(?:\d+|[0-9a-fA-F]{8,})$")
+
+# What a request that carries no path of its own is called in a log line.
+_UNKNOWN_ENDPOINT = "<unknown endpoint>"
+
+
 def _redact_menu_pin(path: str) -> str:
     """Mask any menu code carried in a path.
 
@@ -47,44 +57,96 @@ def _redact_menu_pin(path: str) -> str:
     return _MENU_PIN_SEGMENT.sub("**REDACTED**", path)
 
 
+def _mask_identifier(segment: str) -> str:
+    """Return ``{id}`` in place of an identifier-shaped path segment.
+
+    Args:
+        segment: One path segment of an API request.
+
+    Returns:
+        The placeholder for an identifier, or the segment itself when it reads
+        as a route name.
+
+    """
+    return "{id}" if _ID_SEGMENT.match(segment) else segment
+
+
 def _safe_api_endpoint(request_path: str) -> str:
-    """Return an API endpoint without sensitive identifiers."""
+    """Return the route a request addressed, with every identifier replaced.
+
+    Args:
+        request_path: Request path, with or without a query string.
+
+    Returns:
+        The route with named placeholders where the client puts identifiers,
+        for example
+        ``users/{user_id}/modules/{module_id}/zones/{zone_id}/local_schedule``.
+        A route family this module does not describe keeps its family name and
+        masks everything below it, so a route added later still produces a
+        usable log line without publishing what it carried. A request with no
+        path answers ``<unknown endpoint>``.
+
+    """
     path = request_path.split("?", 1)[0].split("#", 1)[0]
-    parts = path.strip("/").split("/")
+    parts = [part for part in path.strip("/").split("/") if part]
+    if not parts:
+        return _UNKNOWN_ENDPOINT
 
     if parts == ["authentication"]:
         return "authentication"
 
-    if len(parts) == 2 and parts[0] == "i18n":
-        return "i18n/{language}"
+    if parts[0] == "i18n":
+        # The language names which catalog was asked for. It is not a secret,
+        # and it is what makes a catalog that answers with an error
+        # diagnosable.
+        return "/".join(parts)
 
-    if len(parts) >= 3 and parts[0] == "users" and parts[2] == "modules":
-        endpoint = "users/{user_id}/modules"
+    if len(parts) < 3 or parts[0] != "users" or parts[2] != "modules":
+        # A route family this module does not describe: a segment below the
+        # family could be a value rather than a route name, so all of them are
+        # masked and only the family stays readable.
+        return "/".join([parts[0], *("{id}" for _ in parts[1:])])
 
-        if len(parts) == 3:
-            return endpoint
+    template = ["users/{user_id}/modules"]
+    rest = parts[3:]
+    if rest:
+        template.append("{module_id}")
+        rest = rest[1:]
 
-        endpoint += "/{module_id}"
-        if len(parts) == 4:
-            return endpoint
+    if rest[:1] == ["zones"]:
+        template.append("zones")
+        rest = rest[1:]
+        if rest:
+            template.append("{zone_id}")
+            rest = rest[1:]
+    elif rest[:1] == ["menu"] and len(rest) > 1 and rest[1] in MENU_TYPES:
+        template.append(f"menu/{rest[1]}")
+        rest = rest[2:]
+        if len(rest) > 1 and rest[0] == "ido":
+            template.append("ido/{item_id}")
+            rest = rest[2:]
+        elif rest:
+            # ``0:1989`` pairs an element id with a menu code. The element id
+            # is not a secret and names the item that failed; the code is a
+            # credential and is masked.
+            template.append(_redact_menu_pin(rest[0]))
+            rest = rest[1:]
 
-        if len(parts) == 5 and parts[4] == "zones":
-            return endpoint + "/zones"
-
-        if len(parts) >= 6 and parts[4] == "menu" and parts[5] in MENU_TYPES:
-            endpoint += f"/menu/{parts[5]}"
-            if len(parts) == 6:
-                return endpoint
-            if len(parts) == 7:
-                return endpoint + "/{item}"
-            if len(parts) == 8 and parts[6] == "ido":
-                return endpoint + "/ido/{item_id}"
-
-    return "<unknown endpoint>"
+    return "/".join([*template, *(_mask_identifier(segment) for segment in rest)])
 
 
 def _safe_response_kind(body: str) -> str:
-    """Describe an API error response without logging sensitive values."""
+    """Describe an API error response without logging sensitive values.
+
+    Args:
+        body: Response body the API answered with.
+
+    Returns:
+        Which kind of answer it was: ``empty response``, ``non-JSON response``,
+        ``JSON error response`` or ``JSON response``. The body itself never
+        reaches the description.
+
+    """
     if not body:
         return "empty response"
 

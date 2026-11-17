@@ -2303,7 +2303,7 @@ async def test_a_menu_code_is_masked_out_of_the_request_log(caplog: Any) -> None
         await tech.get("users/7/modules/abcd/menu/MS/0:1989")
 
     assert "1989" not in caplog.text
-    assert "users/{user_id}/modules/{module_id}/menu/MS/{item}" in caplog.text
+    assert "users/{user_id}/modules/{module_id}/menu/MS/0:**REDACTED**" in caplog.text
 
 
 def test_only_a_menu_code_is_masked_in_a_path() -> None:
