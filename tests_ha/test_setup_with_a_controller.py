@@ -115,6 +115,33 @@ async def test_a_platform_never_claims_the_same_unique_id_twice(
     assert entity_counts(hass) == {"binary_sensor": 4, "sensor": 12}
 
 
+async def test_setup_logging_names_the_controller_not_its_identifier(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The setup and data lines name the controller, not the identifier.
+
+    A log pasted into an issue is the other half of the diagnostics policy: the
+    module identifier is the value the download redacts, so it stays out of the
+    lines too, while the name the user gave the controller stays readable.
+    """
+    caplog.set_level(logging.DEBUG, logger="custom_components.tech")
+
+    await set_up(hass, "pellet", monkeypatch)
+    await hass.async_block_till_done()
+
+    assert UDID not in caplog.text
+    # The entry line carries everything the entry holds, so it is redacted with
+    # the same set the diagnostics use: the owner's contact details and postcode
+    # came back with the controller payload.
+    assert "owner@example.com" not in caplog.text
+    assert "+48123456789" not in caplog.text
+    assert "00-001" not in caplog.text
+    assert "Setting up the climate entry for pellet" in caplog.text
+    assert "Setting up the sensor entry for pellet" in caplog.text
+
+
 async def test_renaming_an_entity_keeps_it_in_place(
     hass: HomeAssistant,
     monkeypatch: pytest.MonkeyPatch,

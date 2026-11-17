@@ -18,6 +18,7 @@ from homeassistant.helpers.typing import ConfigType
 from . import assets, identity
 from .const import CONF_MENU_CODES, CONTROLLER, DOMAIN, PLATFORMS, UDID, USER_ID
 from .coordinator import TechConfigEntry, TechCoordinator
+from .diagnostics import TO_REDACT
 from .entity import controller_device_info
 
 _LOGGER = logging.getLogger(__name__)
@@ -79,7 +80,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: TechConfigEntry) -> None
         entry.title,
         # The menu codes are credentials like the token, and sit under one key,
         # so redacting that key hides all of them: nothing here may log a code.
-        async_redact_data(dict(entry.data), ["token", CONF_MENU_CODES]),
+        # The rest is the diagnostics redaction set -- the account id, the
+        # controller's identifier and the owner's contact details -- so a debug
+        # log carries no more than a downloaded dump does.
+        async_redact_data(dict(entry.data), {*TO_REDACT, CONF_MENU_CODES}),
         entry.entry_id,
         entry.domain,
     )
