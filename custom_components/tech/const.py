@@ -124,7 +124,7 @@ TYPE_RELAY = 11  # Generic on/off relay (Pompa CO, Pompa CWU, Podajnik...)
 TYPE_ADDITIONAL_PUMP = 21  # Aux pump tile -- txtId is a status string, not a label
 TYPE_FAN = 22  # Boiler combustion-air fan -- carries ``gear`` % field
 TYPE_VALVE = 23  # Built-in mixing valve with currentTemp/returnTemp/setTemp
-TYPE_MIXING_VALVE = 24  # Stand-alone mixing valve module (similar shape)
+TYPE_MIXING_VALVE = 24  # Additional valve -- same params as TYPE_VALVE
 TYPE_FUEL_SUPPLY = 31  # Fuel feeder progress -- ``percentage`` + ``hours``
 TYPE_DISINFECTION = 32  # Anti-Legionella cycle -- ``percentage`` + status txtId
 TYPE_TEXT = 40  # Text/status tile (statusId + headerId, no numeric value)
@@ -454,9 +454,11 @@ TXT_ID_IS_STATUS_FOR_TYPES: frozenset[int] = frozenset(
 # Valve sensor descriptors
 # ---------------------------------------------------------------------------
 # A TYPE_VALVE/TYPE_MIXING_VALVE tile may carry up to three temperature
-# fields. The descriptor format (``txt_id``, ``state_key``) is consumed by
-# :func:`sensor._build_valve_tile`, which conditionally creates one
-# :class:`TileValveTemperatureSensor` per non-null state_key.
+# fields, and both tile types report them the same way -- a controller with
+# several valves sends the first as TYPE_VALVE and the rest as
+# TYPE_MIXING_VALVE. The descriptor format (``txt_id``, ``state_key``) is
+# consumed by :func:`sensor._valve_temperature_sensors`, which conditionally
+# creates one :class:`TileValveTemperatureSensor` per non-null state_key.
 VALVE_SENSOR_RETURN_TEMPERATURE = {"txt_id": 747, "state_key": "returnTemp"}
 VALVE_SENSOR_SET_TEMPERATURE = {"txt_id": 1065, "state_key": "setTemp"}
 VALVE_SENSOR_CURRENT_TEMPERATURE = {"txt_id": 2010, "state_key": "currentTemp"}

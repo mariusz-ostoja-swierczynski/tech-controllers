@@ -16,8 +16,11 @@ A single tile may emit several entities. Examples:
 
 * a TYPE_TEMPERATURE tile with battery + signal yields a temperature,
   battery and signal entity (and creates its own DeviceInfo);
-* a TYPE_VALVE tile yields a valve-percentage entity plus zero, one,
-  or several valve-temperature entities (return / set / current);
+* a TYPE_VALVE or TYPE_MIXING_VALVE tile yields a valve-percentage entity
+  plus zero, one, or several valve-temperature entities (return / set /
+  current). A controller with several valves sends the first as TYPE_VALVE
+  and the rest as TYPE_MIXING_VALVE, and both report the same readings
+  (issue #253);
 * a TYPE_WIDGET tile yields one entity per non-empty widget, each
   named from its own ``txtId`` -- this fixes the long-standing bug
   where stock TileWidgetSensor read only widget1 and silently
@@ -303,29 +306,56 @@ def _build_temperature_tile(
     return entities
 
 
+def _valve_temperature_sensors(
+    tile: dict[str, Any],
+    coordinator: TechCoordinator,
+    config_entry: TechConfigEntry,
+) -> list[CoordinatorEntity[TechCoordinator]]:
+    """Create one temperature entity per reading a valve tile carries.
+
+    Every valve of a controller reports the same readings in its params,
+    whichever tile type carries it, so the additional valves are described by
+    the same three descriptors as the first one.
+    """
+    params = tile[CONF_PARAMS]
+    return [
+        TileValveTemperatureSensor(tile, coordinator, config_entry, valve_sensor)
+        for valve_sensor in (
+            VALVE_SENSOR_RETURN_TEMPERATURE,
+            VALVE_SENSOR_SET_TEMPERATURE,
+            VALVE_SENSOR_CURRENT_TEMPERATURE,
+        )
+        if params.get(valve_sensor["state_key"]) is not None
+    ]
+
+
 def _build_valve_tile(
     tile: dict[str, Any],
     coordinator: TechCoordinator,
     config_entry: TechConfigEntry,
 ) -> list[CoordinatorEntity[TechCoordinator]]:
     """Create valve-related entities for a tile payload."""
-    entities: list[CoordinatorEntity[TechCoordinator]] = [
-        TileValveSensor(tile, coordinator, config_entry)
+    return [
+        TileValveSensor(tile, coordinator, config_entry),
+        *_valve_temperature_sensors(tile, coordinator, config_entry),
     ]
 
-    for valve_sensor in (
-        VALVE_SENSOR_RETURN_TEMPERATURE,
-        VALVE_SENSOR_SET_TEMPERATURE,
-        VALVE_SENSOR_CURRENT_TEMPERATURE,
-    ):
-        if tile[CONF_PARAMS].get(valve_sensor["state_key"]) is not None:
-            entities.append(
-                TileValveTemperatureSensor(
-                    tile, coordinator, config_entry, valve_sensor
-                )
-            )
 
-    return entities
+def _build_mixing_valve_tile(
+    tile: dict[str, Any],
+    coordinator: TechCoordinator,
+    config_entry: TechConfigEntry,
+) -> list[CoordinatorEntity[TechCoordinator]]:
+    """Create the entities of an additional valve tile.
+
+    A TYPE_MIXING_VALVE tile is a second or third valve of the same controller
+    -- an ST-431n reports its built-in valves this way -- and carries the same
+    params as the first one, which arrives as a TYPE_VALVE tile.
+    """
+    return [
+        TileMixingValveSensor(tile, coordinator, config_entry),
+        *_valve_temperature_sensors(tile, coordinator, config_entry),
+    ]
 
 
 def _build_open_therm_tile(
@@ -660,9 +690,7 @@ _TILE_ENTITY_BUILDERS: dict[int, TileBuilder] = {
         TileFanSensor(tile, coordinator, config_entry)
     ],
     TYPE_VALVE: _build_valve_tile,
-    TYPE_MIXING_VALVE: lambda tile, coordinator, config_entry: [
-        TileMixingValveSensor(tile, coordinator, config_entry)
-    ],
+    TYPE_MIXING_VALVE: _build_mixing_valve_tile,
     TYPE_FUEL_SUPPLY: lambda tile, coordinator, config_entry: [
         TileFuelSupplySensor(tile, coordinator, config_entry)
     ],
