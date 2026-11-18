@@ -232,20 +232,57 @@ The setup form asks for:
 
 ## :rocket: List of reported working TECH Controllers
 
-- L-7 (v.2.0.8)
-- L-7E (v.1.0.6)
-- L-8 (v.3.0.14)
-- L-9r (v1.0.2)
-- L-12 (v.1.0.16)
+The list is built from what users report in [issue #2](https://github.com/mariusz-ostoja-swierczynski/tech-controllers/issues/2) -- add yours there -- and from the payloads recorded under [`tests/fixtures`](./tests/fixtures), which the test suite sets up every platform from. A model is listed once a report or a recorded payload shows what it produces, and the firmware in brackets is the newest one reported for it.
+
+Controllers with heating zones, exposed as climate entities with the zone sensors they report (temperature, humidity, window, battery, signal):
+
+- L-4X
 - L4-WiFi (v.1.0.24)
-- L-X WiFi (v1.0.6)
-- M-9 (v1.0.12)
-- M-9r (v1.3.8)
+- L-7 (v.3.0.5)
+- L-7E (v.1.0.6)
+- L-8 (v.3.0.14) -- the L8 and L8e variants are reported working too
+- L-9 -- reported working, no firmware given
+- L-9r (v.1.0.2)
+- L-11 (v.1.0.6) -- sold as ROTH Touchline SL; the wanted temperature is settable and temperature, humidity and battery are reported
+- L-12 (v.1.0.36) -- also reported on v.1.0.16, and as EU-L-12 with EU-ML-12 modules
+- L-X WiFi (v1.0.7) -- also reported on v.1.0.6; the cooling side of a zone is not exposed, so a zone that is cooling still shows as heating
+- EU-L-4 with an EU-MW-1 module
+- M-9 (v.1.0.20) -- two L-9s attached to one M-9 are both visible
+- M-9r (v.1.3.8)
 - ST-8s WIFI (v.1.0.5)
 - ST-16s WIFI (v.1.0.5)
+- WiFi 8S (v.2.1.8)
+- Robot Easy Flex HC 8-channel -- a rebranded EU-L-9 R, with the same missing cooling side
+
+Controllers and modules that expose tiles and menus only. Their readings become read-only sensors, plus the menu entities the controller reports:
+
+- i-3 (v.1.5.3) -- including the plus and solar variants; an i-3 with OpenTherm is reported working behind a WiFi RS module
+- ST-392 (v.5.0.19) -- fireplace controller (zPID 1.4)
+- ST-402N PWM (v.1.1.2) -- solar controller
+- ST-431n (v.3.2.1) -- valve controller (i-1)
+- ST-480 -- reported to work approximately
 - ST-491 (v.2.1.9) -- RS-bridged boiler controllers; CH/DHW/room temperatures, valve, fuel feeder, fan, pumps, disinfection cycle and relays exposed
 - ST-505 -- same RS-bridged-boiler family as ST-491; supported via the shared TYPE_WIDGET tile parser
-- WiFi 8S (v.2.1.8)
+- ST-521 (v.0.7.4) -- DEFRO DHP I Monotec heat pump
+- ST-5305 (v.1.2.3)
+- ST-555 (v.1.0.11) -- pellet; read-only, and the boiler water temperature is not in the payload
+- ST-970 (1.4.0 P01, v.1.5.0) -- pellet
+- ST-9721 (1.6.1 P01) -- pellet; read-only and partial, with no boiler temperature
+- ST-9724 (1.6.1 P01, v.3.3.5) -- Defro pellet stove; read-only
+- ST-976 with an ST-505 module
+- ST-2801 (v.1.2.2)
+- I-1 CWU (v.1.4.5) -- hot water, behind a WiFi RS module
+- ST-340 and ST-340 V2 with a WANAS 350H recuperator -- read-only; bypass, room, intake, outflow and outside temperatures and Party Mode, while seven text sensors read 0
+- VER-24 WiFi -- sensors only, no climate or binary sensors
+- WiFi RS (v.2.2.6, also sold as ST-5060) -- the RS communication module; each controller behind it is its own entry
+
+Reported without entities. These reports predate the current tile parser, so they are worth re-testing before believing them:
+
+- ST-350 -- no entities, reported twice
+- ST-9730 (1.6.1 P01, v.5.1.5) -- no entities; the reporter was pointed at the dev branch and did not follow up
+- I-2 -- no entities while an 8S mini on the same account worked; the I-2 had to be removed from the eModul account before the other controller could be added
+
+Not supported: the LITE controller and anything else that lives in the Sinum app rather than eModul. That is a different API, so it would be an integration of its own.
 
 Controllers that are not on this list may well work: the eModul module API is the same one, and the controller only has to appear in the account. One that does not work is worth an issue with the controller's JSON attached, which is what the list is built from.
 
