@@ -19,6 +19,7 @@ from custom_components.tech import const
 from custom_components.tech.tech import Tech
 from homeassistant.const import CONF_DESCRIPTION, CONF_NAME, CONF_ZONE
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 
 _ACTUATOR = {const.BATTERY_LEVEL: 80, const.SIGNAL_STRENGTH: 60}
 
@@ -313,6 +314,67 @@ async def test_a_mixing_valve_tile_reports_its_opening(
     await _set_up_payload(hass, monkeypatch, _module([], [tile]))
 
     assert entity_counts(hass) == {"sensor": 1}
+
+
+def _valve_params(valve_number: int, *, current: int, returning: int) -> dict[str, Any]:
+    """Return the params an ST-431n reports for one of its built-in valves."""
+    return {
+        "workingStatus": True,
+        "valveNumber": valve_number,
+        "currentTemp": current,
+        "returnTemp": returning,
+        "setTempCorrection": 0,
+        "openingPercentage": 0,
+        "valvePump": 0,
+        "boilerProtection": 0,
+        "returnProtection": 0,
+        "setTemp": 28,
+    }
+
+
+def _valve_readings(hass: HomeAssistant, tile_id: int) -> dict[str, str]:
+    """Return the states of a valve tile's temperature entities by reading."""
+    registry = er.async_get(hass)
+    suffix = f"_{tile_id}_tile_valve_"
+    readings = {}
+    for entry in registry.entities.values():
+        if entry.platform == const.DOMAIN and suffix in entry.unique_id:
+            state = hass.states.get(entry.entity_id)
+            readings[entry.unique_id.rsplit(suffix, 1)[1]] = state.state
+    return readings
+
+
+async def test_a_second_valve_reports_the_readings_the_first_one_does(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every valve of a controller yields its temperatures, not just the first.
+
+    Issue #253: an ST-431n reports its first built-in valve as a TYPE_VALVE tile
+    and the additional ones as TYPE_MIXING_VALVE tiles, with the same readings
+    in their params. Only the first valve's temperatures became entities, so the
+    additional valve showed the percentage it is open by and nothing else.
+    """
+    first = _tile(
+        6016,
+        const.TYPE_VALVE,
+        _valve_params(0, current=314, returning=218),
+    )
+    second = _tile(
+        6017,
+        const.TYPE_MIXING_VALVE,
+        _valve_params(1, current=260, returning=218),
+    )
+    await _set_up_payload(hass, monkeypatch, _module([], [first, second]))
+
+    # One opening percentage and three temperatures per valve.
+    assert entity_counts(hass) == {"sensor": 8}
+    expected = {"currentTemp": "26.0", "returnTemp": "21.8", "setTemp": "28"}
+    assert _valve_readings(hass, second["id"]) == expected
+    assert _valve_readings(hass, first["id"]) == {
+        "currentTemp": "31.4",
+        "returnTemp": "21.8",
+        "setTemp": "28",
+    }
 
 
 async def test_an_entry_without_zones_or_tiles_still_sets_up(

@@ -69,12 +69,15 @@ _EXPECTED = {
         "select": 8,
         "sensor": 46,
     },
+    # The L-8's second valve arrives as a TYPE_MIXING_VALVE tile and reports
+    # its three temperatures there, as the first valve's TYPE_VALVE tile does
+    # (issue #253), which is three sensors more than the percentage alone.
     "demo_l8": {
         "binary_sensor": 1,
         "climate": 8,
         "number": 8,
         "select": 8,
-        "sensor": 66,
+        "sensor": 69,
     },
     "demo_pellet": {"binary_sensor": 4, "sensor": 12},
     "demo_solar": {"binary_sensor": 1, "sensor": 5},
