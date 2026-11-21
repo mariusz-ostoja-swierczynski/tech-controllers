@@ -4,6 +4,19 @@ on:
   release:
     types: [published]
 
+# Both jobs write to the repository -- one uploads an asset, the other commits
+# the version -- so a run is queued behind the previous one instead of racing it
+# on the push.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+# `contents: write` is what lets the token upload the release asset and push the
+# manifest commit. Declared here rather than inherited from the repository's
+# default, which may be read-only.
+permissions:
+  contents: write
+
 jobs:
   release_zip_file:
     name: Prepare release asset
@@ -16,8 +29,14 @@ jobs:
         with:
           python-version: "3.14"
       - name: Set manifest version number
+        env:
+          # The tag carries the release's leading `v`; the manifest's version
+          # field holds a plain version, which is what `${TAG#v}` leaves. The
+          # two jobs use the same expression so the asset and the default
+          # branch cannot disagree.
+          TAG: ${{ github.event.release.tag_name }}
         run: |
-          python ${{ github.workspace }}/.github/scripts/update_hacs_manifest.py --version ${{ github.ref_name }}
+          python ${{ github.workspace }}/.github/scripts/update_hacs_manifest.py --version "${TAG#v}"
       - name: Create zip
         run: |
           cd custom_components/tech
@@ -30,3 +49,48 @@ jobs:
           asset_name: tech.zip
           tag: ${{ github.ref }}
           overwrite: true
+
+  update_manifest:
+    name: Commit the version to the default branch
+    runs-on: ubuntu-latest
+    # A published prerelease should not become what the default branch declares:
+    # the branch carries the code of the last full release, and HACS reads the
+    # version from the release tags anyway. Drop this line if prereleases are
+    # meant to move the manifest too.
+    if: ${{ !github.event.release.prerelease }}
+    steps:
+      - name: Checkout the default branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          # The release event checks out the tag; the version has to land on the
+          # branch the repository shows and the next release is cut from.
+          fetch-depth: 0
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Set manifest version number
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          python .github/scripts/update_hacs_manifest.py --version "${TAG#v}"
+      - name: Commit and push the manifest
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          # Re-publishing a tag, or a release whose version is already in the
+          # file, must not produce an empty commit.
+          if git diff --quiet -- custom_components/tech/manifest.json; then
+            echo "manifest.json already declares ${TAG#v}; nothing to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add custom_components/tech/manifest.json
+          git commit -m "chore(release): set the manifest version to ${TAG#v} [skip ci]"
+          # A merge that landed while this job ran would make the push a
+          # non-fast-forward; replay the one-line commit on top of it instead.
+          git pull --rebase origin "${DEFAULT_BRANCH}"
+          git push origin "HEAD:${DEFAULT_BRANCH}"
