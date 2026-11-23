@@ -120,6 +120,7 @@ from .const import (
 )
 from .coordinator import TechConfigEntry, TechCoordinator
 from .entity import ReportedEntity, TileEntity, add_later, controller_device_info
+from .menu_schedules import supported_profiles, weekly_schedule
 from .schedules import (
     GLOBAL_SCHEDULE_SLOTS,
     global_schedule_details,
@@ -178,7 +179,12 @@ async def async_setup_entry(
             hass, tiles, coordinator, config_entry
         )
 
-        schedule_entities: list[Any] = []
+        schedule_entities: list[Any] = [
+            MenuWeeklyScheduleSensor(coordinator, config_entry, profile)
+            for profile in supported_profiles(
+                coordinator.data.get("menu_schedule_snapshot")
+            )
+        ]
         schedule_data = (coordinator.data or {}).get("schedules")
         if isinstance(schedule_data, dict) and schedule_data.get("supported"):
             schedule_entities.append(
@@ -255,7 +261,8 @@ def _build_zone_entities(
 
 
 TileBuilder = Callable[
-    [dict[str, Any], TechCoordinator, TechConfigEntry], list[CoordinatorEntity[TechCoordinator]]
+    [dict[str, Any], TechCoordinator, TechConfigEntry],
+    list[CoordinatorEntity[TechCoordinator]],
 ]
 
 
@@ -734,6 +741,60 @@ class _NativeValueAvailability(Entity):
     def available(self) -> bool:
         """Require both a successful coordinator and a valid native value."""
         return super().available and self._attr_native_value is not None
+
+
+class MenuWeeklyScheduleSensor(CoordinatorEntity[TechCoordinator], SensorEntity):
+    """Show a weekly menu program from the latest controller poll."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:calendar-week"
+
+    def __init__(
+        self,
+        coordinator: TechCoordinator,
+        config_entry: TechConfigEntry,
+        profile: dict[str, Any],
+    ) -> None:
+        """Bind to the existing controller and the weekly program group."""
+        super().__init__(coordinator)
+        self._config_entry = config_entry
+        self._profile = profile
+        udid = config_entry.data[CONTROLLER][UDID]
+        self._attr_unique_id = (
+            f"{udid}_menu_{profile['menu_type']}_{profile['parent_id']}_weekly"
+        )
+        self._attr_name = profile["name"]
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Attach the program to the existing controller device."""
+        return controller_device_info(self._config_entry)
+
+    @property
+    def available(self) -> bool:
+        """Require a current poll with the menu tree."""
+        return super().available and self.native_value is not None
+
+    @property
+    def native_value(self) -> str | None:
+        """Report configuration validity separately from program selection."""
+        return self._configuration().get("status")
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the decoded week and the controller's selection."""
+        result = self._configuration()
+        result.pop("status")
+        return result
+
+    def _configuration(self) -> dict[str, Any]:
+        """Decode the current full GET, including duplicate day records."""
+        return weekly_schedule(
+            self.coordinator.data.get("menu_schedule_snapshot"),
+            self._profile,
+            self.coordinator.last_update_success,
+        )
 
 
 class ZoneSensor(
