@@ -61,7 +61,7 @@ _EXPECTED = {
     # The live demo account's current controllers. They were downloaded from
     # the eModul API and are kept unchanged, so the tests cover the real
     # installation, zones-controller and solar payload shapes.
-    "demo_i3": {"binary_sensor": 9, "sensor": 25},
+    "demo_i3": {"binary_sensor": 10, "sensor": 25},
     "demo_l12": {
         "binary_sensor": 1,
         "climate": 8,
@@ -96,7 +96,7 @@ _EXPECTED = {
     "i3_plus_user": {"binary_sensor": 13, "sensor": 28},
     "st9721_user": {"binary_sensor": 9, "sensor": 15},
     "i1_cwu_user": {"binary_sensor": 2, "sensor": 10},
-    "i3_plus_solar_user": {"binary_sensor": 12, "sensor": 16},
+    "i3_plus_solar_user": {"binary_sensor": 13, "sensor": 16},
 }
 
 

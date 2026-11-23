@@ -175,6 +175,26 @@ def _has_pump_widget(params: dict[str, Any]) -> bool:
     return False
 
 
+def _is_dhw_pump_with_neutral_correction(tile: dict[str, Any]) -> bool:
+    """Recognize the i-3 Plus DHW tile when its correction widget disappears."""
+    params = tile.get(CONF_PARAMS, {})
+    correction = params.get("widget1")
+    temperature = params.get("widget2")
+    return (
+        tile.get("menuId") == 3203
+        and params.get("iconId") == 17
+        and isinstance(correction, dict)
+        and correction.get(CONF_TYPE) == 0
+        and correction.get("unit") == -1
+        and correction.get("txtId") == 0
+        and correction.get(VALUE) == 0
+        and isinstance(temperature, dict)
+        and temperature.get(CONF_TYPE) == 9
+        and temperature.get("unit") == 7
+        and temperature.get("txtId") == 573
+    )
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: TechConfigEntry,
@@ -241,7 +261,10 @@ async def async_setup_entry(
                 # ON/OFF entity (issue #221). Pure temperature or contact widgets
                 # always report statusId=1 and never toggle.
                 status_id = tile.get(CONF_PARAMS, {}).get("statusId")
-                if status_id in (0, 1) and _has_pump_widget(tile.get(CONF_PARAMS, {})):
+                if status_id in (0, 1) and (
+                    _has_pump_widget(params)
+                    or _is_dhw_pump_with_neutral_correction(tile)
+                ):
                     entities.append(
                         TileWidgetStatusSensor(tile, coordinator, config_entry)
                     )
@@ -274,7 +297,7 @@ class TileBinarySensor(TileEntity, BinarySensorEntity):
         return self._name
 
     @property
-    def is_on(self) -> bool:
+    def is_on(self) -> bool | None:
         """Return whether the tile reports the relay as closed.
 
         Home Assistant derives a binary sensor's state from this, and declares
@@ -435,6 +458,8 @@ class TileWidgetStatusSensor(TileBinarySensor):
         icon_id = device[CONF_PARAMS].get("iconId")
         if icon_id:
             self._attr_icon = assets.get_icon(icon_id)
+        if _is_dhw_pump_with_neutral_correction(device):
+            self._name = "DHW pump"
         # Override the name from TileEntity's "type 6" fallback to the
         # pump widget's own label (e.g. "Pompa solarna"). Iterate widgets
         # in order so widget1's txtId wins when both carry labels.
@@ -452,6 +477,11 @@ class TileWidgetStatusSensor(TileBinarySensor):
         """Return a unique ID."""
         return f"{self._unique_id}_tile_status"
 
+    @property
+    def is_on(self) -> bool | None:
+        """Preserve unknown when the controller stops reporting a command."""
+        return cast("bool | None", self._state)
+
     def get_state(self, device: dict[str, Any]) -> Any:
         """Return the ON/OFF state from the tile's statusId.
 
@@ -464,6 +494,8 @@ class TileWidgetStatusSensor(TileBinarySensor):
 
         """
         status_id = device[CONF_PARAMS].get("statusId")
+        if type(status_id) is not int:
+            return None
         if status_id == 1:
             return True
         if status_id == 0:
