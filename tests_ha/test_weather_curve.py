@@ -37,13 +37,46 @@ def _item() -> dict[str, Any]:
         {"duringChange": "t"},
         {"duringChange": 0},
         {"params": None},
-        {"params": {"min": 30, "max": 20, "points": []}},
-        {"params": {"min": False, "max": 70, "points": []}},
     ],
 )
 def test_skip_unproven_curve(change: dict[str, Any]) -> None:
     """Do not treat pending or other menu settings as valid curves."""
     assert weather_curve({**_item(), **change}) is None
+
+
+@pytest.mark.parametrize(
+    ("bound", "value"),
+    [("min", value) for value in (False, 0.0, "0", None)]
+    + [("max", value) for value in (True, 1.0, "1", None)]
+    + [("min", 2)],
+)
+def test_reject_malformed_bounds(bound: str, value: Any) -> None:
+    """Reject bad bounds while the four targets are otherwise valid."""
+    item = _item()
+    item["params"].update(min=0, max=1)
+    for point in item["params"]["points"]:
+        point["value"] = 1
+    item["params"][bound] = value
+    assert weather_curve(item) is None
+
+
+@pytest.mark.parametrize(
+    ("target", "valid"), [(24, False), (25, True), (70, True), (71, False)]
+)
+def test_targets_at_bounds(target: int, valid: bool) -> None:
+    """The controller's bounds are inclusive."""
+    item = _item()
+    item["params"]["points"][0]["value"] = target
+    assert (weather_curve(item) is not None) is valid
+
+
+def test_accept_equal_bounds() -> None:
+    """A controller can constrain all four targets to a single value."""
+    item = _item()
+    item["params"].update(min=40, max=40)
+    for point in item["params"]["points"]:
+        point["value"] = 40
+    assert weather_curve(item) is not None
 
 
 @pytest.mark.parametrize(
@@ -93,10 +126,14 @@ async def test_weather_curve_entity(
     ]
     state = hass.states.get(row.entity_id)
     assert state.state == "4"
-    assert state.attributes["points"][0] == {
-        "outdoor_temperature": -20,
-        "target_temperature": 51,
-    }
+    assert state.attributes["points"] == [
+        {"outdoor_temperature": -20, "target_temperature": 51},
+        {"outdoor_temperature": -10, "target_temperature": 46},
+        {"outdoor_temperature": 0, "target_temperature": 41},
+        {"outdoor_temperature": 10, "target_temperature": 36},
+    ]
+    assert state.attributes["minimum_target_temperature"] == 25
+    assert state.attributes["maximum_target_temperature"] == 70
 
     items[0] = {**_item(), "duringChange": True}
     await entry.runtime_data.async_refresh()
