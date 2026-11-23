@@ -390,3 +390,53 @@ def test_duplicate_day_cannot_be_hidden_by_flattening(item_id) -> None:
     snapshot["MU"]["elements"].append({**day, "id": item_id})
     assert _decode(snapshot)["status"] == "invalid"
     assert not _decode(snapshot)["days"]["monday"]["valid"]
+
+
+@pytest.mark.parametrize(
+    ("index", "item_id", "problem"),
+    [
+        (0, 3203, "base_invalid"),
+        (0, 3200, "operating_mode_invalid"),
+        (0, 3205, "weekly_enabled_invalid"),
+        (1, 10370, "operating_mode_invalid"),
+    ],
+)
+@pytest.mark.parametrize("keep_integer", [False, True])
+def test_non_integer_menu_ids_invalidate_schedule(
+    index: int, item_id: int, problem: str, keep_integer: bool
+) -> None:
+    """Reject aliases even if a valid integer item is also reported."""
+    snapshot = _snapshot()
+    elements = snapshot["MI" if index else "MU"]["elements"]
+    item = next(item for item in elements if item["id"] == item_id)
+    if not keep_integer:
+        elements.remove(item)
+    elements.append({**item, "id": float(item_id)})
+    result = _decode(snapshot, index)
+    assert result["status"] == "invalid"
+    assert problem in result["errors"]
+    if item_id == 3203:
+        assert result["base_value"] is None
+        assert result["days"]["monday"]["intervals"] == []
+    else:
+        assert result["schedule_selected"] is None
+
+
+@pytest.mark.parametrize(
+    ("limit", "exact"),
+    [
+        ("MAX_MENU_ELEMENTS", 2),
+        ("MAX_MENU_JSON_VALUES", 5),
+        ("MAX_MENU_JSON_DEPTH", 3),
+        ("MAX_MENU_TEXT_CHARS", len("elements")),
+    ],
+)
+def test_menu_resource_limit_at_boundary(
+    monkeypatch: pytest.MonkeyPatch, limit: str, exact: int
+) -> None:
+    """Accept a tree at the limit and reject it when it is one over."""
+    tree = {"elements": [{}, {}]}
+    monkeypatch.setattr(decoder, limit, exact)
+    assert not decoder._resource_limit_exceeded(tree)
+    monkeypatch.setattr(decoder, limit, exact - 1)
+    assert decoder._resource_limit_exceeded(tree)

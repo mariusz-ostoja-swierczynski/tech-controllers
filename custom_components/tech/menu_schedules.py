@@ -163,16 +163,15 @@ def supported_profiles(snapshot: Any) -> list[dict[str, Any]]:
 def _find(
     elements: list[dict[str, Any]], item_id: int, item_type: int, menu_type: str
 ) -> tuple[Any, str]:
-    matches = [
-        item
-        for item in elements
-        if isinstance(item, dict) and _integer(item.get("id")) and item["id"] == item_id
-    ]
+    # Count numeric aliases before checking the type. A matching float in
+    # addition to the integer is an ambiguous menu item, not a second setting.
+    matches = [item for item in elements if item.get("id") == item_id]
     if not matches:
         return None, "missing"
     item = matches[0]
     if (
         len(matches) != 1
+        or type(item["id"]) is not int
         or type(item.get("type")) is not int
         or item["type"] != item_type
     ):
