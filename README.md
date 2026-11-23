@@ -80,22 +80,6 @@ These are read-only configuration details from the existing poll. They add no
 API requests, do not change schedules or targets, and do not calculate the current
 or next target from the controller's clock.
 
-### DHW and circulation programs
-
-The supported i-3 Plus menu layouts provide **DHW weekly schedule** and
-**Circulation weekly schedule** diagnostic sensors. The state describes
-configuration validity (`ready`, `pending`, `missing` or `invalid`).
-The `schedule_selected` attribute indicates whether the current controller
-settings select the program. A program can be valid and selected while the
-pump is idle.
-
-The `days` attribute is ordered Monday through Sunday. Each interval uses
-controller-clock minutes from midnight, with 1440 denoting the end of the day.
-DHW intervals include the configured correction and calculated target in °C.
-For example, a base of 55 °C and an offset of −5 °C give a 50 °C target.
-Circulation intervals mark times when the program allows the pump to run.
-Both sensors use the existing menu poll and provide read-only configuration.
-
 ### Changing a zone's mode
 
 Two actions change how a zone is heated: `tech.set_zone_schedule` switches it to
@@ -169,6 +153,22 @@ controller reports the change as pending. The read-only schedule sensors and the
 climate attributes describe what the controller itself reports, so they follow on
 the normal 60-second poll; if the controller has not applied the change by then,
 they can show the previous mode until the poll after that.
+
+### DHW and circulation programs
+
+The supported i-3 Plus menu layouts provide **DHW weekly schedule** and
+**Circulation weekly schedule** diagnostic sensors. The state describes
+configuration validity (`ready`, `pending`, `missing` or `invalid`).
+The `schedule_selected` attribute indicates whether the current controller
+settings select the program. A program can be valid and selected while the
+pump is idle.
+
+The `days` attribute is ordered Monday through Sunday. Each interval uses
+controller-clock minutes from midnight, with 1440 denoting the end of the day.
+DHW intervals include the configured correction and calculated target in °C.
+For example, a base of 55 °C and an offset of −5 °C give a 50 °C target.
+Circulation intervals mark times when the program allows the pump to run.
+Both sensors use the existing menu poll and provide read-only configuration.
 
 ### Menu codes
 
