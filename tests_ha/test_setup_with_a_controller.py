@@ -47,7 +47,7 @@ _EXPECTED = {
         "button": 8,
         "number": 130,
         "select": 14,
-        "sensor": 61,
+        "sensor": 62,
         "switch": 28,
     },
     # The L-12 reports schedules, so each of its five zones also gets the

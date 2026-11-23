@@ -128,6 +128,7 @@ from .schedules import (
     zone_schedule_attributes,
     zone_schedule_info,
 )
+from .weather_curve import WeatherCurveSensor, weather_curve
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -189,7 +190,28 @@ async def async_setup_entry(
                 for index in range(GLOBAL_SCHEDULE_SLOTS)
             )
 
+        menus = coordinator.data.get("menus") or {}
+        reported_menus = coordinator.data.get("reported", {}).get("menus", ())
+        curves = {
+            key: menus[key]
+            for key in reported_menus
+            if weather_curve(menus[key]) is not None
+        }
+        curve_entities = []
+        if curves:
+            groups = assets.build_menu_group_names(menus, coordinator.translations)
+            curve_entities = [
+                WeatherCurveSensor(
+                    coordinator,
+                    config_entry,
+                    key,
+                    assets.menu_entity_name(item, groups, coordinator.translations),
+                )
+                for key, item in curves.items()
+            ]
+
         return [
+            *curve_entities,
             *tile_entities,
             *zone_entities,
             *deprecated_entities,
@@ -255,7 +277,8 @@ def _build_zone_entities(
 
 
 TileBuilder = Callable[
-    [dict[str, Any], TechCoordinator, TechConfigEntry], list[CoordinatorEntity[TechCoordinator]]
+    [dict[str, Any], TechCoordinator, TechConfigEntry],
+    list[CoordinatorEntity[TechCoordinator]],
 ]
 
 
