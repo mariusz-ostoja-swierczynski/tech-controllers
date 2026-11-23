@@ -179,7 +179,12 @@ async def async_setup_entry(
             hass, tiles, coordinator, config_entry
         )
 
-        schedule_entities: list[Any] = []
+        schedule_entities: list[Any] = [
+            MenuWeeklyScheduleSensor(coordinator, config_entry, profile)
+            for profile in supported_profiles(
+                coordinator.data.get("menu_schedule_snapshot")
+            )
+        ]
         schedule_data = (coordinator.data or {}).get("schedules")
         if isinstance(schedule_data, dict) and schedule_data.get("supported"):
             schedule_entities.append(
@@ -190,14 +195,7 @@ async def async_setup_entry(
                 for index in range(GLOBAL_SCHEDULE_SLOTS)
             )
 
-        menu_schedules = [
-            MenuWeeklyScheduleSensor(coordinator, config_entry, profile)
-            for profile in supported_profiles(
-                coordinator.data.get("menu_schedule_snapshot")
-            )
-        ]
         return [
-            *menu_schedules,
             *tile_entities,
             *zone_entities,
             *deprecated_entities,
