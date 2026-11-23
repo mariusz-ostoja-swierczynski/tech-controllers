@@ -505,7 +505,9 @@ class Tech:
                 _LOGGER.debug("Updating %s tiles", len(visible_tiles))
                 cache["tiles"].update({tile["id"]: tile for tile in visible_tiles})
 
-            menu_items = await self._fetch_menu_data(module_udid)
+            schedule_trees: dict[str, Any] = {}
+            menu_items = await self._fetch_menu_data(module_udid, schedule_trees)
+            cache["menu_schedule_snapshot"] = schedule_trees
             # Recorded whatever the outcome: a tree whose code starts being
             # accepted has to lose its notice, so the empty case matters as much
             # as the populated one.
@@ -635,7 +637,9 @@ class Tech:
         )
         return unlocked, False
 
-    async def _fetch_menu_data(self, module_udid: str) -> dict[str, dict[str, Any]]:
+    async def _fetch_menu_data(
+        self, module_udid: str, schedule_trees: dict[str, Any] | None = None
+    ) -> dict[str, dict[str, Any]]:
         """Fetch menu items from all configured menu types.
 
         A tree the account may not read answers with a message instead of
@@ -649,6 +653,8 @@ class Tech:
 
         Args:
             module_udid: Tech module identifier.
+            schedule_trees: Collect the current weekly menu trees before item ids
+                are flattened into the menu cache.
 
         Returns:
             Mapping of ``{menu_type}_{item_id}`` to menu item payload.
@@ -675,12 +681,18 @@ class Tech:
                         result,
                     )
                     continue
+                if not isinstance(elements, list):
+                    if schedule_trees is not None and menu_type in ("MU", "MI"):
+                        schedule_trees[menu_type] = {"status": "malformed"}
+                    continue
                 if self._menu_tree_is_gated(elements):
                     elements, rejected = await self._unlock_menu_tree(
                         menu_type, module_udid, path, elements
                     )
                     if rejected:
                         rejections.add(menu_type)
+                if schedule_trees is not None and menu_type in ("MU", "MI"):
+                    schedule_trees[menu_type] = {"status": "ok", "elements": elements}
                 for element in elements:
                     if not isinstance(element, dict):
                         continue
