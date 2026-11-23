@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import date
 import json
 import logging
 import re
 import time
 from typing import TYPE_CHECKING, Any, cast
+from urllib.parse import quote
 
 from aiohttp import ClientTimeout
 
@@ -17,6 +19,8 @@ else:  # pragma: no cover
     ClientSession = Any
 
 from .const import (
+    ALARM_HISTORY_MAX_BYTES,
+    ALARM_HISTORY_TIMEOUT,
     API_TIMEOUT,
     MENU_PIN_REJECTION_STATUS,
     MENU_ROOT_ELEMENT_ID,
@@ -131,6 +135,10 @@ def _safe_api_endpoint(request_path: str) -> str:
             # credential and is masked.
             template.append(_redact_menu_pin(rest[0]))
             rest = rest[1:]
+    elif rest[:1] == ["alarm_history"]:
+        # Calendar dates are private too, and do not match _ID_SEGMENT.
+        template.append("alarm_history/from/{from}/to/{to}/type/all")
+        rest = []
 
     return "/".join([*template, *(_mask_identifier(segment) for segment in rest)])
 
@@ -244,12 +252,24 @@ class Tech:
             TechError: Raised when the API responds with a non-200 status code.
 
         """
+        return cast("dict[str, Any]", await self._get(request_path))
+
+    async def _get(self, request_path: str, *, bounded_history: bool = False) -> Any:
+        """Share GET transport, bounding optional history before parsing JSON."""
         url = self.base_url + request_path
         _LOGGER.debug("Sending GET request: %s", _safe_api_endpoint(request_path))
         async with self.session.get(
-            url, headers=self.headers, timeout=self.timeout
+            url,
+            headers=self.headers,
+            timeout=ClientTimeout(total=ALARM_HISTORY_TIMEOUT)
+            if bounded_history
+            else self.timeout,
         ) as response:
             if response.status != 200:
+                if bounded_history:
+                    # Optional endpoint failures need neither their body nor a
+                    # login transition. The history coordinator handles them.
+                    raise TechError(response.status, "Alarm history request failed")
                 body = await response.text()
                 _LOGGER.warning(
                     "Tech API GET %s returned HTTP %s (%s)",
@@ -259,7 +279,35 @@ class Tech:
                 )
                 raise TechError(response.status, body)
 
+            if bounded_history:
+                # read(n) may return a short prefix before EOF. Read through
+                # EOF, but never consume more than the cap plus one byte, even
+                # for a decompressed/chunked response without Content-Length.
+                body_bytes = bytearray()
+                while chunk := await response.content.read(
+                    min(65536, ALARM_HISTORY_MAX_BYTES + 1 - len(body_bytes))
+                ):
+                    body_bytes.extend(chunk)
+                    if len(body_bytes) > ALARM_HISTORY_MAX_BYTES:
+                        raise ValueError(
+                            "Alarm history response exceeds the byte limit"
+                        )
+                return json.loads(body_bytes)
+
             return await self._json_object(response)
+
+    async def get_module_alarm_history(
+        self, module_udid: str, start: date, stop: date
+    ) -> Any:
+        """Read the documented archive endpoint without changing any alarms."""
+        if not self.authenticated:
+            raise TechError(401, "Unauthorized")
+        path = (
+            f"users/{quote(str(self.user_id), safe='')}/modules/"
+            f"{quote(module_udid, safe='')}/alarm_history/"
+            f"from/{start.isoformat()}/to/{stop.isoformat()}/type/all"
+        )
+        return await self._get(path, bounded_history=True)
 
     async def post(self, request_path: str, post_data: str) -> dict[str, Any]:
         """Send a POST request against the Tech API with JSON payload string.

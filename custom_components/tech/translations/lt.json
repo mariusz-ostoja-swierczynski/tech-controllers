@@ -179,6 +179,15 @@
             "zone_state_entity": {
                 "name": "{entity_name} Signalizacijos būsena"
             },
+            "controller_alarm_history": {
+                "name": "Pavojaus signalų istorija",
+                "state": {
+                    "ready": "Pasiekiama",
+                    "empty": "Nėra įvykių",
+                    "error": "Nepavyko nuskaityti",
+                    "invalid": "Netinkamas atsakymas"
+                }
+            },
             "controller_schedules": {
                 "name": "Tvarkaraščiai"
             },

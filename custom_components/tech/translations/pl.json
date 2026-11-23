@@ -179,6 +179,15 @@
       "zone_state_entity": {
         "name": "{entity_name} Stan alarmu"
       },
+      "controller_alarm_history": {
+        "name": "Historia alarmów",
+        "state": {
+          "ready": "Dostępna",
+          "empty": "Brak zdarzeń",
+          "error": "Błąd odczytu",
+          "invalid": "Nieprawidłowa odpowiedź"
+        }
+      },
       "controller_schedules": {
         "name": "Harmonogramy"
       },

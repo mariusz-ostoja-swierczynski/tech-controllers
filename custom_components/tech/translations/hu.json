@@ -179,6 +179,15 @@
             "zone_state_entity": {
                 "name": "{entity_name} Riasztási állapot"
             },
+            "controller_alarm_history": {
+                "name": "Riasztási előzmények",
+                "state": {
+                    "ready": "Elérhető",
+                    "empty": "Nincsenek események",
+                    "error": "Az olvasás sikertelen",
+                    "invalid": "Érvénytelen válasz"
+                }
+            },
             "controller_schedules": {
                 "name": "Ütemtervek"
             },

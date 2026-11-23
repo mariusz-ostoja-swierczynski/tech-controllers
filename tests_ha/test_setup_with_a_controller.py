@@ -32,14 +32,14 @@ from homeassistant.util import dt as dt_util
 
 # What each recorded controller produces, per entity domain. Pinned so that a
 # change in what a payload builds shows up as a failing count rather than as a
-# quiet drop in coverage.
+# quiet drop in coverage. Counts include the disabled controller alarm history.
 _EXPECTED = {
     "st491": {
         "binary_sensor": 4,
         "button": 13,
         "number": 78,
         "select": 19,
-        "sensor": 17,
+        "sensor": 18,
         "switch": 28,
     },
     "kolton_st5305": {
@@ -47,27 +47,27 @@ _EXPECTED = {
         "button": 8,
         "number": 130,
         "select": 14,
-        "sensor": 61,
+        "sensor": 62,
         "switch": 28,
     },
     # The L-12 reports schedules, so each of its five zones also gets the
     # schedule reading, the local template, the schedule select and the
     # constant-temperature duration, the controller gets the five global slots
     # and the compact diagnostic, and the problem indicator is a binary sensor.
-    "l12": {"binary_sensor": 1, "climate": 5, "number": 5, "select": 5, "sensor": 35},
-    "st521": {"binary_sensor": 65, "sensor": 84},
-    "st2801": {"binary_sensor": 3, "sensor": 8},
-    "pellet": {"binary_sensor": 4, "sensor": 12},
+    "l12": {"binary_sensor": 1, "climate": 5, "number": 5, "select": 5, "sensor": 36},
+    "st521": {"binary_sensor": 65, "sensor": 85},
+    "st2801": {"binary_sensor": 3, "sensor": 9},
+    "pellet": {"binary_sensor": 4, "sensor": 13},
     # The live demo account's current controllers. They were downloaded from
     # the eModul API and are kept unchanged, so the tests cover the real
     # installation, zones-controller and solar payload shapes.
-    "demo_i3": {"binary_sensor": 9, "sensor": 25},
+    "demo_i3": {"binary_sensor": 9, "sensor": 26},
     "demo_l12": {
         "binary_sensor": 1,
         "climate": 8,
         "number": 8,
         "select": 8,
-        "sensor": 46,
+        "sensor": 47,
     },
     # The L-8's second valve arrives as a TYPE_MIXING_VALVE tile and reports
     # its three temperatures there, as the first valve's TYPE_VALVE tile does
@@ -77,10 +77,10 @@ _EXPECTED = {
         "climate": 8,
         "number": 8,
         "select": 8,
-        "sensor": 69,
+        "sensor": 70,
     },
-    "demo_pellet": {"binary_sensor": 4, "sensor": 12},
-    "demo_solar": {"binary_sensor": 1, "sensor": 5},
+    "demo_pellet": {"binary_sensor": 4, "sensor": 13},
+    "demo_solar": {"binary_sensor": 1, "sensor": 6},
     # Issue-provided dumps, sanitized: the controller name, mainControllerId
     # and any menu passwords are removed or redacted before they are committed.
     # The counts pin what each real-world payload builds.
@@ -89,14 +89,14 @@ _EXPECTED = {
         "button": 18,
         "number": 112,
         "select": 27,
-        "sensor": 12,
+        "sensor": 13,
         "switch": 38,
     },
-    "st534g_user": {"binary_sensor": 3, "sensor": 4},
-    "i3_plus_user": {"binary_sensor": 13, "sensor": 28},
-    "st9721_user": {"binary_sensor": 9, "sensor": 15},
-    "i1_cwu_user": {"binary_sensor": 2, "sensor": 10},
-    "i3_plus_solar_user": {"binary_sensor": 12, "sensor": 16},
+    "st534g_user": {"binary_sensor": 3, "sensor": 5},
+    "i3_plus_user": {"binary_sensor": 13, "sensor": 29},
+    "st9721_user": {"binary_sensor": 9, "sensor": 16},
+    "i1_cwu_user": {"binary_sensor": 2, "sensor": 11},
+    "i3_plus_solar_user": {"binary_sensor": 12, "sensor": 17},
 }
 
 
@@ -127,7 +127,7 @@ async def test_a_platform_never_claims_the_same_unique_id_twice(
     await set_up(hass, "pellet", monkeypatch)
 
     assert "does not generate unique IDs" not in caplog.text
-    assert entity_counts(hass) == {"binary_sensor": 4, "sensor": 12}
+    assert entity_counts(hass) == _EXPECTED["pellet"]
 
 
 @pytest.mark.parametrize(
@@ -207,10 +207,10 @@ async def test_renaming_an_entity_keeps_it_in_place(
     assert "does not generate unique IDs" not in caplog.text
 
 
-async def test_a_controller_that_reports_nothing_builds_nothing(
+async def test_an_empty_payload_only_registers_the_optional_archive(
     hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A payload without tiles, zones or menus produces no entities and no error."""
+    """An empty payload only registers the disabled alarm history diagnostic."""
 
     async def _get(_self: Tech, path: str) -> dict[str, Any]:
         return EMPTY_MENU
@@ -223,7 +223,12 @@ async def test_a_controller_that_reports_nothing_builds_nothing(
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
-    assert entity_counts(hass) == {}
+    assert entity_counts(hass) == {"sensor": 1}
+    registry = er.async_get(hass)
+    (archive,) = er.async_entries_for_config_entry(registry, entry.entry_id)
+    assert archive.unique_id == f"{UDID}_alarm_history"
+    assert archive.disabled_by is er.RegistryEntryDisabler.INTEGRATION
+    assert hass.states.get(archive.entity_id) is None
 
 
 @pytest.mark.parametrize("fixture", sorted(_EXPECTED))

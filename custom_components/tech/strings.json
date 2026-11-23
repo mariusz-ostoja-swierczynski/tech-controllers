@@ -180,6 +180,15 @@
       "zone_state_entity": {
         "name": "{entity_name} alarm state"
       },
+      "controller_alarm_history": {
+        "name": "Alarm history",
+        "state": {
+          "ready": "Available",
+          "empty": "No events",
+          "error": "Read failed",
+          "invalid": "Invalid response"
+        }
+      },
       "controller_schedules": {
         "name": "schedules"
       },

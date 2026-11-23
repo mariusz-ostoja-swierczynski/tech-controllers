@@ -284,9 +284,9 @@ async def test_an_entity_that_comes_back_is_the_same_entity(
     # Home Assistant refuses a rename across domains, so the name the user
     # chooses has to keep the entity's own domain.
     entity_id = sorted(
-        candidate
-        for candidate in _entity_ids(hass, entry)
-        if candidate.startswith("sensor.")
+        candidate.entity_id
+        for candidate in er.async_entries_for_config_entry(registry, entry.entry_id)
+        if candidate.unique_id.endswith("_zone_temperature")
     )[0]
     registry.async_update_entity(
         entity_id, new_entity_id="sensor.custom", icon="mdi:custom"

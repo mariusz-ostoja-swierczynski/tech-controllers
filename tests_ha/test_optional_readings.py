@@ -154,7 +154,7 @@ async def test_a_zone_with_every_reading_builds_each_zone_sensor(
     # Two thermostats and the thirteen zone sensors these zones describe: the
     # temperature, state, humidity, signal, battery, actuator, window and
     # underfloor readings of the first, and the four the second still yields.
-    assert entity_counts(hass) == {"climate": 2, "sensor": 13}
+    assert entity_counts(hass) == {"climate": 2, "sensor": 14}
 
 
 async def test_a_temperature_tile_with_wireless_readings_adds_its_sensors(
@@ -173,7 +173,7 @@ async def test_a_temperature_tile_with_wireless_readings_adds_its_sensors(
     )
     await _set_up_payload(hass, monkeypatch, _module([], [tile]))
 
-    assert entity_counts(hass) == {"sensor": 3}
+    assert entity_counts(hass) == {"sensor": 4}
 
 
 async def test_widget_tiles_cover_the_variants_the_recording_missed(
@@ -223,7 +223,7 @@ async def test_widget_tiles_cover_the_variants_the_recording_missed(
     ]
     await _set_up_payload(hass, monkeypatch, _module([], tiles))
 
-    assert entity_counts(hass) == {"sensor": 3}
+    assert entity_counts(hass) == {"sensor": 4}
 
 
 async def test_menu_groups_that_match_the_zones_are_assigned_to_them(
@@ -299,7 +299,7 @@ async def test_an_open_therm_tile_builds_its_temperatures_and_modulation(
     )
     await _set_up_payload(hass, monkeypatch, _module([], [tile]))
 
-    assert entity_counts(hass) == {"sensor": 5}
+    assert entity_counts(hass) == {"sensor": 6}
 
 
 async def test_a_mixing_valve_tile_reports_its_opening(
@@ -313,7 +313,7 @@ async def test_a_mixing_valve_tile_reports_its_opening(
     )
     await _set_up_payload(hass, monkeypatch, _module([], [tile]))
 
-    assert entity_counts(hass) == {"sensor": 1}
+    assert entity_counts(hass) == {"sensor": 2}
 
 
 def _valve_params(valve_number: int, *, current: int, returning: int) -> dict[str, Any]:
@@ -367,7 +367,7 @@ async def test_a_second_valve_reports_the_readings_the_first_one_does(
     await _set_up_payload(hass, monkeypatch, _module([], [first, second]))
 
     # One opening percentage and three temperatures per valve.
-    assert entity_counts(hass) == {"sensor": 8}
+    assert entity_counts(hass) == {"sensor": 9}
     expected = {"currentTemp": "26.0", "returnTemp": "21.8", "setTemp": "28"}
     assert _valve_readings(hass, second["id"]) == expected
     assert _valve_readings(hass, first["id"]) == {
@@ -383,4 +383,4 @@ async def test_an_entry_without_zones_or_tiles_still_sets_up(
     """A controller that answers with nothing produces no entities."""
     await _set_up_payload(hass, monkeypatch, _module([], []))
 
-    assert entity_counts(hass) == {}
+    assert entity_counts(hass) == {"sensor": 1}
