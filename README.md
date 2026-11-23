@@ -47,6 +47,16 @@ and community reported controllers.
 | `number`        | Number for menu parameters.         |
 | `select`        | Select for menu parameters.         |
 
+### Heating curves
+
+Controllers that expose a four-point heating curve in the user menu have a
+read-only diagnostic sensor for each reported curve. Its state is the number
+of points. The `points` attribute pairs outdoor temperatures with the
+corresponding configured circuit targets, such as
+`{"outdoor_temperature": -10, "target_temperature": 45}`. The points and target
+bounds are in °C. The valve sensor continues to report the current target
+selected by the controller. Curve readings use the existing menu poll.
+
 ### Read-only zone schedules
 
 Controllers that report zone schedules, including M-9r, expose three additional
