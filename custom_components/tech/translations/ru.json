@@ -179,6 +179,15 @@
             "zone_state_entity": {
                 "name": "{entity_name} Состояние тревоги"
             },
+            "controller_alarm_history": {
+                "name": "История аварий",
+                "state": {
+                    "ready": "Доступна",
+                    "empty": "Событий нет",
+                    "error": "Ошибка чтения",
+                    "invalid": "Некорректный ответ"
+                }
+            },
             "controller_schedules": {
                 "name": "Расписания"
             },

@@ -179,6 +179,15 @@
             "zone_state_entity": {
                 "name": "{entity_name} Stare de alarmă"
             },
+            "controller_alarm_history": {
+                "name": "Istoric alarme",
+                "state": {
+                    "ready": "Disponibil",
+                    "empty": "Niciun eveniment",
+                    "error": "Citire eșuată",
+                    "invalid": "Răspuns nevalid"
+                }
+            },
             "controller_schedules": {
                 "name": "Programări"
             },

@@ -80,6 +80,21 @@ These are read-only configuration details from the existing poll. They add no
 API requests, do not change schedules or targets, and do not calculate the current
 or next target from the controller's clock.
 
+### Alarm history
+
+Enable the **Alarm history** diagnostic entity on a controller's device to see
+past alarms, warnings and notifications from eModul. The entity is disabled by
+default. Once enabled, it reads the archive every 15 minutes, using the date
+365 days ago and today's date in Home Assistant's configured time zone. The
+attributes show the query dates, the number of returned events and up to ten
+events. Event timestamps retain the values returned by eModul.
+
+A successful empty response covers only the queried window. A failed read or an
+invalid response clears the displayed events and reports its own state. History
+availability is independent of the controller's other entities. The history
+sensor reads the archive and provides no controls for acknowledging or clearing
+alarms.
+
 ### Changing a zone's mode
 
 Two actions change how a zone is heated: `tech.set_zone_schedule` switches it to

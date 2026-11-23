@@ -121,13 +121,18 @@ async def test_startup_failure_still_registers_and_recovers_same_entity() -> Non
     entry, coordinator = _context(tile)
     hass = SimpleNamespace(data={const.DOMAIN: {entry.entry_id: coordinator}})
     added: list[Any] = []
+    optional: list[Any] = []
 
     def add_entities(entities: list[Any], update_before_add: bool) -> None:
-        assert update_before_add is True
-        added.extend(entities)
+        if update_before_add:
+            added.extend(entities)
+        else:
+            optional.extend(entities)
 
     await sensor.async_setup_entry(hass, entry, add_entities)
 
+    assert len(optional) == 1
+    assert isinstance(optional[0], sensor.AlarmHistorySensor)
     assert len(added) == 1
     entity = added[0]
     assert isinstance(entity, sensor.TileTemperatureSensor)

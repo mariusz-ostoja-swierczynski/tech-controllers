@@ -179,6 +179,15 @@
       "zone_state_entity": {
         "name": "{entity_name} Stav alarmu"
       },
+      "controller_alarm_history": {
+        "name": "História alarmov",
+        "state": {
+          "ready": "Dostupná",
+          "empty": "Žiadne udalosti",
+          "error": "Čítanie zlyhalo",
+          "invalid": "Neplatná odpoveď"
+        }
+      },
       "controller_schedules": {
         "name": "Harmonogramy"
       },

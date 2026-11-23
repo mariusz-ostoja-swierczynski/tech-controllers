@@ -179,6 +179,15 @@
             "zone_state_entity": {
                 "name": "{entity_name} Alarmzustand"
             },
+            "controller_alarm_history": {
+                "name": "Alarmverlauf",
+                "state": {
+                    "ready": "Verfügbar",
+                    "empty": "Keine Ereignisse",
+                    "error": "Abruf fehlgeschlagen",
+                    "invalid": "Ungültige Antwort"
+                }
+            },
             "controller_schedules": {
                 "name": "Zeitpläne"
             },

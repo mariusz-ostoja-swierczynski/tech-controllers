@@ -138,6 +138,10 @@ class BinarySensorEntity(_Entity):
 class DataUpdateCoordinator(_Entity):
     """Stand-in for ``DataUpdateCoordinator``."""
 
+    def __class_getitem__(cls, item: Any) -> type[DataUpdateCoordinator]:
+        """Accept the snapshot type supported by the real coordinator."""
+        return cls
+
 
 class _UpdateFailed(Exception):
     """Stand-in for ``UpdateFailed``."""

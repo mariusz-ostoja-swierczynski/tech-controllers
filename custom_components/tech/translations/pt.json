@@ -179,6 +179,15 @@
             "zone_state_entity": {
                 "name": "Estado de alarme de {entity_name}"
             },
+            "controller_alarm_history": {
+                "name": "Histórico de alarmes",
+                "state": {
+                    "ready": "Disponível",
+                    "empty": "Sem eventos",
+                    "error": "Falha na leitura",
+                    "invalid": "Resposta inválida"
+                }
+            },
             "controller_schedules": {
                 "name": "Horários"
             },

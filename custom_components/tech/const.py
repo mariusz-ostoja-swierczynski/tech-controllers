@@ -104,6 +104,12 @@ PLATFORMS = [
 SCAN_INTERVAL: Final = timedelta(seconds=60)
 API_TIMEOUT: Final = 60
 
+# Optional alarm history has its own listener-driven coordinator and a smaller
+# request budget; it must not slow down the controller's telemetry refresh.
+ALARM_HISTORY_INTERVAL: Final = timedelta(minutes=15)
+ALARM_HISTORY_TIMEOUT: Final = 10
+ALARM_HISTORY_MAX_BYTES: Final = 1024 * 1024
+
 # A fetched module payload is reused for this many seconds. The seven HA
 # platforms each call get_module_zones/tiles/menus during setup; without this
 # guard every call would trigger its own full (rate-limited) cloud refresh.

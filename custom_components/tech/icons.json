@@ -4,6 +4,9 @@
             "actuator_entity": {
                 "default": "mdi:valve"
             },
+            "controller_alarm_history": {
+                "default": "mdi:history"
+            },
             "controller_schedules": {
                 "default": "mdi:calendar-week"
             },

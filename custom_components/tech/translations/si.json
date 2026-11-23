@@ -179,6 +179,15 @@
             "zone_state_entity": {
                 "name": "{entity_name} Stanje alarma"
             },
+            "controller_alarm_history": {
+                "name": "Zgodovina alarmov",
+                "state": {
+                    "ready": "Na voljo",
+                    "empty": "Ni dogodkov",
+                    "error": "Branje ni uspelo",
+                    "invalid": "Neveljaven odgovor"
+                }
+            },
             "controller_schedules": {
                 "name": "Urniki"
             },

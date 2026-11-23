@@ -179,6 +179,15 @@
             "zone_state_entity": {
                 "name": "{entity_name} Häire olek"
             },
+            "controller_alarm_history": {
+                "name": "Häirete ajalugu",
+                "state": {
+                    "ready": "Saadaval",
+                    "empty": "Sündmusi pole",
+                    "error": "Lugemine ebaõnnestus",
+                    "invalid": "Vigane vastus"
+                }
+            },
             "controller_schedules": {
                 "name": "Ajakavad"
             },

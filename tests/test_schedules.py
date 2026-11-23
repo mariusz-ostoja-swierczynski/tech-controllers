@@ -917,7 +917,9 @@ async def test_zoneless_controller_does_not_gain_a_schedule_entity() -> None:
     await sensor.async_setup_entry(
         hass, entry, lambda entities, update: added.extend(entities)
     )
-    assert added == []
+    assert len(added) == 1
+    assert isinstance(added[0], sensor.AlarmHistorySensor)
+    assert added[0]._attr_entity_registry_enabled_default is False
     assert len(transport.requests) == 1 + len(const.MENU_TYPES)
 
 

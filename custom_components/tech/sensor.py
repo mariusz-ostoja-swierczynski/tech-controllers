@@ -63,6 +63,7 @@ from homeassistant.helpers.typing import UndefinedType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import assets
+from .alarm_history import TEXT_LIMIT, TechAlarmHistoryCoordinator
 from .const import (
     ACTUATORS,
     ACTUATORS_OPEN,
@@ -155,6 +156,19 @@ async def async_setup_entry(
     _LOGGER.debug("Setting up the sensor entry for %s", controller[CONF_NAME])
 
     coordinator = config_entry.runtime_data
+
+    # add_later asks HA to update before adding, even for disabled entities.
+    # History must not fetch until the user enables its diagnostic sensor.
+    async_add_entities(
+        [
+            AlarmHistorySensor(
+                TechAlarmHistoryCoordinator(hass, coordinator, config_entry),
+                config_entry,
+                coordinator,
+            )
+        ],
+        False,
+    )
 
     def _build() -> list[Any]:
         # Read from the coordinator's payload rather than fetching: this runs
@@ -1959,6 +1973,92 @@ class TileOpenThermPercentageSensor(TileGenericOpenThermSensor):
         set_attr("activeHeating", flag=True)
         set_attr("communication", flag=True)
         set_attr("heatingCurve", flag=True)
+
+
+class AlarmHistorySensor(CoordinatorEntity[TechAlarmHistoryCoordinator], SensorEntity):
+    """One opt-in view of archive reads, rather than current alarm activity."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+    _attr_has_entity_name = True
+    _attr_translation_key = "controller_alarm_history"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["ready", "empty", "error", "invalid"]
+    _unrecorded_attributes = frozenset({"events", "latest"})
+
+    def __init__(
+        self,
+        coordinator: TechAlarmHistoryCoordinator,
+        config_entry: TechConfigEntry,
+        primary: TechCoordinator,
+    ) -> None:
+        """Attach the archive to the controller's existing device and catalog."""
+        super().__init__(coordinator)
+        self._config_entry = config_entry
+        self._primary = primary
+        self._attr_unique_id = f"{config_entry.data[CONTROLLER][UDID]}_alarm_history"
+
+    async def async_added_to_hass(self) -> None:
+        """Start reading only after an enabled entity becomes a listener."""
+        await super().async_added_to_hass()
+        # Finish adding the entity before the first HTTP read. If the user
+        # disables it during that read, removal cancels the initial refresh.
+        refresh = self._config_entry.async_create_background_task(
+            self.hass,
+            self.coordinator.async_refresh(),
+            "initial alarm history refresh",
+            eager_start=False,
+        )
+
+        @callback
+        def cancel_initial_refresh() -> None:
+            refresh.cancel()
+
+        self.async_on_remove(cancel_initial_refresh)
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Join the existing physical controller device."""
+        return controller_device_info(self._config_entry)
+
+    @property
+    def native_value(self) -> str | None:
+        """Distinguish a successful empty archive from an unavailable read."""
+        if not self.coordinator.last_update_success:
+            return None
+        return cast("str | None", self.coordinator.data.get("status"))
+
+    def _display_event(self, event: dict[str, Any]) -> dict[str, Any]:
+        """Resolve the subtitle while preserving raw timestamps and units."""
+        title = self._primary.translations.get_text(event["txt_id"])
+        if not isinstance(title, str) or not title:
+            title = f"txtId {event['txt_id']}"
+        return {**event, "title": title[:TEXT_LIMIT]}
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose a bounded snapshot, clearing archive records on read failure."""
+        history = self.coordinator.data
+        attributes = {key: value for key, value in history.items() if key != "status"}
+        if not self.coordinator.last_update_success:
+            # Unexpected coordinator failures still use HA's unavailable
+            # state; its retained successful snapshot must not look current.
+            attributes.update(
+                returned_count=None,
+                displayed_count=0,
+                truncated=False,
+                chronology_complete=False,
+                ordering=None,
+                events=[],
+                latest=None,
+            )
+            return attributes
+        attributes["events"] = [
+            self._display_event(event) for event in history["events"]
+        ]
+        latest = history["latest"]
+        attributes["latest"] = self._display_event(latest) if latest else None
+        return attributes
 
 
 class ControllerSchedulesSensor(CoordinatorEntity, SensorEntity):
