@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import Callable
+from functools import cached_property
 import logging
 from typing import Any
 
@@ -15,6 +16,7 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .assets import Translations
+from .confirmation import MenuCommands
 from .const import API_TIMEOUT, CONTROLLER, DOMAIN, MENU_TYPES, SCAN_INTERVAL, UDID
 from .tech import Tech, TechError, TechLoginError
 
@@ -113,6 +115,11 @@ class TechCoordinator(DataUpdateCoordinator):
         # are written to. See ``identity``.
         self.identities: dict[str, dict[str, Any]] = {}
         self.identity_store: Any = None
+
+    @cached_property
+    def menu_commands(self) -> MenuCommands:
+        """Return the readback worker shared by this controller's menu controls."""
+        return MenuCommands(self.api, self.config_entry.data[CONTROLLER][UDID])
 
     def _async_sync_menu_code_issues(self, rejected: set[str]) -> None:
         """Report every tree whose configured code was not accepted.

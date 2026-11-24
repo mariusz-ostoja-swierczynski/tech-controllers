@@ -506,6 +506,7 @@ _install_stubs()
 const = _load_tech_module("const")
 assets = _load_tech_module("assets")
 _tech_module = _load_tech_module("tech")
+_confirmation = _load_tech_module("confirmation")
 _coordinator = _load_tech_module("coordinator")
 sensor = _load_tech_module("sensor")
 
@@ -685,6 +686,7 @@ class _Coordinator:
     def __init__(self, menus: dict[str, dict[str, Any]] | None = None) -> None:
         """Wire up the API, translation catalog and cache."""
         self.api = _Api(menus)
+        self.menu_commands = _confirmation.MenuCommands(self.api, _UDID)
         self.translations = _Translations()
         self.udid = _UDID
         self.data: dict = {}
@@ -1500,6 +1502,7 @@ async def test_menu_select_maps_its_options_and_refuses_an_unknown_one() -> None
     assert coordinator.api.menu_writes == []
 
     await entity.async_select_option("2")
+    await coordinator.menu_commands.async_close()
 
     assert entity._attr_current_option == "2"
     # The value behind the label is what the API is told, not the label.
@@ -1739,7 +1742,11 @@ async def test_a_poll_during_change_keeps_the_optimistic_number() -> None:
         "menus": {"MU_3550": {**item, "params": {**item["params"], "value": 7}, "duringChange": "f"}}
     }
     entity._handle_coordinator_update()
-    assert entity._attr_native_value == 7
+    # An ordinary poll may update the fallback value, but only a fresh,
+    # post-ACK delta can confirm this command.
+    assert entity._attr_native_value == 5
+    assert entity.extra_state_attributes["command_status"] == "pending"
+    await coordinator.menu_commands.async_close()
 
 
 async def test_a_poll_during_change_keeps_the_optimistic_select_option() -> None:
@@ -1764,7 +1771,9 @@ async def test_a_poll_during_change_keeps_the_optimistic_select_option() -> None
         "menus": {"MU_3550": {**item, "duringChange": "f"}}
     }
     entity._handle_coordinator_update()
-    assert entity._attr_current_option == "label-2"
+    assert entity._attr_current_option == "label-1"
+    assert entity.extra_state_attributes["command_status"] == "pending"
+    await coordinator.menu_commands.async_close()
 
 
 async def test_a_poll_during_change_keeps_both_checkbox_options() -> None:

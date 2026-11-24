@@ -8,6 +8,7 @@ import logging
 import re
 import time
 from typing import TYPE_CHECKING, Any, cast
+from urllib.parse import quote
 
 from aiohttp import ClientTimeout
 
@@ -505,7 +506,9 @@ class Tech:
                 _LOGGER.debug("Updating %s tiles", len(visible_tiles))
                 cache["tiles"].update({tile["id"]: tile for tile in visible_tiles})
 
+            menu_read_started = time.monotonic()
             menu_items = await self._fetch_menu_data(module_udid)
+            cache["menu_read_started"] = menu_read_started
             # Recorded whatever the outcome: a tree whose code starts being
             # accepted has to lose its notice, so the empty case matters as much
             # as the populated one.
@@ -757,6 +760,16 @@ class Tech:
         else:
             raise TechError(401, "Unauthorized")
         return result
+
+    async def get_menu_updates(self, module_udid: str, cursor: str) -> dict[str, Any]:
+        """Read menu deltas without advancing a shared cursor or cache."""
+        if not self.authenticated:
+            raise TechError(401, "Unauthorized")
+        empty = quote("[]", safe="")
+        return await self.get(
+            f"users/{self.user_id}/modules/{module_udid}/update/data/"
+            f"parents/{empty}/alarm_ids/{empty}/last_update/{quote(cursor, safe='')}"
+        )
 
     async def get_zone(self, module_udid: str, zone_id: int) -> dict[str, Any]:
         """Return a single zone payload.

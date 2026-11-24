@@ -31,6 +31,7 @@ becomes the single source of "Wisniowa 13 X" naming.
 from abc import abstractmethod
 from collections.abc import Callable
 import logging
+import time
 from typing import Any
 
 from homeassistant.const import CONF_DESCRIPTION, CONF_ID, CONF_PARAMS, CONF_TYPE
@@ -41,6 +42,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import assets, identity
+from .confirmation import MenuCommand
 from .const import (
     CONTROLLER,
     DOMAIN,
@@ -130,6 +132,92 @@ class ReportedEntity(entity.Entity):
         reading are independent of it -- so the in-place rename needs no work.
         """
         super().async_entity_id_changed(old_entity_id)
+
+
+class MenuCommandEntity(ReportedEntity, CoordinatorEntity[TechCoordinator]):
+    """Keep optimistic menu state separate from observations and confirmation."""
+
+    _menu_type: str
+    _item_id: int
+    _menu_key: str
+    _observed_menu_item: dict[str, Any]
+    _command: MenuCommand | None = None
+    _menu_read_after = 0.0
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Show the current command's state and readback, when available."""
+        if self._command is None:
+            return {"command_status": "idle", "pending_confirm": False}
+        return self._command.attributes()
+
+    @abstractmethod
+    def _update_from_item(self, item: dict[str, Any]) -> None:
+        """Render a menu item using the platform's representation."""
+
+    def _render_menu(self) -> None:
+        item = self._observed_menu_item
+        if self._command is not None and self._command.status == "pending":
+            item = {
+                **item,
+                "params": {
+                    **item.get("params", {}),
+                    "value": self._command.requested_value,
+                },
+            }
+        self._update_from_item(item)
+
+    @callback
+    def _command_changed(self, command: MenuCommand) -> None:
+        self._command = command
+        self._attr_assumed_state = command.status == "pending"
+        if command.status in ("confirmed", "mismatch"):
+            self._observed_menu_item = {
+                **self._observed_menu_item,
+                "params": {
+                    **self._observed_menu_item.get("params", {}),
+                    "value": command.observed_value,
+                },
+            }
+            self._menu_read_after = time.monotonic()
+        self._render_menu()
+        self.async_write_ha_state()
+
+    async def _async_write_menu_value(self, value: int) -> None:
+        await self.coordinator.menu_commands.async_write(
+            (self._menu_type, self._item_id), value, self._command_changed
+        )
+
+    @callback
+    def _handle_coordinator_update(self, *args: Any) -> None:
+        """Update ordinary state, leaving confirmation to the readback worker."""
+        data = self.coordinator.data or {}
+        item = data.get("menus", {}).get(self._menu_key)
+        reported = data.get("reported", {}).get("menus")
+        # The coordinator may finish delivering a menu read that started
+        # before we had a settled delta, or deliver an accumulated menu item.
+        if (
+            item
+            and (reported is None or self._menu_key in reported)
+            and data.get("menu_read_started", 0.0) >= self._menu_read_after
+            and not assets.menu_item_is_settling(item)
+        ):
+            self._observed_menu_item = {
+                **item,
+                "params": {
+                    **self._observed_menu_item.get("params", {}),
+                    **item.get("params", {}),
+                },
+            }
+            self._render_menu()
+        self.async_write_ha_state()
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Stop this entity's pending work before removing its listener."""
+        await self.coordinator.menu_commands.async_remove(
+            (self._menu_type, self._item_id)
+        )
+        await super().async_will_remove_from_hass()
 
 
 def controller_device_info(config_entry: TechConfigEntry) -> DeviceInfo:
