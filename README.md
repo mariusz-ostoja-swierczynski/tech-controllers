@@ -179,6 +179,16 @@ If a code you entered is not accepted, Home Assistant raises a repair issue
 naming that menu. Menus that simply cannot be read are not reported: on a
 consumer account that is normal for several of them.
 
+### Menu command confirmation
+
+Menu choices and numbers show the requested value as assumed once eModul
+accepts the write. The entity's `command_status` becomes `confirmed` only after
+a fresh menu update reports that same value and the controller has finished
+applying the change. `mismatch`, `timed_out`, `rejected` and `error` are separate
+outcomes. The attributes `requested_value` and `observed_value` use the raw
+menu values, including tenths where applicable. `last_confirmed_at` belongs to
+the current command and represents menu readback through eModul.
+
 ![Tech Thermostat Cards](./images/ha-tech-1.png)
 
 Anything the eModul app offers beyond the platforms listed above is not exposed here: what the integration provides is what its entities provide.

@@ -5,10 +5,9 @@ from typing import Any
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.const import EntityCategory
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import ChildDeviceInfo, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import assets
 from .const import (
@@ -21,7 +20,7 @@ from .const import (
     UDID,
 )
 from .coordinator import TechConfigEntry, TechCoordinator
-from .entity import ReportedEntity, add_later
+from .entity import MenuCommandEntity, add_later
 from .zone_schedule_select import ZoneScheduleSelect
 
 _LOGGER = logging.getLogger(__name__)
@@ -99,9 +98,7 @@ async def async_setup_entry(
     add_later(config_entry, coordinator, async_add_entities, _build_zone_selects)
 
 
-class MenuSelectEntity(
-    ReportedEntity, CoordinatorEntity[TechCoordinator], SelectEntity
-):
+class MenuSelectEntity(MenuCommandEntity, SelectEntity):
     """A choice menu parameter exposed as a Home Assistant select entity."""
 
     _attr_has_entity_name = True
@@ -135,7 +132,6 @@ class MenuSelectEntity(
         """
         super().__init__(coordinator)
         self._config_entry = config_entry
-        self._coordinator = coordinator
         self._udid = config_entry.data[CONTROLLER][UDID]
         self._menu_key = menu_key
         self._item_id = item["id"]
@@ -161,7 +157,8 @@ class MenuSelectEntity(
 
         self._value_to_label: dict[int, str] = {}
         self._label_to_value: dict[str, int] = {}
-        self._update_from_item(item)
+        self._observed_menu_item = item
+        self._render_menu()
 
     @property
     def unique_id(self) -> str:
@@ -240,47 +237,13 @@ class MenuSelectEntity(
         options = params.get("options", [])
         self._build_option_maps(options)
 
-        current_value = params.get("value", 0)
-        current_label = self._value_to_label.get(current_value)
-        if current_label and current_label in self._attr_options:
-            self._attr_current_option = current_label
-        elif self._attr_options:
-            self._attr_current_option = self._attr_options[0]
-        else:
-            self._attr_current_option = None
+        self._attr_current_option = self._value_to_label.get(params.get("value"))
 
     async def async_select_option(self, option: str) -> None:
-        """Change the selected option.
-
-        Update local state optimistically after the API call returns success
-        so HA reflects the change immediately. We deliberately do NOT request
-        an immediate coordinator refresh here -- the eModul API has a
-        ``duringChange: "t"`` window during which it still reports the old
-        value, so an immediate refresh would clobber the optimistic state.
-        The regular 60 s polling cadence reconciles eventually; if the
-        controller rejected the change the entity will revert by then.
-        """
+        """Request an option and start tracking its confirmation."""
         value = self._label_to_value.get(option)
         if value is None:
             _LOGGER.warning("Unknown option %s for menu item %s", option, self._item_id)
             return
 
-        await self.coordinator.api.set_menu_value(
-            self._udid, self._menu_type, self._item_id, {"value": value}
-        )
-        self._attr_current_option = option
-        self.async_write_ha_state()
-
-    @callback
-    def _handle_coordinator_update(self, *args: Any) -> None:
-        """Handle updated data from the coordinator."""
-        menus = self._coordinator.data.get("menus", {})
-        item = menus.get(self._menu_key)
-        if item and not assets.menu_item_is_settling(item):
-            self._update_from_item(item)
-        elif item:
-            _LOGGER.debug(
-                "Menu item %s is duringChange; keeping the optimistic state",
-                self._menu_key,
-            )
-        self.async_write_ha_state()
+        await self._async_write_menu_value(value)
